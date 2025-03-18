@@ -4,7 +4,7 @@
 Rel F is a **decentralized, ephemeral, Cloudflare-native social file-sharing platform** that prioritizes **user control, organic discovery, and community-driven archiving**. It is **non-corporate, minimalist, and free of algorithmic engagement farming**, focusing instead on **peer-to-peer interaction, temporary content, and personal archives**.
 
 ## Core Concepts
-- **Relational** – Users are connected **visually in an association web** but only through **explicit, mutually agreed relationships**.
+- **Relational** – Users are connected **visually in an association web** but only through **explicit, mutually agreed relationships** "sym"(*1).
 - **Ephemeral** – Content **expires unless archived**, ensuring that data **remains fresh and relevant** rather than accumulating indefinitely.
 - **Filenet** – A **social file-sharing system** where **documents, audio, video, and creative works** are the foundation of interaction.
 
@@ -22,8 +22,8 @@ Rel F is a **decentralized, ephemeral, Cloudflare-native social file-sharing pla
 - **Community Archiving:** Content **exceeding reaction/share thresholds** can be **flagged by the user for permanent community storage**.
 
 ### 🔗 Association Web (D3.js Visualization)
-- **Automatically generated** from **public contact lists**.
-- **Branching structure shows degrees of connection** (stronger links for frequent interactions).
+- **Automatically generated** from **public contact lists** "a-sym" (*2).
+- **Branching structure shows degrees of connection** (stronger links for frequent interactions). *2
 - **Clicking a node opens the user’s profile**.
 - **Low-visibility users appear muted and have no clear associations**.
 
@@ -35,9 +35,9 @@ Rel F is a **decentralized, ephemeral, Cloudflare-native social file-sharing pla
 
 ### 👥 Contacts & Social Features
 - **Contacts are private or public:**  
-  - **Public contacts appear in the association web**.  
-  - **Private contacts remain hidden**.
-- **Collaborative Workspaces** (agreed upon between users, likely tied to DMs).
+  - **Public contacts appear in the association web**. Either (*1)"sym" or (*2)"a-sym"
+  - **Private contacts remain hidden**. (*1)(*2)or(*3)
+- **Collaborative Workspaces** (agreed upon between users, likely tied to DMs). (*1), possible others?
 - **“Lurker in the Mist” mode** (low-visibility status for users who prefer minimal presence).
 
 ### ✉️ Inbox & Notifications
@@ -60,7 +60,7 @@ Rel F is a **decentralized, ephemeral, Cloudflare-native social file-sharing pla
 
 ### 🛑 Privacy & Moderation
 - **Mutual Contributor Opt-Out:** Users can **hide their name from shared files**.
-- **No Unwanted Labels:** All mutual relationships must be **explicitly agreed upon**.
+- **No Unwanted Labels:** All mutual relationships must be **explicitly agreed upon** "sym"(*1).
 - **Permanent Hide List for the Association Web:** Users can **ignore specific connections indefinitely** unless manually revisited.
 - **Manual Clearing of History:**  
   - **Multi-step confirmation required** (including text input like “Type DELETE”).
@@ -127,6 +127,7 @@ This project is **heavily conceptual and focused on DIY ethos**. Contributions a
 
 ---
 
-Rel F **exists outside of traditional social media structures**. It is a **social file-sharing network**, not a **clout-driven platform**. Users **interact through shared content, association, and voluntary archival** rather than likes and followers.
-
-🚀 **More coming soon. First, we code.**  
+Rel F **exists outside of traditional social media structures**. It is a **social file-sharing network**, not a **clout-driven platform**. Users **interact through shared content, association, and voluntary archival** rather than likes and followers. 
+*1- Explicitly allowed, cultivated relationships are sym, 
+*2- Non-disallowed relationships through proximity, etc. are a-sym.
+🚀 **More coming soon.**  

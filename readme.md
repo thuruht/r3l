@@ -4,21 +4,21 @@
 Rel F is a **decentralized, ephemeral, Cloudflare-native social file-sharing platform** that prioritizes **user control, organic discovery, and community-driven archiving**. It is **non-corporate, minimalist, and free of algorithmic engagement farming**, focusing instead on **peer-to-peer interaction, temporary content, and personal archives**.
 
 ## Core Concepts
-- **Relational** – Users are connected **visually in an association web** but only through **explicit, mutually agreed relationships** "sym"(*1).
+- **Relational** – Users are connected **visually in an association web** that shows or alludes to (or not) **explicit, mutually agreed relationships** "sym"(*1).
 - **Ephemeral** – Content **expires unless archived**, ensuring that data **remains fresh and relevant** rather than accumulating indefinitely.
 - **Filenet** – A **social file-sharing system** where **documents, audio, video, and creative works** are the foundation of interaction.
 
 ## Features
 ### 🗃 Personal Archive ("Drawer") & Communique
 - Each user has a **"drawer"** (profile) with a **customizable communique**—a **themeable, linkable window into their stored content**.
-- Content **expires after one week** unless **archived or designated as community content**.
-- **Unconfigured drawers** only show an **anonymous avatar & display name** and **cannot join the association web**.
+- Content **expires after one week** unless **archived by user, or designated as community content**.
+- **Unconfigured drawers** only show an **indistinguishable generic avatar & their display name** and **cannot join the association web**.
 
 ### 📂 File & Archive System
 - Users can **upload and share** any file format (zines, code, music, books, documents).
 - **Expiration System:**  
-  - **Week active → Marked for deletion → Auto-deleted (unless archived)**.
-  - Non-archived content is **appended to the last communique before deletion**.
+  - **1 Week active → 1 Week Marked for deletion → Auto-deleted (unless archived)**.
+  - Non-archived content is **appended to the most recent communique version before true deletion, as a final safeguard - the user must then choose to either archive or re-share the content to their communique or they will automatically be switched into "Lurker in the mist" mode **.
 - **Community Archiving:** Content **exceeding reaction/share thresholds** can be **flagged by the user for permanent community storage**.
 
 ### 🔗 Association Web (D3.js Visualization)

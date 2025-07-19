@@ -1,0 +1,93 @@
+# Dependencies
+node_modules/
+jspm_packages/
+
+# Build directories
+dist/
+build/
+.webpack/
+
+# Environment and local config
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.*.local
+.dev.vars
+.wrangler/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+*.sublime-workspace
+*.sublime-project
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# Debug files
+*.debug.*
+*debug*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Git-related
+.git/
+.github/
+.gitignore
+
+# Documentation (not needed for deployment)
+*.md
+!README.md
+docs/
+
+# Package files (not needed for deployment)
+package-lock.json
+yarn.lock
+
+# Testing
+test/
+tests/
+__tests__/
+jest.config.js
+*.test.js
+*.spec.js
+*.test.ts
+*.spec.ts
+
+# Script files (not needed for deployment)
+*.sh
+scripts/
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Local Netlify folder
+.netlify/

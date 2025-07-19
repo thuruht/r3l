@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Drawer - R3L:F</title>
+  <link rel="stylesheet" href="./css/rel-f-global.css">
+  <script src="./js/font-loader.js" defer></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="material-icons" aria-hidden="true">public</span>
+      R3L:F
+    </div>
+    <nav>
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="drawer.html" class="nav-link active">Drawer</a></li>
+        <li><a href="network.html" class="nav-link">Association Web</a></li>
+        <li><a href="map.html" class="nav-link">Map</a></li>
+        <li><a href="search.html" class="nav-link">Search</a></li>
+        <li><a href="random.html" class="nav-link tooltip">
+          <span class="material-icons">shuffle</span>
+          <span class="tooltip-text">Random Communique</span>
+        </a></li>
+        <li><a href="login.html" class="nav-link">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="text-center">
+      <h1>
+        <span class="material-icons" aria-hidden="true">folder_shared</span>
+        Your Drawer
+      </h1>
+      <p>Your personal space in the Rel where connections can find your content</p>
+    </section>
+
+    <!-- User profile / Drawer container -->
+    <div class="drawer-container">
+      <div class="drawer-header">
+        <div class="flex gap-4 items-center">
+          <div class="drawer-icon">
+            <span class="material-icons" style="font-size: 48px;">account_circle</span>
+          </div>
+          <div>
+            <h2 id="user-name">Username</h2>
+            <p class="drawer-subtitle">Joined: <span id="user-joined">July 12, 2025</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Communique (customizable public message) -->
+      <h3>Communique</h3>
+      <div 
+        id="communique" 
+        class="communique" 
+        contenteditable="true" 
+        data-placeholder="Add your communique here. This is your public message to visitors of your drawer. You can format this area with markdown-like syntax, add links, and express yourself."
+      ></div>
+
+      <!-- User Stats -->
+      <div class="flex gap-4 mb-4">
+        <div class="card flex-1">
+          <h4>Files Shared</h4>
+          <p id="files-count" class="text-center" style="font-size: 2rem;">0</p>
+        </div>
+        <div class="card flex-1">
+          <h4>Files Archived</h4>
+          <p id="archived-count" class="text-center" style="font-size: 2rem;">0</p>
+        </div>
+        <div class="card flex-1">
+          <h4>Connections</h4>
+          <p id="connections-count" class="text-center" style="font-size: 2rem;">0</p>
+        </div>
+      </div>
+
+      <!-- "Lurker in the Mist" mode toggle -->
+      <div class="lurker-mode-toggle">
+        <label for="lurker-mode">
+          <span class="material-icons">visibility_off</span>
+          Lurker in the Mist Mode
+        </label>
+        <input type="checkbox" id="lurker-mode">
+        <div id="lurker-status" class="lurker-mode-status">Inactive</div>
+      </div>
+      <small>When active, your presence in the association web is minimized and your drawer appears with reduced visibility.</small>
+    </div>
+
+    <!-- File Management Tabs -->
+    <div class="card mt-4">
+      <div class="flex border-bottom p-2">
+        <button id="tab-all" class="btn btn-secondary active">All Files</button>
+        <button id="tab-public" class="btn btn-secondary">Public</button>
+        <button id="tab-private" class="btn btn-secondary">Private</button>
+        <button id="tab-expiring" class="btn btn-secondary">Expiring Soon</button>
+        <button id="tab-archived" class="btn btn-secondary">Archived</button>
+      </div>
+
+      <!-- File management toolbar -->
+      <div class="flex gap-2 p-2 border-bottom">
+        <a href="./upload.html" class="btn">
+          <span class="material-icons">cloud_upload</span>
+          Upload New
+        </a>
+        <button id="btn-refresh" class="btn btn-secondary">
+          <span class="material-icons">refresh</span>
+          Refresh
+        </button>
+        <div class="flex-1"></div>
+        <div class="search-input-group">
+          <input type="text" id="file-search" placeholder="Search your files..." class="search-input">
+          <button class="search-button">
+            <span class="material-icons">search</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Files container -->
+      <div id="files-container">
+        <div class="p-4 text-center" id="loading-placeholder">
+          <span class="material-icons" style="font-size: 48px;">hourglass_top</span>
+          <p>Loading your files...</p>
+        </div>
+
+        <!-- Empty state -->
+        <div id="empty-state" class="p-4 text-center hidden">
+          <span class="material-icons" style="font-size: 48px;">sentiment_dissatisfied</span>
+          <h3>No files found</h3>
+          <p>Your drawer is empty. Upload some files to get started!</p>
+          <a href="./upload.html" class="btn mt-4">
+            <span class="material-icons">cloud_upload</span>
+            Upload Your First File
+          </a>
+        </div>
+
+        <!-- File grid will be populated by JavaScript -->
+        <div id="file-grid" class="file-grid p-4 hidden"></div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="flex justify-center gap-2 p-4 hidden">
+          <button id="prev-page" class="btn btn-secondary">
+            <span class="material-icons">chevron_left</span>
+            Previous
+          </button>
+          <span id="page-indicator">Page 1</span>
+          <button id="next-page" class="btn btn-secondary">
+            Next
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connections and RPC (Recent Private Cache) -->
+    <div class="mt-4">
+      <h2>Your Connections</h2>
+      
+      <div class="card mb-4">
+        <h3>
+          <span class="material-icons">people</span>
+          Connection Requests
+        </h3>
+        
+        <div id="connection-requests" class="p-4">
+          <!-- Will be populated by JavaScript -->
+          <p class="text-center">No pending connection requests</p>
+        </div>
+      </div>
+      
+      <div class="rpc-container">
+        <div class="rpc-header">
+          <h3>
+            <span class="material-icons">folder_special</span>
+            Recent Private Cache
+          </h3>
+          <p>Files shared directly with you appear here</p>
+        </div>
+        
+        <div id="rpc-items" class="file-grid p-4">
+          <!-- Will be populated by JavaScript -->
+          <p class="text-center">Your private cache is empty</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <!-- File Item Template -->
+  <template id="file-item-template">
+    <div class="file-item">
+      <div class="file-icon">
+        <span class="material-icons"></span>
+      </div>
+      <div class="file-name"></div>
+      <div class="file-expiry"></div>
+    </div>
+  </template>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // UI Elements
+      const userName = document.getElementById('user-name');
+      const userJoined = document.getElementById('user-joined');
+      const filesCount = document.getElementById('files-count');
+      const archivedCount = document.getElementById('archived-count');
+      const connectionsCount = document.getElementById('connections-count');
+      const lurkerMode = document.getElementById('lurker-mode');
+      const lurkerStatus = document.getElementById('lurker-status');
+      const communique = document.getElementById('communique');
+      const fileGrid = document.getElementById('file-grid');
+      const loadingPlaceholder = document.getElementById('loading-placeholder');
+      const emptyState = document.getElementById('empty-state');
+      const pagination = document.getElementById('pagination');
+      const prevPage = document.getElementById('prev-page');
+      const nextPage = document.getElementById('next-page');
+      const pageIndicator = document.getElementById('page-indicator');
+      const tabButtons = document.querySelectorAll('[id^="tab-"]');
+      const fileSearch = document.getElementById('file-search');
+      const btnRefresh = document.getElementById('btn-refresh');
+      
+      // File icon mapping
+      const fileIcons = {
+        'image/': 'image',
+        'audio/': 'audiotrack',
+        'video/': 'videocam',
+        'application/pdf': 'picture_as_pdf',
+        'application/zip': 'folder_zip',
+        'text/plain': 'text_snippet',
+        'application/json': 'data_object',
+        'text/csv': 'table_chart',
+        'application/x-ipynb+json': 'code',
+        'text/markdown': 'article',
+        'text/html': 'html',
+        'application/msword': 'description',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'description',
+        'default': 'insert_drive_file'
+      };
+      
+      // Mock user data - would be replaced with real API call
+      const mockUser = {
+        name: 'SampleUser',
+        joined: 'July 12, 2025',
+        filesCount: 23,
+        archivedCount: 7,
+        connectionsCount: 12,
+        isLurker: false,
+        communique: 'Welcome to my drawer! I share mostly creative coding projects and research papers. Feel free to browse and connect if our interests align.'
+      };
+      
+      // Mock file data - would be replaced with real API call
+      const mockFiles = [
+        { 
+          id: '1', 
+          name: 'project-notes.md', 
+          type: 'text/markdown', 
+          size: 15680, 
+          isPublic: true, 
+          created: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 5 * 24 * 60 * 60 * 1000,
+          isArchived: false
+        },
+        { 
+          id: '2', 
+          name: 'visualization.png', 
+          type: 'image/png', 
+          size: 256000, 
+          isPublic: true, 
+          created: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 4 * 24 * 60 * 60 * 1000,
+          isArchived: false
+        },
+        { 
+          id: '3', 
+          name: 'private-research.pdf', 
+          type: 'application/pdf', 
+          size: 1024000, 
+          isPublic: false, 
+          created: Date.now() - 1 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 6 * 24 * 60 * 60 * 1000,
+          isArchived: false
+        },
+        { 
+          id: '4', 
+          name: 'ambient-loop.mp3', 
+          type: 'audio/mp3', 
+          size: 5120000, 
+          isPublic: true, 
+          created: Date.now() - 5 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 2 * 24 * 60 * 60 * 1000,
+          isArchived: false
+        },
+        { 
+          id: '5', 
+          name: 'archived-dataset.json', 
+          type: 'application/json', 
+          size: 102400, 
+          isPublic: true, 
+          created: Date.now() - 15 * 24 * 60 * 60 * 1000,
+          expires: null,
+          isArchived: true
+        }
+      ];
+      
+      // Initialize UI with user data
+      function initUserData() {
+        userName.textContent = mockUser.name;
+        userJoined.textContent = mockUser.joined;
+        filesCount.textContent = mockUser.filesCount;
+        archivedCount.textContent = mockUser.archivedCount;
+        connectionsCount.textContent = mockUser.connectionsCount;
+        lurkerMode.checked = mockUser.isLurker;
+        updateLurkerStatus();
+        
+        if (mockUser.communique) {
+          communique.innerHTML = mockUser.communique;
+        }
+      }
+      
+      // Update lurker mode status display
+      function updateLurkerStatus() {
+        if (lurkerMode.checked) {
+          lurkerStatus.textContent = 'Active';
+          lurkerStatus.classList.add('active');
+        } else {
+          lurkerStatus.textContent = 'Inactive';
+          lurkerStatus.classList.remove('active');
+        }
+      }
+      
+      // Format file size for display
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' bytes';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+        else return (bytes / 1073741824).toFixed(1) + ' GB';
+      }
+      
+      // Format time remaining until expiry
+      function formatTimeRemaining(expiryTimestamp) {
+        if (!expiryTimestamp) return 'Archived';
+        
+        const now = Date.now();
+        const diff = expiryTimestamp - now;
+        
+        if (diff <= 0) return 'Expired';
+        
+        const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+        
+        if (days === 0) return '<1d';
+        return days + 'd';
+      }
+      
+      // Get icon for file type
+      function getFileIcon(fileType) {
+        for (const type in fileIcons) {
+          if (fileType.startsWith(type)) {
+            return fileIcons[type];
+          }
+        }
+        return fileIcons.default;
+      }
+      
+      // Load and display files
+      function loadFiles(filter = 'all') {
+        // Show loading state
+        loadingPlaceholder.classList.remove('hidden');
+        fileGrid.classList.add('hidden');
+        emptyState.classList.add('hidden');
+        pagination.classList.add('hidden');
+        
+        // Simulate API request delay
+        setTimeout(() => {
+          // Filter files based on selected tab
+          let filteredFiles = [...mockFiles];
+          
+          switch(filter) {
+            case 'public':
+              filteredFiles = filteredFiles.filter(file => file.isPublic);
+              break;
+            case 'private':
+              filteredFiles = filteredFiles.filter(file => !file.isPublic);
+              break;
+            case 'expiring':
+              filteredFiles = filteredFiles.filter(file => 
+                file.expires && (file.expires - Date.now() < 2 * 24 * 60 * 60 * 1000)
+              );
+              break;
+            case 'archived':
+              filteredFiles = filteredFiles.filter(file => file.isArchived);
+              break;
+          }
+          
+          // Check for search query
+          const searchQuery = fileSearch.value.toLowerCase().trim();
+          if (searchQuery) {
+            filteredFiles = filteredFiles.filter(file => 
+              file.name.toLowerCase().includes(searchQuery)
+            );
+          }
+          
+          // Hide loading, show appropriate view
+          loadingPlaceholder.classList.add('hidden');
+          
+          if (filteredFiles.length === 0) {
+            emptyState.classList.remove('hidden');
+          } else {
+            fileGrid.innerHTML = '';
+            
+            // Create file items
+            filteredFiles.forEach(file => {
+              const template = document.getElementById('file-item-template');
+              const fileItem = template.content.cloneNode(true);
+              
+              // Set file icon
+              const iconElement = fileItem.querySelector('.file-icon .material-icons');
+              iconElement.textContent = getFileIcon(file.type);
+              
+              // Set file name
+              const nameElement = fileItem.querySelector('.file-name');
+              nameElement.textContent = file.name;
+              
+              // Set file expiry
+              const expiryElement = fileItem.querySelector('.file-expiry');
+              expiryElement.textContent = formatTimeRemaining(file.expires);
+              
+              // Add data attributes for filtering
+              const itemElement = fileItem.querySelector('.file-item');
+              itemElement.dataset.id = file.id;
+              itemElement.dataset.public = file.isPublic;
+              itemElement.dataset.archived = file.isArchived;
+              
+              // Add click handler
+              itemElement.addEventListener('click', () => {
+                window.location.href = `./content.html?id=${file.id}`;
+              });
+              
+              // Add to grid
+              fileGrid.appendChild(fileItem);
+            });
+            
+            fileGrid.classList.remove('hidden');
+            
+            // Show pagination if needed
+            if (filteredFiles.length > 20) {
+              pagination.classList.remove('hidden');
+            }
+          }
+        }, 800); // Simulate network delay
+      }
+      
+      // Initialize event listeners
+      function initEventListeners() {
+        // Lurker mode toggle
+        lurkerMode.addEventListener('change', () => {
+          updateLurkerStatus();
+          // Here you would also make an API call to update the user's lurker status
+        });
+        
+        // Tab buttons
+        tabButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            // Update active tab
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Load files with appropriate filter
+            const filter = button.id.replace('tab-', '');
+            loadFiles(filter);
+          });
+        });
+        
+        // Refresh button
+        btnRefresh.addEventListener('click', () => {
+          const activeTab = document.querySelector('[id^="tab-"].active');
+          const filter = activeTab.id.replace('tab-', '');
+          loadFiles(filter);
+        });
+        
+        // Search input
+        fileSearch.addEventListener('keyup', (e) => {
+          if (e.key === 'Enter') {
+            const activeTab = document.querySelector('[id^="tab-"].active');
+            const filter = activeTab.id.replace('tab-', '');
+            loadFiles(filter);
+          }
+        });
+        
+        // Pagination
+        prevPage.addEventListener('click', () => {
+          // Here you would update the page number and reload files
+          alert('Previous page (would be implemented with real API)');
+        });
+        
+        nextPage.addEventListener('click', () => {
+          // Here you would update the page number and reload files
+          alert('Next page (would be implemented with real API)');
+        });
+        
+        // Communique edits
+        communique.addEventListener('blur', () => {
+          // Here you would save the communique content via API
+          console.log('Communique updated:', communique.innerHTML);
+        });
+      }
+      
+      // Initialize the page
+      initUserData();
+      initEventListeners();
+      loadFiles();
+    });
+  </script>
+</body>
+</html>

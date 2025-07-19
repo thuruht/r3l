@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Search - R3L:F</title>
+  <link rel="stylesheet" href="./css/rel-f-global.css">
+  <script src="./js/font-loader.js" defer></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="material-icons" aria-hidden="true">public</span>
+      R3L:F
+    </div>
+    <nav>
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
+        <li><a href="network.html" class="nav-link">Association Web</a></li>
+        <li><a href="map.html" class="nav-link">Map</a></li>
+        <li><a href="search.html" class="nav-link active">Search</a></li>
+        <li><a href="random.html" class="nav-link tooltip">
+          <span class="material-icons">shuffle</span>
+          <span class="tooltip-text">Random Communique</span>
+        </a></li>
+        <li><a href="login.html" class="nav-link">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="text-center">
+      <h1>
+        <span class="material-icons" aria-hidden="true">search</span>
+        Anti-Algorithmic Search
+      </h1>
+      <p>Find content in the Rel without algorithmic influence. Pure chronological ordering, no engagement optimization.</p>
+    </section>
+
+    <div class="search-container">
+      <form id="search-form" class="search-form">
+        <div class="search-input-group">
+          <input type="text" id="search-query" class="search-input" placeholder="Search by keywords, tags, or file types..." autofocus>
+          <button type="submit" class="search-button">
+            <span class="material-icons">search</span>
+          </button>
+        </div>
+
+        <div class="search-filters">
+          <div class="filter-group">
+            <h3>File Type</h3>
+            <div class="flex gap-2 flex-wrap">
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="image">
+                <span class="material-icons">image</span>
+                Images
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="audio">
+                <span class="material-icons">audiotrack</span>
+                Audio
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="video">
+                <span class="material-icons">videocam</span>
+                Video
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="document">
+                <span class="material-icons">description</span>
+                Documents
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="code">
+                <span class="material-icons">code</span>
+                Code
+              </label>
+              <label class="flex items-center gap-1">
+                <input type="checkbox" name="fileType" value="other">
+                <span class="material-icons">insert_drive_file</span>
+                Other
+              </label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <h3>Time Frame</h3>
+            <select id="time-frame" name="timeFrame">
+              <option value="all">All Time</option>
+              <option value="day">Last 24 Hours</option>
+              <option value="week" selected>Last 7 Days</option>
+              <option value="month">Last 30 Days</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <h3>Sort By</h3>
+            <div class="radio-group">
+              <label>
+                <input type="radio" name="sortBy" value="recent" checked>
+                Most Recent
+              </label>
+              <label>
+                <input type="radio" name="sortBy" value="size">
+                File Size
+              </label>
+              <label>
+                <input type="radio" name="sortBy" value="name">
+                File Name
+              </label>
+            </div>
+          </div>
+
+          <div class="filter-group">
+            <h3>Options</h3>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" name="includeExpiring" checked>
+              Include soon-to-expire content
+            </label>
+            <label class="flex items-center gap-1">
+              <input type="checkbox" name="includeArchived">
+              Include archived content
+            </label>
+          </div>
+        </div>
+
+        <div class="lurker-mode-toggle mt-4">
+          <label for="anti-tracking-search">
+            <span class="material-icons">visibility_off</span>
+            Anti-Tracking Search
+          </label>
+          <input type="checkbox" id="anti-tracking-search" name="antiTracking" checked>
+          <div id="anti-tracking-status" class="lurker-mode-status active">Active</div>
+        </div>
+        <small>When active, your search queries are not recorded and won't affect your profile or connections.</small>
+
+        <div class="flex gap-2 mt-4">
+          <button type="submit" class="btn">
+            <span class="material-icons">search</span>
+            Search
+          </button>
+          <button type="reset" class="btn btn-secondary">
+            <span class="material-icons">clear</span>
+            Reset
+          </button>
+        </div>
+      </form>
+
+      <div id="results-container" class="mt-4 hidden">
+        <div class="results-header">
+          <h2>Search Results</h2>
+          <span id="results-count" class="results-count">0 results</span>
+        </div>
+        
+        <div id="loading-results" class="p-4 text-center">
+          <span class="material-icons" style="font-size: 48px;">hourglass_top</span>
+          <p>Searching the Rel...</p>
+        </div>
+
+        <div id="no-results" class="p-4 text-center hidden">
+          <span class="material-icons" style="font-size: 48px;">search_off</span>
+          <h3>No Results Found</h3>
+          <p>Try adjusting your search terms or filters to find more content.</p>
+        </div>
+
+        <div id="results-grid" class="file-grid p-4 hidden"></div>
+
+        <div id="pagination" class="flex justify-center gap-2 p-4 hidden">
+          <button id="prev-page" class="btn btn-secondary">
+            <span class="material-icons">chevron_left</span>
+            Previous
+          </button>
+          <span id="page-indicator">Page 1 of 1</span>
+          <button id="next-page" class="btn btn-secondary">
+            Next
+            <span class="material-icons">chevron_right</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <!-- File Item Template -->
+  <template id="result-item-template">
+    <div class="file-item">
+      <div class="file-icon">
+        <span class="material-icons"></span>
+      </div>
+      <div class="file-name"></div>
+      <div class="file-expiry"></div>
+    </div>
+  </template>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // UI Elements
+      const searchForm = document.getElementById('search-form');
+      const searchQuery = document.getElementById('search-query');
+      const resultsContainer = document.getElementById('results-container');
+      const resultsCount = document.getElementById('results-count');
+      const loadingResults = document.getElementById('loading-results');
+      const noResults = document.getElementById('no-results');
+      const resultsGrid = document.getElementById('results-grid');
+      const pagination = document.getElementById('pagination');
+      const pageIndicator = document.getElementById('page-indicator');
+      const prevPage = document.getElementById('prev-page');
+      const nextPage = document.getElementById('next-page');
+      const antiTrackingSearch = document.getElementById('anti-tracking-search');
+      const antiTrackingStatus = document.getElementById('anti-tracking-status');
+      
+      // Current search state
+      let currentPage = 1;
+      let totalPages = 1;
+      
+      // File icon mapping
+      const fileIcons = {
+        'image/': 'image',
+        'audio/': 'audiotrack',
+        'video/': 'videocam',
+        'application/pdf': 'picture_as_pdf',
+        'application/zip': 'folder_zip',
+        'text/plain': 'text_snippet',
+        'application/json': 'data_object',
+        'text/csv': 'table_chart',
+        'application/x-ipynb+json': 'code',
+        'text/markdown': 'article',
+        'text/html': 'html',
+        'application/msword': 'description',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'description',
+        'default': 'insert_drive_file'
+      };
+      
+      // Mock search results - would be replaced with real API call
+      const mockResults = [
+        { 
+          id: '1', 
+          name: 'research-notes.md', 
+          type: 'text/markdown', 
+          size: 25680, 
+          isPublic: true, 
+          created: Date.now() - 1 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 6 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'Researcher42'
+        },
+        { 
+          id: '2', 
+          name: 'data-visualization.png', 
+          type: 'image/png', 
+          size: 356000, 
+          isPublic: true, 
+          created: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 5 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'VisualArtist'
+        },
+        { 
+          id: '3', 
+          name: 'experiment-results.pdf', 
+          type: 'application/pdf', 
+          size: 2024000, 
+          isPublic: true, 
+          created: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 4 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'LabTeam'
+        },
+        { 
+          id: '4', 
+          name: 'field-recording.mp3', 
+          type: 'audio/mp3', 
+          size: 7120000, 
+          isPublic: true, 
+          created: Date.now() - 4 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 3 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'SoundCollector'
+        },
+        { 
+          id: '5', 
+          name: 'community-archive.json', 
+          type: 'application/json', 
+          size: 152400, 
+          isPublic: true, 
+          created: Date.now() - 15 * 24 * 60 * 60 * 1000,
+          expires: null,
+          isArchived: true,
+          user: 'ArchiveBot'
+        },
+        { 
+          id: '6', 
+          name: 'interview-transcript.txt', 
+          type: 'text/plain', 
+          size: 45200, 
+          isPublic: true, 
+          created: Date.now() - 5 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 2 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'Journalist27'
+        },
+        { 
+          id: '7', 
+          name: 'code-snippets.ipynb', 
+          type: 'application/x-ipynb+json', 
+          size: 28400, 
+          isPublic: true, 
+          created: Date.now() - 6 * 24 * 60 * 60 * 1000,
+          expires: Date.now() + 1 * 24 * 60 * 60 * 1000,
+          isArchived: false,
+          user: 'CodeWizard'
+        }
+      ];
+      
+      // Format file size
+      function formatFileSize(bytes) {
+        if (bytes < 1024) return bytes + ' bytes';
+        else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+        else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+        else return (bytes / 1073741824).toFixed(1) + ' GB';
+      }
+      
+      // Format time remaining until expiry
+      function formatTimeRemaining(expiryTimestamp) {
+        if (!expiryTimestamp) return 'Archived';
+        
+        const now = Date.now();
+        const diff = expiryTimestamp - now;
+        
+        if (diff <= 0) return 'Expired';
+        
+        const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+        
+        if (days === 0) return '<1d';
+        return days + 'd';
+      }
+      
+      // Get icon for file type
+      function getFileIcon(fileType) {
+        for (const type in fileIcons) {
+          if (fileType.startsWith(type)) {
+            return fileIcons[type];
+          }
+        }
+        return fileIcons.default;
+      }
+      
+      // Update anti-tracking status display
+      function updateAntiTrackingStatus() {
+        if (antiTrackingSearch.checked) {
+          antiTrackingStatus.textContent = 'Active';
+          antiTrackingStatus.classList.add('active');
+        } else {
+          antiTrackingStatus.textContent = 'Inactive';
+          antiTrackingStatus.classList.remove('active');
+        }
+      }
+      
+      // Execute search based on form inputs
+      function executeSearch() {
+        // Show results container and loading state
+        resultsContainer.classList.remove('hidden');
+        loadingResults.classList.remove('hidden');
+        noResults.classList.add('hidden');
+        resultsGrid.classList.add('hidden');
+        pagination.classList.add('hidden');
+        
+        // Get form data
+        const formData = new FormData(searchForm);
+        const searchParams = {
+          query: searchQuery.value,
+          fileTypes: formData.getAll('fileType'),
+          timeFrame: formData.get('timeFrame'),
+          sortBy: formData.get('sortBy'),
+          includeExpiring: formData.get('includeExpiring') === 'on',
+          includeArchived: formData.get('includeArchived') === 'on',
+          antiTracking: formData.get('antiTracking') === 'on',
+          page: currentPage
+        };
+        
+        console.log('Search params:', searchParams);
+        
+        // Simulate API request delay
+        setTimeout(() => {
+          // Filter results based on search parameters (mock implementation)
+          let filteredResults = [...mockResults];
+          
+          // Apply query filter
+          if (searchParams.query) {
+            const query = searchParams.query.toLowerCase();
+            filteredResults = filteredResults.filter(result => 
+              result.name.toLowerCase().includes(query) || 
+              result.user.toLowerCase().includes(query)
+            );
+          }
+          
+          // Apply file type filter
+          if (searchParams.fileTypes.length > 0) {
+            filteredResults = filteredResults.filter(result => {
+              if (searchParams.fileTypes.includes('image') && result.type.startsWith('image/')) return true;
+              if (searchParams.fileTypes.includes('audio') && result.type.startsWith('audio/')) return true;
+              if (searchParams.fileTypes.includes('video') && result.type.startsWith('video/')) return true;
+              if (searchParams.fileTypes.includes('document') && (
+                result.type.startsWith('text/') || 
+                result.type === 'application/pdf' || 
+                result.type.includes('document')
+              )) return true;
+              if (searchParams.fileTypes.includes('code') && (
+                result.type.includes('json') || 
+                result.type.includes('ipynb') || 
+                result.type === 'text/plain'
+              )) return true;
+              if (searchParams.fileTypes.includes('other')) return true;
+              return false;
+            });
+          }
+          
+          // Apply time frame filter
+          if (searchParams.timeFrame !== 'all') {
+            const now = Date.now();
+            let timeLimit;
+            
+            switch (searchParams.timeFrame) {
+              case 'day':
+                timeLimit = now - (24 * 60 * 60 * 1000);
+                break;
+              case 'week':
+                timeLimit = now - (7 * 24 * 60 * 60 * 1000);
+                break;
+              case 'month':
+                timeLimit = now - (30 * 24 * 60 * 60 * 1000);
+                break;
+            }
+            
+            filteredResults = filteredResults.filter(result => result.created >= timeLimit);
+          }
+          
+          // Apply archived filter
+          if (!searchParams.includeArchived) {
+            filteredResults = filteredResults.filter(result => !result.isArchived);
+          }
+          
+          // Apply expiring filter
+          if (searchParams.includeExpiring) {
+            // Prioritize soon-to-expire content (within 2 days)
+            filteredResults.sort((a, b) => {
+              const aExpiring = a.expires && (a.expires - Date.now() < 2 * 24 * 60 * 60 * 1000);
+              const bExpiring = b.expires && (b.expires - Date.now() < 2 * 24 * 60 * 60 * 1000);
+              
+              if (aExpiring && !bExpiring) return -1;
+              if (!aExpiring && bExpiring) return 1;
+              return 0;
+            });
+          }
+          
+          // Apply sorting
+          switch (searchParams.sortBy) {
+            case 'recent':
+              filteredResults.sort((a, b) => b.created - a.created);
+              break;
+            case 'size':
+              filteredResults.sort((a, b) => b.size - a.size);
+              break;
+            case 'name':
+              filteredResults.sort((a, b) => a.name.localeCompare(b.name));
+              break;
+          }
+          
+          // Update results count
+          resultsCount.textContent = `${filteredResults.length} results`;
+          
+          // Hide loading state
+          loadingResults.classList.add('hidden');
+          
+          // Show results or empty state
+          if (filteredResults.length === 0) {
+            noResults.classList.remove('hidden');
+          } else {
+            resultsGrid.innerHTML = '';
+            
+            // Create result items
+            filteredResults.forEach(result => {
+              const template = document.getElementById('result-item-template');
+              const resultItem = template.content.cloneNode(true);
+              
+              // Set file icon
+              const iconElement = resultItem.querySelector('.file-icon .material-icons');
+              iconElement.textContent = getFileIcon(result.type);
+              
+              // Set file name
+              const nameElement = resultItem.querySelector('.file-name');
+              nameElement.textContent = `${result.name} (${result.user})`;
+              
+              // Set file expiry
+              const expiryElement = resultItem.querySelector('.file-expiry');
+              expiryElement.textContent = formatTimeRemaining(result.expires);
+              
+              // Add tooltip with details
+              const itemElement = resultItem.querySelector('.file-item');
+              itemElement.title = `${result.name}\nSize: ${formatFileSize(result.size)}\nUploaded by: ${result.user}\nType: ${result.type}`;
+              
+              // Add click handler
+              itemElement.addEventListener('click', () => {
+                window.location.href = `/content/${result.id}`;
+              });
+              
+              // Add to grid
+              resultsGrid.appendChild(resultItem);
+            });
+            
+            resultsGrid.classList.remove('hidden');
+            
+            // Show pagination for larger result sets
+            if (filteredResults.length > 12) {
+              pagination.classList.remove('hidden');
+              totalPages = Math.ceil(filteredResults.length / 12);
+              pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+              
+              // Update button states
+              prevPage.disabled = currentPage <= 1;
+              nextPage.disabled = currentPage >= totalPages;
+            }
+          }
+        }, 1000); // Simulate network delay
+      }
+      
+      // Initialize event listeners
+      function initEventListeners() {
+        // Search form submission
+        searchForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          currentPage = 1; // Reset to first page on new search
+          executeSearch();
+        });
+        
+        // Anti-tracking toggle
+        antiTrackingSearch.addEventListener('change', updateAntiTrackingStatus);
+        
+        // Pagination
+        prevPage.addEventListener('click', () => {
+          if (currentPage > 1) {
+            currentPage--;
+            executeSearch();
+          }
+        });
+        
+        nextPage.addEventListener('click', () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            executeSearch();
+          }
+        });
+      }
+      
+      // Initialize the page
+      updateAntiTrackingStatus();
+      initEventListeners();
+    });
+  </script>
+</body>
+</html>

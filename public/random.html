@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R3L:F - Random Communique</title>
+  <link rel="stylesheet" href="./css/rel-f-global.css">
+  <script src="./js/font-loader.js" defer></script>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="material-icons" aria-hidden="true">public</span>
+      R3L:F
+    </div>
+    <nav>
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
+        <li><a href="network.html" class="nav-link">Association Web</a></li>
+        <li><a href="map.html" class="nav-link">Map</a></li>
+        <li><a href="search.html" class="nav-link">Search</a></li>
+        <li><a href="random.html" class="nav-link tooltip active">
+          <span class="material-icons">shuffle</span>
+          <span class="tooltip-text">Random Communique</span>
+        </a></li>
+        <li><a href="login.html" class="nav-link">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="text-center">
+      <h1>
+        <span class="material-icons" aria-hidden="true">shuffle</span>
+        Random Communique
+      </h1>
+      <p class="mb-4">
+        <small>Discover unexpected connections and content in the Rel.</small>
+      </p>
+    </section>
+
+    <div class="card mb-4">
+      <div class="card-header flex justify-between items-center">
+        <h2 id="random-drawer-title">Loading...</h2>
+        <button id="new-random-btn" class="btn btn-secondary">
+          <span class="material-icons">shuffle</span>
+          New Random
+        </button>
+      </div>
+      
+      <div id="loading-indicator" class="text-center p-4">
+        <div class="material-icons" style="font-size: 3rem; animation: spin 2s linear infinite;">refresh</div>
+        <p>Finding a random drawer...</p>
+      </div>
+
+      <div id="drawer-content" class="hidden">
+        <div class="drawer-container">
+          <div class="drawer-header">
+            <h3 id="drawer-username">Username</h3>
+            <p class="drawer-subtitle" id="drawer-subtitle">User's Communique</p>
+          </div>
+          
+          <div class="communique" id="communique-content">
+            <!-- Communique content will be loaded here -->
+          </div>
+          
+          <div class="flex justify-between items-center mt-4">
+            <span id="drawer-connection-count" class="text-muted"></span>
+            <a id="visit-drawer-link" href="#" class="btn">
+              <span class="material-icons">visibility</span>
+              Visit Drawer
+            </a>
+          </div>
+        </div>
+        
+        <h3 class="mt-4">Recent Files</h3>
+        <div id="recent-files" class="file-grid mt-2">
+          <!-- Recent files will be loaded here -->
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <div class="card-header">
+        <h2>About Random Communiques</h2>
+      </div>
+      <p>
+        The Random Communique feature helps you discover unexpected content and build connections in the Rel outside your usual network. It's a non-algorithmic, truly random selection from public drawers.
+      </p>
+      <p>
+        Each random selection presents:
+      </p>
+      <ul>
+        <li>A user's communique (their public profile message)</li>
+        <li>Their recent public files</li>
+        <li>A link to their full drawer</li>
+      </ul>
+      <p>
+        Use this feature to break out of your own filter bubble and discover diverse content throughout the network.
+      </p>
+      
+      <div class="alert alert-info mt-4">
+        <span class="material-icons">info</span>
+        <div>
+          <strong>Note:</strong> Only public drawers and content are displayed here. Users with "Lurker in the Mist" mode enabled won't appear in random selections.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loadingIndicator = document.getElementById('loading-indicator');
+      const drawerContent = document.getElementById('drawer-content');
+      const randomDrawerTitle = document.getElementById('random-drawer-title');
+      const drawerUsername = document.getElementById('drawer-username');
+      const drawerSubtitle = document.getElementById('drawer-subtitle');
+      const communiqueContent = document.getElementById('communique-content');
+      const drawerConnectionCount = document.getElementById('drawer-connection-count');
+      const visitDrawerLink = document.getElementById('visit-drawer-link');
+      const recentFiles = document.getElementById('recent-files');
+      const newRandomBtn = document.getElementById('new-random-btn');
+      
+      // Function to load a random drawer
+      async function loadRandomDrawer() {
+        try {
+          // Show loading indicator and hide content
+          loadingIndicator.classList.remove('hidden');
+          drawerContent.classList.add('hidden');
+          randomDrawerTitle.textContent = 'Loading...';
+          
+          // Fetch a random public drawer
+          const response = await fetch('./api/random-drawer');
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch random drawer');
+          }
+          
+          const data = await response.json();
+          
+          // Update the UI with the random drawer data
+          randomDrawerTitle.textContent = `${data.username}'s Drawer`;
+          drawerUsername.textContent = data.username;
+          drawerSubtitle.textContent = data.subtitle || 'User\'s Communique';
+          communiqueContent.innerHTML = data.communique || '<em>This user hasn\'t set a communique yet.</em>';
+          drawerConnectionCount.textContent = `${data.connectionCount} connections`;
+          visitDrawerLink.href = `./drawer.html?id=${data.userId}`;
+          
+          // Populate recent files
+          recentFiles.innerHTML = '';
+          
+          if (data.recentFiles && data.recentFiles.length > 0) {
+            data.recentFiles.forEach(file => {
+              const fileIcon = getFileIcon(file.type);
+              const fileItem = document.createElement('div');
+              fileItem.className = 'file-item';
+              fileItem.innerHTML = `
+                <div class="file-icon">
+                  <span class="material-icons">${fileIcon}</span>
+                </div>
+                <div class="file-name">${file.title}</div>
+                ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : ''}
+              `;
+              fileItem.addEventListener('click', () => {
+                window.location.href = `./file.html?id=${file.id}`;
+              });
+              recentFiles.appendChild(fileItem);
+            });
+          } else {
+            recentFiles.innerHTML = '<p class="text-center w-full">No public files found</p>';
+          }
+          
+          // Hide loading indicator and show content
+          loadingIndicator.classList.add('hidden');
+          drawerContent.classList.remove('hidden');
+        } catch (error) {
+          console.error('Error loading random drawer:', error);
+          randomDrawerTitle.textContent = 'Error Loading Drawer';
+          loadingIndicator.innerHTML = `
+            <div class="material-icons" style="font-size: 3rem; color: var(--error);">error</div>
+            <p>Could not load a random drawer. Please try again later.</p>
+          `;
+        }
+      }
+      
+      // Helper function to get appropriate icon based on file type
+      function getFileIcon(type) {
+        if (type.startsWith('image/')) return 'image';
+        if (type.startsWith('video/')) return 'movie';
+        if (type.startsWith('audio/')) return 'audiotrack';
+        if (type === 'application/pdf') return 'picture_as_pdf';
+        if (type === 'text/plain') return 'description';
+        if (type === 'text/markdown') return 'article';
+        if (type === 'text/html') return 'code';
+        if (type.includes('word')) return 'description';
+        if (type.includes('spreadsheet') || type === 'text/csv') return 'table_chart';
+        if (type.includes('presentation')) return 'slideshow';
+        if (type === 'application/zip') return 'folder_zip';
+        return 'insert_drive_file';
+      }
+      
+      // Load a random drawer when the page loads
+      loadRandomDrawer();
+      
+      // Set up the "New Random" button
+      newRandomBtn.addEventListener('click', loadRandomDrawer);
+    });
+  </script>
+  
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,99 @@
+# Secrets and sensitive data
+r3l.r3l
+.env
+.dev.vars
+.env.local
+.wrangler/
+# No sensitive user data or logs should be committed to the repository
+*-userdata.json
+*-activity-log.json
+*-personal-data.json
+
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+build/
+.webpack/
+
+# IDE and editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# GitHub and deployment files
+.github/
+deploy.yml
+.github/**/*.yml
+*.deploy.js
+*.deploy.ts
+wrangler*.jsonc
+*.sublime-workspace
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Cloudflare Workers
+.cloudflare/
+worker/
+.wrangler/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variable files
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Local Netlify folder
+.netlify
+
+# Archive directory for old files
+archive/
+
+# Permanently removed files that keep reappearing
+public/css/globe-styles.css
+public/css/globe.css
+public/css/modern.css
+public/css/tailwind.css
+public/vendor/OrbitControls.js
+public/vendor/patched-orbit-controls.js
+public/vendor/globe.gl.module.js
+public/vendor/fixed-orbit-controls.js
+public/js/three-shim.js
+public/js/globe.js
+public/js/globe-es.js
+public/js/globe-fallback.js
+rollup.globe.js
+public/js/globe-demo.js
+public/globe-test.html

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R3L:F - Geographic Connections</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
+  <script src="js/font-loader.js" defer></script>
+  <script src="vendor/leaflet/leaflet.min.js" defer></script>
+  <script type="module" src="../src/globe/globe-visualizer.js" defer></script>
+  <style>
+    .map-container {
+      width: 100%;
+      height: 500px;
+      margin-bottom: 2rem;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .control-panel {
+      margin-bottom: 1rem;
+    }
+    .map-popup h4 {
+      margin: 0 0 8px 0;
+      color: var(--accent-color);
+    }
+    .map-popup p {
+      margin: 0 0 4px 0;
+    }
+    .marker-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .marker-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <a href="index.html" class="logo">R3L:F</a>
+        <div class="nav-links">
+          <a href="index.html">Home</a>
+          <a href="search.html">Search</a>
+          <a href="drawer.html">My Drawer</a>
+          <a href="network.html">Network</a>
+          <a href="map.html" class="active">Map</a>
+          <a href="random.html">Random</a>
+        </div>
+        <button class="nav-toggle" aria-label="Toggle navigation">
+          <span class="material-icons">menu</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Geographic Connections</h1>
+      <p class="subtitle">Explore content, users, and connections geographically</p>
+      
+      <div class="control-panel">
+        <div class="filter-group">
+          <label for="data-type">Show:</label>
+          <select id="data-type">
+            <option value="all">All</option>
+            <option value="content">Content</option>
+            <option value="users">Users</option>
+            <option value="events">Events</option>
+          </select>
+          
+          <label for="time-range">Time:</label>
+          <select id="time-range">
+            <option value="all">All Time</option>
+            <option value="recent">Recent (7 days)</option>
+            <option value="month">Past Month</option>
+            <option value="year">Past Year</option>
+          </select>
+          
+          <button id="refresh-map" class="btn btn-secondary">
+            <span class="material-icons">refresh</span> Refresh
+          </button>
+        </div>
+      </div>
+      
+      <div id="map-container" class="map-container"></div>
+      
+      <div class="map-info">
+        <h2>About the Map</h2>
+        <p>
+          This map shows geographic connections between content, users, and events in the R3L:F network.
+          Content is placed on the map based on geographic metadata when available.
+        </p>
+        <p>
+          <strong>Note:</strong> Geographic information is optional and only displayed when explicitly shared.
+          No location data is collected unless voluntarily provided.
+        </p>
+        
+        <div class="attribution">
+          <p>Map data © <a href="javascript:void(0)" onclick="showMapAttribution()">OpenStreetMap</a> contributors</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>R3L:F - Relational Ephemeral Filenet</p>
+      <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      // Initialize the map visualizer
+      const visualizer = new GlobeVisualizer('map-container');
+      const { loaded, error } = await visualizer.init();
+      
+      if (!loaded) {
+        console.error('Failed to load map:', error);
+        document.getElementById('map-container').innerHTML = `
+          <div class="error-message">
+            <p>Failed to load map: ${error || 'Unknown error'}</p>
+            <button id="retry-load" class="btn">Retry</button>
+          </div>
+        `;
+        document.getElementById('retry-load')?.addEventListener('click', () => visualizer.init());
+        return;
+      }
+      
+      // Example data - this would be loaded from the server in a real implementation
+      const mockData = {
+        points: [
+          {
+            coordinates: [0, 0],
+            properties: {
+              name: 'Origin Point',
+              description: 'The center of the map',
+              icon: 'pin',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            coordinates: [-74.006, 40.7128],
+            properties: {
+              name: 'New York',
+              description: 'A content item from New York',
+              icon: 'file',
+              color: 'var(--success)'
+            }
+          },
+          {
+            coordinates: [2.3522, 48.8566],
+            properties: {
+              name: 'Paris',
+              description: 'A user in Paris',
+              icon: 'user',
+              color: 'var(--info)'
+            }
+          },
+          {
+            coordinates: [139.6917, 35.6895],
+            properties: {
+              name: 'Tokyo',
+              description: 'An event in Tokyo',
+              icon: 'calendar',
+              color: 'var(--warning)'
+            }
+          }
+        ],
+        connections: [
+          {
+            source: [-74.006, 40.7128],
+            target: [2.3522, 48.8566],
+            properties: {
+              name: 'NY-Paris Connection',
+              description: 'A connection between content and user',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            source: [2.3522, 48.8566],
+            target: [139.6917, 35.6895],
+            properties: {
+              name: 'Paris-Tokyo Connection',
+              description: 'A connection between user and event',
+              color: 'var(--info)'
+            }
+          }
+        ]
+      };
+      
+      // Load mock data into the map
+      function loadData(data) {
+        visualizer.clear();
+        
+        // Add points
+        data.points.forEach(point => visualizer.addPoint(point));
+        
+        // Add connections
+        data.connections.forEach(connection => visualizer.addConnection(connection));
+      }
+      
+      // Initial data load
+      loadData(mockData);
+      
+      // Handle filter changes
+      document.getElementById('data-type').addEventListener('change', updateFilters);
+      document.getElementById('time-range').addEventListener('change', updateFilters);
+      document.getElementById('refresh-map').addEventListener('click', () => loadData(mockData));
+      
+      function updateFilters() {
+        const dataType = document.getElementById('data-type').value;
+        const timeRange = document.getElementById('time-range').value;
+        
+        console.log(`Filters updated: dataType=${dataType}, timeRange=${timeRange}`);
+        // In a real implementation, we would fetch new data based on these filters
+        // For now, we'll just reload the mock data
+        loadData(mockData);
+      }
+      
+      // Handle window resize
+      window.addEventListener('resize', () => visualizer.resize());
+    });
+    
+    // Map attribution modal
+    function showMapAttribution() {
+      // Create modal if it doesn't exist
+      let modal = document.getElementById('attribution-modal');
+      
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'attribution-modal';
+        modal.className = 'attribution-modal';
+        
+        modal.innerHTML = `
+          <div class="modal-content">
+            <h3>Map Attribution</h3>
+            <p>Map data © OpenStreetMap contributors</p>
+            <p>OpenStreetMap® is open data, licensed under the Open Data Commons Open Database License (ODbL) by the OpenStreetMap Foundation (OSMF).</p>
+            <p>The cartography in the map tiles is licensed under the Creative Commons Attribution-ShareAlike 2.0 license (CC BY-SA).</p>
+            <button class="close-modal">Close</button>
+          </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add close button functionality
+        modal.querySelector('.close-modal').addEventListener('click', function() {
+          modal.classList.add('hidden');
+        });
+      }
+      
+      // Show the modal
+      modal.classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>

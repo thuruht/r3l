@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Association Web - R3L:F</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <script src="js/font-loader.js" defer></script>
+  <script src="vendor/d3/d3.v7.min.js"></script>
+  <style>
+    .network-container {
+      width: 100%;
+      height: 80vh;
+      background-color: var(--bg-darker);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .network-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 10;
+    }
+
+    .network-tooltip {
+      position: absolute;
+      background-color: var(--bg-darker);
+      border: 1px solid var(--accent);
+      padding: 10px;
+      border-radius: 4px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+      max-width: 300px;
+      z-index: 20;
+    }
+
+    .node {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .node:hover {
+      stroke-width: 3;
+    }
+
+    .link {
+      stroke-opacity: 0.6;
+      transition: all 0.2s;
+    }
+
+    .link:hover {
+      stroke-opacity: 1;
+    }
+
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 10;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+
+    .legend-color {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 10;
+    }
+
+    .zoom-btn {
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--accent);
+      color: var(--text-light);
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 24px;
+    }
+
+    .zoom-btn:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .time-slider-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 50%;
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 10px;
+      border-radius: 8px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .time-slider-label {
+      margin-bottom: 5px;
+      color: var(--text-light);
+    }
+
+    .time-slider {
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .filter-section {
+      margin-top: 20px;
+      background-color: var(--bg-medium);
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .filter-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .filter-chip {
+      background-color: var(--bg-darker);
+      color: var(--text-light);
+      padding: 5px 10px;
+      border-radius: 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+
+    .filter-chip.active {
+      background-color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="nav-brand">
+      <span class="material-icons" aria-hidden="true">public</span>
+      R3L:F
+    </div>
+    <nav>
+      <ul class="nav-menu">
+        <li><a href="index.html" class="nav-link">Home</a></li>
+        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
+        <li><a href="network.html" class="nav-link active">Association Web</a></li>
+        <li><a href="map.html" class="nav-link">Map</a></li>
+        <li><a href="search.html" class="nav-link">Search</a></li>
+        <li><a href="random.html" class="nav-link tooltip">
+          <span class="material-icons">shuffle</span>
+          <span class="tooltip-text">Random Communique</span>
+        </a></li>
+        <li><a href="login.html" class="nav-link">Login</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="text-center">
+      <h1>
+        <span class="material-icons" aria-hidden="true">hub</span>
+        Association Web
+      </h1>
+      <p>Explore the emergent connections between files, users, and topics in the Rel</p>
+    </section>
+
+    <div class="filter-section">
+      <h3>Filter View</h3>
+      <div class="filter-options">
+        <div class="filter-chip active" data-filter="all">All Connections</div>
+        <div class="filter-chip" data-filter="users">Users</div>
+        <div class="filter-chip" data-filter="files">Files</div>
+        <div class="filter-chip" data-filter="tags">Tags</div>
+        <div class="filter-chip" data-filter="my-connections">My Connections</div>
+        <div class="filter-chip" data-filter="popular">Popular</div>
+        <div class="filter-chip" data-filter="recent">Recent</div>
+        <div class="filter-chip" data-filter="expiring">Expiring Soon</div>
+      </div>
+    </div>
+
+    <div class="network-container mt-4">
+      <div class="network-tooltip"></div>
+
+      <div class="network-controls">
+        <div class="flex items-center gap-2 mb-2">
+          <label for="layout-select">Layout:</label>
+          <select id="layout-select" class="r3l-input">
+            <option value="force">Force-Directed</option>
+            <option value="radial">Radial</option>
+            <option value="cluster">Cluster</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <label for="show-labels">Show Labels:</label>
+          <input type="checkbox" id="show-labels" checked>
+        </div>
+      </div>
+
+      <div class="legend">
+        <h4>Legend</h4>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #9C27B0;"></div>
+          <span>Users</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #2196F3;"></div>
+          <span>Files</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #4CAF50;"></div>
+          <span>Tags</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background-color: #FF5722;"></div>
+          <span>Your Content</span>
+        </div>
+      </div>
+
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-in">+</button>
+        <button class="zoom-btn" id="zoom-reset">●</button>
+        <button class="zoom-btn" id="zoom-out">-</button>
+      </div>
+
+      <div class="time-slider-container">
+        <div class="time-slider-label">Time Window: <span id="time-value">Last 7 days</span></div>
+        <input type="range" id="time-slider" class="time-slider" min="1" max="30" value="7">
+      </div>
+
+      <svg id="network-svg" width="100%" height="100%"></svg>
+    </div>
+
+    <div class="node-details mt-4" id="node-details" style="display: none;">
+      <h2 id="details-title">Node Details</h2>
+      <div class="card p-4">
+        <div id="details-content"></div>
+        <div class="flex justify-end mt-4">
+          <button id="close-details" class="btn btn-secondary">
+            <span class="material-icons">close</span>
+            Close
+          </button>
+          <button id="view-item" class="btn ml-2">
+            <span class="material-icons">visibility</span>
+            View
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // DOM Elements
+      const networkSvg = document.getElementById('network-svg');
+      const tooltip = document.querySelector('.network-tooltip');
+      const layoutSelect = document.getElementById('layout-select');
+      const showLabelsCheckbox = document.getElementById('show-labels');
+      const zoomIn = document.getElementById('zoom-in');
+      const zoomOut = document.getElementById('zoom-out');
+      const zoomReset = document.getElementById('zoom-reset');
+      const timeSlider = document.getElementById('time-slider');
+      const timeValue = document.getElementById('time-value');
+      const filterChips = document.querySelectorAll('.filter-chip');
+      const nodeDetails = document.getElementById('node-details');
+      const detailsTitle = document.getElementById('details-title');
+      const detailsContent = document.getElementById('details-content');
+      const closeDetails = document.getElementById('close-details');
+      const viewItem = document.getElementById('view-item');
+      
+      // Set initial dimensions
+      const width = networkSvg.clientWidth;
+      const height = networkSvg.clientHeight;
+      
+      // Color scale for different node types
+      const colorScale = {
+        user: '#9C27B0',   // Purple
+        file: '#2196F3',   // Blue
+        tag: '#4CAF50',    // Green
+        self: '#FF5722'    // Orange (your own content)
+      };
+      
+      // Create SVG and append to container
+      const svg = d3.select('#network-svg');
+      
+      // Create zoom behavior
+      const zoom = d3.zoom()
+        .scaleExtent([0.1, 5])
+        .on('zoom', (event) => {
+          container.attr('transform', event.transform);
+        });
+      
+      // Apply zoom to SVG
+      svg.call(zoom);
+      
+      // Create container for graph elements
+      const container = svg.append('g');
+      
+      // Create a mock dataset (this would come from API in real app)
+      const mockData = createMockData();
+
+      // Current dataset in use
+      let currentData = JSON.parse(JSON.stringify(mockData));
+      let selectedNodeId = null;
+      
+      // Create initial graph
+      renderGraph(currentData, 'force');
+      
+      // Update graph when layout changes
+      layoutSelect.addEventListener('change', () => {
+        renderGraph(currentData, layoutSelect.value);
+      });
+      
+      // Toggle labels
+      showLabelsCheckbox.addEventListener('change', () => {
+        container.selectAll('.node-label')
+          .style('display', showLabelsCheckbox.checked ? 'block' : 'none');
+      });
+      
+      // Zoom controls
+      zoomIn.addEventListener('click', () => {
+        svg.transition().duration(300).call(zoom.scaleBy, 1.5);
+      });
+      
+      zoomOut.addEventListener('click', () => {
+        svg.transition().duration(300).call(zoom.scaleBy, 0.75);
+      });
+      
+      zoomReset.addEventListener('click', () => {
+        svg.transition().duration(300).call(
+          zoom.transform,
+          d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8)
+        );
+      });
+      
+      // Time slider
+      timeSlider.addEventListener('input', () => {
+        const days = timeSlider.value;
+        timeValue.textContent = days === '1' ? 'Last 24 hours' : `Last ${days} days`;
+        
+        // Filter data based on time window
+        filterDataByTime(days);
+      });
+      
+      // Filter chips
+      filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+          // Toggle active class
+          filterChips.forEach(c => c.classList.remove('active'));
+          chip.classList.add('active');
+          
+          // Apply filter
+          const filter = chip.dataset.filter;
+          filterDataByType(filter);
+        });
+      });
+      
+      // Node details
+      closeDetails.addEventListener('click', () => {
+        nodeDetails.style.display = 'none';
+        selectedNodeId = null;
+        
+        // Reset node styles
+        container.selectAll('.node')
+          .attr('stroke-width', 1.5);
+      });
+      
+      viewItem.addEventListener('click', () => {
+        if (!selectedNodeId) return;
+        
+        const selectedNode = currentData.nodes.find(n => n.id === selectedNodeId);
+        if (!selectedNode) return;
+        
+        if (selectedNode.type === 'file') {
+          window.location.href = `content/${selectedNodeId}`;
+        } else if (selectedNode.type === 'user') {
+          window.location.href = `user/${selectedNodeId}`;
+        } else if (selectedNode.type === 'tag') {
+          window.location.href = `search?q=${selectedNode.label}`;
+        }
+      });
+      
+      // Function to generate mock network data
+      function createMockData() {
+        const nodes = [];
+        const links = [];
+        
+        // Add user nodes
+        const users = [
+          { id: 'user1', label: 'Researcher42', type: 'user' },
+          { id: 'user2', label: 'VisualArtist', type: 'user' },
+          { id: 'user3', label: 'CodeWizard', type: 'user' },
+          { id: 'user4', label: 'SoundCollector', type: 'user' },
+          { id: 'user5', label: 'DataScientist', type: 'user' },
+          { id: 'user6', label: 'YOU', type: 'user', isSelf: true },
+          { id: 'user7', label: 'FilmMaker', type: 'user' },
+          { id: 'user8', label: 'PoetWriter', type: 'user' }
+        ];
+        
+        // Add file nodes
+        const files = [
+          { id: 'file1', label: 'research-notes.md', type: 'file', creator: 'user1', 
+            created: Date.now() - 2 * 24 * 60 * 60 * 1000, expires: Date.now() + 5 * 24 * 60 * 60 * 1000 },
+          { id: 'file2', label: 'visualization.png', type: 'file', creator: 'user2', 
+            created: Date.now() - 3 * 24 * 60 * 60 * 1000, expires: Date.now() + 4 * 24 * 60 * 60 * 1000 },
+          { id: 'file3', label: 'algorithm.js', type: 'file', creator: 'user3', 
+            created: Date.now() - 4 * 24 * 60 * 60 * 1000, expires: Date.now() + 3 * 24 * 60 * 60 * 1000 },
+          { id: 'file4', label: 'field-recording.mp3', type: 'file', creator: 'user4', 
+            created: Date.now() - 5 * 24 * 60 * 60 * 1000, expires: Date.now() + 2 * 24 * 60 * 60 * 1000 },
+          { id: 'file5', label: 'dataset.csv', type: 'file', creator: 'user5', 
+            created: Date.now() - 6 * 24 * 60 * 60 * 1000, expires: Date.now() + 1 * 24 * 60 * 60 * 1000 },
+          { id: 'file6', label: 'my-notes.txt', type: 'file', creator: 'user6', isSelf: true, 
+            created: Date.now() - 1 * 24 * 60 * 60 * 1000, expires: Date.now() + 6 * 24 * 60 * 60 * 1000 },
+          { id: 'file7', label: 'short-film.mp4', type: 'file', creator: 'user7', 
+            created: Date.now() - 7 * 24 * 60 * 60 * 1000, expires: Date.now() + 0.5 * 24 * 60 * 60 * 1000 },
+          { id: 'file8', label: 'poem-collection.pdf', type: 'file', creator: 'user8', 
+            created: Date.now() - 8 * 24 * 60 * 60 * 1000, expires: null, isArchived: true },
+          { id: 'file9', label: 'my-research.pdf', type: 'file', creator: 'user6', isSelf: true, 
+            created: Date.now() - 15 * 24 * 60 * 60 * 1000, expires: null, isArchived: true },
+          { id: 'file10', label: 'collaborative-doc.md', type: 'file', creator: 'user1', 
+            created: Date.now() - 2.5 * 24 * 60 * 60 * 1000, expires: Date.now() + 4.5 * 24 * 60 * 60 * 1000 },
+        ];
+        
+        // Add tag nodes
+        const tags = [
+          { id: 'tag1', label: 'research', type: 'tag' },
+          { id: 'tag2', label: 'art', type: 'tag' },
+          { id: 'tag3', label: 'code', type: 'tag' },
+          { id: 'tag4', label: 'audio', type: 'tag' },
+          { id: 'tag5', label: 'data', type: 'tag' },
+          { id: 'tag6', label: 'science', type: 'tag' },
+          { id: 'tag7', label: 'visualization', type: 'tag' },
+          { id: 'tag8', label: 'creative', type: 'tag' },
+          { id: 'tag9', label: 'collaboration', type: 'tag' }
+        ];
+        
+        // Add all nodes
+        nodes.push(...users, ...files, ...tags);
+        
+        // Create links between users and their files
+        files.forEach(file => {
+          links.push({
+            source: file.id,
+            target: file.creator,
+            type: 'creator',
+            weight: 3
+          });
+        });
+        
+        // Create links between files and tags
+        links.push(
+          { source: 'file1', target: 'tag1', type: 'tag', weight: 1 },
+          { source: 'file1', target: 'tag6', type: 'tag', weight: 1 },
+          { source: 'file2', target: 'tag2', type: 'tag', weight: 1 },
+          { source: 'file2', target: 'tag7', type: 'tag', weight: 1 },
+          { source: 'file3', target: 'tag3', type: 'tag', weight: 1 },
+          { source: 'file4', target: 'tag4', type: 'tag', weight: 1 },
+          { source: 'file5', target: 'tag5', type: 'tag', weight: 1 },
+          { source: 'file5', target: 'tag6', type: 'tag', weight: 1 },
+          { source: 'file6', target: 'tag1', type: 'tag', weight: 1 },
+          { source: 'file6', target: 'tag8', type: 'tag', weight: 1 },
+          { source: 'file7', target: 'tag2', type: 'tag', weight: 1 },
+          { source: 'file7', target: 'tag8', type: 'tag', weight: 1 },
+          { source: 'file8', target: 'tag8', type: 'tag', weight: 1 },
+          { source: 'file9', target: 'tag1', type: 'tag', weight: 1 },
+          { source: 'file9', target: 'tag6', type: 'tag', weight: 1 },
+          { source: 'file10', target: 'tag9', type: 'tag', weight: 1 },
+          { source: 'file10', target: 'tag1', type: 'tag', weight: 1 }
+        );
+        
+        // Create connections between users
+        links.push(
+          { source: 'user1', target: 'user5', type: 'connection', weight: 2 },
+          { source: 'user1', target: 'user6', type: 'connection', weight: 2 },
+          { source: 'user2', target: 'user7', type: 'connection', weight: 2 },
+          { source: 'user2', target: 'user8', type: 'connection', weight: 2 },
+          { source: 'user3', target: 'user5', type: 'connection', weight: 2 },
+          { source: 'user4', target: 'user7', type: 'connection', weight: 2 },
+          { source: 'user6', target: 'user3', type: 'connection', weight: 2 },
+          { source: 'user6', target: 'user5', type: 'connection', weight: 2 },
+          { source: 'user6', target: 'user8', type: 'connection', weight: 2 }
+        );
+        
+        // Create file connections (files that reference each other)
+        links.push(
+          { source: 'file1', target: 'file10', type: 'reference', weight: 1.5 },
+          { source: 'file3', target: 'file5', type: 'reference', weight: 1.5 },
+          { source: 'file6', target: 'file9', type: 'reference', weight: 1.5 },
+          { source: 'file2', target: 'file7', type: 'reference', weight: 1.5 }
+        );
+        
+        // Add collaborative file connections
+        links.push(
+          { source: 'file10', target: 'user1', type: 'creator', weight: 3 },
+          { source: 'file10', target: 'user5', type: 'collaborator', weight: 2 },
+          { source: 'file10', target: 'user6', type: 'collaborator', weight: 2 }
+        );
+        
+        return { nodes, links };
+      }
+      
+      // Filter data by time window
+      function filterDataByTime(days) {
+        const timeLimit = Date.now() - (days * 24 * 60 * 60 * 1000);
+        
+        // Filter files based on creation date
+        const filteredFiles = mockData.nodes.filter(node => {
+          if (node.type !== 'file') return true;
+          return node.created >= timeLimit;
+        });
+        
+        // Get IDs of filtered files
+        const filteredFileIds = filteredFiles
+          .filter(node => node.type === 'file')
+          .map(node => node.id);
+        
+        // Filter links to only include connections to filtered files
+        const filteredLinks = mockData.links.filter(link => {
+          // Keep user-user connections
+          if (!link.source.includes('file') && !link.target.includes('file')) return true;
+          
+          // Keep links connected to filtered files
+          const sourceIsFile = link.source.includes('file');
+          const targetIsFile = link.target.includes('file');
+          
+          if (sourceIsFile && !filteredFileIds.includes(link.source)) return false;
+          if (targetIsFile && !filteredFileIds.includes(link.target)) return false;
+          
+          return true;
+        });
+        
+        // Update current data and redraw
+        currentData = {
+          nodes: mockData.nodes.filter(node => {
+            if (node.type !== 'file') return true;
+            return node.created >= timeLimit;
+          }),
+          links: filteredLinks
+        };
+        
+        renderGraph(currentData, layoutSelect.value);
+      }
+      
+      // Filter data by type
+      function filterDataByType(filter) {
+        let filteredData = JSON.parse(JSON.stringify(mockData));
+        
+        switch (filter) {
+          case 'users':
+            // Show only user-user connections
+            filteredData.links = mockData.links.filter(link => 
+              !link.source.includes('file') && 
+              !link.target.includes('file') && 
+              !link.source.includes('tag') && 
+              !link.target.includes('tag')
+            );
+            break;
+            
+          case 'files':
+            // Show only file connections
+            filteredData.links = mockData.links.filter(link => 
+              link.source.includes('file') || 
+              link.target.includes('file')
+            );
+            break;
+            
+          case 'tags':
+            // Show only tag connections
+            filteredData.links = mockData.links.filter(link => 
+              link.source.includes('tag') || 
+              link.target.includes('tag')
+            );
+            break;
+            
+          case 'my-connections':
+            // Show only your connections
+            filteredData.links = mockData.links.filter(link => 
+              link.source === 'user6' || 
+              link.target === 'user6' || 
+              mockData.nodes.find(n => n.id === link.source)?.isSelf || 
+              mockData.nodes.find(n => n.id === link.target)?.isSelf
+            );
+            break;
+            
+          case 'popular':
+            // Show connections with high weights
+            filteredData.links = mockData.links.filter(link => link.weight >= 2);
+            break;
+            
+          case 'recent':
+            // Show recently created content (last 3 days)
+            const recentTimeLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+            const recentFileIds = mockData.nodes
+              .filter(node => node.type === 'file' && node.created >= recentTimeLimit)
+              .map(node => node.id);
+              
+            filteredData.links = mockData.links.filter(link => {
+              if (link.source.includes('file') && recentFileIds.includes(link.source)) return true;
+              if (link.target.includes('file') && recentFileIds.includes(link.target)) return true;
+              return false;
+            });
+            break;
+            
+          case 'expiring':
+            // Show content expiring soon (within 2 days)
+            const expiryTimeLimit = Date.now() + (2 * 24 * 60 * 60 * 1000);
+            const expiringFileIds = mockData.nodes
+              .filter(node => node.type === 'file' && node.expires && node.expires <= expiryTimeLimit)
+              .map(node => node.id);
+              
+            filteredData.links = mockData.links.filter(link => {
+              if (link.source.includes('file') && expiringFileIds.includes(link.source)) return true;
+              if (link.target.includes('file') && expiringFileIds.includes(link.target)) return true;
+              return false;
+            });
+            break;
+            
+          default: // 'all'
+            // Use all data
+            break;
+        }
+        
+        // Get all node IDs that are part of the filtered links
+        const nodeIds = new Set();
+        filteredData.links.forEach(link => {
+          nodeIds.add(link.source);
+          nodeIds.add(link.target);
+        });
+        
+        // Filter nodes to only include those in the links
+        filteredData.nodes = mockData.nodes.filter(node => nodeIds.has(node.id));
+        
+        // Update current data and redraw
+        currentData = filteredData;
+        renderGraph(currentData, layoutSelect.value);
+      }
+      
+      // Render the graph
+      function renderGraph(data, layout) {
+        // Clear the container
+        container.selectAll('*').remove();
+        
+        // Create links
+        const link = container.append('g')
+          .selectAll('line')
+          .data(data.links)
+          .enter().append('line')
+          .attr('class', 'link')
+          .attr('stroke', '#999')
+          .attr('stroke-width', d => d.weight)
+          .on('mouseover', function(event, d) {
+            d3.select(this)
+              .attr('stroke', '#fff')
+              .attr('stroke-width', d.weight + 1);
+              
+            // Show tooltip
+            const sourceNode = data.nodes.find(n => n.id === d.source);
+            const targetNode = data.nodes.find(n => n.id === d.target);
+            
+            if (sourceNode && targetNode) {
+              let relationshipType = d.type;
+              
+              switch (relationshipType) {
+                case 'creator':
+                  relationshipType = 'Created by';
+                  break;
+                case 'collaborator':
+                  relationshipType = 'Collaborated on';
+                  break;
+                case 'tag':
+                  relationshipType = 'Tagged as';
+                  break;
+                case 'reference':
+                  relationshipType = 'References';
+                  break;
+                case 'connection':
+                  relationshipType = 'Connected to';
+                  break;
+              }
+              
+              tooltip.innerHTML = `
+                <strong>${sourceNode.label}</strong> → <strong>${targetNode.label}</strong><br>
+                Relationship: ${relationshipType}
+              `;
+              
+              tooltip.style.left = (event.pageX + 10) + 'px';
+              tooltip.style.top = (event.pageY - 10) + 'px';
+              tooltip.style.opacity = 1;
+            }
+          })
+          .on('mouseout', function() {
+            d3.select(this)
+              .attr('stroke', '#999')
+              .attr('stroke-width', d => d.weight);
+              
+            tooltip.style.opacity = 0;
+          });
+        
+        // Create nodes
+        const node = container.append('g')
+          .selectAll('circle')
+          .data(data.nodes)
+          .enter().append('circle')
+          .attr('class', 'node')
+          .attr('r', d => {
+            if (d.type === 'user') return 10;
+            if (d.type === 'file') return 8;
+            if (d.type === 'tag') return 6;
+            return 7;
+          })
+          .attr('fill', d => {
+            if (d.isSelf) return colorScale.self;
+            return colorScale[d.type];
+          })
+          .attr('stroke', '#fff')
+          .attr('stroke-width', 1.5)
+          .on('mouseover', function(event, d) {
+            d3.select(this)
+              .attr('stroke-width', 3);
+              
+            // Show tooltip
+            let typeLabel = d.type.charAt(0).toUpperCase() + d.type.slice(1);
+            let details = '';
+            
+            if (d.type === 'file') {
+              const creator = data.nodes.find(n => n.id === d.creator);
+              const expiryTime = d.expires ? formatTimeRemaining(d.expires) : 'Archived';
+              details = `<br>Creator: ${creator ? creator.label : 'Unknown'}<br>Expires: ${expiryTime}`;
+            }
+            
+            tooltip.innerHTML = `
+              <strong>${d.label}</strong><br>
+              Type: ${typeLabel}${details}
+            `;
+            
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+            tooltip.style.opacity = 1;
+          })
+          .on('mouseout', function() {
+            if (d3.select(this).datum().id !== selectedNodeId) {
+              d3.select(this).attr('stroke-width', 1.5);
+            }
+            tooltip.style.opacity = 0;
+          })
+          .on('click', function(event, d) {
+            // Show node details
+            selectedNodeId = d.id;
+            
+            // Highlight selected node
+            container.selectAll('.node')
+              .attr('stroke-width', node => node.id === selectedNodeId ? 3 : 1.5);
+            
+            // Update details panel
+            showNodeDetails(d);
+          })
+          .call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+        
+        // Add labels to nodes
+        const nodeLabel = container.append('g')
+          .selectAll('text')
+          .data(data.nodes)
+          .enter().append('text')
+          .attr('class', 'node-label')
+          .attr('text-anchor', 'middle')
+          .attr('dy', d => {
+            if (d.type === 'user') return '20px';
+            if (d.type === 'file') return '18px';
+            if (d.type === 'tag') return '16px';
+            return '18px';
+          })
+          .text(d => d.label)
+          .style('font-size', '10px')
+          .style('fill', '#fff')
+          .style('pointer-events', 'none')
+          .style('display', showLabelsCheckbox.checked ? 'block' : 'none');
+        
+        // Apply initial transform to center the graph
+        svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8));
+        
+        // Initialize layout
+        let simulation;
+        
+        if (layout === 'force') {
+          // Force-directed layout
+          simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-200))
+            .force('center', d3.forceCenter(0, 0))
+            .force('collision', d3.forceCollide().radius(20));
+            
+          simulation.on('tick', () => {
+            link
+              .attr('x1', d => d.source.x)
+              .attr('y1', d => d.source.y)
+              .attr('x2', d => d.target.x)
+              .attr('y2', d => d.target.y);
+            
+            node
+              .attr('cx', d => d.x)
+              .attr('cy', d => d.y);
+            
+            nodeLabel
+              .attr('x', d => d.x)
+              .attr('y', d => d.y);
+          });
+        } else if (layout === 'radial') {
+          // Radial layout
+          const radius = Math.min(width, height) / 3;
+          const angleStep = (2 * Math.PI) / data.nodes.length;
+          
+          data.nodes.forEach((d, i) => {
+            d.x = radius * Math.cos(i * angleStep);
+            d.y = radius * Math.sin(i * angleStep);
+          });
+          
+          link
+            .attr('x1', d => d.source.x)
+            .attr('y1', d => d.source.y)
+            .attr('x2', d => d.target.x)
+            .attr('y2', d => d.target.y);
+          
+          node
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+          
+          nodeLabel
+            .attr('x', d => d.x)
+            .attr('y', d => d.y);
+            
+          // Allow nodes to be draggable
+          node.call(d3.drag()
+            .on('start', dragstarted)
+            .on('drag', dragged)
+            .on('end', dragended));
+        } else if (layout === 'cluster') {
+          // Cluster layout (group by type)
+          const typeGroups = {
+            user: { x: -width / 4, y: -height / 4 },
+            file: { x: width / 4, y: -height / 4 },
+            tag: { x: 0, y: height / 4 }
+          };
+          
+          data.nodes.forEach(d => {
+            const group = typeGroups[d.type];
+            const jitter = 50; // Add some randomness
+            d.x = group.x + (Math.random() - 0.5) * jitter * 2;
+            d.y = group.y + (Math.random() - 0.5) * jitter * 2;
+          });
+          
+          // Simple force layout within clusters
+          simulation = d3.forceSimulation(data.nodes)
+            .force('link', d3.forceLink(data.links).id(d => d.id).distance(30))
+            .force('charge', d3.forceManyBody().strength(-20))
+            .force('x', d3.forceX().x(d => typeGroups[d.type].x).strength(0.1))
+            .force('y', d3.forceY().y(d => typeGroups[d.type].y).strength(0.1))
+            .force('collision', d3.forceCollide().radius(15));
+            
+          simulation.on('tick', () => {
+            link
+              .attr('x1', d => d.source.x)
+              .attr('y1', d => d.source.y)
+              .attr('x2', d => d.target.x)
+              .attr('y2', d => d.target.y);
+            
+            node
+              .attr('cx', d => d.x)
+              .attr('cy', d => d.y);
+            
+            nodeLabel
+              .attr('x', d => d.x)
+              .attr('y', d => d.y);
+          });
+        }
+        
+        // Drag functions
+        function dragstarted(event) {
+          if (!event.active && simulation) simulation.alphaTarget(0.3).restart();
+          event.subject.fx = event.subject.x;
+          event.subject.fy = event.subject.y;
+        }
+        
+        function dragged(event) {
+          event.subject.fx = event.x;
+          event.subject.fy = event.y;
+        }
+        
+        function dragended(event) {
+          if (!event.active && simulation) simulation.alphaTarget(0);
+          event.subject.fx = null;
+          event.subject.fy = null;
+        }
+      }
+      
+      // Show node details in panel
+      function showNodeDetails(node) {
+        detailsTitle.textContent = node.label;
+        
+        let content = '';
+        
+        if (node.type === 'user') {
+          // User details
+          const userFiles = currentData.nodes.filter(n => n.type === 'file' && n.creator === node.id);
+          const userConnections = currentData.links.filter(l => 
+            (l.source === node.id || l.target === node.id) && l.type === 'connection'
+          );
+          
+          content = `
+            <p><strong>Type:</strong> User</p>
+            <p><strong>Files:</strong> ${userFiles.length}</p>
+            <p><strong>Connections:</strong> ${userConnections.length}</p>
+            ${node.isSelf ? '<p><em>This is you</em></p>' : ''}
+            
+            <h4 class="mt-2">Files</h4>
+            <ul class="mt-1">
+              ${userFiles.map(file => `
+                <li>
+                  <a href="content/${file.id}" class="link-hover">
+                    ${file.label} (${file.expires ? formatTimeRemaining(file.expires) : 'Archived'})
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          `;
+        } else if (node.type === 'file') {
+          // File details
+          const creator = currentData.nodes.find(n => n.id === node.creator);
+          const tags = currentData.links
+            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'tag')
+            .map(l => {
+              const tagId = l.source === node.id ? l.target : l.source;
+              return currentData.nodes.find(n => n.id === tagId);
+            });
+          
+          const collaborators = currentData.links
+            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'collaborator')
+            .map(l => {
+              const userId = l.source === node.id ? l.target : l.source;
+              return currentData.nodes.find(n => n.id === userId);
+            });
+          
+          const references = currentData.links
+            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'reference')
+            .map(l => {
+              const fileId = l.source === node.id ? l.target : l.source;
+              return currentData.nodes.find(n => n.id === fileId);
+            });
+          
+          content = `
+            <p><strong>Type:</strong> File</p>
+            <p><strong>Creator:</strong> ${creator ? creator.label : 'Unknown'}</p>
+            <p><strong>Status:</strong> ${node.expires ? `Expires in ${formatTimeRemaining(node.expires)}` : 'Archived'}</p>
+            
+            <h4 class="mt-2">Tags</h4>
+            <div class="flex flex-wrap gap-1 mt-1">
+              ${tags.map(tag => `
+                <a href="search?q=${tag.label}" class="tag">
+                  ${tag.label}
+                </a>
+              `).join('')}
+            </div>
+            
+            ${collaborators.length > 0 ? `
+              <h4 class="mt-2">Collaborators</h4>
+              <ul class="mt-1">
+                ${collaborators.map(user => `
+                  <li>
+                    <a href="user/${user.id}" class="link-hover">
+                      ${user.label}
+                    </a>
+                  </li>
+                `).join('')}
+              </ul>
+            ` : ''}
+            
+            ${references.length > 0 ? `
+              <h4 class="mt-2">Referenced Files</h4>
+              <ul class="mt-1">
+                ${references.map(file => `
+                  <li>
+                    <a href="content/${file.id}" class="link-hover">
+                      ${file.label}
+                    </a>
+                  </li>
+                `).join('')}
+              </ul>
+            ` : ''}
+          `;
+          
+          // Customize view button for files
+          viewItem.innerHTML = '<span class="material-icons">visibility</span> View File';
+        } else if (node.type === 'tag') {
+          // Tag details
+          const taggedFiles = currentData.links
+            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'tag')
+            .map(l => {
+              const fileId = l.source === node.id ? l.target : l.source;
+              return currentData.nodes.find(n => n.id === fileId);
+            });
+          
+          content = `
+            <p><strong>Type:</strong> Tag</p>
+            <p><strong>Used in:</strong> ${taggedFiles.length} files</p>
+            
+            <h4 class="mt-2">Tagged Files</h4>
+            <ul class="mt-1">
+              ${taggedFiles.map(file => `
+                <li>
+                  <a href="content/${file.id}" class="link-hover">
+                    ${file.label} - ${file.creator ? currentData.nodes.find(n => n.id === file.creator).label : 'Unknown'}
+                  </a>
+                </li>
+              `).join('')}
+            </ul>
+          `;
+          
+          // Customize view button for tags
+          viewItem.innerHTML = '<span class="material-icons">search</span> Search Tag';
+        }
+        
+        detailsContent.innerHTML = content;
+        nodeDetails.style.display = 'block';
+      }
+      
+      // Format time remaining until expiry
+      function formatTimeRemaining(expiryTimestamp) {
+        if (!expiryTimestamp) return 'Archived';
+        
+        const now = Date.now();
+        const diff = expiryTimestamp - now;
+        
+        if (diff <= 0) return 'Expired';
+        
+        const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+        
+        if (days === 0) {
+          const hours = Math.floor(diff / (60 * 60 * 1000));
+          return `${hours}h`;
+        }
+        
+        return `${days}d`;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+{
+  // Wrangler configuration file
+  // Documentation: https://developers.cloudflare.com/workers/wrangler/configuration/
+  
+  // Name of the Worker
+  "name": "r3l",
+  
+  // Main entry point
+  "main": "src/worker.ts",
+  
+  // Use the latest Workers runtime
+  "compatibility_date": "2025-07-18",
+  "compatibility_flags": ["nodejs_compat", "durable_object_alarms"],
+  
+  // Configure TypeScript compilation
+  "tsconfig": "./tsconfig.json",
+  
+  // Configure build settings
+  "build": {
+    "command": "webpack"
+  },
+  
+  // Configure dev settings
+  "dev": {
+    "port": 8787,
+    "local_protocol": "http"
+  },
+  
+  // Enable worker analytics and logs in the dashboard
+  // This is the correct setting as of July 2025
+  "logpush": true,
+  
+  // Configure observability for tracing and monitoring
+  // Reduced sampling rate to prevent worker timeouts
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 0.1
+  },
+  
+  // Environment variables - required by Env interface
+  // Non-sensitive configuration values
+  "vars": {
+    "ORCID_REDIRECT_URI": "https://r3l.distorted.work/auth/orcid/callback"
+  },
+  
+  // Note: All sensitive values must be set using wrangler secret put:
+  // - R3L_ADMIN_ORCID_ID: Use `wrangler secret put R3L_ADMIN_ORCID_ID`
+  // - ORCID_CLIENT_ID: Use `wrangler secret put ORCID_CLIENT_ID`
+  // - R3L_APP_SECRET: Use `wrangler secret put R3L_APP_SECRET`
+  // - CLOUDFLARE_ACCOUNT_ID: Use `wrangler secret put CLOUDFLARE_ACCOUNT_ID`
+  // - REALTIME_API_TOKEN: Use `wrangler secret put REALTIME_API_TOKEN`
+  // - ORCID_CLIENT_SECRET: Use `wrangler secret put ORCID_CLIENT_SECRET`
+  
+  // Configure KV Namespaces for storing user data
+  "kv_namespaces": [
+    {
+      "binding": "R3L_USERS",
+      "id": "69534b9fac23416ab5bf24aab0c2ac6b"
+    },
+    {
+      "binding": "R3L_SESSIONS",
+      "id": "2f02798d0e524db8947968539d298fd8"
+    },
+    {
+      "binding": "R3L_USER_EMBEDDINGS",
+      "id": "eedf189a672a4c49be3174dc12d4b119"
+    },
+    {
+      "binding": "R3L_KV",
+      "id": "ae72fbc4082047309134b41345a34a9f"
+    }
+  ],
+  
+  // Configure Durable Objects for real-time connections
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "R3L_CONNECTIONS",
+        "class_name": "ConnectionsObject"
+      },
+      {
+        "name": "R3L_VISUALIZATION",
+        "class_name": "VisualizationObject"
+      },
+      {
+        "name": "R3L_COLLABORATION",
+        "class_name": "CollaborationRoom"
+      }
+    ]
+  },
+  
+  // Configure Durable Objects migrations
+  "migrations": [
+    {
+      "tag": "final_cleanup",
+      "new_classes": []
+    }
+  ],
+  
+  // Configure R2 bucket for file storage
+  "r2_buckets": [
+    {
+      "binding": "R3L_CONTENT_BUCKET",
+      "bucket_name": "r3l-content"
+    }
+  ],
+  
+  // Configure Workers AI
+  "ai": {
+    "binding": "R3L_AI"
+  },
+  
+  // Configure D1 Database
+  "d1_databases": [
+    {
+      "binding": "R3L_DB",
+      "database_name": "r3l-db",
+      "database_id": "69954d65-1aec-441f-8577-061148440abd"
+    }
+  ],
+  
+  // Static assets configuration (Workers 2025)
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  
+  // Disable workers.dev domain to only use custom domain
+  "workers_dev": false,
+  
+  // Routes configuration
+  "routes": [
+    { "pattern": "r3l.distorted.work", "zone_name": "distorted.work" },
+    { "pattern": "r3l.distorted.work/*", "zone_name": "distorted.work" },
+    { "pattern": "r3l.distorted.work/auth/orcid/callback", "zone_name": "distorted.work" }
+  ],
+  
+  // Triggers configuration
+  "triggers": {
+    "crons": ["0 */6 * * *"] // Run every 6 hours to refresh connections
+  }
+}

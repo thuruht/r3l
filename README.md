@@ -32,10 +32,12 @@ This project is designed to be deployed to Cloudflare Workers. All file paths ar
 1. Clone this repository
 2. Install dependencies: `npm install`
 3. Configure your Cloudflare account in wrangler.jsonc
-4. Set up required secrets:
+4. Set up required secrets (DO NOT add these to your code or wrangler.jsonc):
    ```
    wrangler secret put R3L_APP_SECRET
    wrangler secret put ORCID_CLIENT_SECRET
+   wrangler secret put ORCID_CLIENT_ID
+   wrangler secret put R3L_ADMIN_ORCID_ID
    wrangler secret put CLOUDFLARE_ACCOUNT_ID
    wrangler secret put REALTIME_API_TOKEN
    ```

@@ -1,12 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>R3L:F - Anti-Algorithmic Sharing</title>
   <link rel="stylesheet" href="./css/rel-f-global.css">
+  <link rel="stylesheet" href="./css/rel-f-accent.css">
   <script src="./js/font-loader.js" defer></script>
   <script src="vendor/d3/d3.v7.min.js" defer></script>
+  <style>
+    .hero-container {
+      position: relative;
+      height: 70vh;
+      min-height: 500px;
+      margin-bottom: var(--space-8);
+      background-color: var(--bg-deep);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 32px var(--accent-purple-glow);
+      border: 1px solid var(--accent-purple-muted);
+    }
+    
+    .hero-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: var(--space-8);
+      background: linear-gradient(to bottom, rgba(14, 31, 28, 0.7), rgba(14, 31, 28, 0.95));
+      text-align: center;
+      z-index: 10;
+    }
+    
+    .hero-title {
+      font-size: var(--fs-4xl);
+      color: var(--accent-purple);
+      margin-bottom: var(--space-4);
+      text-shadow: 0 0 20px var(--accent-purple-glow);
+    }
+    
+    .hero-subtitle {
+      font-size: var(--fs-xl);
+      color: var(--accent-green);
+      margin-bottom: var(--space-6);
+      max-width: 800px;
+    }
+    
+    .hero-actions {
+      display: flex;
+      gap: var(--space-4);
+      margin-top: var(--space-6);
+    }
+    
+    .hero-btn {
+      padding: var(--space-3) var(--space-6);
+      font-size: var(--fs-lg);
+      font-weight: 600;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: var(--space-6);
+      margin: var(--space-8) 0;
+    }
+    
+    .feature-card {
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: var(--space-6);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      border-top: 3px solid var(--accent-purple);
+      transition: transform var(--transition-normal);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, var(--accent-purple-glow) 0%, transparent 50%);
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .feature-card:hover::after {
+      opacity: 0.05;
+    }
+    
+    .feature-icon {
+      font-size: 48px;
+      color: var(--accent-purple);
+      margin-bottom: var(--space-4);
+      filter: drop-shadow(0 0 10px var(--accent-purple-glow));
+    }
+    
+    .feature-title {
+      color: var(--accent-green);
+      margin-bottom: var(--space-2);
+      font-size: var(--fs-xl);
+    }
+    
+    .alert-ephemeral {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      background-color: rgba(255, 156, 102, 0.1);
+      border-left: 4px solid var(--warning);
+      padding: var(--space-4);
+      margin: var(--space-6) 0;
+      border-radius: var(--radius-md);
+    }
+    
+    .alert-ephemeral .material-icons {
+      font-size: 36px;
+      color: var(--warning);
+    }
+    
+    .cta-section {
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: var(--space-6);
+      margin-top: var(--space-8);
+      text-align: center;
+      border: 1px solid var(--accent-purple-muted);
+      box-shadow: 0 4px 16px var(--accent-purple-glow);
+    }
+    
+    .cta-title {
+      color: var(--accent-purple);
+      margin-bottom: var(--space-4);
+      font-size: var(--fs-2xl);
+    }
+    
+    .cta-actions {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-4);
+      margin-top: var(--space-6);
+    }
+    
+    /* Animation for the hero visualization */
+    @keyframes pulse {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+    
+    #hero-visualization {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    
+    #hero-visualization svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -16,126 +183,106 @@
   </header>
 
   <main class="container">
-    <section class="text-center">
-      <h1>
-        <span class="material-icons" aria-hidden="true">public</span>
-        R3L:F - Relational Ephemeral Filenet
-      </h1>
-      <p id="motto" class="mb-4">
-        <small>
-          <strong>the rel</strong> is what you make it. <em>Know</em> what you share and when it expires. <span class="underlne">Choose</span> who you're sym with.
-        </small>
-      </p>
-    </section>
-
-    <section class="card mb-4">
-      <div class="card-header">
-        <h2>Welcome to the Rel</h2>
-      </div>
-      <p>
-        R3L:F is a <strong>decentralized, ephemeral, Cloudflare-native social file-sharing platform</strong> that prioritizes <strong>user control, organic discovery, and community-driven archiving</strong>. It is <strong>non-corporate, minimalist, and free of algorithmic engagement farming</strong>, focusing instead on <strong>peer-to-peer interaction, temporary content, and personal archives</strong>.
-      </p>
-      
-      <div class="alert alert-warning mt-4">
-        <span class="material-icons">timer</span>
-        <div>
-          <strong>Ephemeral by Design:</strong> Content expires after 7 days unless community-archived.
-        </div>
-      </div>
-    </section>
-
-    <section>
-      <h2>Core Concepts</h2>
-      
-      <div class="file-grid core-concepts-grid">
-        <div class="card">
-          <h3>
-            <span class="material-icons">devices_other</span>
-            Relational
-          </h3>
-          <p>Users are connected <strong>visually in an association web</strong> but only through <strong>explicit, mutually agreed relationships</strong>.</p>
-        </div>
-        
-        <div class="card">
-          <h3>
-            <span class="material-icons">timer</span>
-            Ephemeral
-          </h3>
-          <p>Content <strong>expires unless archived</strong>, ensuring that data <strong>remains fresh and relevant</strong> rather than accumulating indefinitely.</p>
-        </div>
-        
-        <div class="card">
-          <h3>
-            <span class="material-icons">folder_shared</span>
-            Filenet
-          </h3>
-          <p>A <strong>social file-sharing system</strong> where <strong>documents, audio, video, and creative works</strong> are the foundation of interaction.</p>
-        </div>
-      </div>
-    </section>
-    
-    <section class="mt-4">
-      <h2>Key Features</h2>
-      
-      <div class="card mb-4">
-        <h3>
-          <span class="material-icons">archive</span>
-          Personal Archive ("Drawer") & Communique
-        </h3>
-        <p>Each user has a <strong>"drawer"</strong> (profile) with a <strong>customizable communique</strong>—a <strong>themeable, linkable window into their stored content</strong>.</p>
-        <p>Content <strong>expires after one week</strong> unless <strong>archived or designated as community content</strong>.</p>
-      </div>
-      
-      <div class="card mb-4">
-        <h3>
-          <span class="material-icons">account_tree</span>
-          Association Web (D3.js Visualization)
-        </h3>
-        <p><strong>Automatically generated</strong> from <strong>public contact lists</strong>, showing <strong>branching structure of connections</strong> (stronger links for frequent interactions).</p>
-        <p><strong>Low-visibility users appear muted</strong> and have no clear associations.</p>
-      </div>
-      
-      <div class="card">
-        <h3>
-          <span class="material-icons">search</span>
-          Anti-Algorithmic Search
-        </h3>
-        <p>No engagement optimization, no ranking - pure chronological ordering and user-controlled filtering by file type, tags, and more.</p>
-      </div>
-    </section>
-
-    <div class="association-web-container mt-4">
-      <div id="association-web">
+    <!-- Hero Section with Network Visualization -->
+    <div class="hero-container">
+      <div id="hero-visualization">
         <!-- D3.js visualization will be rendered here -->
-        <div class="flex items-center justify-center" style="height: 100%;">
-          <p>Association web visualization loading...</p>
+      </div>
+      
+      <div class="hero-overlay">
+        <h1 class="hero-title">
+          <span class="material-icons" aria-hidden="true">public</span>
+          R3L:F
+        </h1>
+        <p class="hero-subtitle">
+          A decentralized, ephemeral, anti-algorithmic social file-sharing platform where you control your connections and content lifecycle.
+        </p>
+        
+        <div class="hero-actions">
+          <a href="login.html" class="btn hero-btn glow-accent">
+            <span class="material-icons">login</span>
+            Get Started
+          </a>
+          <a href="network.html" class="btn btn-secondary hero-btn">
+            <span class="material-icons">hub</span>
+            Explore the Network
+          </a>
         </div>
       </div>
     </div>
-
-    <section class="card mt-4">
-      <h2>Get Started</h2>
-      <p>Join the Rel and experience a different kind of social network - one where connections are meaningful, content is ephemeral, and you remain in control.</p>
+    
+    <!-- Ephemeral Alert -->
+    <div class="alert-ephemeral glow-accent">
+      <span class="material-icons">timer</span>
+      <div>
+        <h3>Ephemeral by Design</h3>
+        <p>Content expires after 7 days unless community-archived, ensuring that the Rel remains fresh and relevant.</p>
+      </div>
+    </div>
+    
+    <!-- Feature Grid -->
+    <h2>Core Features</h2>
+    
+    <div class="feature-grid">
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">devices_other</div>
+        <h3 class="feature-title">Relational</h3>
+        <p>Users are connected visually in an association web but only through explicit, mutually agreed relationships.</p>
+      </div>
       
-      <div class="flex gap-4 mt-4">
-        <a href="./signup.html" class="btn">
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">timer</div>
+        <h3 class="feature-title">Ephemeral</h3>
+        <p>Content expires unless archived, ensuring that data remains fresh and relevant rather than accumulating indefinitely.</p>
+      </div>
+      
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">folder_shared</div>
+        <h3 class="feature-title">Filenet</h3>
+        <p>A social file-sharing system where documents, audio, video, and creative works are the foundation of interaction.</p>
+      </div>
+    </div>
+    
+    <div class="feature-grid">
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">archive</div>
+        <h3 class="feature-title">Personal Archive</h3>
+        <p>Each user has a "drawer" (profile) with a customizable communique—a themeable, linkable window into their stored content.</p>
+      </div>
+      
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">search</div>
+        <h3 class="feature-title">Anti-Algorithmic Search</h3>
+        <p>No engagement optimization, no ranking - pure chronological ordering and user-controlled filtering by file type, tags, and more.</p>
+      </div>
+      
+      <div class="feature-card card-accent">
+        <div class="feature-icon material-icons">account_tree</div>
+        <h3 class="feature-title">Association Web</h3>
+        <p>Automatically generated from public contact lists, showing branching structure of connections with stronger links for frequent interactions.</p>
+      </div>
+    </div>
+    
+    <!-- CTA Section -->
+    <div class="cta-section glow-accent">
+      <h2 class="cta-title">Join the Rel</h2>
+      <p>Experience a different kind of social network - one where connections are meaningful, content is ephemeral, and you remain in control.</p>
+      
+      <div class="cta-actions">
+        <a href="login.html" class="btn">
           <span class="material-icons">person_add</span>
           Create Account
         </a>
-        <a href="./explore.html" class="btn btn-secondary">
-          <span class="material-icons">explore</span>
-          Explore as Guest
-        </a>
-        <a href="./random.html" class="btn btn-secondary">
+        <a href="random.html" class="btn btn-secondary">
           <span class="material-icons">shuffle</span>
           Random Communique
         </a>
       </div>
-    </section>
+    </div>
   </main>
 
   <footer class="footer">
-    <p class="footer-motto">"the rel is what you make it"</p>
+    <p class="footer-motto text-accent">"the rel is what you make it"</p>
     <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
   </footer>
 
@@ -147,42 +294,153 @@
       // Initialize the navigation bar
       NavigationBar.init('home');
       
-      const container = document.getElementById('association-web');
+      // Hero visualization
+      const container = document.getElementById('hero-visualization');
       const width = container.clientWidth;
       const height = container.clientHeight;
       
-      // Clear loading message
-      container.innerHTML = '';
-      
       // Create SVG
-      const svg = d3.select('#association-web')
+      const svg = d3.select('#hero-visualization')
         .append('svg')
         .attr('width', width)
         .attr('height', height);
-        
-      // Sample data
-      const nodes = [
-        { id: 1, name: "You", x: width/2, y: height/2, configured: true, lurkerMode: false },
-        { id: 2, name: "Alice", configured: true, lurkerMode: false },
-        { id: 3, name: "Bob", configured: true, lurkerMode: false },
-        { id: 4, name: "Carol", configured: true, lurkerMode: false },
-        { id: 5, name: "Anonymous", configured: false, lurkerMode: true },
-        { id: 6, name: "David", configured: true, lurkerMode: false }
-      ];
       
-      const links = [
-        { source: 1, target: 2, strength: 7, mutual: true },
-        { source: 1, target: 3, strength: 5, mutual: true },
-        { source: 1, target: 4, strength: 3, mutual: true },
-        { source: 2, target: 3, strength: 2, mutual: true },
-        { source: 3, target: 6, strength: 4, mutual: true }
-      ];
+      // Generate a larger, more complex dataset for the hero visualization
+      const nodeCount = 50;
+      const linkProbability = 0.15;
+      
+      // Generate nodes
+      const nodes = [];
+      
+      // Add user nodes (25% of total)
+      const userCount = Math.floor(nodeCount * 0.25);
+      for (let i = 0; i < userCount; i++) {
+        nodes.push({
+          id: `user-${i}`,
+          type: 'user',
+          size: 8 + Math.random() * 5,
+          color: i === 0 ? '#a278ff' : '#d0efb0', // First user is "you"
+          x: Math.random() * width,
+          y: Math.random() * height
+        });
+      }
+      
+      // Add file nodes (60% of total)
+      const fileCount = Math.floor(nodeCount * 0.6);
+      for (let i = 0; i < fileCount; i++) {
+        nodes.push({
+          id: `file-${i}`,
+          type: 'file',
+          size: 5 + Math.random() * 3,
+          color: '#7fd8d8',
+          x: Math.random() * width,
+          y: Math.random() * height
+        });
+      }
+      
+      // Add tag nodes (15% of total)
+      const tagCount = nodeCount - userCount - fileCount;
+      for (let i = 0; i < tagCount; i++) {
+        nodes.push({
+          id: `tag-${i}`,
+          type: 'tag',
+          size: 4 + Math.random() * 2,
+          color: '#ff9c66',
+          x: Math.random() * width,
+          y: Math.random() * height
+        });
+      }
+      
+      // Generate links
+      const links = [];
+      
+      // Each user has some files
+      for (let i = 0; i < userCount; i++) {
+        const userFilesCount = Math.floor(2 + Math.random() * 5); // 2-6 files per user
+        for (let j = 0; j < userFilesCount; j++) {
+          const fileIndex = Math.floor(Math.random() * fileCount);
+          links.push({
+            source: `user-${i}`,
+            target: `file-${fileIndex}`,
+            strength: 2 + Math.random() * 3
+          });
+        }
+      }
+      
+      // Some users are connected to each other
+      for (let i = 0; i < userCount; i++) {
+        for (let j = i + 1; j < userCount; j++) {
+          if (Math.random() < linkProbability) {
+            links.push({
+              source: `user-${i}`,
+              target: `user-${j}`,
+              strength: 1 + Math.random() * 2
+            });
+          }
+        }
+      }
+      
+      // Files are tagged
+      for (let i = 0; i < fileCount; i++) {
+        const tagCount = Math.floor(Math.random() * 3); // 0-2 tags per file
+        for (let j = 0; j < tagCount; j++) {
+          const tagIndex = Math.floor(Math.random() * tagCount);
+          links.push({
+            source: `file-${i}`,
+            target: `tag-${tagIndex}`,
+            strength: 1
+          });
+        }
+      }
       
       // Create simulation
       const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(100))
-        .force("charge", d3.forceManyBody().strength(-300))
-        .force("center", d3.forceCenter(width / 2, height / 2));
+        .force("link", d3.forceLink(links).id(d => d.id).distance(d => 50 + Math.random() * 50))
+        .force("charge", d3.forceManyBody().strength(-100))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(d => d.size * 1.5));
+        
+      // Add gradients for links
+      const defs = svg.append("defs");
+      
+      // Purple gradient for user links
+      const userLinkGradient = defs.append("linearGradient")
+        .attr("id", "user-link-gradient")
+        .attr("gradientUnits", "userSpaceOnUse");
+        
+      userLinkGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#a278ff");
+        
+      userLinkGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#7e5edd");
+        
+      // Teal gradient for file links
+      const fileLinkGradient = defs.append("linearGradient")
+        .attr("id", "file-link-gradient")
+        .attr("gradientUnits", "userSpaceOnUse");
+        
+      fileLinkGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#7fd8d8");
+        
+      fileLinkGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#20b2aa");
+        
+      // Orange gradient for tag links
+      const tagLinkGradient = defs.append("linearGradient")
+        .attr("id", "tag-link-gradient")
+        .attr("gradientUnits", "userSpaceOnUse");
+        
+      tagLinkGradient.append("stop")
+        .attr("offset", "0%")
+        .attr("stop-color", "#ff9c66");
+        
+      tagLinkGradient.append("stop")
+        .attr("offset", "100%")
+        .attr("stop-color", "#ff6b6b");
         
       // Draw links
       const link = svg.append("g")
@@ -190,39 +448,74 @@
         .data(links)
         .enter()
         .append("line")
-        .attr("stroke", d => d.strength > 5 ? "#7fd8d8" : "#2a3a3a")
-        .attr("stroke-width", d => Math.sqrt(d.strength || 1))
-        .attr("opacity", d => d.muted ? 0.5 : 1);
+        .attr("stroke", d => {
+          // Links between users are purple
+          if (d.source.id.startsWith('user-') && d.target.id.startsWith('user-')) {
+            return "url(#user-link-gradient)";
+          }
+          // Links between files and tags are orange
+          if (d.source.id.startsWith('file-') && d.target.id.startsWith('tag-')) {
+            return "url(#tag-link-gradient)";
+          }
+          // Links between users and files are teal
+          return "url(#file-link-gradient)";
+        })
+        .attr("stroke-width", d => Math.sqrt(d.strength))
+        .attr("opacity", 0.6);
         
-      // Draw nodes
+      // Update gradient coordinates on tick
+      function updateGradients() {
+        links.forEach((d, i) => {
+          // Get the current line element
+          const line = link.nodes()[i];
+          const gradientId = line.getAttribute("stroke").replace("url(#", "").replace(")", "");
+          
+          // Update the corresponding gradient
+          d3.select(`#${gradientId}`)
+            .attr("x1", d.source.x)
+            .attr("y1", d.source.y)
+            .attr("x2", d.target.x)
+            .attr("y2", d.target.y);
+        });
+      }
+        
+      // Draw nodes with glowing effect
       const node = svg.append("g")
         .selectAll("circle")
         .data(nodes)
         .enter()
         .append("circle")
-        .attr("r", d => d.configured ? (d.id === 1 ? 15 : 10) : 5)
-        .attr("fill", d => {
-          if (d.id === 1) return "#a278ff"; // You (current user)
-          return d.lurkerMode ? "#1f2f3f" : "#d0efb0";
-        })
-        .attr("opacity", d => d.lurkerMode ? 0.5 : 1)
-        .call(d3.drag()
-          .on("start", dragstarted)
-          .on("drag", dragged)
-          .on("end", dragended));
-          
-      // Add labels
-      const label = svg.append("g")
-        .selectAll("text")
-        .data(nodes.filter(d => d.configured && !d.lurkerMode))
-        .enter()
-        .append("text")
-        .text(d => d.name)
-        .attr("font-size", "12px")
-        .attr("fill", d => d.id === 1 ? "#a278ff" : "#d0efb0")
-        .attr("x", 15)
-        .attr("y", 5);
+        .attr("r", d => d.size)
+        .attr("fill", d => d.color)
+        .attr("stroke", "#182820")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.9)
+        .each(function(d) {
+          // Add subtle glow effect for certain nodes
+          if (d.id === 'user-0' || Math.random() > 0.7) {
+            const glow = defs.append("filter")
+              .attr("id", `glow-${d.id}`)
+              .attr("width", "300%")
+              .attr("height", "300%")
+              .attr("x", "-100%")
+              .attr("y", "-100%");
+              
+            glow.append("feGaussianBlur")
+              .attr("stdDeviation", "3")
+              .attr("result", "blur");
+              
+            glow.append("feComposite")
+              .attr("in", "SourceGraphic")
+              .attr("in2", "blur")
+              .attr("operator", "over");
+              
+            d3.select(this).attr("filter", `url(#glow-${d.id})`);
+          }
+        });
         
+      // Subtle pulse animation for nodes
+      node.style("animation", () => `pulse ${3 + Math.random() * 4}s infinite`);
+      
       // Update positions
       simulation.on("tick", () => {
         link
@@ -235,28 +528,8 @@
           .attr("cx", d => d.x)
           .attr("cy", d => d.y);
           
-        label
-          .attr("x", d => d.x + 12)
-          .attr("y", d => d.y + 4);
+        updateGradients();
       });
-      
-      // Drag functions
-      function dragstarted(event, d) {
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      }
-      
-      function dragged(event, d) {
-        d.fx = event.x;
-        d.fy = event.y;
-      }
-      
-      function dragended(event, d) {
-        if (!event.active) simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      }
     });
   </script>
 </body>

@@ -48,6 +48,19 @@ export class Router {
       return this.handleCors();
     }
     
+    // Handle ORCID and GitHub callback paths - redirect to dedicated callback pages
+    if (path === '/auth/orcid/callback' && request.method === 'GET') {
+      // Redirect to the ORCID callback page with the same query parameters
+      const orcidCallbackUrl = `${url.origin}/auth/orcid/callback/index.html${url.search}`;
+      return Response.redirect(orcidCallbackUrl, 302);
+    }
+    
+    if (path === '/auth/github/callback' && request.method === 'GET') {
+      // Redirect to the GitHub callback page with the same query parameters
+      const githubCallbackUrl = `${url.origin}/auth/github/callback/index.html${url.search}`;
+      return Response.redirect(githubCallbackUrl, 302);
+    }
+    
     try {
       // Authentication endpoints
       if (path.startsWith('/api/auth')) {
@@ -105,38 +118,114 @@ export class Router {
   private async handleAuthRoutes(request: Request, env: Env, path: string): Promise<Response> {
     // Initialize ORCID auth
     if (path === '/api/auth/orcid/init' && request.method === 'GET') {
-      const url = new URL(request.url);
-      const redirectUri = url.searchParams.get('redirect_uri');
-      
-      if (!redirectUri) {
-        return this.errorResponse('Missing redirect_uri parameter');
-      }
-      
+      const requestUrl = new URL(request.url);
+      const redirectUri = env.ORCID_REDIRECT_URI || `${requestUrl.origin}/auth/orcid/callback`;
       const authUrl = this.authHandler.initOrcidAuth(redirectUri, env);
-      return this.jsonResponse({ url: authUrl });
+      return this.jsonResponse({ authorizationUrl: authUrl });
+    }
+    
+    // Initialize GitHub auth
+    if (path === '/api/auth/github/init' && request.method === 'GET') {
+      const requestUrl = new URL(request.url);
+      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
+      const authUrl = this.authHandler.initGitHubAuth(redirectUri, env);
+      return this.jsonResponse({ authorizationUrl: authUrl });
     }
     
     // Complete ORCID auth
-    if (path === '/api/auth/orcid/callback' && request.method === 'POST') {
-      const data = await request.json() as any;
-      const { code, redirect_uri } = data;
+    if (path === '/api/auth/orcid/callback' && request.method === 'GET') {
+      const requestUrl = new URL(request.url);
+      const urlParams = requestUrl.searchParams;
+      const code = urlParams.get('code');
       
-      if (!code || !redirect_uri) {
-        return this.errorResponse('Missing required parameters');
+      if (!code) {
+        return this.errorResponse('Missing code parameter');
       }
       
       const userAgent = request.headers.get('User-Agent') || '';
       const ipAddress = request.headers.get('CF-Connecting-IP') || '';
+      const redirectUri = env.ORCID_REDIRECT_URI || `${requestUrl.origin}/auth/orcid/callback`;
       
-      const authResult = await this.authHandler.completeOrcidAuth(
-        code,
-        redirect_uri,
-        userAgent,
-        ipAddress,
-        env
-      );
+      try {
+        const authResult = await this.authHandler.completeOrcidAuth(
+          code,
+          redirectUri,
+          userAgent,
+          ipAddress,
+          env
+        );
+        
+        // Set session cookie
+        const headers = new Headers({
+          'Location': '/',
+          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+        });
+        
+        // Add CORS headers
+        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
+        
+        return new Response(null, {
+          status: 302,
+          headers
+        });
+      } catch (error) {
+        console.error('ORCID auth error:', error);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
+          }
+        });
+      }
+    }
+    
+    // Complete GitHub auth
+    if (path === '/api/auth/github/callback' && request.method === 'GET') {
+      const requestUrl = new URL(request.url);
+      const urlParams = requestUrl.searchParams;
+      const code = urlParams.get('code');
       
-      return this.jsonResponse(authResult);
+      if (!code) {
+        return this.errorResponse('Missing code parameter');
+      }
+      
+      const userAgent = request.headers.get('User-Agent') || '';
+      const ipAddress = request.headers.get('CF-Connecting-IP') || '';
+      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
+      
+      try {
+        const authResult = await this.authHandler.completeGitHubAuth(
+          code,
+          redirectUri,
+          userAgent,
+          ipAddress,
+          env
+        );
+        
+        // Set session cookie
+        const headers = new Headers({
+          'Location': '/',
+          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+        });
+        
+        // Add CORS headers
+        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
+        
+        return new Response(null, {
+          status: 302,
+          headers
+        });
+      } catch (error) {
+        console.error('GitHub auth error:', error);
+        return new Response(null, {
+          status: 302,
+          headers: {
+            'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
+          }
+        });
+      }
     }
     
     // Validate token

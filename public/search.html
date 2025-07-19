@@ -6,37 +6,42 @@
   <title>Search - R3L:F</title>
   <link rel="stylesheet" href="./css/rel-f-global.css">
   <script src="./js/font-loader.js" defer></script>
+  <style>
+    /* Compact header styles */
+    .search-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 0.5rem;
+    }
+    .search-title h1 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .search-title p {
+      margin: 0;
+      font-size: var(--fs-lg);
+      color: var(--text-secondary);
+    }
+  </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="nav-brand">
-      <span class="material-icons" aria-hidden="true">public</span>
-      R3L:F
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
     </div>
-    <nav>
-      <ul class="nav-menu">
-        <li><a href="index.html" class="nav-link">Home</a></li>
-        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
-        <li><a href="network.html" class="nav-link">Association Web</a></li>
-        <li><a href="map.html" class="nav-link">Map</a></li>
-        <li><a href="search.html" class="nav-link active">Search</a></li>
-        <li><a href="random.html" class="nav-link tooltip">
-          <span class="material-icons">shuffle</span>
-          <span class="tooltip-text">Random Communique</span>
-        </a></li>
-        <li><a href="login.html" class="nav-link">Login</a></li>
-      </ul>
-    </nav>
   </header>
 
   <main class="container">
-    <section class="text-center">
+    <div class="search-title">
       <h1>
         <span class="material-icons" aria-hidden="true">search</span>
         Anti-Algorithmic Search
       </h1>
-      <p>Find content in the Rel without algorithmic influence. Pure chronological ordering, no engagement optimization.</p>
-    </section>
+      <p>Find content without algorithmic influence</p>
+    </div>
 
     <div class="search-container">
       <form id="search-form" class="search-form">
@@ -197,8 +202,13 @@
     </div>
   </template>
 
-  <script>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+
     document.addEventListener('DOMContentLoaded', () => {
+      // Initialize the navigation bar
+      NavigationBar.init('search');
+      
       // UI Elements
       const searchForm = document.getElementById('search-form');
       const searchQuery = document.getElementById('search-query');

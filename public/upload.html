@@ -6,37 +6,51 @@
   <title>Upload Content - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
   <script src="js/font-loader.js" defer></script>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      NavigationBar.init('upload');
+    });
+  </script>
+  <style>
+    /* Compact header styles */
+    .upload-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .upload-header h1 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .upload-header p {
+      margin: 0 0 0 1rem;
+      font-size: var(--fs-lg);
+      color: var(--text-secondary);
+    }
+    /* Make sure form elements have enough spacing */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+  </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="nav-brand">
-      <span class="material-icons" aria-hidden="true">public</span>
-      R3L:F
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
     </div>
-    <nav>
-      <ul class="nav-menu">
-        <li><a href="index.html" class="nav-link">Home</a></li>
-        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
-        <li><a href="network.html" class="nav-link">Association Web</a></li>
-        <li><a href="map.html" class="nav-link">Map</a></li>
-        <li><a href="search.html" class="nav-link">Search</a></li>
-        <li><a href="random.html" class="nav-link tooltip">
-          <span class="material-icons">shuffle</span>
-          <span class="tooltip-text">Random Communique</span>
-        </a></li>
-        <li><a href="login.html" class="nav-link">Login</a></li>
-      </ul>
-    </nav>
   </header>
 
   <main class="container">
-    <section class="text-center">
+    <div class="upload-header">
       <h1>
         <span class="material-icons" aria-hidden="true">cloud_upload</span>
         Upload to the Rel
       </h1>
-      <p>Files shared here will expire in 7 days unless archived by community action.</p>
-    </section>
+      <p>Files shared will expire in 7 days unless archived by community action</p>
+    </div>
 
     <div class="card mb-4">
       <div class="card-header">

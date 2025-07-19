@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R3L:F - Your Profile</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <script src="js/font-loader.js" defer></script>
+  <style>
+    .profile-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--surface-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .profile-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      background-color: var(--accent-color-light);
+    }
+    
+    .profile-info {
+      flex-grow: 1;
+    }
+    
+    .profile-name {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+    }
+    
+    .profile-username {
+      margin: 0;
+      color: var(--text-secondary);
+      font-size: 1rem;
+    }
+    
+    .profile-joined {
+      margin: 0.5rem 0 0 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    
+    .profile-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      padding: 1rem;
+      background-color: var(--background-color);
+      border-radius: 6px;
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin: 0;
+      color: var(--accent-color);
+    }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      margin: 0.25rem 0 0 0;
+      color: var(--text-secondary);
+    }
+    
+    .profile-section {
+      margin-bottom: 2rem;
+    }
+    
+    .section-title {
+      font-size: 1.25rem;
+      margin: 0 0 1rem 0;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .auth-providers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .auth-provider {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: var(--background-color);
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .auth-provider img {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .edit-profile-btn {
+      padding: 0.5rem 1rem;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .logout-btn {
+      padding: 0.5rem 1rem;
+      background-color: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .not-authenticated {
+      text-align: center;
+      padding: 3rem;
+    }
+    
+    .not-authenticated p {
+      margin-bottom: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Your Profile</h1>
+      
+      <!-- Loading state -->
+      <div id="loading" class="profile-container">
+        <p>Loading profile data...</p>
+      </div>
+      
+      <!-- Not authenticated state -->
+      <div id="not-authenticated" class="profile-container not-authenticated hidden">
+        <h2>Not Authenticated</h2>
+        <p>You need to log in to view your profile.</p>
+        <a href="/login" class="primary-button">Go to Login</a>
+      </div>
+      
+      <!-- Authenticated state -->
+      <div id="profile-data" class="profile-container hidden">
+        <div class="profile-header">
+          <img id="profile-avatar" src="/icons/user-default.svg" alt="Profile avatar" class="profile-avatar">
+          <div class="profile-info">
+            <h2 id="profile-name" class="profile-name">User Name</h2>
+            <p id="profile-username" class="profile-username">@username</p>
+            <p id="profile-joined" class="profile-joined">Joined on Jan 1, 2025</p>
+          </div>
+        </div>
+        
+        <div class="profile-stats">
+          <div class="stat-card">
+            <p id="stat-contributions" class="stat-value">0</p>
+            <p class="stat-label">Contributions</p>
+          </div>
+          <div class="stat-card">
+            <p id="stat-drawers" class="stat-value">0</p>
+            <p class="stat-label">Drawers</p>
+          </div>
+          <div class="stat-card">
+            <p id="stat-connections" class="stat-value">0</p>
+            <p class="stat-label">Connections</p>
+          </div>
+        </div>
+        
+        <div class="profile-section">
+          <h3 class="section-title">Authentication Providers</h3>
+          <div id="auth-providers" class="auth-providers">
+            <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        
+        <div class="action-buttons">
+          <button id="edit-profile-btn" class="edit-profile-btn">Edit Profile</button>
+          <button id="logout-btn" class="logout-btn">Log Out</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>R3L:F - Relational Ephemeral Filenet</p>
+      <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the navigation bar
+      NavigationBar.init('profile');
+      
+      const loadingEl = document.getElementById('loading');
+      const notAuthenticatedEl = document.getElementById('not-authenticated');
+      const profileDataEl = document.getElementById('profile-data');
+      
+      const profileNameEl = document.getElementById('profile-name');
+      const profileUsernameEl = document.getElementById('profile-username');
+      const profileJoinedEl = document.getElementById('profile-joined');
+      const profileAvatarEl = document.getElementById('profile-avatar');
+      
+      const statContributionsEl = document.getElementById('stat-contributions');
+      const statDrawersEl = document.getElementById('stat-drawers');
+      const statConnectionsEl = document.getElementById('stat-connections');
+      
+      const authProvidersEl = document.getElementById('auth-providers');
+      const editProfileBtn = document.getElementById('edit-profile-btn');
+      const logoutBtn = document.getElementById('logout-btn');
+      
+      // Function to check if user is authenticated and load profile data
+      const loadProfileData = async () => {
+        try {
+          // Make request to validate token and get user data
+          const response = await fetch('/api/auth/validate', {
+            credentials: 'include' // Include cookies
+          });
+          
+          if (!response.ok) {
+            throw new Error('Not authenticated');
+          }
+          
+          const data = await response.json();
+          
+          if (!data.valid || !data.user) {
+            throw new Error('Not authenticated');
+          }
+          
+          // User is authenticated, populate profile data
+          const user = data.user;
+          
+          // Set basic profile info
+          profileNameEl.textContent = user.display_name || 'R3L User';
+          profileUsernameEl.textContent = `@${user.username}`;
+          
+          // Format joined date
+          const joinedDate = new Date(user.created_at);
+          profileJoinedEl.textContent = `Joined on ${joinedDate.toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })}`;
+          
+          // Set avatar if available
+          if (user.avatar_url) {
+            profileAvatarEl.src = user.avatar_url;
+          }
+          
+          // Show authentication providers
+          authProvidersEl.innerHTML = '';
+          
+          if (user.orcid_id) {
+            const orcidProvider = document.createElement('div');
+            orcidProvider.className = 'auth-provider';
+            orcidProvider.innerHTML = `
+              <img src="https://orcid.org/assets/vectors/orcid.logo.icon.svg" alt="ORCID logo">
+              <span>ORCID</span>
+            `;
+            authProvidersEl.appendChild(orcidProvider);
+          }
+          
+          if (user.github_id) {
+            const githubProvider = document.createElement('div');
+            githubProvider.className = 'auth-provider';
+            githubProvider.innerHTML = `
+              <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub logo">
+              <span>GitHub</span>
+            `;
+            authProvidersEl.appendChild(githubProvider);
+          }
+          
+          // Load user stats
+          const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
+            credentials: 'include'
+          });
+          
+          if (statsResponse.ok) {
+            const stats = await statsResponse.json();
+            statContributionsEl.textContent = stats.contributions || 0;
+            statDrawersEl.textContent = stats.drawers || 0;
+            statConnectionsEl.textContent = stats.connections || 0;
+          }
+          
+          // Show profile data, hide loading
+          loadingEl.classList.add('hidden');
+          notAuthenticatedEl.classList.add('hidden');
+          profileDataEl.classList.remove('hidden');
+          
+          // Set up edit profile button
+          editProfileBtn.addEventListener('click', () => {
+            // Redirect to edit profile page (to be implemented)
+            window.location.href = '/edit-profile';
+          });
+          
+          // Set up logout button
+          logoutBtn.addEventListener('click', async () => {
+            try {
+              await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              
+              // Redirect to home page after logout
+              window.location.href = '/';
+            } catch (error) {
+              console.error('Logout error:', error);
+              alert('Failed to log out. Please try again.');
+            }
+          });
+          
+        } catch (error) {
+          console.error('Profile loading error:', error);
+          
+          // Show not authenticated state
+          loadingEl.classList.add('hidden');
+          notAuthenticatedEl.classList.remove('hidden');
+          profileDataEl.classList.add('hidden');
+        }
+      };
+      
+      // Load profile data on page load
+      loadProfileData();
+    });
+  </script>
+</body>
+</html>

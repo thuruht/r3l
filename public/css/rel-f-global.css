@@ -28,6 +28,7 @@
   --accent-lavender-muted: #8a5eff; /* Muted variant */
   --accent-green: #d0efb0;        /* Light accent green for text */
   --accent-cyan: #7fdcd8;         /* Cyan accents (links) */
+  --accent-purple: #a278ff;       /* Main accent color - vibrant purple */
   
   /* Text colors */
   --text-primary: #e0e0e0;        /* Primary text color */
@@ -305,7 +306,7 @@ a:hover {
 
 /* Buttons & Controls */
 .btn {
-  background-color: var(--accent-lavender);
+  background-color: var(--accent-purple);
   border: none;
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -318,25 +319,30 @@ a:hover {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   transition: all var(--transition-fast);
+  box-shadow: 0 2px 4px rgba(162, 120, 255, 0.3);
 }
 
 .btn:hover {
   background-color: var(--accent-lavender-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(162, 120, 255, 0.5);
 }
 
 .btn:active {
   transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(162, 120, 255, 0.3);
 }
 
 .btn-secondary {
   background-color: transparent;
-  border: 1px solid var(--accent-lavender);
-  color: var(--accent-lavender);
+  border: 1px solid var(--accent-purple);
+  color: var(--accent-purple);
 }
 
 .btn-secondary:hover {
-  background-color: rgba(162, 120, 255, 0.1);
+  background-color: rgba(162, 120, 255, 0.15);
+  border-color: var(--accent-lavender-hover);
+  color: var(--accent-lavender-hover);
 }
 
 .btn-small {
@@ -769,7 +775,7 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   color: var(--text-primary);
 }
 
-/* Navigation */
+  /* Navigation */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -778,13 +784,33 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   background-color: var(--bg-container);
   border-radius: var(--radius-md);
   margin-bottom: var(--space-6);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-bottom: 2px solid var(--accent-purple);
 }
 
 .nav-brand {
   font-family: var(--font-display);
   font-size: var(--fs-xl);
   font-weight: 700;
-  color: var(--accent-green);
+}
+
+.nav-brand a {
+  color: var(--accent-purple);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: all var(--transition-fast);
+}
+
+.nav-brand a:hover {
+  text-shadow: 0 0 8px rgba(162, 120, 255, 0.6);
+  text-decoration: none;
+}
+
+.nav-brand .material-icons {
+  color: var(--accent-purple);
+  font-size: 1.5em;
 }
 
 .nav-menu {
@@ -794,19 +820,104 @@ section:has(h2:contains("Core Concepts")) .file-grid {
 }
 
 .nav-link {
-  color: var(--link);
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
-  transition: color var(--transition-fast);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
 .nav-link:hover {
-  color: var(--accent-lavender);
+  color: var(--accent-purple);
+  background-color: rgba(162, 120, 255, 0.1);
   text-decoration: none;
 }
 
 .nav-link.active {
-  color: var(--accent-green);
+  color: var(--accent-purple);
+  background-color: rgba(162, 120, 255, 0.15);
+  font-weight: 600;
+}
+
+/* User profile in navigation */
+.user-profile-nav {
+  position: relative;
+}
+
+.user-profile-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.user-profile-link:hover {
+  background-color: rgba(162, 120, 255, 0.1);
+}
+
+.user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--accent-purple);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 200px;
+  background-color: var(--bg-container);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  padding: var(--space-2) 0;
+  z-index: var(--z-dropdown);
+  display: none;
+  border: 1px solid var(--border-primary);
+}
+
+.user-profile-nav:hover .user-dropdown {
+  display: block;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background-color: rgba(162, 120, 255, 0.1);
+  color: var(--accent-purple);
+  text-decoration: none;
 }
 
 /* Footer */

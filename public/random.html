@@ -6,6 +6,32 @@
   <title>R3L:F - Random Communique</title>
   <link rel="stylesheet" href="./css/rel-f-global.css">
   <script src="./js/font-loader.js" defer></script>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      NavigationBar.init('random');
+    });
+  </script>
+  <style>
+    /* Compact header styles */
+    .random-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 0.5rem;
+    }
+    .random-title h1 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .random-title p {
+      margin: 0;
+      font-size: var(--fs-lg);
+      color: var(--text-secondary);
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -15,15 +41,13 @@
   </header>
 
   <main class="container">
-    <section class="text-center">
+    <div class="random-title">
       <h1>
         <span class="material-icons" aria-hidden="true">shuffle</span>
         Random Communique
       </h1>
-      <p class="mb-4">
-        <small>Discover unexpected connections and content in the Rel.</small>
-      </p>
-    </section>
+      <p>Discover unexpected connections and content</p>
+    </div>
 
     <div class="card mb-4">
       <div class="card-header flex justify-between items-center">

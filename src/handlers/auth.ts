@@ -11,11 +11,199 @@ interface AuthSession {
   ip_address?: string;
 }
 
+interface GitHubUser {
+  login: string;
+  id: number;
+  name: string | null;
+  email: string | null;
+  avatar_url: string;
+}
+
 export class AuthHandler {
   private userHandler: UserHandler;
   
   constructor() {
     this.userHandler = new UserHandler();
+  }
+  
+  /**
+   * Initialize GitHub authentication
+   * @param redirectUri Redirect URI for OAuth flow
+   * @param env Environment bindings
+   * @returns URL to redirect user to for GitHub authentication
+   */
+  initGitHubAuth(redirectUri: string, env: Env): string {
+    const githubClientId = env.GITHUB_CLIENT_ID;
+    const scopes = 'read:user user:email';
+    
+    const params = new URLSearchParams({
+      client_id: githubClientId,
+      redirect_uri: redirectUri,
+      scope: scopes,
+      state: crypto.randomUUID() // Security measure to prevent CSRF
+    });
+    
+    return `https://github.com/login/oauth/authorize?${params.toString()}`;
+  }
+  
+  /**
+   * Complete GitHub authentication flow
+   * @param code Authorization code from GitHub
+   * @param redirectUri Redirect URI (must match the one used in initGitHubAuth)
+   * @param userAgent User agent string
+   * @param ipAddress IP address
+   * @param env Environment bindings
+   * @returns Authentication session details
+   */
+  async completeGitHubAuth(
+    code: string,
+    redirectUri: string,
+    userAgent: string,
+    ipAddress: string,
+    env: Env
+  ): Promise<{ sessionId: string; token: string; userId: string; isNewUser: boolean }> {
+    // Exchange code for token
+    const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: env.GITHUB_CLIENT_ID,
+        client_secret: env.GITHUB_CLIENT_SECRET,
+        code,
+        redirect_uri: redirectUri
+      })
+    });
+    
+    if (!tokenResponse.ok) {
+      throw new Error('Failed to exchange code for token');
+    }
+    
+    const tokenData = await tokenResponse.json() as {
+      access_token: string;
+      scope: string;
+      token_type: string;
+    };
+    
+    const accessToken = tokenData.access_token;
+    
+    if (!accessToken) {
+      throw new Error('Invalid GitHub response');
+    }
+    
+    // Get user info from GitHub
+    const userResponse = await fetch('https://api.github.com/user', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `token ${accessToken}`,
+        'User-Agent': 'R3L:F Application'
+      }
+    });
+    
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch GitHub profile');
+    }
+    
+    const userData = await userResponse.json() as GitHubUser;
+    
+    // Get user email (may be private, so separate request)
+    const emailResponse = await fetch('https://api.github.com/user/emails', {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `token ${accessToken}`,
+        'User-Agent': 'R3L:F Application'
+      }
+    });
+    
+    let primaryEmail = null;
+    if (emailResponse.ok) {
+      const emails = await emailResponse.json() as Array<{
+        email: string;
+        primary: boolean;
+        verified: boolean;
+      }>;
+      
+      // Find primary and verified email
+      const primaryVerifiedEmail = emails.find(e => e.primary && e.verified);
+      if (primaryVerifiedEmail) {
+        primaryEmail = primaryVerifiedEmail.email;
+      }
+    }
+    
+    // Check if user already exists by GitHub ID
+    let user = await this.userHandler.getUserByGitHub(userData.id.toString(), env);
+    let isNewUser = false;
+    
+    if (!user) {
+      // Create new user
+      isNewUser = true;
+      
+      // Extract name from GitHub data
+      let displayName = userData.name || userData.login;
+      
+      // Generate username from GitHub login
+      let username = userData.login;
+      // Check if username is available, if not append numbers
+      let usernameAvailable = false;
+      let count = 1;
+      
+      while (!usernameAvailable) {
+        try {
+          const existingUser = await this.userHandler.getUserByUsername(username, env);
+          if (!existingUser) {
+            usernameAvailable = true;
+          } else {
+            username = `${userData.login}${count}`;
+            count++;
+          }
+        } catch (error) {
+          throw new Error('Failed to check username availability');
+        }
+      }
+      
+      const userId = await this.userHandler.createUserWithGitHub(
+        username, 
+        displayName, 
+        userData.id.toString(),
+        userData.avatar_url, 
+        primaryEmail,
+        env
+      );
+      
+      user = await this.userHandler.getUser(userId, env);
+      
+      if (!user) {
+        throw new Error('Failed to create user');
+      }
+    }
+    
+    // Create auth session
+    const sessionId = crypto.randomUUID();
+    const token = crypto.randomUUID();
+    const now = Date.now();
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // 30 days
+    
+    await env.R3L_DB.prepare(`
+      INSERT INTO auth_sessions (id, user_id, token, created_at, expires_at, user_agent, ip_address)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      sessionId,
+      user.id,
+      token,
+      now,
+      expiresAt,
+      userAgent || null,
+      ipAddress || null
+    ).run();
+    
+    return {
+      sessionId,
+      token,
+      userId: user.id,
+      isNewUser
+    };
   }
   
   /**

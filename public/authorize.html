@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R3L:F - OAuth Authorization</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <link rel="stylesheet" href="css/rel-f-accent.css">
+  <script src="js/font-loader.js" defer></script>
+  <style>
+    .auth-container {
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 16px var(--accent-purple-glow);
+      border: 1px solid var(--accent-purple-muted);
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: var(--accent-green);
+      margin-bottom: 2rem;
+    }
+    
+    .client-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      background-color: var(--bg-deep);
+    }
+    
+    .client-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: var(--radius-md);
+      background-color: var(--bg-container);
+      padding: 0.5rem;
+    }
+    
+    .client-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    
+    .client-details {
+      flex: 1;
+    }
+    
+    .scope-list {
+      margin: 1.5rem 0;
+    }
+    
+    .scope-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding: 0.5rem;
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-deep);
+    }
+    
+    .scope-item .material-icons {
+      color: var(--accent-green);
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .btn-approve {
+      flex: 2;
+      padding: 0.75rem 1rem;
+      background-color: var(--accent-green);
+      color: var(--bg-deep);
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-approve:hover {
+      background-color: var(--accent-green-highlight);
+      transform: translateY(-2px);
+    }
+    
+    .btn-deny {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background-color: var(--bg-deep);
+      color: var(--text-primary);
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-deny:hover {
+      background-color: var(--bg-hover);
+    }
+    
+    .privacy-notice {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-primary);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Authorization Request</h1>
+      <p class="subtitle">A service is requesting access to your R3L:F account</p>
+      
+      <div class="auth-container">
+        <div class="client-info">
+          <div class="client-logo">
+            <img id="client-logo" src="" alt="Client Logo">
+          </div>
+          <div class="client-details">
+            <h2 id="client-name">Client Name</h2>
+            <p id="client-description">Client Description</p>
+            <a id="client-uri" href="#" target="_blank" rel="noopener noreferrer">Visit website</a>
+          </div>
+        </div>
+        
+        <h3>This app would like to:</h3>
+        <div class="scope-list" id="scope-list">
+          <!-- Scope items will be inserted here by JavaScript -->
+        </div>
+        
+        <div class="action-buttons">
+          <button id="btn-approve" class="btn-approve">Approve</button>
+          <button id="btn-deny" class="btn-deny">Deny</button>
+        </div>
+        
+        <div class="privacy-notice">
+          <h3>Privacy Notice</h3>
+          <p>By approving this request, you are giving the application permission to access your R3L:F account as described above. You can revoke this access at any time from your account settings.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>R3L:F - Relational Ephemeral Filenet</p>
+      <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
+    </div>
+  </footer>
+
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the navigation bar
+      NavigationBar.init('authorize');
+      
+      // Parse query parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const responseType = urlParams.get('response_type');
+      const clientId = urlParams.get('client_id');
+      const redirectUri = urlParams.get('redirect_uri');
+      const scope = urlParams.get('scope');
+      const state = urlParams.get('state');
+      const codeChallenge = urlParams.get('code_challenge');
+      const codeChallengeMethod = urlParams.get('code_challenge_method');
+      
+      // Function to fetch client information
+      const fetchClientInfo = async () => {
+        try {
+          const response = await fetch(`/oauth/client?client_id=${clientId}`);
+          
+          if (!response.ok) {
+            throw new Error('Failed to fetch client information');
+          }
+          
+          const clientInfo = await response.json();
+          
+          // Update client information in the UI
+          document.getElementById('client-name').textContent = clientInfo.client_name || 'Unknown Application';
+          document.getElementById('client-description').textContent = clientInfo.description || 'This application is requesting access to your R3L:F account.';
+          
+          if (clientInfo.logo_uri) {
+            document.getElementById('client-logo').src = clientInfo.logo_uri;
+          }
+          
+          if (clientInfo.client_uri) {
+            const clientUriLink = document.getElementById('client-uri');
+            clientUriLink.href = clientInfo.client_uri;
+            clientUriLink.textContent = new URL(clientInfo.client_uri).hostname;
+          }
+          
+          // Render scope items
+          renderScopes(scope);
+        } catch (error) {
+          console.error('Error fetching client info:', error);
+          alert('Failed to load authorization information. Please try again later.');
+        }
+      };
+      
+      // Function to render scope items
+      const renderScopes = (scopeString) => {
+        const scopeList = document.getElementById('scope-list');
+        scopeList.innerHTML = '';
+        
+        if (!scopeString) {
+          return;
+        }
+        
+        const scopes = scopeString.split(' ');
+        const scopeDescriptions = {
+          'profile': 'Access your basic profile information',
+          'content.read': 'View your content and drawers',
+          'content.write': 'Create, edit, and delete your content',
+          'drawers': 'Manage your drawers and collections'
+        };
+        
+        const scopeIcons = {
+          'profile': 'person',
+          'content.read': 'visibility',
+          'content.write': 'edit',
+          'drawers': 'folder'
+        };
+        
+        scopes.forEach(scope => {
+          const scopeItem = document.createElement('div');
+          scopeItem.className = 'scope-item';
+          
+          const scopeIcon = document.createElement('span');
+          scopeIcon.className = 'material-icons';
+          scopeIcon.textContent = scopeIcons[scope] || 'check_circle';
+          
+          const scopeText = document.createElement('div');
+          scopeText.textContent = scopeDescriptions[scope] || scope;
+          
+          scopeItem.appendChild(scopeIcon);
+          scopeItem.appendChild(scopeText);
+          scopeList.appendChild(scopeItem);
+        });
+      };
+      
+      // Handle approval button
+      document.getElementById('btn-approve').addEventListener('click', async () => {
+        try {
+          const response = await fetch('/authorize/approve', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              response_type: responseType,
+              client_id: clientId,
+              redirect_uri: redirectUri,
+              scope,
+              state,
+              code_challenge: codeChallenge,
+              code_challenge_method: codeChallengeMethod
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to approve authorization');
+          }
+          
+          const data = await response.json();
+          
+          // Redirect to the specified URL
+          if (data.redirect_uri) {
+            window.location.href = data.redirect_uri;
+          }
+        } catch (error) {
+          console.error('Error approving authorization:', error);
+          alert('Failed to complete authorization. Please try again later.');
+        }
+      });
+      
+      // Handle deny button
+      document.getElementById('btn-deny').addEventListener('click', () => {
+        // Redirect back to the client with an error
+        const errorRedirect = `${redirectUri}?error=access_denied&state=${state}`;
+        window.location.href = errorRedirect;
+      });
+      
+      // Initialize the page
+      fetchClientInfo();
+    });
+  </script>
+</body>
+</html>

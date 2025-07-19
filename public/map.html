@@ -9,6 +9,12 @@
   <script src="js/font-loader.js" defer></script>
   <script src="vendor/leaflet/leaflet.min.js" defer></script>
   <script type="module" src="src/globe/globe-visualizer.js" defer></script>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      NavigationBar.init('map');
+    });
+  </script>
   <style>
     .map-container {
       width: 100%;
@@ -40,32 +46,36 @@
       height: 18px;
       fill: var(--text-primary);
     }
+    /* Compact header */
+    .page-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .page-header h1 {
+      margin: 0;
+      margin-right: 1rem;
+    }
+    .page-header .subtitle {
+      margin: 0;
+      font-size: var(--fs-lg);
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
   <header>
     <div class="container">
-      <nav>
-        <a href="index.html" class="logo">R3L:F</a>
-        <div class="nav-links">
-          <a href="index.html">Home</a>
-          <a href="search.html">Search</a>
-          <a href="drawer.html">My Drawer</a>
-          <a href="network.html">Network</a>
-          <a href="map.html" class="active">Map</a>
-          <a href="random.html">Random</a>
-        </div>
-        <button class="nav-toggle" aria-label="Toggle navigation">
-          <span class="material-icons">menu</span>
-        </button>
-      </nav>
+      <!-- Navigation will be inserted by JavaScript -->
     </div>
   </header>
 
   <main>
     <div class="container">
-      <h1>Geographic Connections</h1>
-      <p class="subtitle">Explore content, users, and connections geographically</p>
+      <div class="page-header">
+        <h1>Geographic Connections</h1>
+        <p class="subtitle">Explore content, users, and connections geographically</p>
+      </div>
       
       <div class="control-panel">
         <div class="filter-group">

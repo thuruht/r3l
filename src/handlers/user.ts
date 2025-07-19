@@ -8,7 +8,9 @@ interface UserProfile {
   created_at: number;
   updated_at: number;
   orcid_id?: string;
+  github_id?: string;
   avatar_key?: string;
+  email?: string;
   preferences: UserPreferences;
 }
 
@@ -83,6 +85,106 @@ export class UserHandler {
       now,
       orcidId,
       null,
+      JSON.stringify(defaultPreferences)
+    ).run();
+    
+    return userId;
+  }
+  
+  /**
+   * Create a new user with GitHub authentication
+   * @param username Username
+   * @param displayName Display name
+   * @param githubId GitHub identifier
+   * @param avatarUrl GitHub avatar URL
+   * @param email User's email (optional)
+   * @param env Environment bindings
+   * @returns User ID of created user
+   */
+  async createUserWithGitHub(
+    username: string,
+    displayName: string,
+    githubId: string,
+    avatarUrl: string | null,
+    email: string | null,
+    env: Env
+  ): Promise<string> {
+    // Check if username is available
+    const existingUser = await env.R3L_DB.prepare(`
+      SELECT id FROM users WHERE username = ?
+    `).bind(username).first();
+    
+    if (existingUser) {
+      throw new Error('Username already taken');
+    }
+    
+    // Check if GitHub ID already registered
+    if (githubId) {
+      const existingGithub = await env.R3L_DB.prepare(`
+        SELECT id FROM users WHERE github_id = ?
+      `).bind(githubId).first();
+      
+      if (existingGithub) {
+        throw new Error('GitHub account already registered');
+      }
+    }
+    
+    const userId = crypto.randomUUID();
+    const now = Date.now();
+    
+    // Default preferences
+    const defaultPreferences = {
+      theme: 'system',
+      lurkerModeRandomness: 50,
+      defaultContentVisibility: 'public',
+      emailNotifications: true,
+      showLocationByDefault: false
+    };
+    
+    // Create avatar in R2 if we have an avatar URL
+    let avatarKey = null;
+    if (avatarUrl) {
+      try {
+        // Fetch avatar from GitHub
+        const avatarResponse = await fetch(avatarUrl);
+        if (avatarResponse.ok) {
+          const avatarBlob = await avatarResponse.blob();
+          avatarKey = `avatars/${userId}.${avatarBlob.type.split('/')[1] || 'png'}`;
+          
+          // Upload to R2
+          await env.R3L_CONTENT_BUCKET.put(
+            avatarKey,
+            avatarBlob.stream(),
+            {
+              httpMetadata: {
+                contentType: avatarBlob.type
+              }
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Failed to fetch and upload avatar:', error);
+        // Continue without avatar
+      }
+    }
+    
+    // Create user
+    await env.R3L_DB.prepare(`
+      INSERT INTO users (
+        id, username, display_name, bio, created_at, updated_at,
+        github_id, avatar_key, email, preferences
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      userId,
+      username,
+      displayName,
+      '',
+      now,
+      now,
+      githubId,
+      avatarKey,
+      email,
       JSON.stringify(defaultPreferences)
     ).run();
     
@@ -198,7 +300,57 @@ export class UserHandler {
       created_at: number;
       updated_at: number;
       orcid_id?: string;
+      github_id?: string;
       avatar_key?: string;
+      email?: string;
+      preferences: string;
+    }>();
+    
+    if (!user) {
+      return null;
+    }
+    
+    // Parse preferences JSON
+    let preferences: UserPreferences;
+    try {
+      preferences = JSON.parse(user.preferences);
+    } catch (error) {
+      // Fallback to defaults if preferences are corrupted
+      preferences = {
+        theme: 'system',
+        lurkerModeRandomness: 50,
+        defaultContentVisibility: 'public',
+        emailNotifications: true,
+        showLocationByDefault: false
+      };
+    }
+    
+    return {
+      ...user,
+      preferences
+    };
+  }
+  
+  /**
+   * Get a user by GitHub ID
+   * @param githubId GitHub identifier
+   * @param env Environment bindings
+   * @returns User profile or null if not found
+   */
+  async getUserByGitHub(githubId: string, env: Env): Promise<UserProfile | null> {
+    const user = await env.R3L_DB.prepare(`
+      SELECT * FROM users WHERE github_id = ?
+    `).bind(githubId).first<{
+      id: string;
+      username: string;
+      display_name: string;
+      bio: string;
+      created_at: number;
+      updated_at: number;
+      orcid_id?: string;
+      github_id?: string;
+      avatar_key?: string;
+      email?: string;
       preferences: string;
     }>();
     

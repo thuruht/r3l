@@ -17,7 +17,7 @@
   
   // Configure build settings
   "build": {
-    "command": "webpack"
+    "command": "npx webpack"
   },
   
   // Configure dev settings

@@ -1,0 +1,33 @@
+{
+  "userId": "user123",
+  "username": "JaneDoe",
+  "subtitle": "Digital Artist & Developer",
+  "communique": "<h4>Welcome to my drawer!</h4><p>I share creative coding projects and digital art here. Feel free to explore my content and connect if you find something interesting.</p>",
+  "connectionCount": 42,
+  "recentFiles": [
+    {
+      "id": "file1",
+      "title": "Generative Art Project",
+      "type": "image/png",
+      "expiresIn": 3
+    },
+    {
+      "id": "file2",
+      "title": "Creative Coding Tutorial",
+      "type": "application/pdf",
+      "expiresIn": 5
+    },
+    {
+      "id": "file3",
+      "title": "Audio Visualization",
+      "type": "audio/mp3",
+      "expiresIn": 2
+    },
+    {
+      "id": "file4",
+      "title": "Interactive Installation",
+      "type": "video/mp4",
+      "expiresIn": 4
+    }
+  ]
+}

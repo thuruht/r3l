@@ -1,8 +1,12 @@
 import { Env } from './types/env';
 import { Router } from './router';
+import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './collaboration';
 
 // Create a new router instance
 const router = new Router();
+
+// Export Durable Object classes
+export { ConnectionsObject, VisualizationObject, CollaborationRoom };
 
 export default {
   /**

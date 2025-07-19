@@ -7,7 +7,7 @@
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev",
-    "build": "webpack",
+    "build": "npx webpack",
     "clean": "rm -rf dist",
     "test": "jest",
     "format": "prettier --write '**/*.{js,ts,css,json,md}'",

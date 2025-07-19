@@ -32,7 +32,8 @@ deploy.yml
 .github/**/*.yml
 *.deploy.js
 *.deploy.ts
-wrangler*.jsonc
+# Uncommented to allow wrangler.jsonc in the repository
+# wrangler*.jsonc
 *.sublime-workspace
 *.swp
 *.swo

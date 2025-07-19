@@ -8,25 +8,10 @@
   <script src="./js/font-loader.js" defer></script>
 </head>
 <body>
-  <header class="navbar">
-    <div class="nav-brand">
-      <span class="material-icons" aria-hidden="true">public</span>
-      R3L:F
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
     </div>
-    <nav>
-      <ul class="nav-menu">
-        <li><a href="index.html" class="nav-link">Home</a></li>
-        <li><a href="drawer.html" class="nav-link">Drawer</a></li>
-        <li><a href="network.html" class="nav-link">Association Web</a></li>
-        <li><a href="map.html" class="nav-link">Map</a></li>
-        <li><a href="search.html" class="nav-link">Search</a></li>
-        <li><a href="random.html" class="nav-link tooltip active">
-          <span class="material-icons">shuffle</span>
-          <span class="tooltip-text">Random Communique</span>
-        </a></li>
-        <li><a href="login.html" class="nav-link">Login</a></li>
-      </ul>
-    </nav>
   </header>
 
   <main class="container">
@@ -116,6 +101,16 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Initialize the navigation bar
+      import('./js/components/navigation.js')
+        .then(module => {
+          const NavigationBar = module.NavigationBar;
+          NavigationBar.init('random');
+        })
+        .catch(error => {
+          console.error('Failed to load navigation component:', error);
+        });
+      
       const loadingIndicator = document.getElementById('loading-indicator');
       const drawerContent = document.getElementById('drawer-content');
       const randomDrawerTitle = document.getElementById('random-drawer-title');

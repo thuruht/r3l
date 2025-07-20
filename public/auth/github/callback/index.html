@@ -42,36 +42,46 @@
           callbackEndpoint;
         
         // Call the backend API to complete authentication
-        const response = await fetch(fullEndpoint);
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Authentication failed');
-        }
-        
-        const data = await response.json();
-        
-        // Hide spinner, show success
-        spinnerEl.classList.add('hidden');
-        statusEl.textContent = 'Success!';
-        statusEl.className = 'text-success';
-        messageEl.textContent = 'Authentication complete. Redirecting to your profile...';
-        
-        // Show countdown
-        let seconds = 3;
-        redirectInfo.textContent = `Redirecting in ${seconds} seconds...`;
-        redirectInfo.classList.remove('hidden');
-        
-        const interval = setInterval(() => {
-          seconds--;
-          redirectInfo.textContent = `Redirecting in ${seconds} seconds...`;
-          
-          if (seconds <= 0) {
-            clearInterval(interval);
-            // Redirect to profile or provided redirect URL
-            window.location.href = data.redirectUrl || '/profile.html';
+        const response = await fetch(fullEndpoint, {
+          headers: {
+            'Accept': 'application/json'
           }
-        }, 1000);
+        });
+        
+        let responseText;
+        try {
+          responseText = await response.text();
+          const data = JSON.parse(responseText);
+          
+          if (!response.ok || !data.success) {
+            throw new Error(data.message || 'Authentication failed');
+          }
+          
+          // Hide spinner, show success
+          spinnerEl.classList.add('hidden');
+          statusEl.textContent = 'Success!';
+          statusEl.className = 'text-success';
+          messageEl.textContent = 'Authentication complete. Redirecting to your profile...';
+          
+          // Show countdown
+          let seconds = 3;
+          redirectInfo.textContent = `Redirecting in ${seconds} seconds...`;
+          redirectInfo.classList.remove('hidden');
+          
+          const interval = setInterval(() => {
+            seconds--;
+            redirectInfo.textContent = `Redirecting in ${seconds} seconds...`;
+            
+            if (seconds <= 0) {
+              clearInterval(interval);
+              // Redirect to profile or provided redirect URL
+              window.location.href = data.redirectUrl || '/profile.html';
+            }
+          }, 1000);
+        } catch (parseError) {
+          console.error('Response parsing error:', parseError, 'Raw response:', responseText);
+          throw new Error('Could not parse server response. Please try again.');
+        }
       } catch (error) {
         console.error('Authentication error:', error);
         

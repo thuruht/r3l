@@ -155,7 +155,16 @@ export class Router {
           env
         );
         
-        // Set session cookie
+        // For API requests from the SPA, return JSON
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({
+            success: true,
+            token: authResult.token,
+            redirectUrl: '/'
+          });
+        }
+        
+        // For direct browser requests, set cookie and redirect
         const headers = new Headers({
           'Location': '/',
           'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
@@ -171,6 +180,16 @@ export class Router {
         });
       } catch (error) {
         console.error('ORCID auth error:', error);
+        
+        // For API requests from the SPA, return JSON error
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({ 
+            success: false, 
+            message: error instanceof Error ? error.message : 'Authentication failed' 
+          }, 400);
+        }
+        
+        // For direct browser requests, redirect
         return new Response(null, {
           status: 302,
           headers: {
@@ -203,7 +222,16 @@ export class Router {
           env
         );
         
-        // Set session cookie
+        // For API requests from the SPA, return JSON
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({
+            success: true,
+            token: authResult.token,
+            redirectUrl: '/'
+          });
+        }
+        
+        // For direct browser requests, set cookie and redirect
         const headers = new Headers({
           'Location': '/',
           'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
@@ -219,6 +247,16 @@ export class Router {
         });
       } catch (error) {
         console.error('GitHub auth error:', error);
+        
+        // For API requests from the SPA, return JSON error
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({ 
+            success: false, 
+            message: error instanceof Error ? error.message : 'Authentication failed' 
+          }, 400);
+        }
+        
+        // For direct browser requests, redirect
         return new Response(null, {
           status: 302,
           headers: {

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth Debug - R3L:F</title>
+  <link rel="stylesheet" href="/css/rel-f-global.css">
+  <script src="/js/font-loader.js" defer></script>
+  <style>
+    .debug-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--bg-container);
+      border-radius: 8px;
+      box-shadow: var(--shadow-medium);
+    }
+    
+    .response-display {
+      background-color: var(--bg-code);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin-top: 1rem;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>OAuth Debug</h1>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="debug-container">
+      <h2>Test API Endpoints</h2>
+      
+      <div class="form-group">
+        <label for="endpoint">Endpoint:</label>
+        <select id="endpoint" class="form-control">
+          <option value="/api/auth/orcid/callback">ORCID Callback</option>
+          <option value="/api/auth/github/callback">GitHub Callback</option>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="code">Authorization Code:</label>
+        <input type="text" id="code" class="form-control" placeholder="Enter code from URL">
+      </div>
+      
+      <div class="form-group">
+        <label for="state">State (optional):</label>
+        <input type="text" id="state" class="form-control" placeholder="Enter state from URL">
+      </div>
+      
+      <div class="form-group">
+        <label for="accept-header">Accept Header:</label>
+        <select id="accept-header" class="form-control">
+          <option value="application/json">application/json</option>
+          <option value="text/html">text/html</option>
+          <option value="">None</option>
+        </select>
+      </div>
+      
+      <div class="btn-group">
+        <button id="test-btn" class="btn">Test Endpoint</button>
+        <button id="clear-btn" class="btn btn-secondary">Clear Results</button>
+      </div>
+      
+      <h3>Response:</h3>
+      <div id="response-type" class="mb-2"></div>
+      <div id="response-status" class="mb-2"></div>
+      <div id="response-headers" class="mb-2"></div>
+      <div id="response-display" class="response-display">No response yet</div>
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const testBtn = document.getElementById('test-btn');
+      const clearBtn = document.getElementById('clear-btn');
+      const endpointSelect = document.getElementById('endpoint');
+      const codeInput = document.getElementById('code');
+      const stateInput = document.getElementById('state');
+      const acceptHeaderSelect = document.getElementById('accept-header');
+      const responseDisplay = document.getElementById('response-display');
+      const responseType = document.getElementById('response-type');
+      const responseStatus = document.getElementById('response-status');
+      const responseHeaders = document.getElementById('response-headers');
+      
+      // Check URL for code and state
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('code')) {
+        codeInput.value = urlParams.get('code');
+      }
+      if (urlParams.has('state')) {
+        stateInput.value = urlParams.get('state');
+      }
+      
+      testBtn.addEventListener('click', async () => {
+        const endpoint = endpointSelect.value;
+        const code = codeInput.value.trim();
+        const state = stateInput.value.trim();
+        const acceptHeader = acceptHeaderSelect.value;
+        
+        if (!code) {
+          responseDisplay.textContent = 'Error: Authorization code is required';
+          return;
+        }
+        
+        try {
+          // Build URL
+          let url = `${endpoint}?code=${encodeURIComponent(code)}`;
+          if (state) {
+            url += `&state=${encodeURIComponent(state)}`;
+          }
+          
+          // Prepare headers
+          const headers = {};
+          if (acceptHeader) {
+            headers['Accept'] = acceptHeader;
+          }
+          
+          // Make the request
+          responseDisplay.textContent = 'Loading...';
+          
+          const response = await fetch(url, { headers });
+          
+          // Display response status
+          responseStatus.textContent = `Status: ${response.status} ${response.statusText}`;
+          
+          // Display response headers
+          const headerText = Array.from(response.headers.entries())
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+          responseHeaders.textContent = `Headers:\n${headerText}`;
+          
+          // Check content type
+          const contentType = response.headers.get('content-type') || '';
+          responseType.textContent = `Content-Type: ${contentType}`;
+          
+          // Try to parse as JSON
+          if (contentType.includes('application/json')) {
+            try {
+              const data = await response.json();
+              responseDisplay.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+              responseDisplay.textContent = `Error parsing JSON: ${error.message}\n\nRaw text:\n${await response.text()}`;
+            }
+          } else {
+            // Just display as text
+            const text = await response.text();
+            responseDisplay.textContent = text;
+          }
+        } catch (error) {
+          responseDisplay.textContent = `Network error: ${error.message}`;
+        }
+      });
+      
+      clearBtn.addEventListener('click', () => {
+        responseDisplay.textContent = 'No response yet';
+        responseType.textContent = '';
+        responseStatus.textContent = '';
+        responseHeaders.textContent = '';
+      });
+    });
+  </script>
+</body>
+</html>

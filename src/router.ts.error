@@ -166,7 +166,8 @@ export class Router {
         
         // For direct browser requests, set cookies and redirect
         const headers = new Headers({
-          'Location': '/',
+          // Redirect new users to profile setup, existing users to homepage
+          'Location': authResult.isNewUser ? '/profile-setup.html' : '/',
           'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
         });
         
@@ -174,7 +175,13 @@ export class Router {
         // This doesn't contain the actual token, just a flag that user is logged in
         headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax`);
         
+        // Debug logging for onboarding flow
+        console.log('ORCID auth complete, isNewUser:', authResult.isNewUser, 
+                   'Redirecting to:', authResult.isNewUser ? '/profile-setup.html' : '/');
+        
         // Add CORS headers
+        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
         headers.set('Access-Control-Allow-Origin', requestUrl.origin);
         headers.set('Access-Control-Allow-Credentials', 'true');
         
@@ -228,17 +235,24 @@ export class Router {
         
         // For API requests from the SPA, return JSON
         if (request.headers.get('Accept')?.includes('application/json')) {
-          return this.jsonResponse({
-            success: true,
-            token: authResult.token,
-            redirectUrl: '/'
-          });
-        }
-        
         // For direct browser requests, set cookies and redirect
         const headers = new Headers({
-          'Location': '/',
+          // Redirect new users to profile setup, existing users to homepage
+          'Location': authResult.isNewUser ? '/profile-setup.html' : '/',
           'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+        });
+        
+        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
+        // This doesn't contain the actual token, just a flag that user is logged in
+        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax`);
+        
+        // Debug logging for onboarding flow
+        console.log('GitHub auth complete, isNewUser:', authResult.isNewUser, 
+                   'Redirecting to:', authResult.isNewUser ? '/profile-setup.html' : '/');
+        
+        // Add CORS headers
+        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
         });
         
         // Add a secondary cookie that's accessible to JavaScript just to indicate auth state

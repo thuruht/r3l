@@ -3,12 +3,16 @@
  * Provides a consistent navigation bar across all pages
  */
 
+import { isAuthenticated, validateAuth, logout, debugLog } from '../auth-helper.js';
+
 export class NavigationBar {
   /**
    * Initialize the navigation bar
    * @param {string} currentPage - The current page ID (e.g., 'home', 'search', etc.)
    */
   static init(currentPage) {
+    debugLog('NavigationBar', 'Initializing navigation bar', { currentPage });
+    
     // Create the navigation HTML - More compact design with logo on left, nav items on right
     const navHtml = `
       <div class="navbar">
@@ -64,7 +68,7 @@ export class NavigationBar {
       // Check if user is logged in and update navigation accordingly
       this.updateAuthState();
     } else {
-      console.error('Header element not found');
+      debugLog('NavigationBar', 'Error: Header element not found');
     }
   }
   
@@ -85,15 +89,20 @@ export class NavigationBar {
     const hasAuthState = authStateCookie === 'true';
     const loginItem = document.getElementById('nav-login-item');
     
-    console.log('Checking auth state:', hasAuthState ? 'Auth state cookie found' : 'No auth state cookie', document.cookie);
+    console.log('[NavigationBar] Auth state check:', {
+      authStateCookie,
+      hasAuthState,
+      loginItemFound: !!loginItem,
+      allCookies: document.cookie.split(';').map(c => c.trim()).join(', ')
+    });
     
     // If logged in, update the login link to show user profile
     if (hasAuthState && loginItem) {
-      console.log('Auth state cookie found, fetching user profile...');
+      console.log('[NavigationBar] Auth state found, fetching user profile...');
       // Fetch user data from API
       this.fetchUserProfile()
         .then(user => {
-          console.log('User profile fetched:', user);
+          console.log('[NavigationBar] User profile fetched:', user);
           if (user) {
             loginItem.innerHTML = `
               <div class="user-profile-nav">
@@ -128,13 +137,19 @@ export class NavigationBar {
               e.preventDefault();
               this.logout();
             });
+          } else {
+            console.log('[NavigationBar] User profile was null');
+            this.handleAuthError('User profile not found');
           }
         })
         .catch(err => {
-          console.error('Failed to fetch user profile:', err);
-          this.handleAuthError();
+          console.error('[NavigationBar] Failed to fetch user profile:', err);
+          this.handleAuthError(err.message);
         });
+    } else {
+      console.log('[NavigationBar] No auth state found, showing login link');
     }
+  }
   }
   
   /**
@@ -144,29 +159,39 @@ export class NavigationBar {
   static async fetchUserProfile() {
     try {
       // Debug cookie info
-      console.log('Current cookies:', document.cookie);
+      console.log('[NavigationBar] Fetching profile - Current cookies:', {
+        cookieString: document.cookie,
+        cookieLength: document.cookie.length
+      });
       
       // Get auth token from cookie or try credentials include
       const match = document.cookie.match(/r3l_session=([^;]+)/);
-      console.log('Cookie match:', match ? 'Found' : 'Not found');
+      console.log('[NavigationBar] Session cookie match:', match ? 'Found' : 'Not found');
       
       // Use credentials: 'include' instead of trying to extract the token
-      console.log('Fetching profile from /api/auth/validate with credentials:include');
+      console.log('[NavigationBar] Fetching profile from /api/auth/validate with credentials:include');
+      const startTime = performance.now();
       const response = await fetch('/api/auth/validate', {
         credentials: 'include'
       });
+      const endTime = performance.now();
       
-      console.log('Profile response:', response.status, response.statusText);
+      console.log('[NavigationBar] Profile response:', {
+        status: response.status,
+        statusText: response.statusText,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
+        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
+      });
       
       if (!response.ok) {
         throw new Error(`Invalid session: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
-      console.log('Profile data:', data);
+      console.log('[NavigationBar] Profile data:', data);
       return data.user;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('[NavigationBar] Error fetching user profile:', error);
       return null;
     }
   }

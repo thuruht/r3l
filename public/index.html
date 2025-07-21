@@ -480,17 +480,49 @@
       }
         
       // Draw nodes with glowing effect
-      const node = svg.append("g")
-        .selectAll("circle")
+      const nodeGroup = svg.append("g")
+        .selectAll(".node-group")
         .data(nodes)
         .enter()
-        .append("circle")
-        .attr("r", d => d.size)
-        .attr("fill", d => d.color)
-        .attr("stroke", "#182820")
-        .attr("stroke-width", 1)
-        .attr("opacity", 0.9)
+        .append("g")
+        .attr("class", "node-group")
+        .attr("transform", d => `translate(${d.x}, ${d.y})`)
         .each(function(d) {
+          // Add shapes based on node type - Keeping consistency with network.html implementation
+          const shape = d3.select(this);
+          const shapeSize = d.size;
+          
+          if (d.type === 'user') {
+            // Circle for users (same as network.html)
+            shape.append("circle")
+              .attr("r", shapeSize)
+              .attr("cx", 0)
+              .attr("cy", 0)
+              .attr("fill", d.color)
+              .attr("stroke", "#182820")
+              .attr("stroke-width", 1)
+              .attr("opacity", 0.9);
+          } else if (d.type === 'file') {
+            // Square for files (same as network.html)
+            shape.append("rect")
+              .attr("width", shapeSize * 2)
+              .attr("height", shapeSize * 2)
+              .attr("x", -shapeSize)
+              .attr("y", -shapeSize)
+              .attr("fill", d.color)
+              .attr("stroke", "#182820")
+              .attr("stroke-width", 1)
+              .attr("opacity", 0.9);
+          } else if (d.type === 'tag') {
+            // Diamond for tags (same as network.html)
+            shape.append("polygon")
+              .attr("points", `0,-${shapeSize} ${shapeSize},0 0,${shapeSize} -${shapeSize},0`)
+              .attr("fill", d.color)
+              .attr("stroke", "#182820")
+              .attr("stroke-width", 1)
+              .attr("opacity", 0.9);
+          }
+          
           // Add subtle glow effect for certain nodes
           if (d.id === 'user-0' || Math.random() > 0.7) {
             const glow = defs.append("filter")
@@ -514,7 +546,7 @@
         });
         
       // Subtle pulse animation for nodes
-      node.style("animation", () => `pulse ${3 + Math.random() * 4}s infinite`);
+      nodeGroup.style("animation", () => `pulse ${3 + Math.random() * 4}s infinite`);
       
       // Update positions
       simulation.on("tick", () => {
@@ -524,9 +556,8 @@
           .attr("x2", d => d.target.x)
           .attr("y2", d => d.target.y);
           
-        node
-          .attr("cx", d => d.x)
-          .attr("cy", d => d.y);
+        nodeGroup
+          .attr("transform", d => `translate(${d.x}, ${d.y})`);
           
         updateGradients();
       });

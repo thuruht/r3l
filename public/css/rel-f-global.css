@@ -212,7 +212,7 @@ a {
 
 a:hover {
   text-decoration: underline;
-  text-shadow: 1px 1px 6px rgba(127, 216, 216, 0.3);
+  text-shadow: 1px 1px 6px rgba(127, 216, 216, 0.9);
 }
 
 /* Layouts and Containers */
@@ -319,7 +319,7 @@ a:hover {
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 4px rgba(162, 120, 255, 0.3);
+  box-shadow: 0 2px 4px rgba(162, 120, 255, 0.9);
 }
 
 .btn:hover {
@@ -342,7 +342,7 @@ a:hover {
 .btn-secondary:hover {
   background-color: rgba(162, 120, 255, 0.15);
   border-color: var(--accent-lavender-hover);
-  color: var(--accent-lavender-hover);
+  color: var(--link);
 }
 
 .btn-small {

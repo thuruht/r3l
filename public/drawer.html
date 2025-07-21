@@ -259,95 +259,20 @@
         'default': 'insert_drive_file'
       };
       
-      // Mock user data - would be replaced with real API call
-      const mockUser = {
-        name: 'SampleUser',
-        joined: 'July 12, 2025',
-        filesCount: 23,
-        archivedCount: 7,
-        connectionsCount: 12,
-        isLurker: false,
-        communique: 'Welcome to my drawer! I share mostly creative coding projects and research papers. Feel free to browse and connect if our interests align.'
-      };
+      // State variables
+      let userData = null;
+      let currentPage = 1;
+      let currentFilter = 'all';
+      let userFiles = [];
       
-      // Mock file data - would be replaced with real API call
-      const mockFiles = [
-        { 
-          id: '1', 
-          name: 'project-notes.md', 
-          type: 'text/markdown', 
-          size: 15680, 
-          isPublic: true, 
-          created: Date.now() - 2 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 5 * 24 * 60 * 60 * 1000,
-          isArchived: false
-        },
-        { 
-          id: '2', 
-          name: 'visualization.png', 
-          type: 'image/png', 
-          size: 256000, 
-          isPublic: true, 
-          created: Date.now() - 3 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 4 * 24 * 60 * 60 * 1000,
-          isArchived: false
-        },
-        { 
-          id: '3', 
-          name: 'private-research.pdf', 
-          type: 'application/pdf', 
-          size: 1024000, 
-          isPublic: false, 
-          created: Date.now() - 1 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 6 * 24 * 60 * 60 * 1000,
-          isArchived: false
-        },
-        { 
-          id: '4', 
-          name: 'ambient-loop.mp3', 
-          type: 'audio/mp3', 
-          size: 5120000, 
-          isPublic: true, 
-          created: Date.now() - 5 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 2 * 24 * 60 * 60 * 1000,
-          isArchived: false
-        },
-        { 
-          id: '5', 
-          name: 'archived-dataset.json', 
-          type: 'application/json', 
-          size: 102400, 
-          isPublic: true, 
-          created: Date.now() - 15 * 24 * 60 * 60 * 1000,
-          expires: null,
-          isArchived: true
-        }
-      ];
-      
-      // Initialize UI with user data
-      function initUserData() {
-        userName.textContent = mockUser.name;
-        userJoined.textContent = mockUser.joined;
-        filesCount.textContent = mockUser.filesCount;
-        archivedCount.textContent = mockUser.archivedCount;
-        connectionsCount.textContent = mockUser.connectionsCount;
-        lurkerMode.checked = mockUser.isLurker;
-        updateLurkerStatus();
-        
-        if (mockUser.communique) {
-          communique.innerHTML = mockUser.communique;
-        }
-      }
-      
-      // Update lurker mode status display
-      function updateLurkerStatus() {
-        if (lurkerMode.checked) {
-          lurkerStatus.textContent = 'Active';
-          lurkerStatus.classList.add('active');
-        } else {
-          lurkerStatus.textContent = 'Inactive';
-          lurkerStatus.classList.remove('active');
-        }
+      // Format date for display
+      function formatDate(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
       }
       
       // Format file size for display
@@ -376,99 +301,292 @@
       // Get icon for file type
       function getFileIcon(fileType) {
         for (const type in fileIcons) {
-          if (fileType.startsWith(type)) {
+          if (fileType && fileType.startsWith(type)) {
             return fileIcons[type];
           }
         }
         return fileIcons.default;
       }
       
-      // Load and display files
-      function loadFiles(filter = 'all') {
+      // Check if the user is authenticated
+      async function checkAuthentication() {
+        try {
+          // Check for auth state cookie
+          if (!document.cookie.includes('r3l_auth_state=true')) {
+            showLoginPrompt();
+            return false;
+          }
+          
+          // Fetch user profile from API
+          const response = await fetch('/api/auth/validate', {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            showLoginPrompt();
+            return false;
+          }
+          
+          const data = await response.json();
+          userData = data.user;
+          return true;
+        } catch (error) {
+          console.error('Authentication check failed:', error);
+          showLoginPrompt();
+          return false;
+        }
+      }
+      
+      // Show login prompt if not authenticated
+      function showLoginPrompt() {
+        const drawerContainer = document.querySelector('.drawer-container');
+        const cardElements = document.querySelectorAll('.card');
+        
+        if (drawerContainer) {
+          drawerContainer.innerHTML = `
+            <div class="login-prompt">
+              <h2>Authentication Required</h2>
+              <p>You need to be logged in to view your drawer.</p>
+              <a href="./login.html" class="btn">
+                <span class="material-icons">login</span>
+                Log In
+              </a>
+            </div>
+          `;
+        }
+        
+        // Hide other content sections
+        cardElements.forEach(card => {
+          card.style.display = 'none';
+        });
+      }
+      
+      // Initialize UI with user data
+      function initUserData() {
+        if (!userData) return;
+        
+        userName.textContent = userData.display_name || userData.username;
+        
+        // Format joined date
+        const joinedDate = userData.created_at ? 
+          formatDate(userData.created_at) : 
+          'Recently';
+        userJoined.textContent = joinedDate;
+        
+        // Set communique if available
+        if (userData.preferences && userData.preferences.communique) {
+          communique.innerHTML = userData.preferences.communique;
+        }
+        
+        // Set lurker mode if available
+        if (userData.preferences && userData.preferences.lurker_mode !== undefined) {
+          lurkerMode.checked = userData.preferences.lurker_mode;
+          updateLurkerStatus();
+        }
+        
+        // Fetch user stats
+        fetchUserStats();
+      }
+      
+      // Fetch user stats
+      async function fetchUserStats() {
+        if (!userData) return;
+        
+        try {
+          const response = await fetch(`/api/users/${userData.id}/stats`, {
+            credentials: 'include'
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to fetch user stats:', response.status);
+            return;
+          }
+          
+          const stats = await response.json();
+          
+          // Update stats display
+          filesCount.textContent = stats.total_files || 0;
+          archivedCount.textContent = stats.archived_files || 0;
+          connectionsCount.textContent = stats.connections || 0;
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
+      }
+      
+      // Update lurker mode status display
+      function updateLurkerStatus() {
+        if (lurkerMode.checked) {
+          lurkerStatus.textContent = 'Active';
+          lurkerStatus.classList.add('active');
+        } else {
+          lurkerStatus.textContent = 'Inactive';
+          lurkerStatus.classList.remove('active');
+        }
+      }
+      
+      // Save lurker mode preference
+      async function saveLurkerMode() {
+        if (!userData) return;
+        
+        try {
+          const response = await fetch(`/api/users/${userData.id}/preferences`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              lurker_mode: lurkerMode.checked
+            })
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to save lurker mode:', response.status);
+          }
+        } catch (error) {
+          console.error('Error saving lurker mode:', error);
+        }
+      }
+      
+      // Save communique content
+      async function saveCommunique() {
+        if (!userData) return;
+        
+        try {
+          const response = await fetch(`/api/users/${userData.id}/preferences`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              communique: communique.innerHTML
+            })
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to save communique:', response.status);
+          }
+        } catch (error) {
+          console.error('Error saving communique:', error);
+        }
+      }
+      
+      // Load user files
+      async function loadFiles(filter = 'all') {
+        if (!userData) return;
+        
+        // Update current filter
+        currentFilter = filter;
+        
         // Show loading state
         loadingPlaceholder.classList.remove('hidden');
         fileGrid.classList.add('hidden');
         emptyState.classList.add('hidden');
         pagination.classList.add('hidden');
         
-        // Simulate API request delay
-        setTimeout(() => {
-          // Filter files based on selected tab
-          let filteredFiles = [...mockFiles];
+        try {
+          // Fetch user's files
+          const response = await fetch(`/api/users/${userData.id}/files?filter=${filter}`, {
+            credentials: 'include'
+          });
           
-          switch(filter) {
-            case 'public':
-              filteredFiles = filteredFiles.filter(file => file.isPublic);
-              break;
-            case 'private':
-              filteredFiles = filteredFiles.filter(file => !file.isPublic);
-              break;
-            case 'expiring':
-              filteredFiles = filteredFiles.filter(file => 
-                file.expires && (file.expires - Date.now() < 2 * 24 * 60 * 60 * 1000)
-              );
-              break;
-            case 'archived':
-              filteredFiles = filteredFiles.filter(file => file.isArchived);
-              break;
+          if (!response.ok) {
+            console.error('Failed to fetch files:', response.status);
+            loadingPlaceholder.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            return;
           }
           
-          // Check for search query
+          const result = await response.json();
+          userFiles = result.files || [];
+          
+          // Filter by search query if needed
           const searchQuery = fileSearch.value.toLowerCase().trim();
           if (searchQuery) {
-            filteredFiles = filteredFiles.filter(file => 
+            userFiles = userFiles.filter(file => 
               file.name.toLowerCase().includes(searchQuery)
             );
           }
           
-          // Hide loading, show appropriate view
+          // Hide loading indicator
           loadingPlaceholder.classList.add('hidden');
           
-          if (filteredFiles.length === 0) {
+          // Show appropriate view
+          if (userFiles.length === 0) {
             emptyState.classList.remove('hidden');
           } else {
-            fileGrid.innerHTML = '';
-            
-            // Create file items
-            filteredFiles.forEach(file => {
-              const template = document.getElementById('file-item-template');
-              const fileItem = template.content.cloneNode(true);
-              
-              // Set file icon
-              const iconElement = fileItem.querySelector('.file-icon .material-icons');
-              iconElement.textContent = getFileIcon(file.type);
-              
-              // Set file name
-              const nameElement = fileItem.querySelector('.file-name');
-              nameElement.textContent = file.name;
-              
-              // Set file expiry
-              const expiryElement = fileItem.querySelector('.file-expiry');
-              expiryElement.textContent = formatTimeRemaining(file.expires);
-              
-              // Add data attributes for filtering
-              const itemElement = fileItem.querySelector('.file-item');
-              itemElement.dataset.id = file.id;
-              itemElement.dataset.public = file.isPublic;
-              itemElement.dataset.archived = file.isArchived;
-              
-              // Add click handler
-              itemElement.addEventListener('click', () => {
-                window.location.href = `./content.html?id=${file.id}`;
-              });
-              
-              // Add to grid
-              fileGrid.appendChild(fileItem);
-            });
-            
-            fileGrid.classList.remove('hidden');
-            
-            // Show pagination if needed
-            if (filteredFiles.length > 20) {
-              pagination.classList.remove('hidden');
-            }
+            displayFiles();
           }
-        }, 800); // Simulate network delay
+        } catch (error) {
+          console.error('Error loading files:', error);
+          loadingPlaceholder.classList.add('hidden');
+          emptyState.classList.remove('hidden');
+        }
+      }
+      
+      // Display files in the grid
+      function displayFiles() {
+        // Clear existing files
+        fileGrid.innerHTML = '';
+        
+        // Calculate pagination
+        const filesPerPage = 20;
+        const startIndex = (currentPage - 1) * filesPerPage;
+        const endIndex = startIndex + filesPerPage;
+        const paginatedFiles = userFiles.slice(startIndex, endIndex);
+        
+        // Create file items
+        paginatedFiles.forEach(file => {
+          const template = document.getElementById('file-item-template');
+          const fileItem = template.content.cloneNode(true);
+          
+          // Set file icon
+          const iconElement = fileItem.querySelector('.file-icon .material-icons');
+          iconElement.textContent = getFileIcon(file.type);
+          
+          // Set file name
+          const nameElement = fileItem.querySelector('.file-name');
+          nameElement.textContent = file.name;
+          
+          // Set file expiry
+          const expiryElement = fileItem.querySelector('.file-expiry');
+          expiryElement.textContent = formatTimeRemaining(file.expires_at);
+          
+          // Add data attributes for filtering
+          const itemElement = fileItem.querySelector('.file-item');
+          itemElement.dataset.id = file.id;
+          itemElement.dataset.public = file.is_public ? 'true' : 'false';
+          itemElement.dataset.archived = file.is_archived ? 'true' : 'false';
+          
+          // Add click handler
+          itemElement.addEventListener('click', () => {
+            window.location.href = `./content.html?id=${file.id}`;
+          });
+          
+          // Add to grid
+          fileGrid.appendChild(fileItem);
+        });
+        
+        fileGrid.classList.remove('hidden');
+        
+        // Show pagination if needed
+        if (userFiles.length > filesPerPage) {
+          pagination.classList.remove('hidden');
+          updatePagination();
+        }
+      }
+      
+      // Update pagination controls
+      function updatePagination() {
+        const filesPerPage = 20;
+        const totalPages = Math.ceil(userFiles.length / filesPerPage);
+        
+        pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+        
+        // Enable/disable prev/next buttons
+        prevPage.disabled = currentPage === 1;
+        nextPage.disabled = currentPage === totalPages;
       }
       
       // Initialize event listeners
@@ -476,7 +594,7 @@
         // Lurker mode toggle
         lurkerMode.addEventListener('change', () => {
           updateLurkerStatus();
-          // Here you would also make an API call to update the user's lurker status
+          saveLurkerMode();
         });
         
         // Tab buttons
@@ -486,6 +604,9 @@
             tabButtons.forEach(btn => btn.classList.remove('active'));
             button.classList.add('active');
             
+            // Reset to page 1
+            currentPage = 1;
+            
             // Load files with appropriate filter
             const filter = button.id.replace('tab-', '');
             loadFiles(filter);
@@ -494,42 +615,55 @@
         
         // Refresh button
         btnRefresh.addEventListener('click', () => {
-          const activeTab = document.querySelector('[id^="tab-"].active');
-          const filter = activeTab.id.replace('tab-', '');
-          loadFiles(filter);
+          loadFiles(currentFilter);
         });
         
         // Search input
         fileSearch.addEventListener('keyup', (e) => {
           if (e.key === 'Enter') {
-            const activeTab = document.querySelector('[id^="tab-"].active');
-            const filter = activeTab.id.replace('tab-', '');
-            loadFiles(filter);
+            // Reset to page 1
+            currentPage = 1;
+            loadFiles(currentFilter);
           }
         });
         
         // Pagination
         prevPage.addEventListener('click', () => {
-          // Here you would update the page number and reload files
-          alert('Previous page (would be implemented with real API)');
+          if (currentPage > 1) {
+            currentPage--;
+            displayFiles();
+          }
         });
         
         nextPage.addEventListener('click', () => {
-          // Here you would update the page number and reload files
-          alert('Next page (would be implemented with real API)');
+          const filesPerPage = 20;
+          const totalPages = Math.ceil(userFiles.length / filesPerPage);
+          
+          if (currentPage < totalPages) {
+            currentPage++;
+            displayFiles();
+          }
         });
         
         // Communique edits
         communique.addEventListener('blur', () => {
-          // Here you would save the communique content via API
-          console.log('Communique updated:', communique.innerHTML);
+          saveCommunique();
         });
       }
       
       // Initialize the page
-      initUserData();
-      initEventListeners();
-      loadFiles();
+      async function init() {
+        // Check if user is authenticated
+        const isAuthenticated = await checkAuthentication();
+        
+        if (isAuthenticated) {
+          initUserData();
+          initEventListeners();
+          loadFiles('all');
+        }
+      }
+      
+      init();
     });
   </script>
 </body>

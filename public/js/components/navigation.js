@@ -134,20 +134,17 @@ export class NavigationBar {
    */
   static async fetchUserProfile() {
     try {
-      // Get auth token from cookie
+      // Debug cookie info
+      console.log('Current cookies:', document.cookie);
+      
+      // Get auth token from cookie or try credentials include
       const match = document.cookie.match(/r3l_session=([^;]+)/);
-      console.log('Cookie match:', match ? 'Found' : 'Not found', document.cookie);
-      if (!match) return null;
+      console.log('Cookie match:', match ? 'Found' : 'Not found');
       
-      const token = match[1];
-      console.log('Auth token extracted:', token ? 'Present' : 'Missing');
-      
-      // Fetch user profile
-      console.log('Fetching profile from /api/auth/validate');
+      // Use credentials: 'include' instead of trying to extract the token
+      console.log('Fetching profile from /api/auth/validate with credentials:include');
       const response = await fetch('/api/auth/validate', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        credentials: 'include'
       });
       
       console.log('Profile response:', response.status, response.statusText);

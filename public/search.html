@@ -246,86 +246,83 @@
         'default': 'insert_drive_file'
       };
       
-      // Mock search results - would be replaced with real API call
-      const mockResults = [
-        { 
-          id: '1', 
-          name: 'research-notes.md', 
-          type: 'text/markdown', 
-          size: 25680, 
-          isPublic: true, 
-          created: Date.now() - 1 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 6 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'Researcher42'
-        },
-        { 
-          id: '2', 
-          name: 'data-visualization.png', 
-          type: 'image/png', 
-          size: 356000, 
-          isPublic: true, 
-          created: Date.now() - 2 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 5 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'VisualArtist'
-        },
-        { 
-          id: '3', 
-          name: 'experiment-results.pdf', 
-          type: 'application/pdf', 
-          size: 2024000, 
-          isPublic: true, 
-          created: Date.now() - 3 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 4 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'LabTeam'
-        },
-        { 
-          id: '4', 
-          name: 'field-recording.mp3', 
-          type: 'audio/mp3', 
-          size: 7120000, 
-          isPublic: true, 
-          created: Date.now() - 4 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 3 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'SoundCollector'
-        },
-        { 
-          id: '5', 
-          name: 'community-archive.json', 
-          type: 'application/json', 
-          size: 152400, 
-          isPublic: true, 
-          created: Date.now() - 15 * 24 * 60 * 60 * 1000,
-          expires: null,
-          isArchived: true,
-          user: 'ArchiveBot'
-        },
-        { 
-          id: '6', 
-          name: 'interview-transcript.txt', 
-          type: 'text/plain', 
-          size: 45200, 
-          isPublic: true, 
-          created: Date.now() - 5 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 2 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'Journalist27'
-        },
-        { 
-          id: '7', 
-          name: 'code-snippets.ipynb', 
-          type: 'application/x-ipynb+json', 
-          size: 28400, 
-          isPublic: true, 
-          created: Date.now() - 6 * 24 * 60 * 60 * 1000,
-          expires: Date.now() + 1 * 24 * 60 * 60 * 1000,
-          isArchived: false,
-          user: 'CodeWizard'
+      // Function to fetch search results from API
+      async function fetchSearchResults(searchParams) {
+        try {
+          // Determine if it's a standard or anti-tracking search
+          const endpoint = searchParams.antiTracking ? '/api/search/lurker' : '/api/search';
+          
+          // Build query parameters
+          const params = new URLSearchParams();
+          
+          if (searchParams.query) {
+            params.append('q', searchParams.query);
+          }
+          
+          // Add file type filters
+          if (searchParams.fileTypes.length > 0) {
+            searchParams.fileTypes.forEach(type => {
+              params.append('type', type);
+            });
+          }
+          
+          // Add time frame filter
+          if (searchParams.timeFrame !== 'all') {
+            const now = Date.now();
+            let timeLimit;
+            
+            switch (searchParams.timeFrame) {
+              case 'day':
+                timeLimit = now - (24 * 60 * 60 * 1000);
+                break;
+              case 'week':
+                timeLimit = now - (7 * 24 * 60 * 60 * 1000);
+                break;
+              case 'month':
+                timeLimit = now - (30 * 24 * 60 * 60 * 1000);
+                break;
+            }
+            
+            if (timeLimit) {
+              params.append('date_start', timeLimit.toString());
+            }
+          }
+          
+          // Add sorting and pagination
+          if (searchParams.sortBy) {
+            params.append('sort', searchParams.sortBy);
+          }
+          
+          params.append('limit', '20');
+          params.append('offset', ((searchParams.page - 1) * 20).toString());
+          
+          // For lurker search, add randomness parameter
+          if (searchParams.antiTracking) {
+            params.append('randomness', '75');
+          }
+          
+          // Send request
+          const response = await fetch(`${endpoint}?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'same-origin' // Include cookies for auth
+          });
+          
+          if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+          }
+          
+          const data = await response.json();
+          return data;
+        } catch (error) {
+          console.error('Error fetching search results:', error);
+          
+          // Fallback to mock results if API fails
+          return mockResults;
         }
-      ];
+      }
       
       // Format file size
       function formatFileSize(bytes) {
@@ -360,6 +357,54 @@
         return fileIcons.default;
       }
       
+      // Fallback mock results if API fails
+      const mockResults = [
+        { 
+          id: '1', 
+          title: 'research-notes.md', 
+          type: 'text/markdown', 
+          size: 25680, 
+          is_public: true, 
+          created_at: Date.now() - 1 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 6 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'Researcher42'
+        },
+        { 
+          id: '2', 
+          title: 'data-visualization.png', 
+          type: 'image/png', 
+          size: 356000, 
+          is_public: true, 
+          created_at: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 5 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'VisualArtist'
+        },
+        { 
+          id: '3', 
+          title: 'experiment-results.pdf', 
+          type: 'application/pdf', 
+          size: 2024000, 
+          is_public: true, 
+          created_at: Date.now() - 3 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 4 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'LabTeam'
+        },
+        { 
+          id: '4', 
+          title: 'field-recording.mp3', 
+          type: 'audio/mp3', 
+          size: 7120000, 
+          is_public: true, 
+          created_at: Date.now() - 4 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 3 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'SoundCollector'
+        }
+      ];
+      
       // Update anti-tracking status display
       function updateAntiTrackingStatus() {
         if (antiTrackingSearch.checked) {
@@ -372,7 +417,7 @@
       }
       
       // Execute search based on form inputs
-      function executeSearch() {
+      async function executeSearch() {
         // Show results container and loading state
         resultsContainer.classList.remove('hidden');
         loadingResults.classList.remove('hidden');
@@ -395,128 +440,56 @@
         
         console.log('Search params:', searchParams);
         
-        // Simulate API request delay
-        setTimeout(() => {
-          // Filter results based on search parameters (mock implementation)
-          let filteredResults = [...mockResults];
-          
-          // Apply query filter
-          if (searchParams.query) {
-            const query = searchParams.query.toLowerCase();
-            filteredResults = filteredResults.filter(result => 
-              result.name.toLowerCase().includes(query) || 
-              result.user.toLowerCase().includes(query)
-            );
-          }
-          
-          // Apply file type filter
-          if (searchParams.fileTypes.length > 0) {
-            filteredResults = filteredResults.filter(result => {
-              if (searchParams.fileTypes.includes('image') && result.type.startsWith('image/')) return true;
-              if (searchParams.fileTypes.includes('audio') && result.type.startsWith('audio/')) return true;
-              if (searchParams.fileTypes.includes('video') && result.type.startsWith('video/')) return true;
-              if (searchParams.fileTypes.includes('document') && (
-                result.type.startsWith('text/') || 
-                result.type === 'application/pdf' || 
-                result.type.includes('document')
-              )) return true;
-              if (searchParams.fileTypes.includes('code') && (
-                result.type.includes('json') || 
-                result.type.includes('ipynb') || 
-                result.type === 'text/plain'
-              )) return true;
-              if (searchParams.fileTypes.includes('other')) return true;
-              return false;
-            });
-          }
-          
-          // Apply time frame filter
-          if (searchParams.timeFrame !== 'all') {
-            const now = Date.now();
-            let timeLimit;
-            
-            switch (searchParams.timeFrame) {
-              case 'day':
-                timeLimit = now - (24 * 60 * 60 * 1000);
-                break;
-              case 'week':
-                timeLimit = now - (7 * 24 * 60 * 60 * 1000);
-                break;
-              case 'month':
-                timeLimit = now - (30 * 24 * 60 * 60 * 1000);
-                break;
-            }
-            
-            filteredResults = filteredResults.filter(result => result.created >= timeLimit);
-          }
-          
-          // Apply archived filter
-          if (!searchParams.includeArchived) {
-            filteredResults = filteredResults.filter(result => !result.isArchived);
-          }
-          
-          // Apply expiring filter
-          if (searchParams.includeExpiring) {
-            // Prioritize soon-to-expire content (within 2 days)
-            filteredResults.sort((a, b) => {
-              const aExpiring = a.expires && (a.expires - Date.now() < 2 * 24 * 60 * 60 * 1000);
-              const bExpiring = b.expires && (b.expires - Date.now() < 2 * 24 * 60 * 60 * 1000);
-              
-              if (aExpiring && !bExpiring) return -1;
-              if (!aExpiring && bExpiring) return 1;
-              return 0;
-            });
-          }
-          
-          // Apply sorting
-          switch (searchParams.sortBy) {
-            case 'recent':
-              filteredResults.sort((a, b) => b.created - a.created);
-              break;
-            case 'size':
-              filteredResults.sort((a, b) => b.size - a.size);
-              break;
-            case 'name':
-              filteredResults.sort((a, b) => a.name.localeCompare(b.name));
-              break;
-          }
+        try {
+          // Fetch search results from API
+          const results = await fetchSearchResults(searchParams);
           
           // Update results count
-          resultsCount.textContent = `${filteredResults.length} results`;
+          resultsCount.textContent = `${results.length} results`;
           
           // Hide loading state
           loadingResults.classList.add('hidden');
           
           // Show results or empty state
-          if (filteredResults.length === 0) {
+          if (results.length === 0) {
             noResults.classList.remove('hidden');
           } else {
             resultsGrid.innerHTML = '';
             
             // Create result items
-            filteredResults.forEach(result => {
+            results.forEach(result => {
               const template = document.getElementById('result-item-template');
               const resultItem = template.content.cloneNode(true);
               
+              // Map API response to expected format
+              const item = {
+                id: result.id,
+                name: result.title || result.name || 'Untitled',
+                type: result.type || 'application/octet-stream',
+                size: result.size || 0,
+                expires: result.expires_at || result.expires,
+                user: result.user_name || result.user || 'Unknown'
+              };
+              
               // Set file icon
               const iconElement = resultItem.querySelector('.file-icon .material-icons');
-              iconElement.textContent = getFileIcon(result.type);
+              iconElement.textContent = getFileIcon(item.type);
               
               // Set file name
               const nameElement = resultItem.querySelector('.file-name');
-              nameElement.textContent = `${result.name} (${result.user})`;
+              nameElement.textContent = `${item.name} (${item.user})`;
               
               // Set file expiry
               const expiryElement = resultItem.querySelector('.file-expiry');
-              expiryElement.textContent = formatTimeRemaining(result.expires);
+              expiryElement.textContent = formatTimeRemaining(item.expires);
               
               // Add tooltip with details
               const itemElement = resultItem.querySelector('.file-item');
-              itemElement.title = `${result.name}\nSize: ${formatFileSize(result.size)}\nUploaded by: ${result.user}\nType: ${result.type}`;
+              itemElement.title = `${item.name}\nSize: ${formatFileSize(item.size)}\nUploaded by: ${item.user}\nType: ${item.type}`;
               
               // Add click handler
               itemElement.addEventListener('click', () => {
-                window.location.href = `/content/${result.id}`;
+                window.location.href = `/content/${item.id}`;
               });
               
               // Add to grid
@@ -526,9 +499,9 @@
             resultsGrid.classList.remove('hidden');
             
             // Show pagination for larger result sets
-            if (filteredResults.length > 12) {
+            if (results.length > 0) {
               pagination.classList.remove('hidden');
-              totalPages = Math.ceil(filteredResults.length / 12);
+              totalPages = Math.ceil(results.length / 12);
               pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
               
               // Update button states
@@ -536,7 +509,12 @@
               nextPage.disabled = currentPage >= totalPages;
             }
           }
-        }, 1000); // Simulate network delay
+        } catch (error) {
+          console.error('Search failed:', error);
+          loadingResults.classList.add('hidden');
+          noResults.classList.remove('hidden');
+          document.querySelector('#no-results p').textContent = 'An error occurred while searching. Please try again.';
+        }
       }
       
       // Initialize event listeners

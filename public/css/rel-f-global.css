@@ -39,13 +39,13 @@
   /* Border and structure colors */
   --border-primary: #333333;      /* Primary borders */
   --border-subtle: #222222;       /* Subtle borders */
-  --border-accent: #a278ff33;     /* Accent borders with transparency */
+  --border-accent: #a2786633;     /* Accent borders with transparency */
   
   /* Functional colors */
   --success: #4caf50;             /* Success indicators */
   --warning: #ff9c66;             /* Warning indicators */
   --error: #f44336;               /* Error indicators */
-  --link: #7fd8d8;                /* Link color (cyan) */
+  --link: #7fdcd8;                /* Link color (cyan) */
   
   /* Connection colors for association web and map */
   --color-connection-sym: #a278ffee;    /* Symmetric connections */
@@ -84,10 +84,10 @@
   --fs-sm: 0.875rem;
   --fs-base: 1rem;
   --fs-lg: 1.125rem;
-  --fs-xl: 1.5rem;
-  --fs-2xl: 2rem;
-  --fs-3xl: 2.5rem;
-  --fs-4xl: 4rem;
+  --fs-xl: 1.4rem;
+  --fs-2xl: 1.8rem;
+  --fs-3xl: 2.2rem;
+  --fs-4xl: 2.8rem;
   
   /* Spacing */
   --space-1: 0.25rem;

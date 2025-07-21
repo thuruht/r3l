@@ -276,16 +276,23 @@ export class Router {
     
     // Validate token
     if (path === '/api/auth/validate' && request.method === 'GET') {
+      // Check for token in auth header or cookies
       const token = this.getAuthToken(request);
+      
       if (!token) {
+        console.log('Validate endpoint - missing token:', request.headers.get('Cookie'));
         return this.errorResponse('Missing authentication token', 401);
       }
       
+      console.log('Validate endpoint - token found, validating');
       const userId = await this.authHandler.validateToken(token, env);
+      
       if (!userId) {
+        console.log('Validate endpoint - invalid token');
         return this.errorResponse('Invalid or expired token', 401);
       }
       
+      console.log('Validate endpoint - valid token, getting user:', userId);
       const user = await this.userHandler.getUser(userId, env);
       return this.jsonResponse({ valid: true, user });
     }
@@ -425,6 +432,59 @@ export class Router {
       return this.jsonResponse({ success: true });
     }
     
+    // Get user files
+    if (path.match(/^\/api\/users\/[^/]+\/files$/) && request.method === 'GET') {
+      const userId = path.split('/')[3];
+      
+      // Only allow authenticated user to see their own files
+      if (authenticatedUserId !== userId) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      const url = new URL(request.url);
+      const filter = url.searchParams.get('filter') || 'all';
+      const limit = parseInt(url.searchParams.get('limit') || '100');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+      
+      try {
+        // Query DB for user files
+        let query = `
+          SELECT * FROM content 
+          WHERE user_id = ?
+        `;
+        
+        const params = [userId];
+        
+        // Apply filter
+        switch (filter) {
+          case 'public':
+            query += ' AND is_public = 1';
+            break;
+          case 'private':
+            query += ' AND is_public = 0';
+            break;
+          case 'expiring':
+            query += ' AND expires_at IS NOT NULL AND expires_at < ? AND is_archived = 0';
+            params.push((Date.now() + (2 * 24 * 60 * 60 * 1000)).toString()); // 2 days from now
+            break;
+          case 'archived':
+            query += ' AND is_archived = 1';
+            break;
+        }
+        
+        query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+        params.push(limit.toString(), offset.toString());
+        
+        const result = await env.R3L_DB.prepare(query).bind(...params).all();
+        const files = result.results || [];
+        
+        return this.jsonResponse({ files });
+      } catch (error) {
+        console.error('Error fetching user files:', error);
+        return this.errorResponse('Failed to fetch files');
+      }
+    }
+    
     // Get user stats - requires authentication for private stats
     if (path.match(/^\/api\/users\/[^/]+\/stats$/) && request.method === 'GET') {
       const userId = path.split('/')[3];
@@ -434,8 +494,33 @@ export class Router {
         return this.errorResponse('Unauthorized', 403);
       }
       
-      const stats = await this.userHandler.getUserStats(userId, env);
-      return this.jsonResponse(stats);
+      try {
+        // Get total files count
+        const totalFilesResult = await env.R3L_DB.prepare(`
+          SELECT COUNT(*) as count FROM content WHERE user_id = ?
+        `).bind(userId).first<{count: number}>();
+        
+        // Get archived files count
+        const archivedFilesResult = await env.R3L_DB.prepare(`
+          SELECT COUNT(*) as count FROM content WHERE user_id = ? AND is_archived = 1
+        `).bind(userId).first<{count: number}>();
+        
+        // Get connections count (this is a placeholder - implement based on your connections schema)
+        const connectionsResult = await env.R3L_DB.prepare(`
+          SELECT COUNT(*) as count FROM connections WHERE user_id = ? OR connected_user_id = ?
+        `).bind(userId, userId).first<{count: number}>();
+        
+        const stats = {
+          total_files: totalFilesResult?.count || 0,
+          archived_files: archivedFilesResult?.count || 0,
+          connections: connectionsResult?.count || 0
+        };
+        
+        return this.jsonResponse(stats);
+      } catch (error) {
+        console.error('Error fetching user stats:', error);
+        return this.errorResponse('Failed to fetch user stats');
+      }
     }
     
     return this.notFoundResponse();
@@ -532,8 +617,197 @@ export class Router {
   /**
    * Handle drawer routes
    */
-  private async handleDrawerRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
-    // Implement drawer routes
+  private async handleDrawerRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Get authenticated user first
+    const token = this.getAuthToken(request);
+    let authenticatedUserId: string | null = null;
+    
+    if (token) {
+      authenticatedUserId = await this.authHandler.validateToken(token, env);
+    }
+    
+    // Get user drawers
+    if (path === '/api/drawers/user' && request.method === 'GET') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawers = await this.drawerHandler.getUserDrawers(authenticatedUserId, env);
+      return this.jsonResponse(drawers);
+    }
+    
+    // Get drawer details
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'GET') {
+      const drawerId = path.split('/').pop() as string;
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // If drawer is private, check authentication
+      if (!drawer.is_public && (!authenticatedUserId || authenticatedUserId !== drawer.user_id)) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      return this.jsonResponse(drawer);
+    }
+    
+    // Get drawer contents
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents$/) && request.method === 'GET') {
+      const drawerId = path.split('/')[3];
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // If drawer is private, check authentication
+      if (!drawer.is_public && (!authenticatedUserId || authenticatedUserId !== drawer.user_id)) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      const contents = await this.drawerHandler.getDrawerContents(drawerId, env);
+      return this.jsonResponse(contents);
+    }
+    
+    // Create new drawer
+    if (path === '/api/drawers' && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const data = await request.json() as any;
+      const { name, description, isPublic } = data;
+      
+      if (!name) {
+        return this.errorResponse('Name is required');
+      }
+      
+      const drawerId = await this.drawerHandler.createDrawer(
+        authenticatedUserId,
+        name,
+        description || '',
+        isPublic !== false,
+        env
+      );
+      
+      return this.jsonResponse({ id: drawerId });
+    }
+    
+    // Update drawer
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'PATCH') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/').pop() as string;
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // Check ownership
+      if (drawer.user_id !== authenticatedUserId) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      const data = await request.json() as any;
+      await this.drawerHandler.updateDrawer(drawerId, data, env);
+      
+      return this.jsonResponse({ success: true });
+    }
+    
+    // Delete drawer
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/').pop() as string;
+      
+      try {
+        await this.drawerHandler.deleteDrawer(drawerId, authenticatedUserId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        throw error;
+      }
+    }
+    
+    // Add content to drawer
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/')[3];
+      const data = await request.json() as any;
+      const { contentId, note } = data;
+      
+      if (!contentId) {
+        return this.errorResponse('Content ID is required');
+      }
+      
+      try {
+        const drawerContentId = await this.drawerHandler.addContentToDrawer(
+          drawerId,
+          contentId,
+          note || '',
+          authenticatedUserId,
+          env
+        );
+        
+        return this.jsonResponse({ id: drawerContentId });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        if (error instanceof Error && error.message.includes('already in drawer')) {
+          return this.errorResponse('Content already in drawer', 400);
+        }
+        throw error;
+      }
+    }
+    
+    // Remove content from drawer
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/')[3];
+      const contentId = path.split('/')[5];
+      
+      try {
+        await this.drawerHandler.removeContentFromDrawer(
+          drawerId,
+          contentId,
+          authenticatedUserId,
+          env
+        );
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        throw error;
+      }
+    }
+    
     return this.notFoundResponse();
   }
   
@@ -608,6 +882,24 @@ export class Router {
       return this.jsonResponse(results);
     }
     
+    // Location-based search
+    if (path === '/api/search/location' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const lat = parseFloat(url.searchParams.get('lat') || '0');
+      const lng = parseFloat(url.searchParams.get('lng') || '0');
+      const radius = parseFloat(url.searchParams.get('radius') || '5');
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      
+      // Validate coordinates
+      if (isNaN(lat) || isNaN(lng) || lat === 0 && lng === 0) {
+        return this.errorResponse('Invalid coordinates');
+      }
+      
+      // Get location-based results
+      const results = await this.searchHandler.locationSearch(lat, lng, radius, limit, env);
+      return this.jsonResponse(results);
+    }
+    
     // Popular tags
     if (path === '/api/search/tags' && request.method === 'GET') {
       const url = new URL(request.url);
@@ -623,11 +915,27 @@ export class Router {
   /**
    * Extract authentication token from request
    */
+  /**
+   * Get authentication token from request
+   * @param request The request object
+   * @returns The token if found, null otherwise
+   */
   private getAuthToken(request: Request): string | null {
+    // Check Authorization header first
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.slice(7);
     }
+    
+    // Check for token in cookie if not in header
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+      const match = cookieHeader.match(/r3l_session=([^;]+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+    
     return null;
   }
   
@@ -639,7 +947,8 @@ export class Router {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true'
     });
     
     // Ensure Content-Type is set
@@ -670,6 +979,9 @@ export class Router {
   /**
    * Handle CORS preflight requests
    */
+  /**
+   * Handle CORS preflight requests
+   */
   private handleCors(): Response {
     return new Response(null, {
       status: 204,
@@ -677,6 +989,7 @@ export class Router {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Max-Age': '86400'
       }
     });

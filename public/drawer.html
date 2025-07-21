@@ -311,16 +311,32 @@
       // Check if the user is authenticated
       async function checkAuthentication() {
         try {
+          // Function to get cookie value by name
+          const getCookie = (name) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop().split(';').shift();
+            return null;
+          };
+          
           // Check for auth state cookie
-          if (!document.cookie.includes('r3l_auth_state=true')) {
+          const authStateCookie = getCookie('r3l_auth_state');
+          const hasAuthState = authStateCookie === 'true';
+          
+          console.log('Drawer auth check - Cookie status:', hasAuthState ? 'Auth cookie found' : 'No auth cookie', document.cookie);
+          
+          if (!hasAuthState) {
             showLoginPrompt();
             return false;
           }
           
           // Fetch user profile from API
+          console.log('Drawer auth check - Validating with API');
           const response = await fetch('/api/auth/validate', {
             credentials: 'include'
           });
+          
+          console.log('Drawer auth check - API response:', response.status, response.statusText);
           
           if (!response.ok) {
             showLoginPrompt();
@@ -328,6 +344,7 @@
           }
           
           const data = await response.json();
+          console.log('Drawer auth check - User data:', data);
           userData = data.user;
           return true;
         } catch (error) {

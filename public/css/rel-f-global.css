@@ -19,7 +19,7 @@
   --bg-container: #1a2c2a;        /* Container background (deep green) */
   --bg-container-alt: #1f2f1f;    /* Alternative container (darker green) */
   --bg-input: #121e20;            /* Input background */
-  --bg-secondary: #1f3f33;        /* Secondary background */
+  --bg-secondary: #1f3f3366;        /* Secondary background */
   --bg-overlay: #00000066;        /* Overlay background with transparency */
   
   /* Accent colors */

@@ -72,11 +72,20 @@ export class NavigationBar {
    * Update navigation based on authentication state
    */
   static updateAuthState() {
+    // Function to get cookie value by name
+    const getCookie = (name) => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return null;
+    };
+    
     // Check for authentication state cookie (which is accessible to JavaScript)
-    const hasAuthState = document.cookie.includes('r3l_auth_state=true');
+    const authStateCookie = getCookie('r3l_auth_state');
+    const hasAuthState = authStateCookie === 'true';
     const loginItem = document.getElementById('nav-login-item');
     
-    console.log('Checking auth state:', hasAuthState ? 'Auth state cookie found' : 'No auth state cookie');
+    console.log('Checking auth state:', hasAuthState ? 'Auth state cookie found' : 'No auth state cookie', document.cookie);
     
     // If logged in, update the login link to show user profile
     if (hasAuthState && loginItem) {
@@ -184,20 +193,33 @@ export class NavigationBar {
    * Log the user out
    */
   static logout() {
+    console.log('Logging out...');
+    
     // Call logout API
     fetch('/api/auth/logout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      credentials: 'include'
     })
-    .finally(() => {
-      // Clear auth cookies
+    .then(response => {
+      console.log('Logout response:', response.status, response.statusText);
+      // Clear auth cookies (even though the server should do this)
       document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       
-      // Redirect to home page
-      window.location.href = '/';
+      // Reload the page to force a refresh of all components
+      window.location.reload();
+    })
+    .catch(error => {
+      console.error('Logout error:', error);
+      // Clear auth cookies anyway
+      document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      
+      // Reload the page to force a refresh of all components
+      window.location.reload();
     });
   }
 }

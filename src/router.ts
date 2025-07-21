@@ -280,11 +280,11 @@ export class Router {
       const token = this.getAuthToken(request);
       
       if (!token) {
-        console.log('Validate endpoint - missing token:', request.headers.get('Cookie'));
+        console.log('Validate endpoint - missing token, cookies:', request.headers.get('Cookie'));
         return this.errorResponse('Missing authentication token', 401);
       }
       
-      console.log('Validate endpoint - token found, validating');
+      console.log('Validate endpoint - token found, validating:', token.slice(0, 10) + '...');
       const userId = await this.authHandler.validateToken(token, env);
       
       if (!userId) {
@@ -294,7 +294,15 @@ export class Router {
       
       console.log('Validate endpoint - valid token, getting user:', userId);
       const user = await this.userHandler.getUser(userId, env);
-      return this.jsonResponse({ valid: true, user });
+      
+      // Set CORS headers for credentials
+      const headers = new Headers({
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      });
+      
+      return this.jsonResponse({ valid: true, user }, 200, headers);
     }
     
     // Refresh session
@@ -319,11 +327,25 @@ export class Router {
         await this.authHandler.endSession(token, env);
       }
       
+      // Get the domain from the request URL
+      const domain = new URL(request.url).hostname;
+      const isLocalhost = domain === 'localhost';
+      
+      const cookieOptions = isLocalhost
+        ? `HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+        : `HttpOnly; Path=/; Domain=${domain}; Max-Age=0; SameSite=Lax; Secure`;
+      
+      const authStateCookieOptions = isLocalhost
+        ? `Path=/; Max-Age=0; SameSite=Lax`
+        : `Path=/; Domain=${domain}; Max-Age=0; SameSite=Lax; Secure`;
+      
       // Clear both cookies
       const headers = new Headers({
-        'Set-Cookie': `r3l_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`,
+        'Set-Cookie': `r3l_session=; ${cookieOptions}`,
       });
-      headers.append('Set-Cookie', `r3l_auth_state=; Path=/; Max-Age=0; SameSite=Lax`);
+      headers.append('Set-Cookie', `r3l_auth_state=; ${authStateCookieOptions}`);
+      
+      console.log('Clearing auth cookies with domain:', domain);
       
       return this.jsonResponse({ success: true }, 200, headers);
     }

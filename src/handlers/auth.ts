@@ -355,18 +355,26 @@ export class AuthHandler {
    * @returns User ID if valid, null otherwise
    */
   async validateToken(token: string, env: Env): Promise<string | null> {
+    console.log('AuthHandler - validateToken called, token length:', token.length);
     const now = Date.now();
     
-    const session = await env.R3L_DB.prepare(`
-      SELECT * FROM auth_sessions
-      WHERE token = ? AND expires_at > ?
-    `).bind(token, now).first<AuthSession>();
-    
-    if (!session) {
+    try {
+      const session = await env.R3L_DB.prepare(`
+        SELECT * FROM auth_sessions
+        WHERE token = ? AND expires_at > ?
+      `).bind(token, now).first<AuthSession>();
+      
+      if (!session) {
+        console.log('AuthHandler - validateToken: No valid session found');
+        return null;
+      }
+      
+      console.log('AuthHandler - validateToken: Valid session found for user:', session.user_id);
+      return session.user_id;
+    } catch (error) {
+      console.error('AuthHandler - validateToken error:', error);
       return null;
     }
-    
-    return session.user_id;
   }
   
   /**

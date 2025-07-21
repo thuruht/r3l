@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ORCID Authentication - R3L:F</title>
   <link rel="stylesheet" href="/css/rel-f-global.css">
+  <link rel="stylesheet" href="/css/callback-pages.css">
   <script src="/js/font-loader.js" defer></script>
   <script type="module">
     import { NavigationBar } from '/js/components/navigation.js';
@@ -48,13 +49,18 @@
           }
         });
         
-        let responseText;
+        // Get the response text first
+        const responseText = await response.text();
+        
+        // Try to parse it as JSON
         try {
-          responseText = await response.text();
-          const data = JSON.parse(responseText);
+          // Only try to parse if we have text content
+          const data = responseText ? JSON.parse(responseText) : {};
           
-          if (!response.ok || !data.success) {
-            throw new Error(data.message || 'Authentication failed');
+          // Check for error responses
+          if (!response.ok || (data && data.success === false)) {
+            const errorMessage = data && data.message ? data.message : 'Authentication failed';
+            throw new Error(errorMessage);
           }
           
           // Hide spinner, show success
@@ -80,7 +86,7 @@
           }, 1000);
         } catch (parseError) {
           console.error('Response parsing error:', parseError, 'Raw response:', responseText);
-          throw new Error('Could not parse server response. Please try again.');
+          throw new Error(parseError.message || 'Could not parse server response');
         }
       } catch (error) {
         console.error('Authentication error:', error);
@@ -89,7 +95,65 @@
         spinnerEl.classList.add('hidden');
         statusEl.textContent = 'Error';
         statusEl.className = 'text-error';
-        messageEl.textContent = error.message || 'Authentication failed. Please try again.';
+        
+        // Check for specific database error and display more helpful message
+        if (error.message && error.message.includes('no such table: users')) {
+          messageEl.innerHTML = `
+            <div class="error-details">
+              <p><strong>Database Error:</strong> The database tables are not initialized.</p>
+              
+              <div class="info-box">
+                <p><strong>For System Administrators:</strong></p>
+                <p>The database needs to be initialized with the required tables. Please run:</p>
+                <pre class="code-block">cd migrations
+chmod +x apply-migrations.sh
+./apply-migrations.sh --remote [DATABASE_NAME]</pre>
+              </div>
+              
+              <p>This is a one-time setup process to create the necessary database schema.</p>
+              <p>For more information, see the <a href="/docs/database-setup.md" target="_blank">Database Setup Guide</a>.</p>
+            </div>
+          `;
+        } else if (error.message && error.message.includes('no column named updated_at')) {
+          messageEl.innerHTML = `
+            <div class="error-details">
+              <p><strong>Database Schema Error:</strong> The users table is missing the updated_at column.</p>
+              
+              <div class="info-box">
+                <p><strong>For System Administrators:</strong></p>
+                <p>Please run the following command to add the missing column:</p>
+                <pre class="code-block">cd migrations
+chmod +x update-content-schema.sh
+./update-content-schema.sh</pre>
+              </div>
+              
+              <p>This will update the database schema to include all required columns.</p>
+              <p>For more information, see the <a href="/docs/database-setup.md" target="_blank">Database Setup Guide</a>.</p>
+            </div>
+          `;
+        } else if (error.message && error.message.includes('no column named token')) {
+          messageEl.innerHTML = `
+            <div class="error-details">
+              <p><strong>Database Schema Error:</strong> The auth_sessions table is missing the token column.</p>
+              
+              <div class="info-box">
+                <p><strong>For System Administrators:</strong></p>
+                <p>Please run the following command to add the missing column:</p>
+                <pre class="code-block">cd migrations
+chmod +x update-content-schema.sh
+./update-content-schema.sh</pre>
+              </div>
+              
+              <p>This will update the database schema to include all required columns.</p>
+              <p>For more information, see the <a href="/docs/database-setup.md" target="_blank">Database Setup Guide</a>.</p>
+            </div>
+          `;
+        } else {
+          messageEl.innerHTML = `
+            <p>${error.message || 'Authentication failed. Please try again.'}</p>
+            <p>If this error persists, please contact the system administrator.</p>
+          `;
+        }
         
         // Show retry link
         document.getElementById('retry-link').classList.remove('hidden');

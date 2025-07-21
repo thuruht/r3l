@@ -246,19 +246,45 @@
       // Function to check if user is authenticated and load profile data
       const loadProfileData = async () => {
         try {
-          // Make request to validate token and get user data
-          const response = await fetch('/api/auth/validate', {
-            credentials: 'include' // Include cookies
-          });
+          // Check for session cookie
+          const hasSessionCookie = document.cookie.includes('r3l_session=');
+          console.log('Session cookie present:', hasSessionCookie);
           
-          if (!response.ok) {
-            throw new Error('Not authenticated');
+          if (!hasSessionCookie) {
+            throw new Error('No session cookie found');
           }
           
-          const data = await response.json();
+          // Extract token from cookie
+          const match = document.cookie.match(/r3l_session=([^;]+)/);
+          const token = match ? match[1] : null;
+          console.log('Token extracted:', token ? 'Present' : 'Missing');
+          
+          if (!token) {
+            throw new Error('Invalid session token');
+          }
+          
+          // Make request to validate token and get user data
+          console.log('Fetching user data from /api/auth/validate');
+          const response = await fetch('/api/auth/validate', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          console.log('Auth validation response:', response.status, response.statusText);
+          
+          if (!response.ok) {
+            throw new Error(`Auth validation failed: ${response.status} ${response.statusText}`);
+          }
+          
+          const responseText = await response.text();
+          console.log('Auth validation response text:', responseText);
+          
+          const data = JSON.parse(responseText);
+          console.log('Auth validation data:', data);
           
           if (!data.valid || !data.user) {
-            throw new Error('Not authenticated');
+            throw new Error('Invalid user data received');
           }
           
           // User is authenticated, populate profile data

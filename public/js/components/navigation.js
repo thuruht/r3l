@@ -13,39 +13,39 @@ export class NavigationBar {
     const navHtml = `
       <div class="navbar">
         <div class="nav-brand">
-          <a href="index.html" title="R3L:F Home" class="flex items-center gap-2">
+          <a href="/index.html" title="R3L:F Home" class="flex items-center gap-2">
             <span class="material-icons" aria-hidden="true">public</span>
             <span class="text-accent">R3L:F</span>
           </a>
         </div>
         <nav>
           <ul class="nav-menu">
-            <li><a href="network.html" class="nav-link ${currentPage === 'network' ? 'active' : ''}">
+            <li><a href="/network.html" class="nav-link ${currentPage === 'network' ? 'active' : ''}">
               <span class="material-icons">hub</span>
               <span class="nav-label">Association Web</span>
             </a></li>
-            <li><a href="map.html" class="nav-link ${currentPage === 'map' ? 'active' : ''}">
+            <li><a href="/map.html" class="nav-link ${currentPage === 'map' ? 'active' : ''}">
               <span class="material-icons">public</span>
               <span class="nav-label">Map</span>
             </a></li>
-            <li><a href="search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
+            <li><a href="/search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
               <span class="material-icons">search</span>
               <span class="nav-label">Search</span>
             </a></li>
-            <li><a href="random.html" class="nav-link tooltip ${currentPage === 'random' ? 'active' : ''}">
+            <li><a href="/random.html" class="nav-link tooltip ${currentPage === 'random' ? 'active' : ''}">
               <span class="material-icons">shuffle</span>
               <span class="tooltip-text">Random Communique</span>
               <span class="nav-label">Random</span>
             </a></li>
-            <li><a href="drawer.html" class="nav-link ${currentPage === 'drawer' ? 'active' : ''}">
+            <li><a href="/drawer.html" class="nav-link ${currentPage === 'drawer' ? 'active' : ''}">
               <span class="material-icons">folder</span>
               <span class="nav-label">Drawer</span>
             </a></li>
-            <li><a href="upload.html" class="nav-link ${currentPage === 'upload' ? 'active' : ''}">
+            <li><a href="/upload.html" class="nav-link ${currentPage === 'upload' ? 'active' : ''}">
               <span class="material-icons">upload_file</span>
               <span class="nav-label">Upload</span>
             </a></li>
-            <li id="nav-login-item"><a href="login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
+            <li id="nav-login-item"><a href="/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
               <span class="material-icons">login</span>
               <span class="nav-label">Login</span>
             </a></li>
@@ -72,19 +72,23 @@ export class NavigationBar {
    * Update navigation based on authentication state
    */
   static updateAuthState() {
-    // Check for authentication token
-    const hasAuthCookie = document.cookie.includes('r3l_session=');
+    // Check for authentication state cookie (which is accessible to JavaScript)
+    const hasAuthState = document.cookie.includes('r3l_auth_state=true');
     const loginItem = document.getElementById('nav-login-item');
     
+    console.log('Checking auth state:', hasAuthState ? 'Auth state cookie found' : 'No auth state cookie');
+    
     // If logged in, update the login link to show user profile
-    if (hasAuthCookie && loginItem) {
+    if (hasAuthState && loginItem) {
+      console.log('Auth state cookie found, fetching user profile...');
       // Fetch user data from API
       this.fetchUserProfile()
         .then(user => {
+          console.log('User profile fetched:', user);
           if (user) {
             loginItem.innerHTML = `
               <div class="user-profile-nav">
-                <a href="profile.html" class="nav-link user-profile-link">
+                <a href="/profile.html" class="nav-link user-profile-link">
                   <span class="user-avatar glow-accent">
                     ${user.avatar_url ? 
                       `<img src="${user.avatar_url}" alt="${user.display_name}" class="avatar-img" />` : 
@@ -94,11 +98,11 @@ export class NavigationBar {
                   <span class="user-name">${user.display_name}</span>
                 </a>
                 <div class="user-dropdown">
-                  <a href="profile.html" class="dropdown-item">
+                  <a href="/profile.html" class="dropdown-item">
                     <span class="material-icons">person</span>
                     My Profile
                   </a>
-                  <a href="drawer.html?user=${user.username}" class="dropdown-item">
+                  <a href="/drawer.html?user=${user.username}" class="dropdown-item">
                     <span class="material-icons">folder</span>
                     My Drawer
                   </a>
@@ -132,22 +136,28 @@ export class NavigationBar {
     try {
       // Get auth token from cookie
       const match = document.cookie.match(/r3l_session=([^;]+)/);
+      console.log('Cookie match:', match ? 'Found' : 'Not found', document.cookie);
       if (!match) return null;
       
       const token = match[1];
+      console.log('Auth token extracted:', token ? 'Present' : 'Missing');
       
       // Fetch user profile
+      console.log('Fetching profile from /api/auth/validate');
       const response = await fetch('/api/auth/validate', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
+      console.log('Profile response:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error('Invalid session');
+        throw new Error(`Invalid session: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log('Profile data:', data);
       return data.user;
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -159,13 +169,14 @@ export class NavigationBar {
    * Handle authentication errors
    */
   static handleAuthError() {
-    // Clear auth cookie
+    // Clear auth cookies
     document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     
     // Reset login item
     const loginItem = document.getElementById('nav-login-item');
     if (loginItem) {
-      loginItem.innerHTML = `<a href="login.html" class="nav-link">
+      loginItem.innerHTML = `<a href="/login.html" class="nav-link">
         <span class="material-icons">login</span>
         <span class="nav-label">Login</span>
       </a>`;
@@ -184,8 +195,9 @@ export class NavigationBar {
       }
     })
     .finally(() => {
-      // Clear auth cookie
+      // Clear auth cookies
       document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       
       // Redirect to home page
       window.location.href = '/';

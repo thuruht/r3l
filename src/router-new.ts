@@ -164,15 +164,12 @@ export class Router {
           });
         }
         
-        // For direct browser requests, set cookies and redirect
+        // For direct browser requests, set cookie and redirect
+        // MODIFIED: Removed HttpOnly to allow JavaScript to access the cookie
         const headers = new Headers({
           'Location': '/',
-          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+          'Set-Cookie': `r3l_session=${authResult.token}; Path=/; Max-Age=2592000; SameSite=Lax`
         });
-        
-        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
-        // This doesn't contain the actual token, just a flag that user is logged in
-        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax`);
         
         // Add CORS headers
         headers.set('Access-Control-Allow-Origin', requestUrl.origin);
@@ -235,15 +232,12 @@ export class Router {
           });
         }
         
-        // For direct browser requests, set cookies and redirect
+        // For direct browser requests, set cookie and redirect
+        // MODIFIED: Removed HttpOnly to allow JavaScript to access the cookie
         const headers = new Headers({
           'Location': '/',
-          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+          'Set-Cookie': `r3l_session=${authResult.token}; Path=/; Max-Age=2592000; SameSite=Lax`
         });
-        
-        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
-        // This doesn't contain the actual token, just a flag that user is logged in
-        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax`);
         
         // Add CORS headers
         headers.set('Access-Control-Allow-Origin', requestUrl.origin);
@@ -312,13 +306,7 @@ export class Router {
         await this.authHandler.endSession(token, env);
       }
       
-      // Clear both cookies
-      const headers = new Headers({
-        'Set-Cookie': `r3l_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`,
-      });
-      headers.append('Set-Cookie', `r3l_auth_state=; Path=/; Max-Age=0; SameSite=Lax`);
-      
-      return this.jsonResponse({ success: true }, 200, headers);
+      return this.jsonResponse({ success: true });
     }
     
     return this.notFoundResponse();
@@ -532,7 +520,7 @@ export class Router {
   /**
    * Handle drawer routes
    */
-  private async handleDrawerRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+  private async handleDrawerRoutes(request: Request, env: Env, path: string): Promise<Response> {
     // Implement drawer routes
     return this.notFoundResponse();
   }
@@ -540,7 +528,7 @@ export class Router {
   /**
    * Handle association routes
    */
-  private async handleAssociationRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+  private async handleAssociationRoutes(request: Request, env: Env, path: string): Promise<Response> {
     // Implement association routes
     return this.notFoundResponse();
   }
@@ -624,32 +612,36 @@ export class Router {
    * Extract authentication token from request
    */
   private getAuthToken(request: Request): string | null {
+    // First try to get from Authorization header
     const authHeader = request.headers.get('Authorization');
     if (authHeader && authHeader.startsWith('Bearer ')) {
       return authHeader.slice(7);
     }
+    
+    // Next try to get from cookies
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader) {
+      const match = cookieHeader.match(/r3l_session=([^;]+)/);
+      if (match) {
+        return match[1];
+      }
+    }
+    
     return null;
   }
   
   /**
    * Create a JSON response
    */
-  private jsonResponse(data: any, status: number = 200, customHeaders?: Headers): Response {
-    const headers = customHeaders || new Headers({
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    });
-    
-    // Ensure Content-Type is set
-    if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
-    }
-    
+  private jsonResponse(data: any, status: number = 200): Response {
     return new Response(JSON.stringify(data), {
       status,
-      headers
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      }
     });
   }
   

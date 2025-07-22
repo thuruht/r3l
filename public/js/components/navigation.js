@@ -150,7 +150,6 @@ export class NavigationBar {
       console.log('[NavigationBar] No auth state found, showing login link');
     }
   }
-  }
   
   /**
    * Fetch user profile data
@@ -164,11 +163,7 @@ export class NavigationBar {
         cookieLength: document.cookie.length
       });
       
-      // Get auth token from cookie or try credentials include
-      const match = document.cookie.match(/r3l_session=([^;]+)/);
-      console.log('[NavigationBar] Session cookie match:', match ? 'Found' : 'Not found');
-      
-      // Use credentials: 'include' instead of trying to extract the token
+      // Use credentials: 'include' to ensure cookies are sent with the request
       console.log('[NavigationBar] Fetching profile from /api/auth/validate with credentials:include');
       const startTime = performance.now();
       const response = await fetch('/api/auth/validate', {

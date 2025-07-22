@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OAuth Debug - R3L:F</title>
+  <link rel="stylesheet" href="/css/rel-f-global.css">
+  <script src="/js/font-loader.js" defer></script>
+  <script type="module">
+    import { NavigationBar } from '/js/components/navigation.js';
+    import { debugLog } from '/js/auth-helper.js';
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      NavigationBar.init('debug');
+      checkOAuthStatus();
+    });
+
+    async function checkOAuthStatus() {
+      const resultDiv = document.getElementById('oauth-results');
+      const cookiesDiv = document.getElementById('cookie-status');
+      
+      // Check cookies
+      const allCookies = document.cookie;
+      const hasAuthState = document.cookie.includes('r3l_auth_state=true');
+      const hasSession = document.cookie.includes('r3l_session=');
+      
+      cookiesDiv.innerHTML = `
+        <h3>Cookie Status</h3>
+        <p><strong>Auth State Cookie:</strong> ${hasAuthState ? 'Present ✅' : 'Missing ❌'}</p>
+        <p><strong>Session Cookie:</strong> ${hasSession ? 'Present ✅' : 'Missing ❌'}</p>
+        <pre class="code-box">${allCookies.replace(/;/g, ';\n')}</pre>
+      `;
+      
+      // Check validate endpoint
+      try {
+        const validateResponse = await fetch('/api/auth/validate', {
+          credentials: 'include'
+        });
+        
+        const validateStatus = validateResponse.status;
+        const validateResponseText = await validateResponse.text();
+        let validateResponseJson = null;
+        
+        try {
+          validateResponseJson = JSON.parse(validateResponseText);
+        } catch (e) {
+          console.error('Error parsing validate response:', e);
+        }
+        
+        resultDiv.innerHTML += `
+          <h3>Validate Endpoint Check</h3>
+          <p><strong>Status:</strong> ${validateStatus}</p>
+          <p><strong>Response:</strong></p>
+          <pre class="code-box">${validateResponseText}</pre>
+        `;
+        
+        if (validateStatus === 200 && validateResponseJson && validateResponseJson.user) {
+          resultDiv.innerHTML += `
+            <div class="success-box">
+              <h3>✅ Authentication Working</h3>
+              <p>You are logged in as: ${validateResponseJson.user.display_name}</p>
+            </div>
+          `;
+        } else {
+          resultDiv.innerHTML += `
+            <div class="error-box">
+              <h3>❌ Authentication Error</h3>
+              <p>You are not authenticated properly.</p>
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultDiv.innerHTML += `
+          <div class="error-box">
+            <h3>❌ Error checking validate endpoint</h3>
+            <p>${error.message}</p>
+          </div>
+        `;
+      }
+      
+      // Check if fix-cookies endpoint works
+      const fixButton = document.getElementById('fix-cookies-btn');
+      fixButton.addEventListener('click', async () => {
+        try {
+          const fixResponse = await fetch('/api/auth/fix-cookies', {
+            credentials: 'include'
+          });
+          
+          const fixStatus = fixResponse.status;
+          const fixResponseText = await fixResponse.text();
+          
+          document.getElementById('fix-results').innerHTML = `
+            <h3>Fix Cookies Result</h3>
+            <p><strong>Status:</strong> ${fixStatus}</p>
+            <p><strong>Response:</strong></p>
+            <pre class="code-box">${fixResponseText}</pre>
+            <p>Cookies after fix:</p>
+            <pre class="code-box">${document.cookie.replace(/;/g, ';\n')}</pre>
+          `;
+          
+          // Reload cookie status
+          setTimeout(() => {
+            const hasAuthState = document.cookie.includes('r3l_auth_state=true');
+            const hasSession = document.cookie.includes('r3l_session=');
+            
+            cookiesDiv.innerHTML = `
+              <h3>Cookie Status</h3>
+              <p><strong>Auth State Cookie:</strong> ${hasAuthState ? 'Present ✅' : 'Missing ❌'}</p>
+              <p><strong>Session Cookie:</strong> ${hasSession ? 'Present ✅' : 'Missing ❌'}</p>
+              <pre class="code-box">${document.cookie.replace(/;/g, ';\n')}</pre>
+            `;
+          }, 500);
+        } catch (error) {
+          document.getElementById('fix-results').innerHTML = `
+            <div class="error-box">
+              <h3>❌ Error fixing cookies</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      });
+      
+      // Test initialization endpoints
+      document.getElementById('test-orcid-btn').addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/auth/orcid/init');
+          const data = await response.json();
+          
+          document.getElementById('init-results').innerHTML = `
+            <h3>ORCID Init Result</h3>
+            <p><strong>Status:</strong> ${response.status}</p>
+            <p><strong>Authorization URL:</strong> <a href="${data.authorizationUrl}" target="_blank">${data.authorizationUrl}</a></p>
+            <pre class="code-box">${JSON.stringify(data, null, 2)}</pre>
+          `;
+        } catch (error) {
+          document.getElementById('init-results').innerHTML = `
+            <div class="error-box">
+              <h3>❌ Error testing ORCID init</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      });
+      
+      document.getElementById('test-github-btn').addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/auth/github/init');
+          const data = await response.json();
+          
+          document.getElementById('init-results').innerHTML = `
+            <h3>GitHub Init Result</h3>
+            <p><strong>Status:</strong> ${response.status}</p>
+            <p><strong>Authorization URL:</strong> <a href="${data.authorizationUrl}" target="_blank">${data.authorizationUrl}</a></p>
+            <pre class="code-box">${JSON.stringify(data, null, 2)}</pre>
+          `;
+        } catch (error) {
+          document.getElementById('init-results').innerHTML = `
+            <div class="error-box">
+              <h3>❌ Error testing GitHub init</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      });
+      
+      // Check database status
+      document.getElementById('check-db-btn').addEventListener('click', async () => {
+        const dbResultsDiv = document.getElementById('db-results');
+        dbResultsDiv.innerHTML = `<p>Checking database status...</p>`;
+        
+        try {
+          // Make a request to a known endpoint that uses the database
+          const response = await fetch('/api/users?limit=1');
+          const data = await response.json();
+          
+          if (response.ok) {
+            dbResultsDiv.innerHTML = `
+              <div class="success-box">
+                <h3>✅ Database Connection Working</h3>
+                <p>Successfully queried users table.</p>
+                <pre class="code-box">${JSON.stringify(data, null, 2)}</pre>
+              </div>
+            `;
+          } else {
+            dbResultsDiv.innerHTML = `
+              <div class="error-box">
+                <h3>❌ Database Error</h3>
+                <p>Error querying users table.</p>
+                <pre class="code-box">${JSON.stringify(data, null, 2)}</pre>
+              </div>
+            `;
+          }
+        } catch (error) {
+          dbResultsDiv.innerHTML = `
+            <div class="error-box">
+              <h3>❌ Error checking database</h3>
+              <p>${error.message}</p>
+            </div>
+          `;
+        }
+      });
+    }
+  </script>
+  <style>
+    .debug-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    
+    .debug-section {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      border-radius: 8px;
+      background-color: var(--bg-container);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .code-box {
+      background-color: var(--bg-dark);
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: monospace;
+      margin-top: 0.5rem;
+    }
+    
+    .success-box {
+      background-color: rgba(var(--success-rgb), 0.1);
+      border-left: 4px solid var(--success);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+    
+    .error-box {
+      background-color: rgba(var(--error-rgb), 0.1);
+      border-left: 4px solid var(--error);
+      padding: 1rem;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main class="debug-container">
+    <h1>OAuth Debug Tool</h1>
+    <p>Use this page to diagnose authentication issues with R3L:F.</p>
+    
+    <div class="debug-section">
+      <h2>Cookie Status</h2>
+      <div id="cookie-status">
+        <p>Loading cookie status...</p>
+      </div>
+      
+      <div class="action-buttons">
+        <button id="fix-cookies-btn" class="btn">Fix Cookies</button>
+      </div>
+      
+      <div id="fix-results"></div>
+    </div>
+    
+    <div class="debug-section">
+      <h2>Authentication Status</h2>
+      <div id="oauth-results">
+        <p>Checking authentication status...</p>
+      </div>
+    </div>
+    
+    <div class="debug-section">
+      <h2>Test OAuth Initialization</h2>
+      <p>Click the buttons below to test the OAuth initialization endpoints.</p>
+      
+      <div class="action-buttons">
+        <button id="test-orcid-btn" class="btn">Test ORCID Init</button>
+        <button id="test-github-btn" class="btn">Test GitHub Init</button>
+      </div>
+      
+      <div id="init-results"></div>
+    </div>
+    
+    <div class="debug-section">
+      <h2>Database Status</h2>
+      <p>Check if the database connection is working properly.</p>
+      
+      <div class="action-buttons">
+        <button id="check-db-btn" class="btn">Check Database</button>
+      </div>
+      
+      <div id="db-results"></div>
+    </div>
+    
+    <div class="debug-section">
+      <h2>Troubleshooting Steps</h2>
+      <ol>
+        <li>
+          <strong>Missing Session Cookie:</strong> This usually means the OAuth flow did not complete successfully.
+          <ul>
+            <li>Check that ORCID_CLIENT_ID and ORCID_CLIENT_SECRET are set correctly using <code>wrangler secret get</code></li>
+            <li>Check that GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are set correctly</li>
+            <li>Verify redirect URIs are correct in the OAuth provider settings</li>
+          </ul>
+        </li>
+        <li>
+          <strong>Database Errors:</strong> Ensure migrations have been applied correctly.
+          <ul>
+            <li>Run <code>cd migrations && ./apply-migrations.sh --remote r3l-db</code></li>
+            <li>If column errors, run <code>cd migrations && ./update-content-schema.sh</code></li>
+          </ul>
+        </li>
+        <li>
+          <strong>Authentication Flow:</strong> The flow should be:
+          <ol>
+            <li>User clicks login button → Redirected to OAuth provider</li>
+            <li>User authorizes → Redirected to callback URL</li>
+            <li>Backend exchanges code for token → Creates session</li>
+            <li>Two cookies are set: <code>r3l_session</code> (HttpOnly) and <code>r3l_auth_state</code> (JS accessible)</li>
+          </ol>
+        </li>
+      </ol>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+</body>
+</html>

@@ -69,6 +69,22 @@
           statusEl.className = 'text-success';
           messageEl.textContent = 'Authentication complete. Redirecting to your profile...';
           
+          // Check the cookie
+          console.log('Cookies after auth:', document.cookie);
+          
+          // If no auth_state cookie is detected, try to fix it
+          if (!document.cookie.includes('r3l_auth_state=true')) {
+            console.log('Auth state cookie not found, attempting to fix...');
+            try {
+              await fetch('/api/auth/fix-cookies', {
+                credentials: 'include'
+              });
+              console.log('Fix cookies response received, cookies now:', document.cookie);
+            } catch (fixError) {
+              console.error('Error fixing cookies:', fixError);
+            }
+          }
+          
           // Show countdown
           let seconds = 3;
           redirectInfo.textContent = `Redirecting in ${seconds} seconds...`;

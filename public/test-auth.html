@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Test - R3L:F</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <script src="js/font-loader.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <h1>Authentication Test</h1>
+      
+      <div class="section">
+        <h2>Cookie Status</h2>
+        <div id="cookie-status"></div>
+        <button id="test-set-cookie" class="btn">Set Test Cookie</button>
+        <button id="test-clear-cookie" class="btn">Clear Cookies</button>
+      </div>
+      
+      <div class="section">
+        <h2>API Test</h2>
+        <button id="test-api" class="btn">Test Auth API</button>
+        <div id="api-response"></div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initialize the navigation bar
+      NavigationBar.init('test');
+      
+      const cookieStatusEl = document.getElementById('cookie-status');
+      const apiResponseEl = document.getElementById('api-response');
+      
+      // Update cookie status
+      function updateCookieStatus() {
+        const authState = getCookie('r3l_auth_state');
+        const session = getCookie('r3l_session');
+        
+        cookieStatusEl.innerHTML = `
+          <div class="status-box">
+            <p><strong>r3l_auth_state:</strong> ${authState || 'not set'}</p>
+            <p><strong>r3l_session:</strong> ${session ? '(value hidden for security)' : 'not set'}</p>
+            <p><strong>All Cookies:</strong> ${document.cookie || 'none'}</p>
+          </div>
+        `;
+      }
+      
+      // Get cookie by name
+      function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+        return null;
+      }
+      
+      // Set test cookie
+      document.getElementById('test-set-cookie').addEventListener('click', async () => {
+        try {
+          const response = await fetch('/api/auth/test-cookies', {
+            credentials: 'include'
+          });
+          
+          const data = await response.json();
+          console.log('Test cookie response:', data);
+          
+          setTimeout(() => {
+            updateCookieStatus();
+            alert('Test cookie set - check status above');
+          }, 500);
+        } catch (error) {
+          console.error('Error setting test cookie:', error);
+          alert('Error: ' + error.message);
+        }
+      });
+      
+      // Clear cookies
+      document.getElementById('test-clear-cookie').addEventListener('click', () => {
+        document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        alert('Cookies cleared');
+        updateCookieStatus();
+      });
+      
+      // Test API
+      document.getElementById('test-api').addEventListener('click', async () => {
+        try {
+          apiResponseEl.innerHTML = '<p>Testing API...</p>';
+          
+          const response = await fetch('/api/auth/validate', {
+            credentials: 'include'
+          });
+          
+          const responseText = await response.text();
+          console.log('API raw response:', responseText);
+          
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch (e) {
+            data = { error: 'Could not parse response as JSON', text: responseText };
+          }
+          
+          apiResponseEl.innerHTML = `
+            <div class="status-box">
+              <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+              <p><strong>Response:</strong></p>
+              <pre>${JSON.stringify(data, null, 2)}</pre>
+            </div>
+          `;
+        } catch (error) {
+          console.error('API test error:', error);
+          apiResponseEl.innerHTML = `
+            <div class="status-box error">
+              <p><strong>Error:</strong> ${error.message}</p>
+            </div>
+          `;
+        }
+      });
+      
+      // Initial update
+      updateCookieStatus();
+    });
+  </script>
+  
+  <style>
+    .section {
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .status-box {
+      margin: 1rem 0;
+      padding: 1rem;
+      background-color: var(--bg-deep);
+      border-radius: var(--radius-sm);
+      font-family: monospace;
+    }
+    
+    .status-box.error {
+      background-color: var(--error-bg);
+      border-left: 4px solid var(--error);
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-right: 0.5rem;
+      padding: 0.5rem 1rem;
+      background-color: var(--accent-lavender);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    
+    .btn:hover {
+      background-color: var(--accent-lavender-dark, #7f60d3);
+    }
+    
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 300px;
+      overflow: auto;
+      padding: 0.5rem;
+      background-color: var(--bg-code);
+      border-radius: var(--radius-sm);
+    }
+  </style>
+</body>
+</html>

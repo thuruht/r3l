@@ -352,26 +352,12 @@ export class Router {
     
     // Test cookie endpoint for debugging
     if (path === '/api/auth/test-cookies' && request.method === 'GET') {
-      const domain = new URL(request.url).hostname;
-      const isLocalhost = domain === 'localhost';
-      
-      const authStateCookieOptions = isLocalhost
-        ? `Path=/; Max-Age=2592000; SameSite=Lax`
-        : `Path=/; Domain=${domain}; Max-Age=2592000; SameSite=Lax; Secure`;
-      
-      const headers = new Headers({
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': 'true',
-        'Set-Cookie': `r3l_auth_state=true; ${authStateCookieOptions}`
-      });
-      
-      console.log('Setting test auth cookies with domain:', domain);
-      
-      return new Response(JSON.stringify({ success: true, message: 'Test auth cookie set', domain }), {
-        status: 200,
-        headers
-      });
+      return this.fixAuthStateCookie(request);
+    }
+    
+    // Fix auth state cookie - new dedicated endpoint
+    if (path === '/api/auth/fix-cookies' && request.method === 'GET') {
+      return this.fixAuthStateCookie(request);
     }
     
     return this.notFoundResponse();
@@ -983,6 +969,39 @@ export class Router {
     }
     
     return null;
+  }
+  
+  /**
+   * Fix auth state cookie
+   */
+  private fixAuthStateCookie(request: Request): Response {
+    const url = new URL(request.url);
+    
+    // Get the domain from the request URL
+    const domain = url.hostname;
+    const isLocalhost = domain === 'localhost';
+    
+    // Create auth state cookie that's accessible to JavaScript
+    const cookieOptions = isLocalhost
+      ? `Path=/; Max-Age=2592000; SameSite=Lax`
+      : `Path=/; Max-Age=2592000; SameSite=Lax; Secure`;
+    
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': url.origin,
+      'Access-Control-Allow-Credentials': 'true',
+      'Set-Cookie': `r3l_auth_state=true; ${cookieOptions}`
+    });
+    
+    console.log('Setting auth state cookie:', `r3l_auth_state=true; ${cookieOptions}`);
+    
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Auth state cookie fixed'
+    }), {
+      status: 200,
+      headers
+    });
   }
   
   /**

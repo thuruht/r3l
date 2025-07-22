@@ -93,8 +93,31 @@ export class NavigationBar {
       authStateCookie,
       hasAuthState,
       loginItemFound: !!loginItem,
-      allCookies: document.cookie.split(';').map(c => c.trim()).join(', ')
+      allCookies: document.cookie
     });
+    
+    // If auth state is not found but should be there, try to fix it
+    if (!hasAuthState && loginItem) {
+      console.log('[NavigationBar] Auth state not found, trying to fix it...');
+      // Try to fetch the fix-cookies endpoint
+      fetch('/api/auth/fix-cookies', {
+        credentials: 'include'
+      }).then(response => {
+        console.log('[NavigationBar] Fix-cookies response:', response.status);
+        // Check if cookies are now set
+        setTimeout(() => {
+          const newAuthState = getCookie('r3l_auth_state');
+          console.log('[NavigationBar] After fix attempt - new auth state:', newAuthState);
+          // If successful, reload the page
+          if (newAuthState === 'true') {
+            console.log('[NavigationBar] Auth state fixed, reloading page');
+            window.location.reload();
+          }
+        }, 500);
+      }).catch(err => {
+        console.error('[NavigationBar] Error fixing cookies:', err);
+      });
+    }
     
     // If logged in, update the login link to show user profile
     if (hasAuthState && loginItem) {

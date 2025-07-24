@@ -12,10 +12,11 @@ R3L:F is an anti-algorithmic, ephemeral, user-controlled, privacy-first file-sha
 
 ## Technology Stack
 
-- **Backend**: Cloudflare Workers, D1, R2, KV, Durable Objects, RealtimeKit
+- **Backend**: Cloudflare Workers, D1, R2, KV, Durable Objects, OpenAuth
 - **Frontend**: HTML, CSS, JavaScript with consolidated global styling
 - **Fonts**: Bunny Fonts (privacy-respecting alternative to Google Fonts)
 - **Visualization**: D3.js for Association Web
+- **Authentication**: GitHub and ORCID OAuth via OpenAuth
 
 ## Deployment
 
@@ -35,25 +36,40 @@ This project is designed to be deployed to Cloudflare Workers. All file paths ar
 4. Set up required secrets (DO NOT add these to your code or wrangler.jsonc):
    ```
    wrangler secret put R3L_APP_SECRET
-   wrangler secret put ORCID_CLIENT_SECRET
+   wrangler secret put GITHUB_CLIENT_ID
+   wrangler secret put GITHUB_CLIENT_SECRET
    wrangler secret put ORCID_CLIENT_ID
+   wrangler secret put ORCID_CLIENT_SECRET
    wrangler secret put R3L_ADMIN_ORCID_ID
    wrangler secret put CLOUDFLARE_ACCOUNT_ID
-   wrangler secret put REALTIME_API_TOKEN
    ```
-5. Deploy the database migrations using Wrangler:
+5. Deploy with OpenAuth integration:
    ```
-   wrangler d1 execute r3l-db --file=migrations/001_ephemeral_content.sql
-   wrangler d1 execute r3l-db --file=migrations/002_content_associations.sql
-   wrangler d1 execute r3l-db --file=migrations/003_drawers.sql
-   wrangler d1 execute r3l-db --file=migrations/004_content.sql
-   wrangler d1 execute r3l-db --file=migrations/005_users.sql
-   wrangler d1 execute r3l-db --file=migrations/006_auth_sessions.sql
-   wrangler d1 execute r3l-db --file=migrations/007_content_sharing.sql
-   wrangler d1 execute r3l-db --file=migrations/008_archive_voting.sql
-   wrangler d1 execute r3l-db --file=migrations/009_tag_management.sql
+   ./deploy-openauth.sh
    ```
-6. Build and deploy the worker:
+   
+   Or deploy manually with these steps:
+   
+   a. Deploy the database migrations:
+   ```
+   # Apply migrations to the main database
+   ./migrations/apply-migrations.sh
+   
+   # Apply migrations to the auth database
+   ./setup-auth.sh
+   ```
+   
+   b. Deploy the auth server:
+   ```
+   npx wrangler deploy --config wrangler.auth.jsonc
+   ```
+   
+   c. Set up service binding:
+   ```
+   ./setup-service-binding.sh
+   ```
+   
+   d. Deploy the main application:
    ```
    npm run build
    npm run deploy
@@ -66,6 +82,16 @@ For local development:
 ```
 npm run dev
 ```
+
+## Testing OpenAuth Integration
+
+To test the OpenAuth integration, visit:
+
+```
+https://[your-worker-url]/test-openauth.html
+```
+
+This test page provides UI for testing GitHub and ORCID authentication, as well as debugging tools for inspecting authentication state and cookies.
 
 ## License
 

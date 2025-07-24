@@ -78,6 +78,14 @@
     }
   ],
   
+  // Configure OAuth Provider
+  "services": [
+    {
+      "binding": "OAUTH_PROVIDER",
+      "service": "workers-oauth-provider"
+    }
+  ],
+  
   // Configure Durable Objects for real-time connections
   "durable_objects": {
     "bindings": [

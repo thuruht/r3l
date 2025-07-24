@@ -14,10 +14,6 @@ import { FileHandler } from './handlers/file';
 import { GlobeHandler } from './handlers/globe';
 import { DrawerHandler } from './handlers/drawer';
 import { Env } from './types/env';
-import { createAuthCookies, createClearAuthCookies, isSecureRequest } from './cookie-helper';
-
-// For debugging - log route processing
-const ROUTE_DEBUG = false;
 
 export class Router {
   private authHandler: AuthHandler;
@@ -156,9 +152,11 @@ export class Router {
    * Handle authentication routes
    */
   private async handleAuthRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    if (ROUTE_DEBUG) console.log(`[Router] Processing auth route: ${path}`);
-    
     // Init ORCID auth
+${ROUTE_DEBUG}
+
+${ROUTE_DEBUG}
+
     if (path === '/api/auth/orcid/init' && request.method === 'GET') {
       const requestUrl = new URL(request.url);
       const redirectUri = env.ORCID_REDIRECT_URI || `${requestUrl.origin}/auth/orcid/callback`;
@@ -201,23 +199,29 @@ export class Router {
         }
         
         // For direct browser requests, set cookies and redirect
+        // Determine if we're in a secure context
         const domain = requestUrl.hostname;
-        const isSecure = isSecureRequest(request);
+        const isLocalhost = domain === 'localhost';
         
-        // Create cookies with proper attributes using helper
-        const headers = createAuthCookies(authResult.token, domain, isSecure);
-        headers.set('Location', '/');
+        // Set secure attribute based on environment (always for production, not for localhost)
+        const secureFlag = isLocalhost ? '' : 'Secure; ';
         
-        // Add CORS headers if needed
+        console.log('ORCID auth - Setting cookies:', { domain, isLocalhost, secureFlag });
+        
+        const headers = new Headers({
+          'Location': '/',
+          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax; ${secureFlag}`
+        });
+        
+        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
+        // This doesn't contain the actual token, just a flag that user is logged in
+        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax; ${secureFlag}`);
+        
+        // Add CORS headers
         headers.set('Access-Control-Allow-Origin', requestUrl.origin);
         headers.set('Access-Control-Allow-Credentials', 'true');
         
-        console.log('ORCID auth - Set cookies successfully with SameSite=' + (isSecure ? 'None' : 'Lax'));
-        
         return new Response(null, {
-          status: 302,
-          headers
-        });
       } catch (error) {
         console.error('ORCID auth error:', error);
         
@@ -231,22 +235,10 @@ export class Router {
         
         // For direct browser requests, redirect
         return new Response(null, {
-          status: 302,
           headers: {
             'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
           }
-        });
       }
-    }
-    
-    // Init GitHub auth
-    if (path === '/api/auth/github/init' && request.method === 'GET') {
-      const requestUrl = new URL(request.url);
-      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
-      
-      const authorizationUrl = this.authHandler.initGitHubAuth(redirectUri, env);
-      
-      return this.jsonResponse({ authorizationUrl });
     }
     
     // Complete GitHub auth
@@ -282,23 +274,104 @@ export class Router {
         }
         
         // For direct browser requests, set cookies and redirect
+        // Determine if we're in a secure context
         const domain = requestUrl.hostname;
-        const isSecure = isSecureRequest(request);
+        const isLocalhost = domain === 'localhost';
         
-        // Create cookies with proper attributes using helper
-        const headers = createAuthCookies(authResult.token, domain, isSecure);
-        headers.set('Location', '/');
+        // Set secure attribute based on environment (always for production, not for localhost)
+        const secureFlag = isLocalhost ? '' : 'Secure; ';
         
-        // Add CORS headers if needed
+        console.log('GitHub auth - Setting cookies:', { domain, isLocalhost, secureFlag });
+        
+        // For production (non-localhost), ensure we use SameSite=None for cross-origin contexts
+        const sameSite = isLocalhost ? 'Lax' : 'None';
+        
+        // Set the cookies with proper attributes
+        const headers = new Headers({
+          'Location': '/',
+          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${sameSite}; ${secureFlag}`
+        });
+        
+        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
+        // This doesn't contain the actual token, just a flag that user is logged in
+        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=${sameSite}; ${secureFlag}`);
+        
+        // Add CORS headers
         headers.set('Access-Control-Allow-Origin', requestUrl.origin);
         headers.set('Access-Control-Allow-Credentials', 'true');
         
-        console.log('GitHub auth - Set cookies successfully with SameSite=' + (isSecure ? 'None' : 'Lax'));
+        console.log('GitHub auth - Set cookies successfully with SameSite=' + sameSite);
         
         return new Response(null, {
           status: 302,
           headers
         });
+      } catch (error) {
+        console.error('ORCID auth error:', error);
+        
+        // For API requests from the SPA, return JSON error
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({ 
+            success: false, 
+            message: error instanceof Error ? error.message : 'Authentication failed' 
+          }, 400);
+        }
+        
+        // For direct browser requests, redirect
+        return new Response(null, {
+          headers: {
+            'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
+          }
+      }
+    }
+    
+    // Complete GitHub auth
+    if (path === '/api/auth/github/callback' && request.method === 'GET') {
+      const requestUrl = new URL(request.url);
+      const urlParams = requestUrl.searchParams;
+      const code = urlParams.get('code');
+      
+      if (!code) {
+        return this.errorResponse('Missing code parameter');
+      }
+      
+      const userAgent = request.headers.get('User-Agent') || '';
+      const ipAddress = request.headers.get('CF-Connecting-IP') || '';
+      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
+      
+      try {
+        const authResult = await this.authHandler.completeGitHubAuth(
+          code,
+          redirectUri,
+          userAgent,
+          ipAddress,
+          env
+        );
+        
+        // For API requests from the SPA, return JSON
+        if (request.headers.get('Accept')?.includes('application/json')) {
+          return this.jsonResponse({
+            success: true,
+            token: authResult.token,
+            redirectUrl: '/'
+          });
+        }
+        
+        // For direct browser requests, set cookies and redirect
+        const headers = new Headers({
+          'Location': '/',
+          'Set-Cookie': `r3l_session=${authResult.token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`
+        });
+        
+        // Add a secondary cookie that's accessible to JavaScript just to indicate auth state
+        // This doesn't contain the actual token, just a flag that user is logged in
+        headers.append('Set-Cookie', `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=Lax`);
+        
+        // Add CORS headers
+        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
+        headers.set('Access-Control-Allow-Credentials', 'true');
+        
+        return new Response(null, {
       } catch (error) {
         console.error('GitHub auth error:', error);
         
@@ -312,11 +385,9 @@ export class Router {
         
         // For direct browser requests, redirect
         return new Response(null, {
-          status: 302,
           headers: {
             'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
           }
-        });
       }
     }
     
@@ -375,12 +446,24 @@ export class Router {
       
       // Get the domain from the request URL
       const domain = new URL(request.url).hostname;
-      const isSecure = isSecureRequest(request);
+      const isLocalhost = domain === 'localhost';
       
-      // Create headers with both expired cookies
-      const headers = createClearAuthCookies(domain, isSecure);
+      const cookieOptions = isLocalhost ? "Path=/; Max-Age=2592000; SameSite=Lax" : "Path=/; Max-Age=2592000; SameSite=Lax; Secure";
+        ? `HttpOnly; Path=/; Max-Age=0; SameSite=Lax`
+        : `HttpOnly; Path=/; Domain=${domain}; Max-Age=0; SameSite=Lax; Secure`;
+      
+      const authStateCookieOptions = isLocalhost
+        ? `Path=/; Max-Age=0; SameSite=Lax`
+        : `Path=/; Domain=${domain}; Max-Age=0; SameSite=Lax; Secure`;
+      
+      // Clear both cookies
+      const headers = new Headers({
+        'Set-Cookie': `r3l_session=; ${cookieOptions}`,
+      });
+      headers.append('Set-Cookie', `r3l_auth_state=; ${authStateCookieOptions}`);
       
       console.log('Clearing auth cookies with domain:', domain);
+      console.log('Clearing cookies with options:', { cookieOptions, authStateCookieOptions });
       
       return this.jsonResponse({ success: true }, 200, headers);
     }
@@ -605,126 +688,77 @@ export class Router {
       authenticatedUserId = await this.authHandler.validateToken(token, env);
     }
     
-    // Handle content routes
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle stats routes
-   */
-  private async handleStatsRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Stats route requested: ${path}`);
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle notification routes
-   */
-  private async handleNotificationRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Notification route requested: ${path}`);
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle tag routes
-   */
-  private async handleTagRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle AI routes
-   */
-  private async handleAIRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`AI route requested: ${path}`);
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle file routes
-   */
-  private async handleFileRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`File route requested: ${path}`);
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle globe routes
-   */
-  private async handleGlobeRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Globe route requested: ${path}`);
-    return this.notFoundResponse();
-  }
-  
-  /**
-   * Handle debug routes
-   */
-  private async handleDebugRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Environment check endpoint
-    if (path === '/api/debug/env-check' && request.method === 'GET') {
-      // Get authenticated user first - require authentication for this endpoint
-      const token = this.getAuthToken(request);
-      let authenticatedUserId: string | null = null;
+    // Handle content copy
+    if (path === '/api/content/copy' && request.method === 'POST') {
+      // Attach user auth info to request
+      (request as any).authenticated = !!authenticatedUserId;
+      (request as any).userId = authenticatedUserId;
       
-      if (token) {
-        authenticatedUserId = await this.authHandler.validateToken(token, env);
-      }
+      const contentCopyHandler = new ContentCopyHandler();
+      return await contentCopyHandler.handleCopyContent(request as any, env);
+    }
+    
+    // Handle explicit voting
+    if (path === '/api/content/vote' && request.method === 'POST') {
+      // Attach user auth info to request
+      (request as any).authenticated = !!authenticatedUserId;
+      (request as any).userId = authenticatedUserId;
       
+      const contentCopyHandler = new ContentCopyHandler();
+      return await contentCopyHandler.handleExplicitVote(request as any, env);
+    }
+    
+    // Handle content download
+    if (path.startsWith('/api/content/download/') && request.method === 'GET') {
+      // Attach user auth info to request
+      (request as any).authenticated = !!authenticatedUserId;
+      (request as any).userId = authenticatedUserId;
+      
+      const contentCopyHandler = new ContentCopyHandler();
+      return await contentCopyHandler.handleDownloadContent(request as any, env);
+    }
+    
+    // Handle tag management - add tags
+    if (path.match(/^\/api\/content\/[^/]+\/tags$/) && request.method === 'POST') {
+      // Require authentication
       if (!authenticatedUserId) {
         return this.errorResponse('Authentication required', 401);
       }
       
-      // Check if required environment variables are set
-      const checks = {
-        github: {
-          client_id: !!env.GITHUB_CLIENT_ID,
-          client_secret: !!env.GITHUB_CLIENT_SECRET,
-          redirect_uri: !!env.GITHUB_REDIRECT_URI,
-        },
-        orcid: {
-          client_id: !!env.ORCID_CLIENT_ID,
-          client_secret: !!env.ORCID_CLIENT_SECRET,
-          redirect_uri: !!env.ORCID_REDIRECT_URI,
-        },
-        services: {
-          db: true, // Always true as it's a required binding
-          kv: true,
-          r2: true,
-        }
-      };
+      const contentId = path.split('/')[3];
+      const data = await request.json() as { tags: string[] };
       
-      return this.jsonResponse({
-        checks,
-        timestamp: Date.now()
-      });
+      if (!Array.isArray(data.tags)) {
+        return this.errorResponse('Invalid tags format');
+      }
+      
+      await this.tagHandler.addTags(contentId, data.tags, env);
+      return this.jsonResponse({ success: true });
     }
     
-    // Cookie check endpoint
-    if (path === '/api/debug/cookie-check' && request.method === 'GET') {
-      const cookies = request.headers.get('Cookie') || '';
+    // Handle tag management - remove tags
+    if (path.match(/^\/api\/content\/[^/]+\/tags$/) && request.method === 'DELETE') {
+      // Require authentication
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
       
-      // Extract cookies
-      const cookieObj: {[key: string]: string} = {};
-      cookies.split(';').forEach(cookie => {
-        const parts = cookie.trim().split('=');
-        if (parts.length === 2) {
-          cookieObj[parts[0]] = parts[1];
-        }
-      });
+      const contentId = path.split('/')[3];
+      const data = await request.json() as { tags: string[] };
       
-      return this.jsonResponse({
-        cookies: cookieObj,
-        raw: cookies,
-        hasAuthState: cookies.includes('r3l_auth_state'),
-        hasSession: cookies.includes('r3l_session'),
-        userAgent: request.headers.get('User-Agent'),
-        isSecure: isSecureRequest(request)
-      });
+      if (!Array.isArray(data.tags)) {
+        return this.errorResponse('Invalid tags format');
+      }
+      
+      await this.tagHandler.removeTags(contentId, data.tags, env);
+      return this.jsonResponse({ success: true });
+    }
+    
+    // Handle tag management - get content tags
+    if (path.match(/^\/api\/content\/[^/]+\/tags$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      const tags = await this.tagHandler.getContentTags(contentId, env);
+      return this.jsonResponse({ tags });
     }
     
     return this.notFoundResponse();
@@ -752,7 +786,178 @@ export class Router {
       return this.jsonResponse(drawers);
     }
     
-    // Other drawer routes
+    // Get drawer details
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'GET') {
+      const drawerId = path.split('/').pop() as string;
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // If drawer is private, check authentication
+      if (!drawer.is_public && (!authenticatedUserId || authenticatedUserId !== drawer.user_id)) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      return this.jsonResponse(drawer);
+    }
+    
+    // Get drawer contents
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents$/) && request.method === 'GET') {
+      const drawerId = path.split('/')[3];
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // If drawer is private, check authentication
+      if (!drawer.is_public && (!authenticatedUserId || authenticatedUserId !== drawer.user_id)) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      const contents = await this.drawerHandler.getDrawerContents(drawerId, env);
+      return this.jsonResponse(contents);
+    }
+    
+    // Create new drawer
+    if (path === '/api/drawers' && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const data = await request.json() as any;
+      const { name, description, isPublic } = data;
+      
+      if (!name) {
+        return this.errorResponse('Name is required');
+      }
+      
+      const drawerId = await this.drawerHandler.createDrawer(
+        authenticatedUserId,
+        name,
+        description || '',
+        isPublic !== false,
+        env
+      );
+      
+      return this.jsonResponse({ id: drawerId });
+    }
+    
+    // Update drawer
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'PATCH') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/').pop() as string;
+      const drawer = await this.drawerHandler.getDrawer(drawerId, env);
+      
+      if (!drawer) {
+        return this.errorResponse('Drawer not found', 404);
+      }
+      
+      // Check ownership
+      if (drawer.user_id !== authenticatedUserId) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      
+      const data = await request.json() as any;
+      await this.drawerHandler.updateDrawer(drawerId, data, env);
+      
+      return this.jsonResponse({ success: true });
+    }
+    
+    // Delete drawer
+    if (path.match(/^\/api\/drawers\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/').pop() as string;
+      
+      try {
+        await this.drawerHandler.deleteDrawer(drawerId, authenticatedUserId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        throw error;
+      }
+    }
+    
+    // Add content to drawer
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/')[3];
+      const data = await request.json() as any;
+      const { contentId, note } = data;
+      
+      if (!contentId) {
+        return this.errorResponse('Content ID is required');
+      }
+      
+      try {
+        const drawerContentId = await this.drawerHandler.addContentToDrawer(
+          drawerId,
+          contentId,
+          note || '',
+          authenticatedUserId,
+          env
+        );
+        
+        return this.jsonResponse({ id: drawerContentId });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        if (error instanceof Error && error.message.includes('already in drawer')) {
+          return this.errorResponse('Content already in drawer', 400);
+        }
+        throw error;
+      }
+    }
+    
+    // Remove content from drawer
+    if (path.match(/^\/api\/drawers\/[^/]+\/contents\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const drawerId = path.split('/')[3];
+      const contentId = path.split('/')[5];
+      
+      try {
+        await this.drawerHandler.removeContentFromDrawer(
+          drawerId,
+          contentId,
+          authenticatedUserId,
+          env
+        );
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+          return this.errorResponse('Unauthorized', 403);
+        }
+        if (error instanceof Error && error.message.includes('not found')) {
+          return this.errorResponse('Drawer not found', 404);
+        }
+        throw error;
+      }
+    }
+    
     return this.notFoundResponse();
   }
   
@@ -803,21 +1008,67 @@ export class Router {
       return this.jsonResponse(results);
     }
     
-    // Other search routes
+    // Lurker search (randomized)
+    if (path === '/api/search/lurker' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const query = url.searchParams.get('q') || '';
+      const randomness = parseInt(url.searchParams.get('randomness') || '50');
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      
+      // Parse filters
+      const type = url.searchParams.getAll('type');
+      const dateStart = url.searchParams.get('date_start');
+      const dateEnd = url.searchParams.get('date_end');
+      
+      const filters: any = {};
+      if (type.length > 0) filters.type = type;
+      if (dateStart || dateEnd) {
+        filters.dateRange = {};
+        if (dateStart) filters.dateRange.start = parseInt(dateStart);
+        if (dateEnd) filters.dateRange.end = parseInt(dateEnd);
+      }
+      
+      const results = await this.searchHandler.lurkerSearch(query, randomness, filters, limit, env);
+      return this.jsonResponse(results);
+    }
+    
+    // Location-based search
+    if (path === '/api/search/location' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const lat = parseFloat(url.searchParams.get('lat') || '0');
+      const lng = parseFloat(url.searchParams.get('lng') || '0');
+      const radius = parseFloat(url.searchParams.get('radius') || '5');
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      
+      // Validate coordinates
+      if (isNaN(lat) || isNaN(lng) || lat === 0 && lng === 0) {
+        return this.errorResponse('Invalid coordinates');
+      }
+      
+      // Get location-based results
+      const results = await this.searchHandler.locationSearch(lat, lng, radius, limit, env);
+      return this.jsonResponse(results);
+    }
+    
+    // Popular tags
+    if (path === '/api/search/tags' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const limit = parseInt(url.searchParams.get('limit') || '30');
+      
+      const popularTags = await this.tagHandler.getPopularTags(limit, env);
+      return this.jsonResponse(popularTags);
+    }
+    
     return this.notFoundResponse();
   }
   
   /**
-   * Handle static files route
-   */
-  private async handleStaticFiles(_request: Request, _env: Env, path: string): Promise<Response> {
-    // Implement static file handling here
-    console.log(`Static file requested: ${path}`);
-    return new Response('Static file handling not implemented', { status: 501 });
-  }
-  
-  /**
    * Extract authentication token from request
+   */
+  /**
+   * Get authentication token from request
+   * @param request The request object
+   * @returns The token if found, null otherwise
    */
   private getAuthToken(request: Request): string | null {
     // Check Authorization header first
@@ -837,10 +1088,16 @@ export class Router {
     
     // If we got here and still don't have a token, but we have the auth state cookie,
     // the session cookie might have been lost or not set correctly.
+    const cookieHeader = request.headers.get('Cookie');
     if (cookieHeader && cookieHeader.includes('r3l_auth_state=true')) {
       console.log('Found auth state cookie but no session cookie - auth state mismatch');
     }
-    
+    // If we got here and still don't have a token, but we have the auth state cookie,
+    // the session cookie might have been lost or not set correctly.
+    const cookieHeader = request.headers.get('Cookie');
+    if (cookieHeader && cookieHeader.includes('r3l_auth_state=true')) {
+      console.log('Found auth state cookie but no session cookie - auth state mismatch');
+    }
     return null;
   }
   
@@ -849,13 +1106,15 @@ export class Router {
    */
   private fixAuthStateCookie(request: Request): Response {
     const url = new URL(request.url);
-    const isSecure = isSecureRequest(request);
     
-    // Set secure attribute based on environment
-    const secureFlag = isSecure ? 'Secure; ' : '';
-    const sameSite = isSecure ? 'None' : 'Lax';
+    // Get the domain from the request URL
+    const domain = url.hostname;
+    const isLocalhost = domain === 'localhost';
     
-    const cookieOptions = `Path=/; Max-Age=2592000; SameSite=${sameSite}; ${secureFlag}`;
+    // Create auth state cookie that's accessible to JavaScript
+    const cookieOptions = isLocalhost ? "Path=/; Max-Age=2592000; SameSite=Lax" : "Path=/; Max-Age=2592000; SameSite=Lax; Secure";
+      ? "Path=/; Max-Age=2592000; SameSite=Lax"
+      : "Path=/; Max-Age=2592000; SameSite=Lax; Secure";
     
     const headers = new Headers({
       'Content-Type': 'application/json',
@@ -910,5 +1169,24 @@ export class Router {
    */
   private notFoundResponse(): Response {
     return this.errorResponse('Not found', 404);
+  }
+  
+  /**
+   * Handle CORS preflight requests
+   */
+  /**
+   * Handle CORS preflight requests
+   */
+  private handleCors(): Response {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
+        'Access-Control-Max-Age': '86400'
+      }
+    });
   }
 }

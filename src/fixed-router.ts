@@ -612,18 +612,14 @@ export class Router {
   /**
    * Handle stats routes
    */
-  private async handleStatsRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Stats route requested: ${path}`);
+  private async handleStatsRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
     return this.notFoundResponse();
   }
   
   /**
    * Handle notification routes
    */
-  private async handleNotificationRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Notification route requested: ${path}`);
+  private async handleNotificationRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
     return this.notFoundResponse();
   }
   
@@ -637,27 +633,21 @@ export class Router {
   /**
    * Handle AI routes
    */
-  private async handleAIRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`AI route requested: ${path}`);
+  private async handleAIRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
     return this.notFoundResponse();
   }
   
   /**
    * Handle file routes
    */
-  private async handleFileRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`File route requested: ${path}`);
+  private async handleFileRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
     return this.notFoundResponse();
   }
   
   /**
    * Handle globe routes
    */
-  private async handleGlobeRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Globe route requested: ${path}`);
+  private async handleGlobeRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
     return this.notFoundResponse();
   }
   
@@ -810,9 +800,8 @@ export class Router {
   /**
    * Handle static files route
    */
-  private async handleStaticFiles(_request: Request, _env: Env, path: string): Promise<Response> {
+  private async handleStaticFiles(request: Request, env: Env, path: string): Promise<Response> {
     // Implement static file handling here
-    console.log(`Static file requested: ${path}`);
     return new Response('Static file handling not implemented', { status: 501 });
   }
   
@@ -849,6 +838,7 @@ export class Router {
    */
   private fixAuthStateCookie(request: Request): Response {
     const url = new URL(request.url);
+    const domain = url.hostname;
     const isSecure = isSecureRequest(request);
     
     // Set secure attribute based on environment

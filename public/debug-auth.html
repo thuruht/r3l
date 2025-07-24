@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Debug - R3L:F</title>
+  <link rel="stylesheet" href="/css/rel-f-global.css">
+  <style>
+    .debug-panel {
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      border: 1px solid var(--border-color);
+    }
+    
+    .debug-section {
+      margin-bottom: var(--space-4);
+    }
+    
+    .debug-title {
+      font-size: var(--fs-lg);
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+      color: var(--accent-color);
+    }
+    
+    .cookie-info {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-2);
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .cookie-name {
+      font-weight: 600;
+    }
+    
+    .cookie-value {
+      font-family: monospace;
+      word-break: break-all;
+    }
+    
+    .debug-actions {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-4);
+    }
+    
+    .debug-response {
+      background: var(--bg-deep);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+    }
+    
+    .status-success {
+      background-color: var(--success-muted);
+      color: var(--success);
+    }
+    
+    .status-error {
+      background-color: var(--error-muted);
+      color: var(--error);
+    }
+    
+    .status-warning {
+      background-color: var(--warning-muted);
+      color: var(--warning);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="navbar">
+        <div class="navbar-left">
+          <a href="/" class="navbar-logo">
+            <span class="material-icons">public</span>
+            <span>R3L:F</span>
+          </a>
+        </div>
+        <div class="navbar-right">
+          <a href="/" class="nav-link">Home</a>
+          <a href="/network.html" class="nav-link">Network</a>
+          <a href="/search.html" class="nav-link">Search</a>
+          <a href="/map.html" class="nav-link">Map</a>
+          <a href="/login.html" class="nav-link">Login/Signup</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>Authentication Debug Tool</h1>
+    <p>This page helps diagnose authentication and cookie issues.</p>
+    
+    <div class="debug-panel">
+      <div class="debug-section">
+        <div class="debug-title">Current Cookie State</div>
+        <div id="cookie-container">Loading...</div>
+      </div>
+      
+      <div class="debug-section">
+        <div class="debug-title">Auth Status</div>
+        <div id="auth-status">Checking...</div>
+      </div>
+      
+      <div class="debug-actions">
+        <button id="check-env" class="btn">Check Environment</button>
+        <button id="fix-cookies" class="btn btn-secondary">Fix Auth Cookie</button>
+        <button id="test-api" class="btn">Test API Access</button>
+        <button id="clear-cookies" class="btn btn-error">Clear All Cookies</button>
+      </div>
+    </div>
+    
+    <div class="debug-panel">
+      <div class="debug-title">API Response</div>
+      <div id="api-response" class="debug-response">No API request made yet.</div>
+    </div>
+    
+    <div class="debug-panel">
+      <div class="debug-title">Authentication Diagnostics</div>
+      <div class="debug-response" id="diagnostics">
+1. Check if you have both cookies:
+   - r3l_session: Contains your authentication token (HttpOnly)
+   - r3l_auth_state: Flag indicating authentication state (accessible to JS)
+
+2. If r3l_auth_state exists but r3l_session doesn't:
+   - Cookie might have been lost/expired
+   - Click "Fix Auth Cookie" to attempt repair
+   - Try logging in again
+
+3. If API requests fail with 401 Unauthorized:
+   - Session token may be invalid
+   - Backend can't validate your session
+   - Click "Clear All Cookies" and try logging in again
+
+4. Common issues:
+   - SameSite cookie restrictions
+   - Missing HttpOnly flag
+   - Secure flag on non-HTTPS connections
+   - Cookie domain mismatch
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize UI
+      refreshCookieDisplay();
+      checkAuthStatus();
+      
+      // Setup event listeners
+      document.getElementById('check-env').addEventListener('click', checkEnvironment);
+      document.getElementById('fix-cookies').addEventListener('click', fixAuthCookie);
+      document.getElementById('test-api').addEventListener('click', testApiAccess);
+      document.getElementById('clear-cookies').addEventListener('click', clearAllCookies);
+      
+      // Refresh cookie display function
+      function refreshCookieDisplay() {
+        const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+        const cookieContainer = document.getElementById('cookie-container');
+        
+        if (!cookies || cookies.length === 0 || (cookies.length === 1 && cookies[0] === '')) {
+          cookieContainer.innerHTML = 'No cookies found';
+          return;
+        }
+        
+        const cookieHtml = cookies.map(cookie => {
+          const [name, ...valueParts] = cookie.split('=');
+          const value = valueParts.join('='); // In case the value contains =
+          
+          return `
+            <div class="cookie-info">
+              <div class="cookie-name">${name || 'unnamed'}</div>
+              <div class="cookie-value">${value || 'no value'}</div>
+            </div>
+          `;
+        }).join('');
+        
+        cookieContainer.innerHTML = cookieHtml;
+      }
+      
+      // Check auth status function
+      function checkAuthStatus() {
+        const authStatus = document.getElementById('auth-status');
+        const allCookies = document.cookie;
+        const hasAuthState = allCookies.includes('r3l_auth_state=true');
+        
+        if (hasAuthState) {
+          authStatus.innerHTML = `
+            <span class="status status-success">Auth state found</span>
+            <p>Authentication state cookie is present, but session token may be HttpOnly (not readable by JavaScript).</p>
+          `;
+        } else {
+          authStatus.innerHTML = `
+            <span class="status status-warning">Not authenticated</span>
+            <p>No authentication state cookie found. You are likely not logged in.</p>
+          `;
+        }
+      }
+      
+      // Check environment function
+      async function checkEnvironment() {
+        const responseDiv = document.getElementById('api-response');
+        responseDiv.textContent = 'Checking environment...';
+        
+        try {
+          const response = await fetch('/api/debug/env-check', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          responseDiv.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          responseDiv.textContent = `Error checking environment: ${error.message}`;
+        }
+      }
+      
+      // Fix auth cookie function
+      async function fixAuthCookie() {
+        const responseDiv = document.getElementById('api-response');
+        responseDiv.textContent = 'Fixing auth cookie...';
+        
+        try {
+          const response = await fetch('/api/auth/fix-cookie', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          responseDiv.textContent = JSON.stringify(data, null, 2);
+          
+          // Refresh cookie display
+          setTimeout(() => {
+            refreshCookieDisplay();
+            checkAuthStatus();
+          }, 500);
+        } catch (error) {
+          responseDiv.textContent = `Error fixing auth cookie: ${error.message}`;
+        }
+      }
+      
+      // Test API access function
+      async function testApiAccess() {
+        const responseDiv = document.getElementById('api-response');
+        responseDiv.textContent = 'Testing API access...';
+        
+        try {
+          const response = await fetch('/api/auth/validate', {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            responseDiv.textContent = JSON.stringify(data, null, 2);
+          } else {
+            responseDiv.textContent = `API returned ${response.status} ${response.statusText}\n\nThis indicates your session is not valid.`;
+          }
+        } catch (error) {
+          responseDiv.textContent = `Error testing API access: ${error.message}`;
+        }
+      }
+      
+      // Clear all cookies function
+      function clearAllCookies() {
+        const responseDiv = document.getElementById('api-response');
+        
+        // Get all cookies
+        const cookies = document.cookie.split(';');
+        
+        // For each cookie, set its expiration date to a past date
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          
+          // Set expiration to a past date
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
+        }
+        
+        // Also try with domain
+        const domain = window.location.hostname;
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i];
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain};`;
+        }
+        
+        responseDiv.textContent = 'All cookies have been cleared. You will need to log in again.';
+        
+        // Refresh cookie display
+        setTimeout(() => {
+          refreshCookieDisplay();
+          checkAuthStatus();
+        }, 500);
+      }
+    });
+  </script>
+</body>
+</html>

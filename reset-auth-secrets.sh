@@ -36,6 +36,10 @@ echo "You can find or create these credentials at:"
 echo "GitHub: https://github.com/settings/developers"
 echo "ORCID: https://orcid.org/developer-tools"
 echo ""
+echo "⚠️  IMPORTANT: Make sure you have configured the following callback URLs: ⚠️"
+echo "GitHub callback URL: https://r3l.distorted.work/auth/github/callback"
+echo "ORCID callback URL: https://r3l.distorted.work/auth/orcid/callback"
+echo ""
 
 # Set GitHub credentials
 echo "Setting GitHub OAuth credentials:"

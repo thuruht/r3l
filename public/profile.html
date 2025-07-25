@@ -168,7 +168,10 @@
       <div id="not-authenticated" class="profile-container not-authenticated hidden">
         <h2>Not Authenticated</h2>
         <p>You need to log in to view your profile.</p>
-        <a href="/login" class="primary-button">Go to Login</a>
+        <div class="auth-buttons">
+          <a href="/auth/login.html" class="primary-button">Log In</a>
+          <a href="/auth/register.html" class="secondary-button">Create Account</a>
+        </div>
       </div>
       
       <!-- Authenticated state -->
@@ -243,59 +246,46 @@
       const editProfileBtn = document.getElementById('edit-profile-btn');
       const logoutBtn = document.getElementById('logout-btn');
       
+      // Check for new registration notification
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNewRegistration = urlParams.get('new') === 'true';
+      
+      if (isNewRegistration) {
+        // Could add a welcome message here
+        console.log('New registration detected');
+      }
+      
       // Function to check if user is authenticated and load profile data
       const loadProfileData = async () => {
         try {
-          // Check for session cookie
-          const hasSessionCookie = document.cookie.includes('r3l_session=');
-          console.log('Session cookie present:', hasSessionCookie);
-          
-          if (!hasSessionCookie) {
-            throw new Error('No session cookie found');
-          }
-          
-          // Extract token from cookie
-          const match = document.cookie.match(/r3l_session=([^;]+)/);
-          const token = match ? match[1] : null;
-          console.log('Token extracted:', token ? 'Present' : 'Missing');
-          
-          if (!token) {
-            throw new Error('Invalid session token');
-          }
-          
-          // Make request to validate token and get user data
-          console.log('Fetching user data from /api/auth/validate');
-          const response = await fetch('/api/auth/validate', {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+          // Make request to get user profile using JWT auth
+          console.log('Fetching user profile data from /api/auth/jwt/profile');
+          const response = await fetch('/api/auth/jwt/profile', {
+            credentials: 'include' // Important to send cookies!
           });
           
-          console.log('Auth validation response:', response.status, response.statusText);
+          console.log('Profile response:', response.status, response.statusText);
           
           if (!response.ok) {
-            throw new Error(`Auth validation failed: ${response.status} ${response.statusText}`);
+            throw new Error(`Profile fetch failed: ${response.status} ${response.statusText}`);
           }
           
-          const responseText = await response.text();
-          console.log('Auth validation response text:', responseText);
+          const data = await response.json();
+          console.log('Profile data:', data);
           
-          const data = JSON.parse(responseText);
-          console.log('Auth validation data:', data);
-          
-          if (!data.valid || !data.user) {
+          if (!data || !data.username) {
             throw new Error('Invalid user data received');
           }
           
           // User is authenticated, populate profile data
-          const user = data.user;
+          const user = data;
           
           // Set basic profile info
-          profileNameEl.textContent = user.display_name || 'R3L User';
+          profileNameEl.textContent = user.displayName || 'R3L User';
           profileUsernameEl.textContent = `@${user.username}`;
           
           // Format joined date
-          const joinedDate = new Date(user.created_at);
+          const joinedDate = user.createdAt ? new Date(user.createdAt) : new Date();
           profileJoinedEl.textContent = `Joined on ${joinedDate.toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'long', 
@@ -303,14 +293,35 @@
           })}`;
           
           // Set avatar if available
-          if (user.avatar_url) {
-            profileAvatarEl.src = user.avatar_url;
+          if (user.avatarUrl) {
+            profileAvatarEl.src = user.avatarUrl;
+          } else {
+            // Create an avatar with the first letter of the display name
+            const initial = (user.displayName || user.username || '?').charAt(0).toUpperCase();
+            profileAvatarEl.src = '';
+            profileAvatarEl.style.display = 'flex';
+            profileAvatarEl.style.alignItems = 'center';
+            profileAvatarEl.style.justifyContent = 'center';
+            profileAvatarEl.style.fontSize = '3rem';
+            profileAvatarEl.style.color = 'white';
+            profileAvatarEl.style.backgroundColor = '#6d28d9';
+            profileAvatarEl.innerHTML = initial;
           }
           
           // Show authentication providers
           authProvidersEl.innerHTML = '';
           
-          if (user.orcid_id) {
+          // If using JWT auth, show that
+          const jwtProvider = document.createElement('div');
+          jwtProvider.className = 'auth-provider';
+          jwtProvider.innerHTML = `
+            <span class="material-icons">key</span>
+            <span>Password</span>
+          `;
+          authProvidersEl.appendChild(jwtProvider);
+          
+          // For legacy support, if these fields exist
+          if (user.orcidId) {
             const orcidProvider = document.createElement('div');
             orcidProvider.className = 'auth-provider';
             orcidProvider.innerHTML = `
@@ -320,7 +331,7 @@
             authProvidersEl.appendChild(orcidProvider);
           }
           
-          if (user.github_id) {
+          if (user.githubId) {
             const githubProvider = document.createElement('div');
             githubProvider.className = 'auth-provider';
             githubProvider.innerHTML = `
@@ -330,16 +341,21 @@
             authProvidersEl.appendChild(githubProvider);
           }
           
-          // Load user stats
-          const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
-            credentials: 'include'
-          });
-          
-          if (statsResponse.ok) {
-            const stats = await statsResponse.json();
-            statContributionsEl.textContent = stats.contributions || 0;
-            statDrawersEl.textContent = stats.drawers || 0;
-            statConnectionsEl.textContent = stats.connections || 0;
+          // Try to load user stats if available
+          try {
+            const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
+              credentials: 'include'
+            });
+            
+            if (statsResponse.ok) {
+              const stats = await statsResponse.json();
+              statContributionsEl.textContent = stats.contributions || 0;
+              statDrawersEl.textContent = stats.drawers || 0;
+              statConnectionsEl.textContent = stats.connections || 0;
+            }
+          } catch (statsError) {
+            console.warn('Could not load stats:', statsError);
+            // Use defaults (already set in HTML)
           }
           
           // Show profile data, hide loading
@@ -350,19 +366,19 @@
           // Set up edit profile button
           editProfileBtn.addEventListener('click', () => {
             // Redirect to edit profile page (to be implemented)
-            window.location.href = '/edit-profile';
+            window.location.href = '/edit-profile.html';
           });
           
           // Set up logout button
           logoutBtn.addEventListener('click', async () => {
             try {
-              await fetch('/api/auth/logout', {
+              await fetch('/api/auth/jwt/logout', {
                 method: 'POST',
                 credentials: 'include'
               });
               
-              // Redirect to home page after logout
-              window.location.href = '/';
+              // Redirect to login page after logout
+              window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out successfully.');
             } catch (error) {
               console.error('Logout error:', error);
               alert('Failed to log out. Please try again.');

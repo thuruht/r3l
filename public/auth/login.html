@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>R3L:F Login</title>
+  <link rel="stylesheet" href="/css/rel-f-global.css">
+  <script src="/js/font-loader.js" defer></script>
+  <style>
+    .login-container {
+      max-width: 400px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: var(--bg-container);
+      border-radius: 8px;
+      box-shadow: var(--shadow-medium);
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-light);
+      border-radius: 4px;
+      background-color: var(--bg-input);
+      color: var(--text-primary);
+    }
+    
+    .button-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 2rem;
+    }
+    
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    
+    .btn-primary {
+      background-color: var(--accent-primary);
+      color: white;
+      border: none;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--accent-primary-dark);
+      transform: translateY(-1px);
+    }
+    
+    .btn-secondary {
+      background-color: transparent;
+      color: var(--accent-primary);
+      border: 1px solid var(--accent-primary);
+    }
+    
+    .btn-secondary:hover {
+      background-color: var(--accent-primary-light);
+      transform: translateY(-1px);
+    }
+    
+    .error-message {
+      color: var(--error);
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-left: 3px solid var(--error);
+      background-color: var(--error-bg);
+      display: none;
+    }
+    
+    .success-message {
+      color: var(--success);
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-left: 3px solid var(--success);
+      background-color: var(--success-bg);
+      display: none;
+    }
+    
+    .social-login {
+      margin-top: 2rem;
+      text-align: center;
+      border-top: 1px solid var(--border-light);
+      padding-top: 1.5rem;
+    }
+    
+    .social-login p {
+      margin-bottom: 1rem;
+    }
+    
+    .social-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <nav>
+        <div class="logo">
+          <a href="/">R3L:F</a>
+        </div>
+        <ul class="nav-links">
+          <li><a href="/">Home</a></li>
+          <li><a href="/search.html">Search</a></li>
+          <li><a href="/map.html">Map</a></li>
+          <li><a href="/upload.html">Upload</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="login-container">
+      <h1>Log In</h1>
+      <p>Enter your credentials to access your account</p>
+      
+      <div id="error-message" class="error-message"></div>
+      <div id="success-message" class="success-message"></div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required>
+          <p class="info-text">
+            <a href="/auth/recovery.html" class="link">Forgot your password?</a>
+          </p>
+        </div>
+        
+        <div class="button-container">
+          <button type="submit" class="btn btn-primary">
+            <span class="material-icons">login</span>
+            Log In
+          </button>
+          <a href="/auth/register.html" class="btn btn-secondary">Create Account</a>
+        </div>
+      </form>
+      
+      <div class="social-login">
+        <p>Or continue with</p>
+        <div class="social-buttons">
+          <a href="/api/auth/github/init" class="btn btn-secondary">
+            <span class="material-icons">code</span>
+            GitHub
+          </a>
+          <a href="/api/auth/orcid/init" class="btn btn-secondary">
+            <span class="material-icons">account_circle</span>
+            ORCID
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const loginForm = document.getElementById('login-form');
+      const errorMessage = document.getElementById('error-message');
+      const successMessage = document.getElementById('success-message');
+      
+      // Check if we have an error message or success message in the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const error = urlParams.get('error');
+      const message = urlParams.get('message');
+      
+      if (error) {
+        errorMessage.textContent = decodeURIComponent(error);
+        errorMessage.style.display = 'block';
+      }
+      
+      if (message) {
+        successMessage.textContent = decodeURIComponent(message);
+        successMessage.style.display = 'block';
+      }
+      
+      loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        if (!username || !password) {
+          errorMessage.textContent = 'Username and password are required.';
+          errorMessage.style.display = 'block';
+          return;
+        }
+        
+        try {
+          // Hide any previous error
+          errorMessage.style.display = 'none';
+          
+          // Perform login with JWT
+          const response = await fetch('/api/auth/jwt/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username,
+              password
+            }),
+            credentials: 'include' // Important to store cookies!
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data.success) {
+            // Redirect to dashboard or profile
+            window.location.href = '/profile.html';
+          } else {
+            // Show error message
+            errorMessage.textContent = data.error || 'Invalid username or password.';
+            errorMessage.style.display = 'block';
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          errorMessage.textContent = 'An error occurred. Please try again.';
+          errorMessage.style.display = 'block';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

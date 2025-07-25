@@ -1,0 +1,20 @@
+{
+  "name": "workers-oauth-provider",
+  "version": "1.0.0",
+  "description": "OAuth Provider for R3L:F",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "webpack",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.0.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240612.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.88.2",
+    "webpack-cli": "^5.1.4"
+  }
+}

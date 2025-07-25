@@ -1,12 +1,11 @@
 import { Env } from './types/env';
 import { Router } from './router';
 import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './collaboration';
-import { createOAuthProvider, setupOAuthClients } from './auth/oauth-provider';
 
 // Export Durable Object classes
 export { ConnectionsObject, VisualizationObject, CollaborationRoom };
 
-// Create the OAuth provider
+// Main Worker entrypoint using standard fetch handler
 export default {
   /**
    * Handle fetch events (HTTP requests)
@@ -16,12 +15,12 @@ export default {
    * @returns Response object
    */
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Set up OAuth clients if needed
-    ctx.waitUntil(setupOAuthClients(env));
+    // Create a router instance
+    const router = new Router();
     
-    // Create and use the OAuth provider
-    const oauthProvider = createOAuthProvider(env);
-    return oauthProvider.fetch(request, env, ctx);
+    // Pass the request to the router for processing
+    // This handles OAuth flows, API routes, and static assets
+    return router.handle(request, env);
   },
   
   /**
@@ -36,8 +35,11 @@ export default {
     
     // Process content expirations on schedule
     if (event.cron === '0 */6 * * *') { // Every 6 hours
-      const contentLifecycle = router.contentLifecycle;
-      ctx.waitUntil(contentLifecycle.processExpirations(env));
+      // For now, log the scheduled event since the contentHandler doesn't have processExpirations
+      console.log('Scheduled task triggered:', event.cron);
+      
+      // This is a placeholder for future content expiration logic
+      // ctx.waitUntil(router.getContentHandler.processExpirations(env));
     }
   }
 };

@@ -3,6 +3,7 @@
 // Handles all API routes and static file serving
 
 import { AuthHandler } from './handlers/auth';
+import { JWTAuthHandler } from './handlers/jwt-auth';
 import { UserHandler } from './handlers/user';
 import { ContentHandler } from './handlers/content';
 import { StatisticsHandler } from './handlers/statistics';
@@ -15,12 +16,14 @@ import { GlobeHandler } from './handlers/globe';
 import { DrawerHandler } from './handlers/drawer';
 import { Env } from './types/env';
 import { createAuthCookies, createClearAuthCookies, isSecureRequest } from './cookie-helper';
+import { extractJWTFromRequest } from './jwt-helper';
 
 // For debugging - log route processing
 const ROUTE_DEBUG = false;
 
 export class Router {
   private authHandler: AuthHandler;
+  private jwtAuthHandler: JWTAuthHandler;
   private userHandler: UserHandler;
   private contentHandler: ContentHandler;
   private statsHandler: StatisticsHandler;
@@ -34,6 +37,7 @@ export class Router {
   
   constructor() {
     this.authHandler = new AuthHandler();
+    this.jwtAuthHandler = new JWTAuthHandler();
     this.userHandler = new UserHandler();
     this.contentHandler = new ContentHandler();
     this.statsHandler = new StatisticsHandler();
@@ -331,14 +335,21 @@ export class Router {
       }
       
       console.log('Validate endpoint - token found, validating:', token.slice(0, 10) + '...');
-      const userId = await this.authHandler.validateToken(token, env);
+      
+      // Try JWT validation first (new auth system)
+      let userId = await this.jwtAuthHandler.validateToken(request, env);
+      
+      // If JWT validation fails, try legacy token validation
+      if (!userId) {
+        userId = await this.authHandler.validateToken(token, env);
+      }
       
       if (!userId) {
         console.log('Validate endpoint - invalid token');
         return this.errorResponse('Invalid or expired token', 401);
       }
       
-      console.log('Validate endpoint - valid token, getting user:', userId);
+      console.log('Validate endpoint - valid token for user:', userId);
       const user = await this.userHandler.getUser(userId, env);
       
       // Set CORS headers for credentials
@@ -393,6 +404,126 @@ export class Router {
     // Fix auth state cookie - new dedicated endpoint
     if (path === '/api/auth/fix-cookies' && request.method === 'GET') {
       return this.fixAuthStateCookie(request);
+    }
+    
+    // JWT Authentication routes
+    
+    // Login with username/password
+    if (path === '/api/auth/jwt/login' && request.method === 'POST') {
+      try {
+        const { username, password } = await request.json() as { username: string; password: string };
+        
+        if (!username || !password) {
+          return this.errorResponse('Username and password are required');
+        }
+        
+        const result = await this.jwtAuthHandler.login(username, password, request, env);
+        
+        if (!result.success) {
+          return this.errorResponse(result.message || 'Authentication failed', 401);
+        }
+        
+        return this.jsonResponse({ 
+          success: true, 
+          userId: result.userId 
+        }, 200, result.headers);
+      } catch (error) {
+        console.error('JWT login error:', error);
+        return this.errorResponse('Invalid request format', 400);
+      }
+    }
+    
+    // Register new user
+    if (path === '/api/auth/jwt/register' && request.method === 'POST') {
+      try {
+        const { 
+          username, 
+          password, 
+          displayName, 
+          email 
+        } = await request.json() as { 
+          username: string; 
+          password: string; 
+          displayName: string; 
+          email: string;
+        };
+        
+        if (!username || !password || !displayName) {
+          return this.errorResponse('Username, password, and display name are required');
+        }
+        
+        const result = await this.jwtAuthHandler.register(
+          username, 
+          password, 
+          displayName, 
+          email || '', 
+          request, 
+          env
+        );
+        
+        if (!result.success) {
+          return this.errorResponse(result.message || 'Registration failed', 400);
+        }
+        
+        return this.jsonResponse({ 
+          success: true, 
+          userId: result.userId 
+        }, 200, result.headers);
+      } catch (error) {
+        console.error('JWT register error:', error);
+        return this.errorResponse('Invalid request format', 400);
+      }
+    }
+    
+    // Logout
+    if (path === '/api/auth/jwt/logout' && request.method === 'POST') {
+      const result = await this.jwtAuthHandler.logout(request, env);
+      return this.jsonResponse({ success: true }, 200, result.headers);
+    }
+    
+    // Validate JWT token
+    if (path === '/api/auth/jwt/validate' && request.method === 'GET') {
+      const userId = await this.jwtAuthHandler.validateToken(request, env);
+      
+      if (!userId) {
+        return this.errorResponse('Invalid or expired token', 401);
+      }
+      
+      const user = await this.userHandler.getUser(userId, env);
+      
+      // Set CORS headers for credentials
+      const headers = new Headers({
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Credentials': 'true'
+      });
+      
+      return this.jsonResponse({ valid: true, user }, 200, headers);
+    }
+    
+    // Test JWT endpoint
+    if (path === '/api/auth/jwt/test' && request.method === 'GET') {
+      return this.jwtAuthHandler.handleTestJWT(request, env);
+    }
+    
+    // Get user profile with JWT token
+    if (path === '/api/auth/jwt/profile' && request.method === 'GET') {
+      return this.jwtAuthHandler.getProfile(request, env);
+    }
+    
+    // Check if a username exists
+    if (path === '/api/auth/jwt/check-username' && request.method === 'POST') {
+      return this.jwtAuthHandler.checkUsername(request, env);
+    }
+    
+    // Verify recovery key
+    if (path === '/api/auth/jwt/verify-recovery-key' && request.method === 'POST') {
+      return this.jwtAuthHandler.verifyRecoveryKey(request, env);
+    }
+    
+    // Reset password with recovery key
+    if (path === '/api/auth/jwt/reset-password' && request.method === 'POST') {
+      return this.jwtAuthHandler.resetPassword(request, env);
     }
     
     return this.notFoundResponse();
@@ -819,6 +950,10 @@ export class Router {
   /**
    * Extract authentication token from request
    */
+  /**
+   * Extract authentication token from request
+   * Supports both legacy session cookies and JWT tokens
+   */
   private getAuthToken(request: Request): string | null {
     // Check Authorization header first
     const authHeader = request.headers.get('Authorization');
@@ -826,12 +961,19 @@ export class Router {
       return authHeader.slice(7);
     }
     
-    // Check for token in cookie if not in header
+    // Check for tokens in cookies if not in header
     const cookieHeader = request.headers.get('Cookie');
     if (cookieHeader) {
-      const match = cookieHeader.match(/r3l_session=([^;]+)/);
-      if (match) {
-        return match[1];
+      // Try JWT cookie first (new auth system)
+      const jwtMatch = cookieHeader.match(/r3l_jwt=([^;]+)/);
+      if (jwtMatch) {
+        return jwtMatch[1];
+      }
+      
+      // Fall back to legacy session cookie
+      const sessionMatch = cookieHeader.match(/r3l_session=([^;]+)/);
+      if (sessionMatch) {
+        return sessionMatch[1];
       }
     }
     
@@ -849,26 +991,61 @@ export class Router {
    */
   private fixAuthStateCookie(request: Request): Response {
     const url = new URL(request.url);
+    const domain = url.hostname;
     const isSecure = isSecureRequest(request);
     
-    // Set secure attribute based on environment
-    const secureFlag = isSecure ? 'Secure; ' : '';
-    const sameSite = isSecure ? 'None' : 'Lax';
+    console.log('Fix-cookies - Request details:', {
+      url: request.url,
+      domain,
+      isSecure,
+      headers: Object.fromEntries([...request.headers.entries()]),
+      cookies: request.headers.get('Cookie') || 'none'
+    });
     
-    const cookieOptions = `Path=/; Max-Age=2592000; SameSite=${sameSite}; ${secureFlag}`;
+    // Create test session token
+    const sessionToken = crypto.randomUUID();
     
+    // Create direct cookie strings with all required attributes
+    let sessionCookieStr = `r3l_session=${sessionToken}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${isSecure ? 'None' : 'Lax'}`;
+    let authStateCookieStr = `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=${isSecure ? 'None' : 'Lax'}`;
+    
+    // Add Domain for non-localhost
+    if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
+      sessionCookieStr += `; Domain=${domain}`;
+      authStateCookieStr += `; Domain=${domain}`;
+    }
+    
+    // Add Secure for HTTPS
+    if (isSecure) {
+      sessionCookieStr += `; Secure`;
+      authStateCookieStr += `; Secure`;
+    }
+    
+    // Create response headers
     const headers = new Headers({
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': url.origin,
-      'Access-Control-Allow-Credentials': 'true',
-      'Set-Cookie': `r3l_auth_state=true; ${cookieOptions}`
+      'Access-Control-Allow-Credentials': 'true'
     });
     
-    console.log('Setting auth state cookie:', `r3l_auth_state=true; ${cookieOptions}`);
+    // Set the cookies directly - ORDER MATTERS
+    headers.append('Set-Cookie', sessionCookieStr);
+    headers.append('Set-Cookie', authStateCookieStr);
+    
+    console.log('Fix-cookies - Setting session cookie:', sessionCookieStr);
+    console.log('Fix-cookies - Setting auth state cookie:', authStateCookieStr);
     
     return new Response(JSON.stringify({
       success: true,
-      message: 'Auth state cookie fixed'
+      message: 'Auth and session cookies created for testing',
+      domain,
+      isSecure,
+      sameSite: isSecure ? 'None' : 'Lax',
+      sessionToken: sessionToken.substring(0, 8) + '...',
+      cookies: {
+        session: sessionCookieStr,
+        authState: authStateCookieStr
+      }
     }), {
       status: 200,
       headers

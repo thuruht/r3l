@@ -1,47 +1,64 @@
 /**
  * A simplified helper to set cookies with proper attributes
  * @param token The session token to store in the cookie
- * @param domain The domain to set the cookie for (not currently used)
+ * @param domain The domain to set the cookie for
  * @param isSecure Whether the connection is HTTPS
  * @returns Headers object with Set-Cookie headers
  */
-export function createAuthCookies(token: string, _domain: string, isSecure: boolean): Headers {
+export function createAuthCookies(token: string, domain: string, isSecure: boolean): Headers {
   // Create cookie attributes based on environment
+  // CRITICAL: Always use proper SameSite attribute
+  // - For secure connections (HTTPS): SameSite=None; Secure
+  // - For non-secure connections: SameSite=Lax
   const sameSite = isSecure ? 'None' : 'Lax';
-  const secureAttr = isSecure ? 'Secure' : '';
   
-  // Configure cookies properly
-  const sessionCookie = [
-    `r3l_session=${token}`,
-    'HttpOnly',
-    'Path=/',
-    'Max-Age=2592000', // 30 days
-    `SameSite=${sameSite}`
-  ];
+  console.log(`Cookie helper - Creating cookies for domain: ${domain}, isSecure: ${isSecure}, sameSite: ${sameSite}`);
   
-  // Add Secure attribute if connection is HTTPS
-  if (secureAttr) {
-    sessionCookie.push(secureAttr);
+  // Build session cookie with all required attributes
+  // SessionCookie must be HttpOnly (not accessible to JavaScript)
+  let sessionCookieStr = `r3l_session=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${sameSite}`;
+  
+  // Add Domain attribute except for localhost
+  if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
+    sessionCookieStr += `; Domain=${domain}`;
   }
   
-  // Create auth state cookie (accessible to JS)
-  const authStateCookie = [
-    'r3l_auth_state=true',
-    'Path=/',
-    'Max-Age=2592000', // 30 days
-    `SameSite=${sameSite}`
-  ];
-  
-  // Add Secure attribute if connection is HTTPS
-  if (secureAttr) {
-    authStateCookie.push(secureAttr);
+  // Add Secure attribute for HTTPS
+  if (isSecure) {
+    sessionCookieStr += `; Secure`;
   }
   
-  // Create headers with both cookies
-  const headers = new Headers({
-    'Set-Cookie': sessionCookie.join('; ')
-  });
-  headers.append('Set-Cookie', authStateCookie.join('; '));
+  // Auth state cookie (accessible to JavaScript)
+  let authStateCookieStr = `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=${sameSite}`;
+  
+  // Add Domain attribute except for localhost
+  if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
+    authStateCookieStr += `; Domain=${domain}`;
+  }
+  
+  // Add Secure attribute for HTTPS
+  if (isSecure) {
+    authStateCookieStr += `; Secure`;
+  }
+  
+  console.log(`Cookie helper - Session cookie: ${sessionCookieStr}`);
+  console.log(`Cookie helper - Auth state cookie: ${authStateCookieStr}`);
+  
+  // Create headers with both cookies using append
+  const headers = new Headers();
+  
+  // CRITICAL: Order matters - session cookie must be set first
+  headers.append('Set-Cookie', sessionCookieStr);
+  headers.append('Set-Cookie', authStateCookieStr);
+  
+  // Add basic CORS headers
+  headers.append('Access-Control-Allow-Credentials', 'true');
+  
+  // Add debugging info
+  console.log('Cookie helper - Header count:', headers.get('Set-Cookie') ? '1+' : '0');
+  console.log('Cookie helper - All headers:', 
+    [...headers.entries()].map(([k,v]) => `${k}: ${v}`).join('\n')
+  );
   
   return headers;
 }
@@ -66,47 +83,49 @@ export function createAuthCookiesWithRedirect(
 
 /**
  * Create headers to clear auth cookies
- * @param domain The domain to clear cookies from (not currently used)
+ * @param domain The domain to clear cookies from
  * @param isSecure Whether the connection is HTTPS
  * @returns Headers with Set-Cookie for expiring cookies
  */
-export function createClearAuthCookies(_domain: string, isSecure: boolean): Headers {
+export function createClearAuthCookies(domain: string, isSecure: boolean): Headers {
   // Configure cookie attributes
   const sameSite = isSecure ? 'None' : 'Lax';
-  const secureAttr = isSecure ? 'Secure' : '';
   
-  // Expire session cookie
-  const sessionCookie = [
-    'r3l_session=',
-    'HttpOnly',
-    'Path=/',
-    'Max-Age=0', // Expire immediately
-    `SameSite=${sameSite}`
-  ];
+  console.log(`Cookie helper - Clearing cookies for domain: ${domain}, isSecure: ${isSecure}`);
   
-  // Add Secure attribute if connection is HTTPS
-  if (secureAttr) {
-    sessionCookie.push(secureAttr);
+  // Build session cookie clear string with all required attributes
+  let clearSessionCookieStr = `r3l_session=; HttpOnly; Path=/; Max-Age=0; SameSite=${sameSite}`;
+  
+  // Add Domain attribute except for localhost
+  if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
+    clearSessionCookieStr += `; Domain=${domain}`;
   }
   
-  // Expire auth state cookie
-  const authStateCookie = [
-    'r3l_auth_state=',
-    'Path=/',
-    'Max-Age=0', // Expire immediately
-    `SameSite=${sameSite}`
-  ];
-  
-  // Add Secure attribute if connection is HTTPS
-  if (secureAttr) {
-    authStateCookie.push(secureAttr);
+  // Add Secure attribute for HTTPS
+  if (isSecure) {
+    clearSessionCookieStr += `; Secure`;
   }
   
-  // Create headers with both expired cookies
-  const headers = new Headers({
-    'Set-Cookie': sessionCookie.join('; ')
-  });
-  headers.append('Set-Cookie', authStateCookie.join('; '));
+  // Build auth state cookie clear string
+  let clearAuthStateCookieStr = `r3l_auth_state=; Path=/; Max-Age=0; SameSite=${sameSite}`;
+  
+  // Add Domain attribute except for localhost
+  if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
+    clearAuthStateCookieStr += `; Domain=${domain}`;
+  }
+  
+  // Add Secure attribute for HTTPS
+  if (isSecure) {
+    clearAuthStateCookieStr += `; Secure`;
+  }
+  
+  console.log(`Cookie helper - Clearing session cookie: ${clearSessionCookieStr}`);
+  console.log(`Cookie helper - Clearing auth state cookie: ${clearAuthStateCookieStr}`);
+  
+  // Create headers with both cleared cookies
+  const headers = new Headers();
+  headers.append('Set-Cookie', clearSessionCookieStr);
+  headers.append('Set-Cookie', clearAuthStateCookieStr);
   
   return headers;
 }

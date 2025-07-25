@@ -71,18 +71,6 @@
     {
       "binding": "R3L_KV",
       "id": "ae72fbc4082047309134b41345a34a9f"
-    },
-    {
-      "binding": "OAUTH_KV",
-      "id": "ae72fbc4082047309134b41345a34a9f"
-    }
-  ],
-  
-  // Configure OAuth Provider
-  "services": [
-    {
-      "binding": "OAUTH_PROVIDER",
-      "service": "workers-oauth-provider"
     }
   ],
   

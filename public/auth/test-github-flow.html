@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test GitHub Auth Flow</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    button {
+      background-color: #2ea44f;
+      border: 1px solid rgba(27, 31, 35, 0.15);
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 6px 16px;
+      margin: 10px 0;
+    }
+    pre {
+      background-color: #f6f8fa;
+      border-radius: 6px;
+      padding: 16px;
+      overflow: auto;
+    }
+    .result {
+      margin-top: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 5px;
+    }
+    .success { color: #2ea44f; }
+    .error { color: #cb2431; }
+  </style>
+</head>
+<body>
+  <h1>Test GitHub Auth Flow</h1>
+  
+  <h2>Current Auth Status</h2>
+  <div>
+    <p>Session Cookie: <span id="sessionCookie">Checking...</span></p>
+    <p>Auth State Cookie: <span id="authStateCookie">Checking...</span></p>
+  </div>
+  
+  <h2>Auth Actions</h2>
+  <div>
+    <button id="startGitHubAuth">Start GitHub Auth Flow</button>
+    <button id="validateAuth">Validate Current Auth</button>
+    <button id="fixCookies">Fix Cookies</button>
+    <button id="clearCookies">Clear Cookies</button>
+  </div>
+  
+  <h2>Result</h2>
+  <div class="result" id="result">
+    <p>No actions performed yet</p>
+  </div>
+  
+  <script>
+    // Check for cookies
+    function updateCookieStatus() {
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      
+      document.getElementById('sessionCookie').textContent = 
+        cookies.r3l_session ? `Present (${cookies.r3l_session.substring(0, 8)}...)` : 'Not found';
+      document.getElementById('authStateCookie').textContent = 
+        cookies.r3l_auth_state ? `Present (${cookies.r3l_auth_state})` : 'Not found';
+    }
+    
+    // Initialize
+    updateCookieStatus();
+    
+    // Event listeners
+    document.getElementById('startGitHubAuth').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/github/init');
+        const data = await response.json();
+        
+        if (data.authorizationUrl) {
+          document.getElementById('result').innerHTML = `
+            <p class="success">Auth URL generated successfully. Redirecting to GitHub...</p>
+            <pre>${data.authorizationUrl}</pre>
+          `;
+          // Redirect to GitHub
+          window.location.href = data.authorizationUrl;
+        } else {
+          document.getElementById('result').innerHTML = `
+            <p class="error">Failed to generate auth URL</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        document.getElementById('result').innerHTML = `
+          <p class="error">Error starting auth flow: ${error.message}</p>
+        `;
+      }
+    });
+    
+    document.getElementById('validateAuth').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/validate', {
+          credentials: 'include' // Important to include cookies
+        });
+        const data = await response.json();
+        
+        if (response.ok) {
+          document.getElementById('result').innerHTML = `
+            <p class="success">Auth validation successful!</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        } else {
+          document.getElementById('result').innerHTML = `
+            <p class="error">Auth validation failed</p>
+            <pre>${JSON.stringify(data, null, 2)}</pre>
+          `;
+        }
+      } catch (error) {
+        document.getElementById('result').innerHTML = `
+          <p class="error">Error validating auth: ${error.message}</p>
+        `;
+      }
+      
+      // Update cookie status
+      updateCookieStatus();
+    });
+    
+    document.getElementById('fixCookies').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/fix-cookies', {
+          credentials: 'include' // Important to include cookies
+        });
+        const data = await response.json();
+        
+        document.getElementById('result').innerHTML = `
+          <p class="success">Fix cookies request sent</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+        
+        // Update cookie status
+        setTimeout(updateCookieStatus, 500);
+      } catch (error) {
+        document.getElementById('result').innerHTML = `
+          <p class="error">Error fixing cookies: ${error.message}</p>
+        `;
+      }
+    });
+    
+    document.getElementById('clearCookies').addEventListener('click', async () => {
+      try {
+        // Logout to clear server-side session
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        // Also clear cookies client-side as a backup
+        document.cookie = 'r3l_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        document.cookie = 'r3l_auth_state=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        
+        document.getElementById('result').innerHTML = `
+          <p class="success">Cookies cleared successfully</p>
+        `;
+        
+        // Update cookie status
+        setTimeout(updateCookieStatus, 500);
+      } catch (error) {
+        document.getElementById('result').innerHTML = `
+          <p class="error">Error clearing cookies: ${error.message}</p>
+        `;
+      }
+    });
+    
+    // Check for auth callback parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('code') || urlParams.has('error')) {
+      document.getElementById('result').innerHTML = `
+        <p>Auth callback detected:</p>
+        <pre>${JSON.stringify(Object.fromEntries(urlParams.entries()), null, 2)}</pre>
+      `;
+    }
+  </script>
+</body>
+</html>

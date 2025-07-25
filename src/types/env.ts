@@ -1,6 +1,5 @@
 // Import Cloudflare Workers types
-import type { D1Database as CloudflareD1Database } from '@cloudflare/workers-types';
-import { OAuthHelpers } from '@cloudflare/workers-oauth-provider';
+import type { D1Database as CloudflareD1Database, Fetcher } from '@cloudflare/workers-types';
 
 export interface Env {
   R3L_DB: ExtendedD1Database;
@@ -12,7 +11,6 @@ export interface Env {
   R3L_CONNECTIONS: DurableObjectNamespace;
   R3L_VISUALIZATION: DurableObjectNamespace;
   R3L_CONTENT_BUCKET: R2Bucket;
-  OAUTH_PROVIDER: OAuthHelpers;
   R3L_ADMIN_ORCID_ID: string;
   ORCID_CLIENT_ID: string;
   ORCID_CLIENT_SECRET: string;
@@ -22,6 +20,7 @@ export interface Env {
   GITHUB_REDIRECT_URI: string;
   REALTIME_API_TOKEN: string;
   CLOUDFLARE_ACCOUNT_ID: string;
+  JWT_SECRET: string;
   ASSETS: {
     fetch(request: Request): Promise<Response>;
   };

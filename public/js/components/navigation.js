@@ -49,7 +49,7 @@ export class NavigationBar {
               <span class="material-icons">upload_file</span>
               <span class="nav-label">Upload</span>
             </a></li>
-            <li id="nav-login-item"><a href="/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
+            <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
               <span class="material-icons">login</span>
               <span class="nav-label">Login</span>
             </a></li>
@@ -225,7 +225,7 @@ export class NavigationBar {
     // Reset login item
     const loginItem = document.getElementById('nav-login-item');
     if (loginItem) {
-      loginItem.innerHTML = `<a href="/login.html" class="nav-link">
+      loginItem.innerHTML = `<a href="/auth/login.html" class="nav-link">
         <span class="material-icons">login</span>
         <span class="nav-label">Login</span>
       </a>`;

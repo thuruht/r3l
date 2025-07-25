@@ -40,19 +40,13 @@
   // Environment variables - required by Env interface
   // Non-sensitive configuration values
   "vars": {
-    "ORCID_REDIRECT_URI": "https://r3l.distorted.work/auth/orcid/callback",
-    "GITHUB_REDIRECT_URI": "https://r3l.distorted.work/auth/github/callback"
   },
   
   // Note: All sensitive values must be set using wrangler secret put:
   // - R3L_ADMIN_ORCID_ID: Use `wrangler secret put R3L_ADMIN_ORCID_ID`
-  // - ORCID_CLIENT_ID: Use `wrangler secret put ORCID_CLIENT_ID`
   // - R3L_APP_SECRET: Use `wrangler secret put R3L_APP_SECRET`
   // - CLOUDFLARE_ACCOUNT_ID: Use `wrangler secret put CLOUDFLARE_ACCOUNT_ID`
   // - REALTIME_API_TOKEN: Use `wrangler secret put REALTIME_API_TOKEN`
-  // - ORCID_CLIENT_SECRET: Use `wrangler secret put ORCID_CLIENT_SECRET`
-  // - GITHUB_CLIENT_ID: Use `wrangler secret put GITHUB_CLIENT_ID`
-  // - GITHUB_CLIENT_SECRET: Use `wrangler secret put GITHUB_CLIENT_SECRET`
   
   // Configure KV Namespaces for storing user data
   "kv_namespaces": [
@@ -135,8 +129,7 @@
   // Routes configuration
   "routes": [
     { "pattern": "r3l.distorted.work", "zone_name": "distorted.work" },
-    { "pattern": "r3l.distorted.work/*", "zone_name": "distorted.work" },
-    { "pattern": "r3l.distorted.work/auth/orcid/callback", "zone_name": "distorted.work" }
+    { "pattern": "r3l.distorted.work/*", "zone_name": "distorted.work" }
   ],
   
   // Triggers configuration

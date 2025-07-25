@@ -691,9 +691,9 @@ async register(
       await env.R3L_DB.prepare(`
         INSERT INTO users (
           id, username, display_name, email, 
-          created_at, updated_at, is_active
+          created_at, updated_at, preferences
         )
-        VALUES (?, ?, ?, ?, ?, ?, 1)
+        VALUES (?, ?, ?, ?, ?, ?, '{}')
       `).bind(
         userId,
         username,

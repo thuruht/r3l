@@ -18,7 +18,7 @@ clear_cookies_sqlite() {
   
   if [ -f "$db_path" ]; then
     echo "  - Clearing cookies in $db_path for domain $domain"
-    sqlite3 "$db_path" "DELETE FROM cookies WHERE host_key LIKE '%$domain%' AND name='r3l_jwt';" 2>/dev/null
+    sqlite3 "$db_path" "DELETE FROM cookies WHERE host_key LIKE '%$domain%' AND (name='r3l_jwt' OR name='r3l_session' OR name='r3l_auth_state');" 2>/dev/null
     return $?
   fi
   return 1

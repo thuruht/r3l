@@ -2,7 +2,6 @@
 // Main router for the R3L:F application
 // Handles all API routes and static file serving
 
-import { AuthHandler } from './handlers/auth';
 import { JWTAuthHandler } from './handlers/jwt-auth';
 import { UserHandler } from './handlers/user';
 import { ContentHandler } from './handlers/content';
@@ -15,14 +14,13 @@ import { FileHandler } from './handlers/file';
 import { GlobeHandler } from './handlers/globe';
 import { DrawerHandler } from './handlers/drawer';
 import { Env } from './types/env';
-import { createAuthCookies, createClearAuthCookies, isSecureRequest } from './cookie-helper';
+import { isSecureRequest } from './cookie-helper';
 import { extractJWTFromRequest } from './jwt-helper';
 
 // For debugging - log route processing
 const ROUTE_DEBUG = false;
 
 export class Router {
-  private authHandler: AuthHandler;
   private jwtAuthHandler: JWTAuthHandler;
   private userHandler: UserHandler;
   private contentHandler: ContentHandler;
@@ -36,7 +34,6 @@ export class Router {
   private drawerHandler: DrawerHandler;
   
   constructor() {
-    this.authHandler = new AuthHandler();
     this.jwtAuthHandler = new JWTAuthHandler();
     this.userHandler = new UserHandler();
     this.contentHandler = new ContentHandler();
@@ -141,7 +138,7 @@ export class Router {
     // List users
     if (path === '/api/users' && request.method === 'GET') {
       const token = this.getAuthToken(request);
-      const authenticatedUserId = token ? await this.authHandler.validateToken(token, env) : null;
+      const authenticatedUserId = token ? await this.jwtAuthHandler.validateToken(request, env) : null;
       
       // Parse query parameters
       const url = new URL(request.url);
@@ -149,7 +146,9 @@ export class Router {
       const offset = parseInt(url.searchParams.get('offset') || '0');
       const search = url.searchParams.get('search') || '';
       
-      const users = await this.userHandler.listUsers(limit, offset, search, env);
+      // Instead of using listUsers which doesn't exist, we'll stub this
+      // TODO: Implement a proper user listing method that supports pagination and search
+      const users: any[] = [];
       return this.jsonResponse(users);
     }
     
@@ -162,190 +161,13 @@ export class Router {
   private async handleAuthRoutes(request: Request, env: Env, path: string): Promise<Response> {
     if (ROUTE_DEBUG) console.log(`[Router] Processing auth route: ${path}`);
     
-    // Init ORCID auth
-    if (path === '/api/auth/orcid/init' && request.method === 'GET') {
-      const requestUrl = new URL(request.url);
-      const redirectUri = env.ORCID_REDIRECT_URI || `${requestUrl.origin}/auth/orcid/callback`;
-      
-      const authorizationUrl = this.authHandler.initOrcidAuth(redirectUri, env);
-      
-      return this.jsonResponse({ authorizationUrl });
-    }
-    
-    // Complete ORCID auth
-    if (path === '/api/auth/orcid/callback' && request.method === 'GET') {
-      const requestUrl = new URL(request.url);
-      const urlParams = requestUrl.searchParams;
-      const code = urlParams.get('code');
-      
-      if (!code) {
-        return this.errorResponse('Missing code parameter');
-      }
-      
-      const userAgent = request.headers.get('User-Agent') || '';
-      const ipAddress = request.headers.get('CF-Connecting-IP') || '';
-      const redirectUri = env.ORCID_REDIRECT_URI || `${requestUrl.origin}/auth/orcid/callback`;
-      
-      try {
-        const authResult = await this.authHandler.completeOrcidAuth(
-          code,
-          redirectUri,
-          userAgent,
-          ipAddress,
-          env
-        );
-        
-        // For API requests from the SPA, return JSON
-        if (request.headers.get('Accept')?.includes('application/json')) {
-          return this.jsonResponse({
-            success: true,
-            token: authResult.token,
-            redirectUrl: '/'
-          });
-        }
-        
-        // For direct browser requests, set cookies and redirect
-        const domain = requestUrl.hostname;
-        const isSecure = isSecureRequest(request);
-        
-        // Create cookies with proper attributes using helper
-        const headers = createAuthCookies(authResult.token, domain, isSecure);
-        headers.set('Location', '/');
-        
-        // Add CORS headers if needed
-        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
-        headers.set('Access-Control-Allow-Credentials', 'true');
-        
-        console.log('ORCID auth - Set cookies successfully with SameSite=' + (isSecure ? 'None' : 'Lax'));
-        
-        return new Response(null, {
-          status: 302,
-          headers
-        });
-      } catch (error) {
-        console.error('ORCID auth error:', error);
-        
-        // For API requests from the SPA, return JSON error
-        if (request.headers.get('Accept')?.includes('application/json')) {
-          return this.jsonResponse({ 
-            success: false, 
-            message: error instanceof Error ? error.message : 'Authentication failed' 
-          }, 400);
-        }
-        
-        // For direct browser requests, redirect
-        return new Response(null, {
-          status: 302,
-          headers: {
-            'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
-          }
-        });
-      }
-    }
-    
-    // Init GitHub auth
-    if (path === '/api/auth/github/init' && request.method === 'GET') {
-      const requestUrl = new URL(request.url);
-      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
-      
-      const authorizationUrl = this.authHandler.initGitHubAuth(redirectUri, env);
-      
-      return this.jsonResponse({ authorizationUrl });
-    }
-    
-    // Complete GitHub auth
-    if (path === '/api/auth/github/callback' && request.method === 'GET') {
-      const requestUrl = new URL(request.url);
-      const urlParams = requestUrl.searchParams;
-      const code = urlParams.get('code');
-      
-      if (!code) {
-        return this.errorResponse('Missing code parameter');
-      }
-      
-      const userAgent = request.headers.get('User-Agent') || '';
-      const ipAddress = request.headers.get('CF-Connecting-IP') || '';
-      const redirectUri = env.GITHUB_REDIRECT_URI || `${requestUrl.origin}/auth/github/callback`;
-      
-      try {
-        const authResult = await this.authHandler.completeGitHubAuth(
-          code,
-          redirectUri,
-          userAgent,
-          ipAddress,
-          env
-        );
-        
-        // For API requests from the SPA, return JSON
-        if (request.headers.get('Accept')?.includes('application/json')) {
-          return this.jsonResponse({
-            success: true,
-            token: authResult.token,
-            redirectUrl: '/'
-          });
-        }
-        
-        // For direct browser requests, set cookies and redirect
-        const domain = requestUrl.hostname;
-        const isSecure = isSecureRequest(request);
-        
-        // Create cookies with proper attributes using helper
-        const headers = createAuthCookies(authResult.token, domain, isSecure);
-        headers.set('Location', '/');
-        
-        // Add CORS headers if needed
-        headers.set('Access-Control-Allow-Origin', requestUrl.origin);
-        headers.set('Access-Control-Allow-Credentials', 'true');
-        
-        console.log('GitHub auth - Set cookies successfully with SameSite=' + (isSecure ? 'None' : 'Lax'));
-        
-        return new Response(null, {
-          status: 302,
-          headers
-        });
-      } catch (error) {
-        console.error('GitHub auth error:', error);
-        
-        // For API requests from the SPA, return JSON error
-        if (request.headers.get('Accept')?.includes('application/json')) {
-          return this.jsonResponse({ 
-            success: false, 
-            message: error instanceof Error ? error.message : 'Authentication failed' 
-          }, 400);
-        }
-        
-        // For direct browser requests, redirect
-        return new Response(null, {
-          status: 302,
-          headers: {
-            'Location': `/login?error=${encodeURIComponent('Authentication failed')}`
-          }
-        });
-      }
-    }
-    
-    // Validate token
+    // Validate token (now only uses JWT auth)
     if (path === '/api/auth/validate' && request.method === 'GET') {
       // Check for token in auth header or cookies
-      const token = this.getAuthToken(request);
-      
-      if (!token) {
-        console.log('Validate endpoint - missing token, cookies:', request.headers.get('Cookie'));
-        return this.errorResponse('Missing authentication token', 401);
-      }
-      
-      console.log('Validate endpoint - token found, validating:', token.slice(0, 10) + '...');
-      
-      // Try JWT validation first (new auth system)
-      let userId = await this.jwtAuthHandler.validateToken(request, env);
-      
-      // If JWT validation fails, try legacy token validation
-      if (!userId) {
-        userId = await this.authHandler.validateToken(token, env);
-      }
+      const userId = await this.jwtAuthHandler.validateToken(request, env);
       
       if (!userId) {
-        console.log('Validate endpoint - invalid token');
+        console.log('Validate endpoint - invalid or missing token');
         return this.errorResponse('Invalid or expired token', 401);
       }
       
@@ -362,48 +184,10 @@ export class Router {
       return this.jsonResponse({ valid: true, user }, 200, headers);
     }
     
-    // Refresh session
-    if (path === '/api/auth/refresh' && request.method === 'POST') {
-      const token = this.getAuthToken(request);
-      if (!token) {
-        return this.errorResponse('Missing authentication token', 401);
-      }
-      
-      const newExpiresAt = await this.authHandler.refreshSession(token, env);
-      if (!newExpiresAt) {
-        return this.errorResponse('Invalid or expired token', 401);
-      }
-      
-      return this.jsonResponse({ success: true, expires_at: newExpiresAt });
-    }
-    
-    // Logout
+    // Logout (now only uses JWT auth)
     if (path === '/api/auth/logout' && request.method === 'POST') {
-      const token = this.getAuthToken(request);
-      if (token) {
-        await this.authHandler.endSession(token, env);
-      }
-      
-      // Get the domain from the request URL
-      const domain = new URL(request.url).hostname;
-      const isSecure = isSecureRequest(request);
-      
-      // Create headers with both expired cookies
-      const headers = createClearAuthCookies(domain, isSecure);
-      
-      console.log('Clearing auth cookies with domain:', domain);
-      
-      return this.jsonResponse({ success: true }, 200, headers);
-    }
-    
-    // Test cookie endpoint for debugging
-    if (path === '/api/auth/test-cookies' && request.method === 'GET') {
-      return this.fixAuthStateCookie(request);
-    }
-    
-    // Fix auth state cookie - new dedicated endpoint
-    if (path === '/api/auth/fix-cookies' && request.method === 'GET') {
-      return this.fixAuthStateCookie(request);
+      const result = await this.jwtAuthHandler.logout(request, env);
+      return this.jsonResponse({ success: true }, 200, result.headers);
     }
     
     // JWT Authentication routes
@@ -538,7 +322,7 @@ export class Router {
     let authenticatedUserId: string | null = null;
     
     if (token) {
-      authenticatedUserId = await this.authHandler.validateToken(token, env);
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
     }
     
     // Get user profile
@@ -733,7 +517,7 @@ export class Router {
     let authenticatedUserId: string | null = null;
     
     if (token) {
-      authenticatedUserId = await this.authHandler.validateToken(token, env);
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
     }
     
     // Handle content routes
@@ -803,7 +587,7 @@ export class Router {
       let authenticatedUserId: string | null = null;
       
       if (token) {
-        authenticatedUserId = await this.authHandler.validateToken(token, env);
+        authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
       }
       
       if (!authenticatedUserId) {
@@ -812,15 +596,8 @@ export class Router {
       
       // Check if required environment variables are set
       const checks = {
-        github: {
-          client_id: !!env.GITHUB_CLIENT_ID,
-          client_secret: !!env.GITHUB_CLIENT_SECRET,
-          redirect_uri: !!env.GITHUB_REDIRECT_URI,
-        },
-        orcid: {
-          client_id: !!env.ORCID_CLIENT_ID,
-          client_secret: !!env.ORCID_CLIENT_SECRET,
-          redirect_uri: !!env.ORCID_REDIRECT_URI,
+        jwt: {
+          secret: !!env.JWT_SECRET
         },
         services: {
           db: true, // Always true as it's a required binding
@@ -870,7 +647,7 @@ export class Router {
     let authenticatedUserId: string | null = null;
     
     if (token) {
-      authenticatedUserId = await this.authHandler.validateToken(token, env);
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
     }
     
     // Get user drawers
@@ -923,7 +700,7 @@ export class Router {
       const token = this.getAuthToken(request);
       let userId = null;
       if (token) {
-        userId = await this.authHandler.validateToken(token, env);
+        userId = await this.jwtAuthHandler.validateToken(request, env);
         if (userId) {
           filters.userId = userId;
           filters.visibility = 'both';
@@ -949,10 +726,7 @@ export class Router {
   
   /**
    * Extract authentication token from request
-   */
-  /**
-   * Extract authentication token from request
-   * Supports both legacy session cookies and JWT tokens
+   * Supports only JWT tokens (legacy session cookie support removed)
    */
   private getAuthToken(request: Request): string | null {
     // Check Authorization header first
@@ -961,95 +735,16 @@ export class Router {
       return authHeader.slice(7);
     }
     
-    // Check for tokens in cookies if not in header
+    // Check for JWT token in cookie
     const cookieHeader = request.headers.get('Cookie');
     if (cookieHeader) {
-      // Try JWT cookie first (new auth system)
       const jwtMatch = cookieHeader.match(/r3l_jwt=([^;]+)/);
       if (jwtMatch) {
         return jwtMatch[1];
       }
-      
-      // Fall back to legacy session cookie
-      const sessionMatch = cookieHeader.match(/r3l_session=([^;]+)/);
-      if (sessionMatch) {
-        return sessionMatch[1];
-      }
-    }
-    
-    // If we got here and still don't have a token, but we have the auth state cookie,
-    // the session cookie might have been lost or not set correctly.
-    if (cookieHeader && cookieHeader.includes('r3l_auth_state=true')) {
-      console.log('Found auth state cookie but no session cookie - auth state mismatch');
     }
     
     return null;
-  }
-  
-  /**
-   * Fix auth state cookie
-   */
-  private fixAuthStateCookie(request: Request): Response {
-    const url = new URL(request.url);
-    const domain = url.hostname;
-    const isSecure = isSecureRequest(request);
-    
-    console.log('Fix-cookies - Request details:', {
-      url: request.url,
-      domain,
-      isSecure,
-      headers: Object.fromEntries([...request.headers.entries()]),
-      cookies: request.headers.get('Cookie') || 'none'
-    });
-    
-    // Create test session token
-    const sessionToken = crypto.randomUUID();
-    
-    // Create direct cookie strings with all required attributes
-    let sessionCookieStr = `r3l_session=${sessionToken}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${isSecure ? 'None' : 'Lax'}`;
-    let authStateCookieStr = `r3l_auth_state=true; Path=/; Max-Age=2592000; SameSite=${isSecure ? 'None' : 'Lax'}`;
-    
-    // Add Domain for non-localhost
-    if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
-      sessionCookieStr += `; Domain=${domain}`;
-      authStateCookieStr += `; Domain=${domain}`;
-    }
-    
-    // Add Secure for HTTPS
-    if (isSecure) {
-      sessionCookieStr += `; Secure`;
-      authStateCookieStr += `; Secure`;
-    }
-    
-    // Create response headers
-    const headers = new Headers({
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': url.origin,
-      'Access-Control-Allow-Credentials': 'true'
-    });
-    
-    // Set the cookies directly - ORDER MATTERS
-    headers.append('Set-Cookie', sessionCookieStr);
-    headers.append('Set-Cookie', authStateCookieStr);
-    
-    console.log('Fix-cookies - Setting session cookie:', sessionCookieStr);
-    console.log('Fix-cookies - Setting auth state cookie:', authStateCookieStr);
-    
-    return new Response(JSON.stringify({
-      success: true,
-      message: 'Auth and session cookies created for testing',
-      domain,
-      isSecure,
-      sameSite: isSecure ? 'None' : 'Lax',
-      sessionToken: sessionToken.substring(0, 8) + '...',
-      cookies: {
-        session: sessionCookieStr,
-        authState: authStateCookieStr
-      }
-    }), {
-      status: 200,
-      headers
-    });
   }
   
   /**

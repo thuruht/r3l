@@ -5,7 +5,7 @@ R3L:F is an anti-algorithmic, ephemeral, user-controlled, privacy-first file-sha
 ## Core Philosophy
 
 - **Anti-algorithmic**: Content discovery is based on direct connections and explicit user actions
-- **Ephemeral by default**: Content expires after 7 days unless explicitly preserved
+- **Ephemeral by default**: Content expires after 7 days unless explicitly preserved by uploader (user), or by voting - see Community-driven archiving.
 - **User-controlled**: Users have full control over their content and connections
 - **Privacy-focused**: Uses privacy-respecting technologies throughout the stack
 - **Community-driven archiving**: Important content can be preserved through explicit voting
@@ -74,25 +74,3 @@ This project is designed to be deployed to Cloudflare Workers. All file paths ar
    npm run build
    npm run deploy
    ```
-
-## Development
-
-For local development:
-
-```
-npm run dev
-```
-
-## Testing OpenAuth Integration
-
-To test the OpenAuth integration, visit:
-
-```
-https://[your-worker-url]/test-openauth.html
-```
-
-This test page provides UI for testing GitHub and ORCID authentication, as well as debugging tools for inspecting authentication state and cookies.
-
-## License
-
-MIT

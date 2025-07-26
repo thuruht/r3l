@@ -31,6 +31,146 @@
       font-size: var(--fs-lg);
       color: var(--text-secondary);
     }
+    
+    /* Communique editor styles */
+    #communique-editor-container {
+      margin-bottom: 1.5rem;
+    }
+    
+    .communique {
+      min-height: 200px;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-surface);
+      margin-bottom: 0.5rem;
+      overflow-y: auto;
+      line-height: 1.5;
+    }
+    
+    .communique:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.2);
+    }
+    
+    .communique[contenteditable="true"]:empty:before {
+      content: attr(data-placeholder);
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    
+    #communique-toolbar {
+      padding: 0.5rem;
+      background-color: var(--bg-surface-hover);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      margin-bottom: 0.5rem;
+    }
+    
+    .btn-small {
+      padding: 0.25rem 0.5rem;
+      font-size: var(--fs-sm);
+    }
+    
+    .text-muted {
+      color: var(--text-muted);
+    }
+    
+    .text-sm {
+      font-size: var(--fs-sm);
+    }
+    
+    /* File embed styles */
+    .file-embed {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-surface-hover);
+      text-decoration: none;
+      color: var(--text-primary);
+      margin: 0.5rem 0;
+    }
+    
+    .file-embed .material-icons {
+      margin-right: 0.5rem;
+    }
+    
+    /* Modal styles for file embedding */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .modal-content {
+      background-color: var(--bg-surface);
+      border-radius: var(--radius-md);
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .modal-header h3 {
+      margin: 0;
+    }
+    
+    .modal-body {
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
+    
+    .embed-file-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem;
+    }
+    
+    .embed-file-item {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .embed-file-item:hover {
+      background-color: var(--bg-surface-hover);
+    }
+    
+    .embed-file-item .material-icons {
+      margin-right: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -65,12 +205,41 @@
 
       <!-- Communique (customizable public message) -->
       <h3>Communique</h3>
-      <div 
-        id="communique" 
-        class="communique" 
-        contenteditable="true" 
-        data-placeholder="Add your communique here. This is your public message to visitors of your drawer. You can format this area with markdown-like syntax, add links, and express yourself."
-      ></div>
+      <div id="communique-editor-container">
+        <div id="communique-toolbar" class="flex gap-2 mb-2">
+          <button class="btn btn-small" id="format-bold" title="Bold">
+            <span class="material-icons">format_bold</span>
+          </button>
+          <button class="btn btn-small" id="format-italic" title="Italic">
+            <span class="material-icons">format_italic</span>
+          </button>
+          <button class="btn btn-small" id="format-underline" title="Underline">
+            <span class="material-icons">format_underline</span>
+          </button>
+          <button class="btn btn-small" id="format-link" title="Insert Link">
+            <span class="material-icons">link</span>
+          </button>
+          <button class="btn btn-small" id="format-image" title="Insert Image">
+            <span class="material-icons">image</span>
+          </button>
+          <button class="btn btn-small" id="format-embed" title="Embed File">
+            <span class="material-icons">code</span>
+          </button>
+          <div class="flex-1"></div>
+          <button class="btn btn-small btn-secondary" id="save-communique" title="Save">
+            <span class="material-icons">save</span> Save
+          </button>
+        </div>
+        <div 
+          id="communique" 
+          class="communique" 
+          contenteditable="true" 
+          data-placeholder="Add your communique here. This is your public message to visitors of your drawer. You can format this area with HTML, add links, images, and express yourself. Embed your files to showcase your work."
+        ></div>
+        <p class="text-sm text-muted mt-1">
+          Tip: This is your public profile that other users see. You can use HTML formatting and embed your uploaded files.
+        </p>
+      </div>
 
       <!-- User Stats -->
       <div class="flex gap-4 mb-4">
@@ -754,6 +923,133 @@
         // Communique edits
         communique.addEventListener('blur', () => {
           saveCommunique();
+        });
+        
+        // Communique editor toolbar
+        document.getElementById('format-bold').addEventListener('click', () => {
+          document.execCommand('bold', false, null);
+          communique.focus();
+        });
+        
+        document.getElementById('format-italic').addEventListener('click', () => {
+          document.execCommand('italic', false, null);
+          communique.focus();
+        });
+        
+        document.getElementById('format-underline').addEventListener('click', () => {
+          document.execCommand('underline', false, null);
+          communique.focus();
+        });
+        
+        document.getElementById('format-link').addEventListener('click', () => {
+          const url = prompt('Enter the URL:', 'https://');
+          if (url) {
+            document.execCommand('createLink', false, url);
+          }
+          communique.focus();
+        });
+        
+        document.getElementById('format-image').addEventListener('click', () => {
+          const url = prompt('Enter the image URL:', 'https://');
+          if (url) {
+            document.execCommand('insertHTML', false, `<img src="${url}" alt="Image" style="max-width: 100%;">`);
+          }
+          communique.focus();
+        });
+        
+        document.getElementById('format-embed').addEventListener('click', async () => {
+          try {
+            // Get user's files to embed
+            const response = await fetch(`/api/users/${userData.id}/files?filter=public`, {
+              credentials: 'include'
+            });
+            
+            if (!response.ok) {
+              throw new Error(`Failed to fetch files: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            const embedFiles = result.files || [];
+            
+            if (embedFiles.length === 0) {
+              alert('You have no public files to embed. Upload and make some files public first.');
+              return;
+            }
+            
+            // Create a simple modal to select a file
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h3>Select a file to embed</h3>
+                  <button class="close-btn">&times;</button>
+                </div>
+                <div class="modal-body">
+                  <div class="embed-file-list">
+                    ${embedFiles.map(file => `
+                      <div class="embed-file-item" data-id="${file.id}">
+                        <span class="material-icons">${getFileIcon(file.mime_type)}</span>
+                        <span>${file.name}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Handle close button
+            modal.querySelector('.close-btn').addEventListener('click', () => {
+              modal.remove();
+            });
+            
+            // Handle file selection
+            modal.querySelectorAll('.embed-file-item').forEach(item => {
+              item.addEventListener('click', () => {
+                const fileId = item.getAttribute('data-id');
+                const file = embedFiles.find(f => f.id === fileId);
+                
+                if (file) {
+                  const fileUrl = `/api/content/${file.id}`;
+                  
+                  // Create embed HTML based on file type
+                  let embedHtml = '';
+                  
+                  if (file.mime_type.startsWith('image/')) {
+                    embedHtml = `<img src="${fileUrl}" alt="${file.name}" style="max-width: 100%;">`;
+                  } else if (file.mime_type.startsWith('audio/')) {
+                    embedHtml = `<audio src="${fileUrl}" controls style="width: 100%;">Your browser does not support audio playback.</audio>`;
+                  } else if (file.mime_type.startsWith('video/')) {
+                    embedHtml = `<video src="${fileUrl}" controls style="max-width: 100%;">Your browser does not support video playback.</video>`;
+                  } else if (file.mime_type === 'application/pdf') {
+                    embedHtml = `<iframe src="${fileUrl}" style="width: 100%; height: 400px; border: 1px solid #ddd;"></iframe>`;
+                  } else {
+                    // Generic file link
+                    embedHtml = `<a href="${fileUrl}" target="_blank" class="file-embed">
+                      <span class="material-icons">${getFileIcon(file.mime_type)}</span>
+                      ${file.name}
+                    </a>`;
+                  }
+                  
+                  document.execCommand('insertHTML', false, embedHtml);
+                }
+                
+                modal.remove();
+                communique.focus();
+              });
+            });
+            
+          } catch (error) {
+            console.error('Error embedding file:', error);
+            alert('Failed to load files for embedding. Please try again.');
+          }
+        });
+        
+        document.getElementById('save-communique').addEventListener('click', () => {
+          saveCommunique();
+          alert('Communique saved successfully!');
         });
       }
       

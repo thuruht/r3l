@@ -78,10 +78,9 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
   z-index: var(--z-dropdown);
-  display: none;
   border: 1px solid var(--border-primary);
   max-height: 400px;
-  display: flex;
+  display: none; /* Initially hidden */
   flex-direction: column;
 }
 
@@ -202,6 +201,7 @@
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
 }
 

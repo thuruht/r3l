@@ -157,8 +157,18 @@ export class NavigationBar {
             });
             
             // Initialize notification system
+            console.log('[NavigationBar] Initializing notification system');
             notificationManager.createNotificationElements();
             notificationManager.startPolling(30000); // Poll every 30 seconds
+            
+            // Fetch notifications immediately
+            notificationManager.fetchUnreadCount()
+              .then(count => {
+                console.log('[NavigationBar] Initial unread notifications count:', count);
+              })
+              .catch(err => {
+                console.error('[NavigationBar] Error fetching initial notifications:', err);
+              });
           } else {
             console.log('[NavigationBar] User profile was null, showing login link');
           }

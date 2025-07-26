@@ -61,9 +61,14 @@ export class NotificationManager {
    * Create notification HTML elements
    */
   createNotificationElements() {
+    debugLog('NotificationManager', 'Creating notification elements');
+    
     if (!document.querySelector('.notification-container')) {
       const nav = document.querySelector('nav');
-      if (!nav) return;
+      if (!nav) {
+        debugLog('NotificationManager', 'Navigation element not found');
+        return;
+      }
       
       // Create notification bell icon with badge
       const bellWrapper = document.createElement('div');
@@ -102,10 +107,15 @@ export class NotificationManager {
         // Insert before the last item
         const items = navUl.querySelectorAll('li');
         if (items.length > 0) {
+          debugLog('NotificationManager', 'Inserting notification item before the last nav item');
           navUl.insertBefore(li, items[items.length - 1]);
         } else {
+          debugLog('NotificationManager', 'No nav items found, appending notification item');
           navUl.appendChild(li);
         }
+      } else {
+        debugLog('NotificationManager', 'Navigation menu not found');
+        return;
       }
       
       // Initialize the notification manager
@@ -129,6 +139,10 @@ export class NotificationManager {
           this.markAllAsRead();
         });
       }
+      
+      debugLog('NotificationManager', 'Notification elements created successfully');
+    } else {
+      debugLog('NotificationManager', 'Notification elements already exist');
     }
   }
 
@@ -136,11 +150,25 @@ export class NotificationManager {
    * Fetch unread notification count
    */
   async fetchUnreadCount() {
-    if (!this.initialized) return;
+    if (!this.initialized) {
+      debugLog('NotificationManager', 'Not initialized, skipping unread count fetch');
+      return 0;
+    }
     
     try {
+      debugLog('NotificationManager', 'Fetching unread count from /api/notifications/unread-count');
+      const startTime = performance.now();
+      
       const response = await fetch('/api/notifications/unread-count', {
         credentials: 'include'
+      });
+      
+      const endTime = performance.now();
+      debugLog('NotificationManager', 'Unread count response', {
+        status: response.status,
+        statusText: response.statusText,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
+        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
       });
       
       if (!response.ok) {
@@ -148,6 +176,8 @@ export class NotificationManager {
       }
       
       const data = await response.json();
+      debugLog('NotificationManager', 'Unread count data', data);
+      
       this.unreadCount = data.count || 0;
       this.updateBadge();
       
@@ -162,11 +192,25 @@ export class NotificationManager {
    * Fetch notifications
    */
   async fetchNotifications() {
-    if (!this.initialized) return;
+    if (!this.initialized) {
+      debugLog('NotificationManager', 'Not initialized, skipping notifications fetch');
+      return [];
+    }
     
     try {
+      debugLog('NotificationManager', 'Fetching notifications from /api/notifications');
+      const startTime = performance.now();
+      
       const response = await fetch('/api/notifications', {
         credentials: 'include'
+      });
+      
+      const endTime = performance.now();
+      debugLog('NotificationManager', 'Notifications response', {
+        status: response.status,
+        statusText: response.statusText,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
+        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
       });
       
       if (!response.ok) {
@@ -174,6 +218,8 @@ export class NotificationManager {
       }
       
       const notifications = await response.json();
+      debugLog('NotificationManager', 'Received notifications', notifications);
+      
       this.notifications = notifications;
       this.renderNotifications();
       
@@ -327,7 +373,10 @@ export class NotificationManager {
    * Toggle notifications panel
    */
   toggleNotifications() {
-    if (!this.container) return;
+    if (!this.container) {
+      debugLog('NotificationManager', 'No container found for toggle');
+      return;
+    }
     
     if (this.isOpen) {
       this.closeNotifications();
@@ -342,7 +391,9 @@ export class NotificationManager {
   openNotifications() {
     if (!this.container) return;
     
+    debugLog('NotificationManager', 'Opening notifications panel');
     this.container.classList.add('open');
+    this.container.style.display = 'flex';
     this.isOpen = true;
     
     // Fetch latest notifications when opening
@@ -355,7 +406,13 @@ export class NotificationManager {
   closeNotifications() {
     if (!this.container) return;
     
+    debugLog('NotificationManager', 'Closing notifications panel');
     this.container.classList.remove('open');
+    setTimeout(() => {
+      if (!this.isOpen) {
+        this.container.style.display = 'none';
+      }
+    }, 300); // Match transition duration
     this.isOpen = false;
   }
 

@@ -7,8 +7,6 @@ interface UserProfile {
   bio: string;
   created_at: number;
   updated_at: number;
-  orcid_id?: string;
-  github_id?: string;
   avatar_key?: string;
   email?: string;
   preferences: UserPreferences;
@@ -17,9 +15,11 @@ interface UserProfile {
 interface UserPreferences {
   theme: 'light' | 'dark' | 'system';
   lurkerModeRandomness: number;
+  lurkerModeEnabled: boolean;
   defaultContentVisibility: 'public' | 'private';
   emailNotifications: boolean;
   showLocationByDefault: boolean;
+  communique?: string;
 }
 
 export class UserHandler {
@@ -34,78 +34,6 @@ export class UserHandler {
   async createUser(
     username: string,
     displayName: string,
-    orcidId: string | null,
-    env: Env
-  ): Promise<string> {
-    // Check if username is available
-    const existingUser = await env.R3L_DB.prepare(`
-      SELECT id FROM users WHERE username = ?
-    `).bind(username).first();
-    
-    if (existingUser) {
-      throw new Error('Username already taken');
-    }
-    
-    // Check if ORCID already registered (if provided)
-    if (orcidId) {
-      const existingOrcid = await env.R3L_DB.prepare(`
-        SELECT id FROM users WHERE orcid_id = ?
-      `).bind(orcidId).first();
-      
-      if (existingOrcid) {
-        throw new Error('ORCID already registered');
-      }
-    }
-    
-    const userId = crypto.randomUUID();
-    const now = Date.now();
-    
-    // Default preferences
-    const defaultPreferences = {
-      theme: 'system',
-      lurkerModeRandomness: 50,
-      defaultContentVisibility: 'public',
-      emailNotifications: true,
-      showLocationByDefault: false
-    };
-    
-    // Create user
-    await env.R3L_DB.prepare(`
-      INSERT INTO users (
-        id, username, display_name, bio, created_at, updated_at,
-        orcid_id, avatar_key, preferences
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      userId,
-      username,
-      displayName,
-      '',
-      now,
-      now,
-      orcidId,
-      null,
-      JSON.stringify(defaultPreferences)
-    ).run();
-    
-    return userId;
-  }
-  
-  /**
-   * Create a new user with GitHub authentication
-   * @param username Username
-   * @param displayName Display name
-   * @param githubId GitHub identifier
-   * @param avatarUrl GitHub avatar URL
-   * @param email User's email (optional)
-   * @param env Environment bindings
-   * @returns User ID of created user
-   */
-  async createUserWithGitHub(
-    username: string,
-    displayName: string,
-    githubId: string,
-    avatarUrl: string | null,
     email: string | null,
     env: Env
   ): Promise<string> {
@@ -118,17 +46,6 @@ export class UserHandler {
       throw new Error('Username already taken');
     }
     
-    // Check if GitHub ID already registered
-    if (githubId) {
-      const existingGithub = await env.R3L_DB.prepare(`
-        SELECT id FROM users WHERE github_id = ?
-      `).bind(githubId).first();
-      
-      if (existingGithub) {
-        throw new Error('GitHub account already registered');
-      }
-    }
-    
     const userId = crypto.randomUUID();
     const now = Date.now();
     
@@ -136,45 +53,20 @@ export class UserHandler {
     const defaultPreferences = {
       theme: 'system',
       lurkerModeRandomness: 50,
+      lurkerModeEnabled: false,
       defaultContentVisibility: 'public',
       emailNotifications: true,
-      showLocationByDefault: false
+      showLocationByDefault: false,
+      communique: ''
     };
-    
-    // Create avatar in R2 if we have an avatar URL
-    let avatarKey = null;
-    if (avatarUrl) {
-      try {
-        // Fetch avatar from GitHub
-        const avatarResponse = await fetch(avatarUrl);
-        if (avatarResponse.ok) {
-          const avatarBlob = await avatarResponse.blob();
-          avatarKey = `avatars/${userId}.${avatarBlob.type.split('/')[1] || 'png'}`;
-          
-          // Upload to R2
-          await env.R3L_CONTENT_BUCKET.put(
-            avatarKey,
-            avatarBlob.stream(),
-            {
-              httpMetadata: {
-                contentType: avatarBlob.type
-              }
-            }
-          );
-        }
-      } catch (error) {
-        console.error('Failed to fetch and upload avatar:', error);
-        // Continue without avatar
-      }
-    }
     
     // Create user
     await env.R3L_DB.prepare(`
       INSERT INTO users (
         id, username, display_name, bio, created_at, updated_at,
-        github_id, avatar_key, email, preferences
+        avatar_key, email, preferences
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       userId,
       username,
@@ -182,8 +74,7 @@ export class UserHandler {
       '',
       now,
       now,
-      githubId,
-      avatarKey,
+      null,
       email,
       JSON.stringify(defaultPreferences)
     ).run();
@@ -220,11 +111,17 @@ export class UserHandler {
     let preferences: UserPreferences;
     try {
       preferences = JSON.parse(user.preferences);
+      
+      // Ensure lurkerModeEnabled exists (for backward compatibility)
+      if (preferences.lurkerModeEnabled === undefined) {
+        preferences.lurkerModeEnabled = false;
+      }
     } catch (error) {
       // Fallback to defaults if preferences are corrupted
       preferences = {
         theme: 'system',
         lurkerModeRandomness: 50,
+        lurkerModeEnabled: false,
         defaultContentVisibility: 'public',
         emailNotifications: true,
         showLocationByDefault: false
@@ -266,11 +163,17 @@ export class UserHandler {
     let preferences: UserPreferences;
     try {
       preferences = JSON.parse(user.preferences);
+      
+      // Ensure lurkerModeEnabled exists (for backward compatibility)
+      if (preferences.lurkerModeEnabled === undefined) {
+        preferences.lurkerModeEnabled = false;
+      }
     } catch (error) {
       // Fallback to defaults if preferences are corrupted
       preferences = {
         theme: 'system',
         lurkerModeRandomness: 50,
+        lurkerModeEnabled: false,
         defaultContentVisibility: 'public',
         emailNotifications: true,
         showLocationByDefault: false
@@ -283,101 +186,6 @@ export class UserHandler {
     };
   }
   
-  /**
-   * Get a user by ORCID ID
-   * @param orcidId ORCID identifier
-   * @param env Environment bindings
-   * @returns User profile or null if not found
-   */
-  async getUserByOrcid(orcidId: string, env: Env): Promise<UserProfile | null> {
-    const user = await env.R3L_DB.prepare(`
-      SELECT * FROM users WHERE orcid_id = ?
-    `).bind(orcidId).first<{
-      id: string;
-      username: string;
-      display_name: string;
-      bio: string;
-      created_at: number;
-      updated_at: number;
-      orcid_id?: string;
-      github_id?: string;
-      avatar_key?: string;
-      email?: string;
-      preferences: string;
-    }>();
-    
-    if (!user) {
-      return null;
-    }
-    
-    // Parse preferences JSON
-    let preferences: UserPreferences;
-    try {
-      preferences = JSON.parse(user.preferences);
-    } catch (error) {
-      // Fallback to defaults if preferences are corrupted
-      preferences = {
-        theme: 'system',
-        lurkerModeRandomness: 50,
-        defaultContentVisibility: 'public',
-        emailNotifications: true,
-        showLocationByDefault: false
-      };
-    }
-    
-    return {
-      ...user,
-      preferences
-    };
-  }
-  
-  /**
-   * Get a user by GitHub ID
-   * @param githubId GitHub identifier
-   * @param env Environment bindings
-   * @returns User profile or null if not found
-   */
-  async getUserByGitHub(githubId: string, env: Env): Promise<UserProfile | null> {
-    const user = await env.R3L_DB.prepare(`
-      SELECT * FROM users WHERE github_id = ?
-    `).bind(githubId).first<{
-      id: string;
-      username: string;
-      display_name: string;
-      bio: string;
-      created_at: number;
-      updated_at: number;
-      orcid_id?: string;
-      github_id?: string;
-      avatar_key?: string;
-      email?: string;
-      preferences: string;
-    }>();
-    
-    if (!user) {
-      return null;
-    }
-    
-    // Parse preferences JSON
-    let preferences: UserPreferences;
-    try {
-      preferences = JSON.parse(user.preferences);
-    } catch (error) {
-      // Fallback to defaults if preferences are corrupted
-      preferences = {
-        theme: 'system',
-        lurkerModeRandomness: 50,
-        defaultContentVisibility: 'public',
-        emailNotifications: true,
-        showLocationByDefault: false
-      };
-    }
-    
-    return {
-      ...user,
-      preferences
-    };
-  }
   
   /**
    * Update a user's profile
@@ -441,6 +249,55 @@ export class UserHandler {
    * @param preferences Preference updates
    * @param env Environment bindings
    */
+  /**
+   * Sanitize HTML content for communiques
+   * Allows a limited set of HTML tags and attributes that are safe
+   * @param html Raw HTML input
+   * @returns Sanitized HTML
+   */
+  private sanitizeHtml(html: string): string {
+    if (!html) return '';
+    
+    // Basic DOMPurify-like sanitization
+    // Since we don't have DOMPurify in the Worker environment,
+    // we'll implement a simple version with regex
+    
+    // List of allowed tags
+    const allowedTags = [
+      'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
+      'a', 'strong', 'em', 'b', 'i', 'u', 'del', 'small',
+      'br', 'hr', 'img', 'audio', 'video'
+    ];
+    
+    // List of allowed attributes
+    const allowedAttrs = {
+      'all': ['class', 'style', 'id', 'title'],
+      'a': ['href', 'target', 'rel'],
+      'img': ['src', 'alt', 'width', 'height'],
+      'audio': ['src', 'controls', 'autoplay', 'loop'],
+      'video': ['src', 'controls', 'autoplay', 'loop', 'width', 'height'],
+    };
+    
+    // Remove all script tags and their content
+    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    
+    // Remove all event handlers (on*)
+    html = html.replace(/\son\w+\s*=\s*(['"])(.*?)\1/gi, '');
+    
+    // Remove all iframe tags and their content
+    html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+    
+    // Remove any javascript: or data: URLs
+    html = html.replace(/\b(href|src)\s*=\s*(['"])\s*(javascript|data):/gi, '$1=$2#');
+    
+    // Allow only specific tags
+    const tagsRegex = new RegExp(`<(?!\\/?(${allowedTags.join('|')})\\b)[^>]+>`, 'gi');
+    html = html.replace(tagsRegex, '');
+    
+    return html;
+  }
+
   async updateUserPreferences(
     userId: string,
     preferences: Partial<UserPreferences>,
@@ -450,6 +307,11 @@ export class UserHandler {
     
     if (!user) {
       throw new Error('User not found');
+    }
+    
+    // Sanitize communique HTML if present
+    if (preferences.communique !== undefined) {
+      preferences.communique = this.sanitizeHtml(preferences.communique);
     }
     
     // Merge with existing preferences

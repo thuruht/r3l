@@ -236,6 +236,197 @@
     .hidden {
       display: none;
     }
+    
+    /* Map Points Section */
+    .map-points-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .map-point-card {
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+      border: 1px solid var(--border-primary);
+      transition: all var(--transition-fast);
+    }
+    
+    .map-point-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-medium);
+    }
+    
+    .map-point-title {
+      font-weight: 600;
+      margin: 0 0 0.5rem 0;
+      color: var(--accent-green);
+    }
+    
+    .map-point-coords {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+    
+    .map-point-desc {
+      font-size: 0.9rem;
+      margin: 0;
+      color: var(--text-primary);
+    }
+    
+    .map-point-actions {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+    
+    .map-point-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color var(--transition-fast);
+      padding: 0.25rem;
+    }
+    
+    .map-point-actions button:hover {
+      color: var(--accent-lavender);
+    }
+    
+    .empty-state {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 1rem;
+      font-style: italic;
+    }
+    
+    /* Settings Styles */
+    .settings-grid {
+      display: grid;
+      gap: 1.5rem;
+    }
+    
+    .setting-group {
+      background-color: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      border: 1px solid var(--border-primary);
+    }
+    
+    .setting-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+    
+    .setting-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .setting-description {
+      margin: 0 0 1rem 0;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+    
+    .setting-note {
+      margin: 0.5rem 0 0 0;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-style: italic;
+    }
+    
+    .setting-control {
+      margin: 1rem 0;
+    }
+    
+    .setting-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 1rem;
+    }
+    
+    /* Toggle Switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--bg-subtle);
+      transition: .4s;
+      border-radius: 34px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: var(--accent-color);
+    }
+    
+    input:focus + .toggle-slider {
+      box-shadow: 0 0 1px var(--accent-color);
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+    
+    /* Slider with value */
+    .slider-with-value {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .slider-with-value input[type="range"] {
+      flex: 1;
+    }
+    
+    /* Radio Group */
+    .radio-group {
+      display: flex;
+      gap: 1rem;
+    }
+    
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -294,6 +485,80 @@
           <h3 class="section-title">Authentication Providers</h3>
           <div id="auth-providers" class="auth-providers">
             <!-- Will be populated by JavaScript -->
+          </div>
+        </div>
+        
+        <!-- Visibility & Privacy Settings Section -->
+        <div class="profile-section">
+          <h3 class="section-title">Visibility & Privacy Settings</h3>
+          <div class="settings-grid">
+            <!-- Lurker in the Mist Mode -->
+            <div class="setting-group">
+              <div class="setting-header">
+                <h4 class="setting-title">Lurker in the Mist Mode</h4>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="lurker-mode-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <p class="setting-description">Low-visibility status for privacy-conscious browsing. Appears muted in the association web with no clear associations.</p>
+              
+              <div class="setting-control">
+                <label for="lurker-randomness">Search Randomness Level:</label>
+                <div class="slider-with-value">
+                  <input type="range" id="lurker-randomness" min="0" max="100" step="5" value="50">
+                  <span id="lurker-randomness-value">50%</span>
+                </div>
+              </div>
+              <p class="setting-note">Higher randomness means more diverse but less relevant search results.</p>
+            </div>
+            
+            <!-- Location Visibility -->
+            <div class="setting-group">
+              <div class="setting-header">
+                <h4 class="setting-title">Show Location by Default</h4>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="location-visibility-toggle">
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+              <p class="setting-description">When enabled, your location will be visible on the map to other users by default.</p>
+            </div>
+            
+            <!-- Default Content Visibility -->
+            <div class="setting-group">
+              <div class="setting-header">
+                <h4 class="setting-title">Default Content Visibility</h4>
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" name="default-visibility" value="public" checked>
+                    <span>Public</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="default-visibility" value="private">
+                    <span>Private</span>
+                  </label>
+                </div>
+              </div>
+              <p class="setting-description">Choose whether your new content is public or private by default.</p>
+            </div>
+            
+            <div class="setting-actions">
+              <button id="save-privacy-settings" class="btn btn-accent">Save Settings</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Map Points Section -->
+        <div class="profile-section">
+          <h3 class="section-title">Your Map Points</h3>
+          <div id="map-points-container">
+            <p class="empty-state">You haven't added any map points yet.</p>
+            <div id="user-map-points" class="map-points-grid"></div>
+            <a href="/map.html" class="btn btn-secondary">
+              <span class="material-icons">add_location</span>
+              Add Map Points
+            </a>
           </div>
         </div>
         
@@ -357,11 +622,103 @@
       const generateRecoveryKeyBtn = document.getElementById('generate-recovery-key-btn');
       const logoutBtn = document.getElementById('logout-btn');
       
+      // Privacy settings elements
+      const lurkerModeToggle = document.getElementById('lurker-mode-toggle');
+      const lurkerRandomness = document.getElementById('lurker-randomness');
+      const lurkerRandomnessValue = document.getElementById('lurker-randomness-value');
+      const locationVisibilityToggle = document.getElementById('location-visibility-toggle');
+      const defaultVisibilityRadios = document.getElementsByName('default-visibility');
+      const savePrivacySettingsBtn = document.getElementById('save-privacy-settings');
+      
       // Recovery key modal elements
       const recoveryKeyModal = document.getElementById('recovery-key-modal');
       const recoveryKeyDisplay = document.getElementById('recovery-key-display');
       const copyRecoveryKeyBtn = document.getElementById('copy-recovery-key-btn');
       const closeModalBtn = document.getElementById('close-modal-btn');
+      
+      // Update lurker randomness value display when slider changes
+      lurkerRandomness.addEventListener('input', () => {
+        lurkerRandomnessValue.textContent = `${lurkerRandomness.value}%`;
+      });
+      
+      // Save privacy settings
+      savePrivacySettingsBtn.addEventListener('click', async () => {
+        try {
+          // Get user ID from the URL or data attribute
+          const userId = savePrivacySettingsBtn.getAttribute('data-user-id');
+          if (!userId) {
+            throw new Error('User ID not found');
+          }
+          
+          // Get selected visibility option
+          let defaultContentVisibility = 'public';
+          for (const radio of defaultVisibilityRadios) {
+            if (radio.checked) {
+              defaultContentVisibility = radio.value;
+              break;
+            }
+          }
+          
+          // Create preferences object
+          const preferences = {
+            lurkerModeEnabled: lurkerModeToggle.checked,
+            lurkerModeRandomness: parseInt(lurkerRandomness.value),
+            showLocationByDefault: locationVisibilityToggle.checked,
+            defaultContentVisibility
+          };
+          
+          console.log('Saving preferences:', preferences);
+          
+          // Save preferences
+          const response = await fetch(`/api/users/${userId}/preferences`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(preferences)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to save preferences: ${response.status} ${response.statusText}`);
+          }
+          
+          // Show success message
+          alert('Preferences saved successfully');
+        } catch (error) {
+          console.error('Error saving preferences:', error);
+          alert('Failed to save preferences. Please try again.');
+        }
+      });
+      
+      // Function to populate user preferences
+      function populateUserPreferences(user) {
+        // Set user ID as data attribute for save button
+        savePrivacySettingsBtn.setAttribute('data-user-id', user.id);
+        
+        // Check if user has preferences
+        if (user.preferences) {
+          // Set lurker mode toggle
+          lurkerModeToggle.checked = !!user.preferences.lurkerModeEnabled;
+          
+          // Set lurker randomness slider
+          const randomness = user.preferences.lurkerModeRandomness || 50;
+          lurkerRandomness.value = randomness;
+          lurkerRandomnessValue.textContent = `${randomness}%`;
+          
+          // Set location visibility toggle
+          locationVisibilityToggle.checked = !!user.preferences.showLocationByDefault;
+          
+          // Set default content visibility
+          const visibility = user.preferences.defaultContentVisibility || 'public';
+          for (const radio of defaultVisibilityRadios) {
+            if (radio.value === visibility) {
+              radio.checked = true;
+              break;
+            }
+          }
+        }
+      }
       
       // Check for new registration notification
       const urlParams = new URLSearchParams(window.location.search);
@@ -446,27 +803,6 @@
           `;
           authProvidersEl.appendChild(recoveryKeyInfo);
           
-          // For legacy support, if these fields exist
-          if (user.orcidId) {
-            const orcidProvider = document.createElement('div');
-            orcidProvider.className = 'auth-provider';
-            orcidProvider.innerHTML = `
-              <img src="https://orcid.org/assets/vectors/orcid.logo.icon.svg" alt="ORCID logo">
-              <span>ORCID</span>
-            `;
-            authProvidersEl.appendChild(orcidProvider);
-          }
-          
-          if (user.githubId) {
-            const githubProvider = document.createElement('div');
-            githubProvider.className = 'auth-provider';
-            githubProvider.innerHTML = `
-              <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub logo">
-              <span>GitHub</span>
-            `;
-            authProvidersEl.appendChild(githubProvider);
-          }
-          
           // Try to load user stats if available
           try {
             console.log(`Fetching stats for user ${user.id}`);
@@ -490,6 +826,115 @@
             console.warn('Could not load stats:', statsError);
             // Use defaults (already set in HTML)
           }
+          
+          // Load user's map points
+          try {
+            console.log(`Fetching map points for user ${user.id}`);
+            const mapPointsResponse = await fetch(`/api/globe/data-points?userId=${user.id}`, {
+              credentials: 'include'
+            });
+            
+            console.log('Map points response:', mapPointsResponse.status, mapPointsResponse.statusText);
+            
+            if (mapPointsResponse.ok) {
+              const mapPoints = await mapPointsResponse.json();
+              console.log('Map points data:', mapPoints);
+              
+              const mapPointsContainer = document.getElementById('user-map-points');
+              const emptyState = document.querySelector('.empty-state');
+              
+              if (mapPoints && mapPoints.length > 0) {
+                // Hide empty state if we have points
+                emptyState.classList.add('hidden');
+                
+                // Populate the map points grid
+                mapPointsContainer.innerHTML = '';
+                
+                mapPoints.forEach(point => {
+                  const pointCard = document.createElement('div');
+                  pointCard.className = 'map-point-card';
+                  
+                  // Format coordinates to 4 decimal places
+                  const latitude = parseFloat(point.latitude).toFixed(4);
+                  const longitude = parseFloat(point.longitude).toFixed(4);
+                  
+                  pointCard.innerHTML = `
+                    <h4 class="map-point-title">${point.title}</h4>
+                    <p class="map-point-coords">${latitude}, ${longitude}</p>
+                    ${point.description ? `<p class="map-point-desc">${point.description}</p>` : ''}
+                    <div class="map-point-actions">
+                      <button class="view-on-map" data-id="${point.id}" aria-label="View on map">
+                        <span class="material-icons">map</span>
+                      </button>
+                      <button class="edit-point" data-id="${point.id}" aria-label="Edit point">
+                        <span class="material-icons">edit</span>
+                      </button>
+                      <button class="delete-point" data-id="${point.id}" aria-label="Delete point">
+                        <span class="material-icons">delete</span>
+                      </button>
+                    </div>
+                  `;
+                  
+                  mapPointsContainer.appendChild(pointCard);
+                });
+                
+                // Add event listeners for the action buttons
+                mapPointsContainer.querySelectorAll('.view-on-map').forEach(button => {
+                  button.addEventListener('click', () => {
+                    const pointId = button.getAttribute('data-id');
+                    window.location.href = `/map.html?point=${pointId}`;
+                  });
+                });
+                
+                mapPointsContainer.querySelectorAll('.edit-point').forEach(button => {
+                  button.addEventListener('click', () => {
+                    const pointId = button.getAttribute('data-id');
+                    window.location.href = `/map.html?edit=${pointId}`;
+                  });
+                });
+                
+                mapPointsContainer.querySelectorAll('.delete-point').forEach(button => {
+                  button.addEventListener('click', async () => {
+                    const pointId = button.getAttribute('data-id');
+                    
+                    if (confirm('Are you sure you want to delete this map point?')) {
+                      try {
+                        const response = await fetch(`/api/globe/points/${pointId}`, {
+                          method: 'DELETE',
+                          credentials: 'include'
+                        });
+                        
+                        if (response.ok) {
+                          // Remove the point card from the DOM
+                          button.closest('.map-point-card').remove();
+                          
+                          // If no more points, show empty state
+                          if (mapPointsContainer.children.length === 0) {
+                            emptyState.classList.remove('hidden');
+                          }
+                        } else {
+                          alert('Failed to delete map point. Please try again.');
+                        }
+                      } catch (error) {
+                        console.error('Error deleting map point:', error);
+                        alert('Failed to delete map point. Please try again.');
+                      }
+                    }
+                  });
+                });
+              } else {
+                // If no points, ensure empty state is visible
+                emptyState.classList.remove('hidden');
+              }
+            } else {
+              console.warn(`Map points fetch failed with status: ${mapPointsResponse.status}`);
+            }
+          } catch (mapPointsError) {
+            console.warn('Could not load map points:', mapPointsError);
+          }
+          
+          // Populate user preferences
+          populateUserPreferences(user);
           
           // Show profile data, hide loading
           loadingEl.classList.add('hidden');

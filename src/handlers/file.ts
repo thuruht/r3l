@@ -4,6 +4,24 @@ export class FileHandler {
   constructor() {}
   
   /**
+   * Sanitize a filename to prevent security issues
+   * @param fileName Original file name
+   * @returns Sanitized file name
+   */
+  private sanitizeFileName(fileName: string): string {
+    // Remove any path components
+    const baseName = fileName.replace(/^.*[\\\/]/, '');
+    
+    // Replace any potentially dangerous characters
+    const sanitized = baseName
+      .replace(/[^a-zA-Z0-9.-]/g, '_')
+      .replace(/\.{2,}/g, '.'); // Prevent directory traversal
+    
+    // Limit length
+    return sanitized.substring(0, 255);
+  }
+  
+  /**
    * Upload a file to R2 storage
    * @param fileData The file data buffer
    * @param fileName Original file name
@@ -20,16 +38,30 @@ export class FileHandler {
     env: Env
   ): Promise<{ key: string; url: string }> {
     try {
+      // Validate file size
+      const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB limit
+      if (fileData.byteLength > MAX_FILE_SIZE) {
+        throw new Error(`File size exceeds 25MB limit`);
+      }
+      
+      // Validate file name
+      if (!fileName || fileName.trim() === '') {
+        throw new Error('File name is required');
+      }
+      
+      // Sanitize file name to prevent path traversal and other security issues
+      const sanitizedFileName = this.sanitizeFileName(fileName);
+      
       // Generate a unique file key based on timestamp and random string
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 12);
-      const fileExtension = fileName.split('.').pop();
+      const fileExtension = sanitizedFileName.split('.').pop();
       const fileKey = `${timestamp}-${randomStr}.${fileExtension}`;
       
       // Add some standard metadata
       const fullMetadata = {
         ...metadata,
-        originalName: fileName,
+        originalName: sanitizedFileName,
         uploadedAt: timestamp.toString(),
       };
       
@@ -48,7 +80,7 @@ export class FileHandler {
       };
     } catch (error) {
       console.error('Error uploading file:', error);
-      throw new Error('Failed to upload file');
+      throw error; // Re-throw the error with more context if needed
     }
   }
   
@@ -69,13 +101,22 @@ export class FileHandler {
     env: Env
   ): Promise<{ avatarKey: string; avatarUrl: string }> {
     try {
+      // Validate file size
+      const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB limit for avatars
+      if (fileData.byteLength > MAX_AVATAR_SIZE) {
+        throw new Error(`Avatar image exceeds 5MB limit`);
+      }
+      
       // Validate that this is an image file
       if (!contentType.startsWith('image/')) {
         throw new Error('Only image files are allowed for avatars');
       }
       
+      // Sanitize file name
+      const sanitizedFileName = this.sanitizeFileName(fileName);
+      
       // Get the file extension
-      const fileExtension = fileName.split('.').pop()?.toLowerCase();
+      const fileExtension = sanitizedFileName.split('.').pop()?.toLowerCase();
       
       // Validate file extension
       const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
@@ -102,7 +143,7 @@ export class FileHandler {
         },
         customMetadata: {
           ...metadata,
-          originalName: fileName,
+          originalName: sanitizedFileName,
           uploadedAt: timestamp.toString(),
         },
       });

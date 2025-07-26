@@ -1,5 +1,7 @@
 // Import Cloudflare Workers types
 import type { D1Database as CloudflareD1Database, Fetcher } from '@cloudflare/workers-types';
+// Import our custom types
+import '../types/cloudflare';
 
 export interface Env {
   // Define environment variables

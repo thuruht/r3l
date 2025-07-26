@@ -1,4 +1,5 @@
 import { Env } from '../types/env';
+import { Logger } from '../utils/logger';
 
 // Define interfaces for query results
 interface ContentWarningItem {
@@ -22,15 +23,27 @@ interface VoteCountResult {
 export class ContentLifecycle {
   static readonly DEFAULT_LIFESPAN = 7 * 24 * 60 * 60 * 1000; // 7 days
   static readonly DELETION_WARNING = 24 * 60 * 60 * 1000; // 24 hour warning
+  
+  private logger: Logger;
+  
+  constructor() {
+    this.logger = new Logger('ContentLifecycle');
+  }
 
   /**
    * Schedules the expiration of a content item
    * @param contentId The ID of the content to schedule for expiry
+   * @param expiresAt Timestamp when content expires
+   * @param userId User ID who owns the content
    * @param env Environment bindings
    */
-  async scheduleExpiry(contentId: string, env: Env): Promise<void> {
-    const expiryDate = Date.now() + ContentLifecycle.DEFAULT_LIFESPAN;
-    const warningDate = expiryDate - ContentLifecycle.DELETION_WARNING;
+  async scheduleExpiry(
+    contentId: string, 
+    expiresAt: number, 
+    userId: string,
+    env: Env
+  ): Promise<void> {
+    const warningDate = expiresAt - ContentLifecycle.DELETION_WARNING;
 
     // Mark for deletion → Auto-delete (unless archived)
     await env.R3L_DB.prepare(`
@@ -40,9 +53,86 @@ export class ContentLifecycle {
       crypto.randomUUID(), 
       contentId, 
       Date.now(), 
-      expiryDate, 
+      expiresAt, 
       warningDate
     ).run();
+    
+    this.logger.info('Content scheduled for expiration', {
+      contentId,
+      userId,
+      expiresAt: new Date(expiresAt).toISOString(),
+      warningAt: new Date(warningDate).toISOString()
+    });
+  }
+  
+  /**
+   * Updates the expiration of a content item
+   * @param contentId The ID of the content to update
+   * @param expiresAt New expiration timestamp
+   * @param userId User ID who owns the content
+   * @param env Environment bindings
+   */
+  async updateExpiry(
+    contentId: string, 
+    expiresAt: number | null, 
+    userId: string, 
+    env: Env
+  ): Promise<void> {
+    // If null, cancel expiration
+    if (expiresAt === null) {
+      await this.cancelExpiry(contentId, env);
+      return;
+    }
+    
+    const warningDate = expiresAt - ContentLifecycle.DELETION_WARNING;
+    
+    // Check if lifecycle entry exists
+    const existing = await env.R3L_DB.prepare(`
+      SELECT id FROM content_lifecycle WHERE content_id = ?
+    `).bind(contentId).first();
+    
+    if (existing) {
+      // Update existing entry
+      await env.R3L_DB.prepare(`
+        UPDATE content_lifecycle
+        SET expires_at = ?,
+            marked_for_deletion_at = ?,
+            archived_at = NULL,
+            archive_type = NULL
+        WHERE content_id = ?
+      `).bind(expiresAt, warningDate, contentId).run();
+    } else {
+      // Create new entry
+      await this.scheduleExpiry(contentId, expiresAt, userId, env);
+    }
+    
+    this.logger.info('Content expiration updated', {
+      contentId,
+      userId,
+      expiresAt: new Date(expiresAt).toISOString()
+    });
+  }
+  
+  /**
+   * Cancels the expiration for a content item
+   * @param contentId The ID of the content
+   * @param env Environment bindings
+   */
+  async cancelExpiry(contentId: string, env: Env): Promise<void> {
+    await env.R3L_DB.prepare(`
+      UPDATE content
+      SET expires_at = NULL
+      WHERE id = ?
+    `).bind(contentId).run();
+    
+    await env.R3L_DB.prepare(`
+      UPDATE content_lifecycle
+      SET expires_at = NULL,
+          marked_for_deletion_at = NULL
+      WHERE content_id = ?
+    `).bind(contentId).run();
+    
+    this.logger.info('Content expiration cancelled', { contentId });
   }
 
   /**
@@ -73,6 +163,8 @@ export class ContentLifecycle {
         SET marked_for_deletion_at = -1
         WHERE content_id = ?
       `).bind(item.content_id).run();
+      
+      this.logger.info('Sent expiration warning', { contentId: item.content_id, userId: item.user_id });
     }
 
     // Process final deletions
@@ -91,10 +183,19 @@ export class ContentLifecycle {
       
       if (archiveStatus.eligible) {
         await this.archiveContent(item.content_id, 'community', env);
+        this.logger.info('Content auto-archived by community votes', { contentId: item.content_id });
       } else {
         // Delete content
         if (item.file_key) {
-          await env.R3L_CONTENT_BUCKET.delete(item.file_key);
+          try {
+            await env.R3L_CONTENT_BUCKET.delete(item.file_key);
+            this.logger.info('Deleted expired content file', { contentId: item.content_id, fileKey: item.file_key });
+          } catch (error) {
+            this.logger.error('Failed to delete expired content file', error as Error, { 
+              contentId: item.content_id, 
+              fileKey: item.file_key 
+            });
+          }
         }
         
         await env.R3L_DB.prepare(`
@@ -104,6 +205,8 @@ export class ContentLifecycle {
         await env.R3L_DB.prepare(`
           DELETE FROM content_lifecycle WHERE content_id = ?
         `).bind(item.content_id).run();
+        
+        this.logger.info('Content expired and deleted', { contentId: item.content_id, userId: item.user_id });
       }
     }
   }
@@ -117,7 +220,7 @@ export class ContentLifecycle {
   private async checkCommunityArchiveStatus(contentId: string, env: Env): Promise<{eligible: boolean}> {
     const result = await env.R3L_DB.prepare(`
       SELECT COUNT(*) as vote_count
-      FROM community_archive_votes
+      FROM archive_votes
       WHERE content_id = ?
     `).bind(contentId).first<VoteCountResult>();
     
@@ -139,7 +242,8 @@ export class ContentLifecycle {
     await env.R3L_DB.prepare(`
       UPDATE content
       SET archive_status = ?,
-          community_archive_eligible = TRUE
+          community_archive_eligible = 1,
+          expires_at = NULL
       WHERE id = ?
     `).bind(type, contentId).run();
     

@@ -1,6 +1,27 @@
 import { Env } from '../types/env';
+import { Sanitizer } from '../utils/sanitizer';
 
-interface UserProfile {
+export interface UserPreferences {
+  theme: 'light' | 'dark' | 'system';
+  lurkerModeRandomness: number;
+  lurkerModeEnabled: boolean;
+  defaultContentVisibility: 'public' | 'private';
+  emailNotifications: boolean;
+  showLocationByDefault: boolean;
+  communique?: string;
+  darkMode?: boolean;
+  language?: string;
+  timezone?: string;
+  notificationsEnabled?: boolean;
+  displayNameVisible?: boolean;
+  locationVisible?: boolean;
+  subtitle?: string;
+  avatarStyle?: string;
+  lastActive?: number;
+  lurkerMode?: boolean;
+}
+
+export interface UserProfile {
   id: string;
   username: string;
   display_name: string;
@@ -10,16 +31,6 @@ interface UserProfile {
   avatar_key?: string;
   email?: string;
   preferences: UserPreferences;
-}
-
-interface UserPreferences {
-  theme: 'light' | 'dark' | 'system';
-  lurkerModeRandomness: number;
-  lurkerModeEnabled: boolean;
-  defaultContentVisibility: 'public' | 'private';
-  emailNotifications: boolean;
-  showLocationByDefault: boolean;
-  communique?: string;
 }
 
 export class UserHandler {
@@ -258,44 +269,8 @@ export class UserHandler {
   private sanitizeHtml(html: string): string {
     if (!html) return '';
     
-    // Basic DOMPurify-like sanitization
-    // Since we don't have DOMPurify in the Worker environment,
-    // we'll implement a simple version with regex
-    
-    // List of allowed tags
-    const allowedTags = [
-      'p', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
-      'a', 'strong', 'em', 'b', 'i', 'u', 'del', 'small',
-      'br', 'hr', 'img', 'audio', 'video'
-    ];
-    
-    // List of allowed attributes
-    const allowedAttrs = {
-      'all': ['class', 'style', 'id', 'title'],
-      'a': ['href', 'target', 'rel'],
-      'img': ['src', 'alt', 'width', 'height'],
-      'audio': ['src', 'controls', 'autoplay', 'loop'],
-      'video': ['src', 'controls', 'autoplay', 'loop', 'width', 'height'],
-    };
-    
-    // Remove all script tags and their content
-    html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-    
-    // Remove all event handlers (on*)
-    html = html.replace(/\son\w+\s*=\s*(['"])(.*?)\1/gi, '');
-    
-    // Remove all iframe tags and their content
-    html = html.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
-    
-    // Remove any javascript: or data: URLs
-    html = html.replace(/\b(href|src)\s*=\s*(['"])\s*(javascript|data):/gi, '$1=$2#');
-    
-    // Allow only specific tags
-    const tagsRegex = new RegExp(`<(?!\\/?(${allowedTags.join('|')})\\b)[^>]+>`, 'gi');
-    html = html.replace(tagsRegex, '');
-    
-    return html;
+    // Use our comprehensive sanitizer for communiques
+    return Sanitizer.sanitizeCommunique(html);
   }
 
   async updateUserPreferences(

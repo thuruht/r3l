@@ -39,13 +39,19 @@
   // Environment variables - required by Env interface
   // Non-sensitive configuration values
   "vars": {
+    "WORKER_ENV": "production",
+    "KV_NAMESPACE": "R3L_KV",
+    "D1_DATABASE": "R3L_DB",
+    "R2_BUCKET": "R3L_CONTENT_BUCKET",
+    "ALLOWED_ORIGINS": "[\"https://r3l.distorted.work\"]",
+    "MAX_UPLOAD_SIZE": "10485760", // 10MB in bytes
+    "CONTENT_EXPIRATION_DAYS": "30",
+    "RATE_LIMIT_REQUESTS": "100",
+    "RATE_LIMIT_WINDOW": "60" // 60 seconds
   },
   
   // Note: All sensitive values must be set using wrangler secret put:
-  // - R3L_ADMIN_ORCID_ID: Use `wrangler secret put R3L_ADMIN_ORCID_ID`
-  // - R3L_APP_SECRET: Use `wrangler secret put R3L_APP_SECRET`
-  // - CLOUDFLARE_ACCOUNT_ID: Use `wrangler secret put CLOUDFLARE_ACCOUNT_ID`
-  // - REALTIME_API_TOKEN: Use `wrangler secret put REALTIME_API_TOKEN`
+  // - JWT_SECRET: Use `wrangler secret put JWT_SECRET`
   
   // Configure KV Namespaces for storing user data
   "kv_namespaces": [

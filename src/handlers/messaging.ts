@@ -191,8 +191,8 @@ export class MessagingHandler {
   async getMessagesBetweenUsers(
     userIdA: string,
     userIdB: string,
-    limit: number = 50,
     env: Env,
+    limit: number = 50,
     beforeId?: string
   ): Promise<Message[]> {
     let query = `
@@ -453,9 +453,9 @@ export class MessagingHandler {
   async getConversationMessages(
     userId: string,
     conversationId: string,
+    env: Env,
     limit: number = 50,
-    before?: string,
-    env: Env
+    before?: string
   ): Promise<any> {
     // First verify that this user is part of the conversation
     const conversation = await env.R3L_DB.prepare(`
@@ -480,8 +480,8 @@ export class MessagingHandler {
     const messages = await this.getMessagesBetweenUsers(
       userId,
       otherUserId,
-      limit,
       env,
+      limit,
       before
     );
     

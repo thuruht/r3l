@@ -60,6 +60,11 @@
       font-style: italic;
     }
     
+    /* Hide elements when toggling */
+    .hidden {
+      display: none !important;
+    }
+    
     #communique-toolbar {
       padding: 0.5rem;
       background-color: var(--bg-surface-hover);
@@ -226,13 +231,9 @@
             <span class="material-icons">code</span>
           </button>
           <div class="flex-1"></div>
-          <div class="visibility-toggle">
-            <label for="communique-public" class="flex items-center gap-1">
-              <input type="checkbox" id="communique-public" checked>
-              <span class="material-icons" title="Public">visibility</span>
-              <span>Public</span>
-            </label>
-          </div>
+          <button class="btn btn-small" id="toggle-preview" title="Toggle Preview">
+            <span class="material-icons">visibility</span> Preview
+          </button>
           <button class="btn btn-small btn-secondary" id="save-communique" title="Save">
             <span class="material-icons">save</span> Save
           </button>
@@ -243,6 +244,7 @@
           contenteditable="true" 
           data-placeholder="Add your communique here. This is your public message to visitors of your drawer. You can format this area with HTML, add links, images, and express yourself. Embed your files to showcase your work."
         ></div>
+        <div id="communique-preview" class="communique hidden"></div>
         <p class="text-sm text-muted mt-1">
           Tip: This is your public profile that other users see. You can use HTML formatting and embed your uploaded files.
         </p>
@@ -390,6 +392,9 @@
     </div>
   </template>
 
+  <!-- Include DOMPurify for HTML sanitization -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+  
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
 
@@ -686,12 +691,6 @@
           communique.innerHTML = userData.preferences.communique;
         }
         
-        // Set communique visibility toggle
-        const communiquePublic = document.getElementById('communique-public');
-        if (userData.preferences && userData.preferences.communique_public !== undefined) {
-          communiquePublic.checked = userData.preferences.communique_public;
-        }
-        
         // Set lurker mode if available
         if (userData.preferences && userData.preferences.lurker_mode !== undefined) {
           lurkerMode.checked = userData.preferences.lurker_mode;
@@ -767,7 +766,35 @@
         if (!userData) return;
         
         try {
-          const isPublic = document.getElementById('communique-public').checked;
+          // Sanitize HTML with DOMPurify before saving
+          const sanitizedHtml = DOMPurify.sanitize(communique.innerHTML, {
+            ALLOWED_TAGS: [
+              // Basic formatting
+              'p', 'br', 'hr', 'div', 'span',
+              // Typography
+              'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+              'b', 'strong', 'i', 'em', 'u', 'del', 'strike', 'small', 'mark',
+              // Lists
+              'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+              // Links and media
+              'a', 'img', 'figure', 'figcaption',
+              // Quotes
+              'blockquote', 'cite', 'q',
+              // Code
+              'pre', 'code', 'samp',
+              // Tables (simple ones)
+              'table', 'thead', 'tbody', 'tr', 'th', 'td'
+            ],
+            ALLOWED_ATTR: [
+              'href', 'target', 'rel', 'src', 'alt', 'title', 'width', 'height',
+              'class', 'style', 'id', 'cite'
+            ],
+            FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+            FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover']
+          });
+          
+          // Update the communique element with sanitized content
+          communique.innerHTML = sanitizedHtml;
           
           const response = await fetch(`/api/users/${userData.id}/preferences`, {
             method: 'PATCH',
@@ -776,8 +803,7 @@
             },
             credentials: 'include',
             body: JSON.stringify({
-              communique: communique.innerHTML,
-              communique_public: isPublic
+              communique: sanitizedHtml
             })
           });
           
@@ -914,6 +940,53 @@
           saveLurkerMode();
         });
         
+        // Toggle communique preview
+        const togglePreviewBtn = document.getElementById('toggle-preview');
+        const communiquePreview = document.getElementById('communique-preview');
+        
+        togglePreviewBtn.addEventListener('click', () => {
+          const isPreviewMode = communique.classList.contains('hidden');
+          
+          if (isPreviewMode) {
+            // Switch to edit mode
+            communique.classList.remove('hidden');
+            communiquePreview.classList.add('hidden');
+            togglePreviewBtn.innerHTML = '<span class="material-icons">visibility</span> Preview';
+          } else {
+            // Switch to preview mode - sanitize and render the content
+            const sanitizedHtml = DOMPurify.sanitize(communique.innerHTML, {
+              ALLOWED_TAGS: [
+                // Basic formatting
+                'p', 'br', 'hr', 'div', 'span',
+                // Typography
+                'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                'b', 'strong', 'i', 'em', 'u', 'del', 'strike', 'small', 'mark',
+                // Lists
+                'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+                // Links and media
+                'a', 'img', 'figure', 'figcaption',
+                // Quotes
+                'blockquote', 'cite', 'q',
+                // Code
+                'pre', 'code', 'samp',
+                // Tables (simple ones)
+                'table', 'thead', 'tbody', 'tr', 'th', 'td'
+              ],
+              ALLOWED_ATTR: [
+                'href', 'target', 'rel', 'src', 'alt', 'title', 'width', 'height',
+                'class', 'style', 'id', 'cite'
+              ],
+              FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form'],
+              FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover']
+            });
+            
+            communiquePreview.innerHTML = sanitizedHtml;
+            communique.classList.add('hidden');
+            communiquePreview.classList.remove('hidden');
+            togglePreviewBtn.innerHTML = '<span class="material-icons">edit</span> Edit';
+          }
+        });
+        
         // Tab buttons
         tabButtons.forEach(button => {
           button.addEventListener('click', () => {
@@ -986,7 +1059,9 @@
         document.getElementById('format-link').addEventListener('click', () => {
           const url = prompt('Enter the URL:', 'https://');
           if (url) {
-            document.execCommand('createLink', false, url);
+            // Sanitize the URL
+            const sanitizedUrl = DOMPurify.sanitize(url);
+            document.execCommand('createLink', false, sanitizedUrl);
           }
           communique.focus();
         });
@@ -994,7 +1069,9 @@
         document.getElementById('format-image').addEventListener('click', () => {
           const url = prompt('Enter the image URL:', 'https://');
           if (url) {
-            document.execCommand('insertHTML', false, `<img src="${url}" alt="Image" style="max-width: 100%;">`);
+            // Sanitize the URL
+            const sanitizedUrl = DOMPurify.sanitize(url);
+            document.execCommand('insertHTML', false, `<img src="${sanitizedUrl}" alt="Image" style="max-width: 100%;">`);
           }
           communique.focus();
         });

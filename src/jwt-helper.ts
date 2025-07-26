@@ -109,6 +109,39 @@ export async function verifyJWT(token: string, env?: Env): Promise<JWTPayload | 
     
     const [encodedHeader, encodedPayload, signature] = parts;
     
+    // Decode the payload first to check expiration before expensive signature verification
+    let payload: JWTPayload;
+    try {
+      payload = JSON.parse(atob(encodedPayload)) as JWTPayload;
+    } catch (e) {
+      console.log('JWT verification failed: Invalid payload encoding');
+      return null;
+    }
+    
+    // Check if the token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (!payload.exp) {
+      console.log('JWT verification failed: Missing expiration');
+      return null;
+    }
+    
+    if (payload.exp < now) {
+      console.log('JWT verification failed: Token expired', {
+        exp: new Date(payload.exp * 1000).toISOString(),
+        now: new Date(now * 1000).toISOString()
+      });
+      return null;
+    }
+    
+    // Check if the token is used before it was issued (clock skew)
+    if (payload.iat && payload.iat > now + 60) { // Allow 1 minute of clock skew
+      console.log('JWT verification failed: Token used before issuance', {
+        iat: new Date(payload.iat * 1000).toISOString(),
+        now: new Date(now * 1000).toISOString()
+      });
+      return null;
+    }
+    
     // Get the JWT secret from environment or use a default for development
     const jwtSecret = env?.JWT_SECRET || 'r3l-development-jwt-secret-do-not-use-in-production';
     
@@ -142,19 +175,6 @@ export async function verifyJWT(token: string, env?: Env): Promise<JWTPayload | 
     
     if (!isValid) {
       console.log('JWT verification failed: Invalid signature');
-      return null;
-    }
-    
-    // Decode the payload
-    const payload = JSON.parse(atob(encodedPayload)) as JWTPayload;
-    
-    // Check if the token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      console.log('JWT verification failed: Token expired', {
-        exp: new Date(payload.exp * 1000).toISOString(),
-        now: new Date(now * 1000).toISOString()
-      });
       return null;
     }
     

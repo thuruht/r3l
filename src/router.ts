@@ -17,6 +17,7 @@ import { MessagingHandler } from './handlers/messaging';
 import { Env, FileUpload } from './types/env';
 import { isSecureRequest } from './cookie-helper';
 import { extractJWTFromRequest } from './jwt-helper';
+import { createRateLimiters } from './middleware/rate-limiter';
 
 // For debugging - log route processing
 const ROUTE_DEBUG = false;
@@ -62,8 +63,40 @@ export class Router {
       return this.handlePreflight(request);
     }
     
+    // Create rate limiters
+    const rateLimiters = createRateLimiters(env);
+    
     // Handle API routes
     if (path.startsWith('/api/')) {
+      // Apply general API rate limit
+      const rateLimitResponse = await rateLimiters.api(request);
+      if (rateLimitResponse) {
+        return rateLimitResponse;
+      }
+      
+      // Apply specific rate limits for different API categories
+      if (path.startsWith('/api/auth/')) {
+        const authRateLimitResponse = await rateLimiters.auth(request);
+        if (authRateLimitResponse) {
+          return authRateLimitResponse;
+        }
+      } else if (path.startsWith('/api/content/') && ['POST', 'PUT', 'PATCH'].includes(request.method)) {
+        const contentRateLimitResponse = await rateLimiters.contentCreation(request);
+        if (contentRateLimitResponse) {
+          return contentRateLimitResponse;
+        }
+      } else if (path.startsWith('/api/files/') && request.method === 'POST') {
+        const fileRateLimitResponse = await rateLimiters.fileUploads(request);
+        if (fileRateLimitResponse) {
+          return fileRateLimitResponse;
+        }
+      } else if (path.startsWith('/api/users/') || path.startsWith('/api/connections/')) {
+        const userRateLimitResponse = await rateLimiters.userActions(request);
+        if (userRateLimitResponse) {
+          return userRateLimitResponse;
+        }
+      }
+      
       return this.handleApiRoutes(request, env, path);
     }
     
@@ -1182,9 +1215,17 @@ export class Router {
     
     // System stats - admin only
     if (path === '/api/stats/system' && request.method === 'GET') {
-      // TODO: Add admin check here
       if (!authenticatedUserId) {
         return this.errorResponse('Authentication required', 401);
+      }
+      
+      // Check if user is an admin
+      const isAdmin = await env.R3L_DB.prepare(`
+        SELECT is_admin FROM users WHERE id = ?
+      `).bind(authenticatedUserId).first();
+      
+      if (!isAdmin || !isAdmin.is_admin) {
+        return this.errorResponse('Admin privileges required', 403);
       }
       
       try {
@@ -1322,9 +1363,9 @@ export class Router {
         const messages = await this.messagingHandler.getConversationMessages(
           authenticatedUserId,
           conversationId,
+          env,
           limit,
-          before,
-          env
+          before
         );
         
         return this.jsonResponse(messages);
@@ -1561,7 +1602,22 @@ export class Router {
       try {
         const fileKey = path.replace('/api/files/', '');
         
-        // TODO: Check file ownership before deleting
+        // Check file ownership before deleting
+        const fileDetails = await env.R3L_DB.prepare(`
+          SELECT user_id FROM content WHERE file_key = ?
+        `).bind(fileKey).first();
+        
+        // Check if user owns the file or has admin privileges
+        if (fileDetails && fileDetails.user_id !== authenticatedUserId) {
+          // Check if user is an admin
+          const isAdmin = await env.R3L_DB.prepare(`
+            SELECT is_admin FROM users WHERE id = ?
+          `).bind(authenticatedUserId).first();
+          
+          if (!isAdmin || !isAdmin.is_admin) {
+            return this.errorResponse('Not authorized to delete this file', 403);
+          }
+        }
         
         const success = await this.fileHandler.deleteFile(fileKey, env);
         
@@ -2740,6 +2796,7 @@ export class Router {
           lng,
           radius,
           limit,
+          0, // Default randomness to 0
           env
         );
         

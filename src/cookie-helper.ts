@@ -56,9 +56,7 @@ export function createAuthCookies(token: string, domain: string, isSecure: boole
   
   // Add debugging info
   console.log('Cookie helper - Header count:', headers.get('Set-Cookie') ? '1+' : '0');
-  console.log('Cookie helper - All headers:', 
-    [...headers.entries()].map(([k,v]) => `${k}: ${v}`).join('\n')
-  );
+  console.log('Cookie helper - Set-Cookie:', headers.get('Set-Cookie'));
   
   return headers;
 }

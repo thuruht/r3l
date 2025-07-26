@@ -5,14 +5,8 @@
 
 import { notificationManager } from './notification.js';
 
-// Define a simple debug log fu                <span class="user-avatar">
-                    ${user.avatarUrl ? 
-                      `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />` : 
-                      user.avatar_key ?
-                      `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />` :
-                      `<span class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>`
-                    }
-                  </span>onst debugLog = (component, message, data) => {
+// Define a simple debug log function
+const debugLog = (component, message, data) => {
   console.log(`[${component}] ${message}`, data || '');
 };
 

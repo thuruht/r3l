@@ -6,6 +6,7 @@
   <title>Help & FAQ - R3L:F</title>
   <link rel="stylesheet" href="./css/rel-f-global.css">
   <link rel="stylesheet" href="./css/rel-f-accent.css">
+  <link rel="stylesheet" href="./css/collapsible.css">
   <script src="./js/font-loader.js" defer></script>
   <style>
     .help-container {
@@ -283,15 +284,19 @@
       </div>
       
       <div class="help-container">
-        <section id="getting-started" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">rocket_launch</span> Getting Started</h2>
-          
-          <h3>What is R3L:F?</h3>
-          <p>R3L:F (Relational Ephemeral Filenet) is a decentralized, ephemeral, anti-algorithmic social file-sharing platform that prioritizes user control, organic discovery, and community-driven archiving. Unlike traditional social media, R3L:F is designed to be non-corporate, minimalist, and free of algorithmic engagement farming.</p>
-          
-          <div class="tip-box">
-            <strong>Key differentiators:</strong>
-            <ul>
+        <section id="getting-started" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">rocket_launch</span> Getting Started
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <h3>What is R3L:F?</h3>
+            <p>R3L:F (Relational Ephemeral Filenet) is a decentralized, ephemeral, anti-algorithmic social file-sharing platform that prioritizes user control, organic discovery, and community-driven archiving. Unlike traditional social media, R3L:F is designed to be non-corporate, minimalist, and free of algorithmic engagement farming.</p>
+            
+            <div class="tip-box">
+              <strong>Key differentiators:</strong>
+              <ul>
               <li><strong>Anti-algorithmic:</strong> No engagement optimization or content ranking</li>
               <li><strong>Ephemeral by default:</strong> Content expires after 7 days unless explicitly preserved</li>
               <li><strong>User-controlled:</strong> You decide what to share and how long it stays visible</li>
@@ -482,24 +487,25 @@
           </div>
         </section>
         
-        <section id="association-web" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">hub</span> Association Web</h2>
-          
-          <h3>What is the Association Web?</h3>
-          <p>The Association Web is a visual representation of the connections between users in R3L:F. It's automatically generated from public contact lists and shows how users are related to each other through degrees of connection.</p>
-          
-          <div class="help-card">
-            <strong>Key features of the Association Web:</strong>
-            <ul>
-              <li>Automatically generated from public contact lists</li>
-              <li>Shows branching structure of connections with degrees of separation</li>
-              <li>Stronger links appear for frequent interactions</li>
-              <li>Clicking a node opens that user's profile</li>
-              <li>Low-visibility users appear muted with no clear associations</li>
-            </ul>
-          </div>
-          
-          <h3>Navigating the Association Web</h3>
+        <section id="association-web" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">hub</span> Association Web
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <h3>What is the Association Web?</h3>
+            <p>The Association Web is a visual representation of the connections between users in R3L:F. It's automatically generated from public contact lists and shows how users are related to each other through degrees of connection.</p>
+            
+            <div class="help-card">
+              <strong>Key features of the Association Web:</strong>
+              <ul>
+                <li>Automatically generated from public contact lists</li>
+                <li>Shows branching structure of connections with degrees of separation</li>
+                <li>Reveals potential connections and mutual contacts</li>
+                <li>Visualizes your place in the broader R3L:F community</li>
+              </ul>
+            </div>          <h3>Navigating the Association Web</h3>
           <p>To explore the Association Web:</p>
           <ol class="steps-list">
             <li>Click "Network" in the main navigation</li>
@@ -806,6 +812,25 @@
             icon.textContent = 'expand_more';
           }
         });
+      });
+      
+      // Add interactivity to collapsible sections
+      const collapsibles = document.querySelectorAll('.collapsible');
+      collapsibles.forEach(collapsible => {
+        collapsible.addEventListener('click', function() {
+          this.classList.toggle('active');
+          const content = this.nextElementSibling;
+          if (content.style.maxHeight) {
+            content.style.maxHeight = null;
+          } else {
+            content.style.maxHeight = content.scrollHeight + "px";
+          }
+        });
+      });
+      
+      // Collapse all sections by default
+      collapsibles.forEach(collapsible => {
+        collapsible.nextElementSibling.style.maxHeight = null;
       });
     });
   </script>

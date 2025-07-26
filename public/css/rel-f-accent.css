@@ -121,6 +121,7 @@ input:focus, textarea:focus, select:focus {
   position: relative;
   padding-left: 30px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 

@@ -1,0 +1,52 @@
+/* Collapsible sections for help page */
+.collapsible {
+  background-color: var(--bg-container);
+  cursor: pointer;
+  padding: var(--space-4);
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.3s;
+  color: var(--text-high);
+  font-weight: 600;
+  margin-bottom: var(--space-1);
+}
+
+.collapsible:hover {
+  background-color: var(--bg-hover);
+}
+
+.collapsible:after {
+  content: '\002B';
+  font-weight: bold;
+  float: right;
+  margin-left: var(--space-2);
+  transition: transform 0.3s;
+}
+
+.active:after {
+  content: "\2212";
+}
+
+.collapsible-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+  background-color: var(--bg-container-alt);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+  padding: 0 var(--space-4);
+}
+
+.active + .collapsible-content {
+  padding: var(--space-4);
+}
+
+/* Space between sections */
+.collapsible-section {
+  margin-bottom: var(--space-4);
+}

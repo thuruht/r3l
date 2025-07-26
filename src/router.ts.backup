@@ -2339,6 +2339,60 @@ export class Router {
         return this.errorResponse('Failed to remove connection');
       }
     }
+        
+        // Create the connection request
+        const status = connectionType === 'mutual' ? 'pending' : 'accepted';
+        const timestamp = Date.now();
+        
+        const query = `
+          INSERT INTO connections (
+            id,
+            user_id,
+            connected_user_id,
+            type,
+            status,
+            message,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const connectionId = crypto.randomUUID();
+        
+        await env.R3L_DB.prepare(query).bind(
+          connectionId,
+          userId,
+          targetUserId,
+          connectionType,
+          status,
+          message || '',
+          timestamp,
+          timestamp
+        ).run();
+        
+        // If mutual connection, create notification for target user
+        if (connectionType === 'mutual') {
+          // Create notification for target user
+          await this.notificationHandler.createNotification(
+            targetUserId,
+            'connection',
+            `New connection request`,
+            `${userId} has sent you a connection request`,
+            JSON.stringify({ userId, connectionId }),
+            env
+          );
+        }
+        
+        return this.jsonResponse({
+          success: true,
+          id: connectionId,
+          status
+        });
+      } catch (error) {
+        console.error('Error creating connection request:', error);
+        return this.errorResponse('Failed to create connection request');
+      }
+    }
     
     // Accept connection request
     if (path.match(/^\/api\/connections\/request\/[^/]+\/accept$/) && request.method === 'POST') {

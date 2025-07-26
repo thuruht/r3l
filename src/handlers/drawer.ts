@@ -28,6 +28,20 @@ interface ContentDetails {
   // Other fields as needed
 }
 
+interface RandomDrawer {
+  userId: string;
+  username: string;
+  subtitle?: string;
+  communique?: string;
+  connectionCount: number;
+  recentFiles: {
+    id: string;
+    title: string;
+    type: string;
+    expiresIn?: number;
+  }[];
+}
+
 export class DrawerHandler {
   /**
    * Create a new drawer for organizing content
@@ -80,6 +94,157 @@ export class DrawerHandler {
     `).bind(drawerId).first<DrawerItem>();
     
     return result || null;
+  }
+  
+  /**
+   * Get drawer by user ID
+   * @param userId User ID
+   * @param env Environment bindings
+   * @returns Drawer details for that user ID
+   */
+  async getDrawerById(userId: string, env: Env): Promise<any> {
+    try {
+      // Get user profile
+      const userResult = await env.R3L_DB.prepare(`
+        SELECT id, username, display_name, preferences
+        FROM users
+        WHERE id = ?
+      `).bind(userId).first<{
+        id: string;
+        username: string;
+        display_name: string;
+        preferences: string;
+      }>();
+      
+      if (!userResult) {
+        throw new Error('User not found');
+      }
+      
+      // Parse preferences
+      let preferences = {};
+      try {
+        preferences = JSON.parse(userResult.preferences || '{}');
+      } catch (e) {
+        console.error('Error parsing user preferences:', e);
+      }
+      
+      // Get connection count
+      const connectionsResult = await env.R3L_DB.prepare(`
+        SELECT COUNT(*) as count
+        FROM user_connections
+        WHERE (user_id_a = ? OR user_id_b = ?) AND status = 'accepted'
+      `).bind(userId, userId).first<{ count: number }>();
+      
+      // Get recent public files
+      const filesResult = await env.R3L_DB.prepare(`
+        SELECT id, title, type, expires_at
+        FROM content
+        WHERE user_id = ? AND is_public = 1 AND is_archived = 0
+        ORDER BY created_at DESC
+        LIMIT 6
+      `).bind(userId).all<{
+        id: string;
+        title: string;
+        type: string;
+        expires_at: number | null;
+      }>();
+      
+      // Format the response
+      return {
+        userId: userResult.id,
+        username: userResult.username,
+        displayName: userResult.display_name,
+        subtitle: (preferences as any).subtitle || '',
+        communique: (preferences as any).communique || '',
+        connectionCount: connectionsResult?.count || 0,
+        recentFiles: (filesResult.results || []).map(file => ({
+          id: file.id,
+          title: file.title,
+          type: file.type,
+          expiresIn: file.expires_at ? Math.ceil((file.expires_at - Date.now()) / (1000 * 60 * 60 * 24)) : undefined
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching drawer by user ID:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get a random drawer
+   * @param env Environment bindings
+   * @returns Random drawer data
+   */
+  async getRandomDrawer(env: Env): Promise<RandomDrawer> {
+    try {
+      // Get a random user who has public content and isn't in lurker mode
+      const userResult = await env.R3L_DB.prepare(`
+        SELECT u.id, u.username, u.display_name, u.preferences
+        FROM users u
+        JOIN content c ON u.id = c.user_id
+        WHERE c.is_public = 1 
+        AND JSON_EXTRACT(u.preferences, '$.lurker_mode') IS NULL
+        OR JSON_EXTRACT(u.preferences, '$.lurker_mode') = 0
+        GROUP BY u.id
+        ORDER BY RANDOM()
+        LIMIT 1
+      `).first<{
+        id: string;
+        username: string;
+        display_name: string;
+        preferences: string;
+      }>();
+      
+      if (!userResult) {
+        throw new Error('No users with public content found');
+      }
+      
+      // Parse preferences
+      let preferences = {};
+      try {
+        preferences = JSON.parse(userResult.preferences || '{}');
+      } catch (e) {
+        console.error('Error parsing user preferences:', e);
+      }
+      
+      // Get connection count
+      const connectionsResult = await env.R3L_DB.prepare(`
+        SELECT COUNT(*) as count
+        FROM user_connections
+        WHERE (user_id_a = ? OR user_id_b = ?) AND status = 'accepted'
+      `).bind(userResult.id, userResult.id).first<{ count: number }>();
+      
+      // Get recent public files
+      const filesResult = await env.R3L_DB.prepare(`
+        SELECT id, title, type, expires_at
+        FROM content
+        WHERE user_id = ? AND is_public = 1 AND is_archived = 0
+        ORDER BY created_at DESC
+        LIMIT 5
+      `).bind(userResult.id).all<{
+        id: string;
+        title: string;
+        type: string;
+        expires_at: number | null;
+      }>();
+      
+      return {
+        userId: userResult.id,
+        username: userResult.display_name || userResult.username,
+        subtitle: (preferences as any).subtitle || 'User\'s Communique',
+        communique: (preferences as any).communique || '',
+        connectionCount: connectionsResult?.count || 0,
+        recentFiles: (filesResult.results || []).map(file => ({
+          id: file.id,
+          title: file.title,
+          type: file.type,
+          expiresIn: file.expires_at ? Math.ceil((file.expires_at - Date.now()) / (1000 * 60 * 60 * 24)) : undefined
+        }))
+      };
+    } catch (error) {
+      console.error('Error fetching random drawer:', error);
+      throw error;
+    }
   }
   
   /**

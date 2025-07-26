@@ -154,45 +154,63 @@
           drawerContent.classList.add('hidden');
           randomDrawerTitle.textContent = 'Loading...';
           
-          // Fetch a random public drawer
-          const response = await fetch('./api/random-drawer');
+          // Check if user is authenticated
+          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
           
-          if (!response.ok) {
-            throw new Error('Failed to fetch random drawer');
-          }
-          
-          const data = await response.json();
-          
-          // Update the UI with the random drawer data
-          randomDrawerTitle.textContent = `${data.username}'s Drawer`;
-          drawerUsername.textContent = data.username;
-          drawerSubtitle.textContent = data.subtitle || 'User\'s Communique';
-          communiqueContent.innerHTML = data.communique || '<em>This user hasn\'t set a communique yet.</em>';
-          drawerConnectionCount.textContent = `${data.connectionCount} connections`;
-          visitDrawerLink.href = `./drawer.html?id=${data.userId}`;
-          
-          // Populate recent files
-          recentFiles.innerHTML = '';
-          
-          if (data.recentFiles && data.recentFiles.length > 0) {
-            data.recentFiles.forEach(file => {
-              const fileIcon = getFileIcon(file.type);
-              const fileItem = document.createElement('div');
-              fileItem.className = 'file-item';
-              fileItem.innerHTML = `
-                <div class="file-icon">
-                  <span class="material-icons">${fileIcon}</span>
-                </div>
-                <div class="file-name">${file.title}</div>
-                ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : ''}
-              `;
-              fileItem.addEventListener('click', () => {
-                window.location.href = `./file.html?id=${file.id}`;
+          // Decide whether to show demo data or real data
+          if (isAuthenticated) {
+            console.log('User is authenticated, fetching real random drawer data');
+            
+            try {
+              // Fetch a random public drawer from API
+              const response = await fetch('./api/random-drawer', {
+                credentials: 'same-origin' // Include cookies for auth
               });
-              recentFiles.appendChild(fileItem);
-            });
+              
+              if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+              }
+              
+              const data = await response.json();
+              
+              // Update the UI with the random drawer data
+              randomDrawerTitle.textContent = `${data.username}'s Drawer`;
+              drawerUsername.textContent = data.username;
+              drawerSubtitle.textContent = data.subtitle || 'User\'s Communique';
+              communiqueContent.innerHTML = data.communique || '<em>This user hasn\'t set a communique yet.</em>';
+              drawerConnectionCount.textContent = `${data.connectionCount} connections`;
+              visitDrawerLink.href = `./drawer.html?id=${data.userId}`;
+              
+              // Populate recent files
+              recentFiles.innerHTML = '';
+              
+              if (data.recentFiles && data.recentFiles.length > 0) {
+                data.recentFiles.forEach(file => {
+                  const fileIcon = getFileIcon(file.type);
+                  const fileItem = document.createElement('div');
+                  fileItem.className = 'file-item';
+                  fileItem.innerHTML = `
+                    <div class="file-icon">
+                      <span class="material-icons">${fileIcon}</span>
+                    </div>
+                    <div class="file-name">${file.title}</div>
+                    ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : ''}
+                  `;
+                  fileItem.addEventListener('click', () => {
+                    window.location.href = `./file.html?id=${file.id}`;
+                  });
+                  recentFiles.appendChild(fileItem);
+                });
+              } else {
+                recentFiles.innerHTML = '<p class="text-center w-full">No public files found</p>';
+              }
+            } catch (error) {
+              console.error('Error loading real data, falling back to demo data:', error);
+              loadDemoData();
+            }
           } else {
-            recentFiles.innerHTML = '<p class="text-center w-full">No public files found</p>';
+            console.log('User is not authenticated, showing demo data');
+            loadDemoData();
           }
           
           // Hide loading indicator and show content
@@ -206,6 +224,81 @@
             <p>Could not load a random drawer. Please try again later.</p>
           `;
         }
+      }
+      
+      // Function to load demo data for non-authenticated users
+      function loadDemoData() {
+        const demoData = {
+          username: 'DemoResearcher',
+          subtitle: 'Climate Science Communique',
+          communique: `
+            <p>Welcome to my drawer! I'm researching climate adaptation strategies in urban environments. 
+            My work focuses on sustainable building materials and community-driven adaptation approaches.</p>
+            <p>Looking to connect with others interested in:</p>
+            <ul>
+              <li>Urban heat island mitigation</li>
+              <li>Green infrastructure</li>
+              <li>Community resilience planning</li>
+            </ul>
+            <p>Feel free to reach out if our research interests align!</p>
+          `,
+          connectionCount: 42,
+          userId: 'demo-123',
+          recentFiles: [
+            {
+              id: 'demo-file-1',
+              title: 'Urban Heat Patterns Analysis',
+              type: 'application/pdf',
+              expiresIn: 14
+            },
+            {
+              id: 'demo-file-2',
+              title: 'Community Survey Results',
+              type: 'text/csv',
+              expiresIn: 7
+            },
+            {
+              id: 'demo-file-3',
+              title: 'Green Roof Implementation Guide',
+              type: 'application/pdf',
+              expiresIn: 30
+            },
+            {
+              id: 'demo-file-4',
+              title: 'Temperature Monitoring Dataset',
+              type: 'application/json',
+              expiresIn: 5
+            }
+          ]
+        };
+        
+        // Update the UI with the demo data
+        randomDrawerTitle.textContent = `${demoData.username}'s Drawer (Demo)`;
+        drawerUsername.textContent = demoData.username;
+        drawerSubtitle.textContent = demoData.subtitle;
+        communiqueContent.innerHTML = demoData.communique;
+        drawerConnectionCount.textContent = `${demoData.connectionCount} connections`;
+        visitDrawerLink.href = `./auth/login.html?message=Please+log+in+to+view+drawers`;
+        
+        // Populate recent files
+        recentFiles.innerHTML = '';
+        
+        demoData.recentFiles.forEach(file => {
+          const fileIcon = getFileIcon(file.type);
+          const fileItem = document.createElement('div');
+          fileItem.className = 'file-item';
+          fileItem.innerHTML = `
+            <div class="file-icon">
+              <span class="material-icons">${fileIcon}</span>
+            </div>
+            <div class="file-name">${file.title}</div>
+            ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : ''}
+          `;
+          fileItem.addEventListener('click', () => {
+            window.location.href = `./auth/login.html?message=Please+log+in+to+view+content`;
+          });
+          recentFiles.appendChild(fileItem);
+        });
       }
       
       // Helper function to get appropriate icon based on file type

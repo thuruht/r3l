@@ -593,6 +593,96 @@ async register(
   }
   
   /**
+   * Generate a new recovery key for a user
+   * @param request Request object
+   * @param env Environment
+   * @returns Response with new recovery key
+   */
+  async generateNewRecoveryKey(request: Request, env: Env): Promise<Response> {
+    try {
+      // Validate token and get user ID
+      const userId = await this.validateToken(request, env);
+      
+      if (!userId) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Not authenticated'
+        }), {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      
+      // Get user data
+      const user = await this.userHandler.getUser(userId, env);
+      
+      if (!user) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'User not found'
+        }), {
+          status: 404,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+      
+      // Generate a new recovery key
+      const newRecoveryKey = this.generateRecoveryKey();
+      const newRecoveryKeyHash = await this.hashPassword(newRecoveryKey);
+      
+      // Update user credentials with new recovery key hash
+      await env.R3L_DB.prepare(`
+        UPDATE user_credentials
+        SET recovery_key_hash = ?, updated_at = ?
+        WHERE user_id = ?
+      `).bind(
+        newRecoveryKeyHash,
+        Date.now(),
+        userId
+      ).run();
+      
+      // Record recovery key generation in audit log
+      await env.R3L_DB.prepare(`
+        INSERT INTO auth_log (
+          user_id, action, success, ip_address, user_agent, timestamp, details
+        )
+        VALUES (?, 'recovery_key_generated', 1, ?, ?, ?, ?)
+      `).bind(
+        userId,
+        request.headers.get('CF-Connecting-IP') || 'unknown',
+        request.headers.get('User-Agent') || 'unknown',
+        Date.now(),
+        JSON.stringify({ method: 'user_initiated' })
+      ).run();
+      
+      return new Response(JSON.stringify({
+        success: true,
+        recoveryKey: newRecoveryKey
+      }), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    } catch (error) {
+      console.error('JWTAuth - Generate new recovery key error:', error);
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Failed to generate new recovery key'
+      }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+    }
+  }
+  
+  /**
    * Handle a test JWT endpoint
    * @param request Request object
    * @param env Environment

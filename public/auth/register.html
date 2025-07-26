@@ -238,19 +238,7 @@
         </div>
       </form>
       
-      <div class="social-login">
-        <p>Or register with</p>
-        <div class="social-buttons">
-          <a href="/api/auth/github/init" class="btn btn-secondary">
-            <span class="material-icons">code</span>
-            GitHub
-          </a>
-          <a href="/api/auth/orcid/init" class="btn btn-secondary">
-            <span class="material-icons">account_circle</span>
-            ORCID
-          </a>
-        </div>
-      </div>
+      <!-- Social login section removed as per user request -->
     </div>
   </main>
 
@@ -376,7 +364,9 @@
           if (response.ok && data.success) {
             // Show recovery key modal
             if (data.recoveryKey) {
+              // Clean the recovery key display and add the key
               recoveryKeyElement.textContent = data.recoveryKey;
+              console.log("Recovery key received:", data.recoveryKey);
               recoveryKeyModal.classList.add('active');
             } else {
               // Fallback if no recovery key is returned

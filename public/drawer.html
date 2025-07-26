@@ -311,6 +311,10 @@
       // Check if the user is authenticated
       async function checkAuthentication() {
         try {
+          // Parse the URL to check if we're viewing a specific drawer
+          const urlParams = new URLSearchParams(window.location.search);
+          const requestedDrawerId = urlParams.get('id');
+          
           // Function to get cookie value by name
           const getCookie = (name) => {
             const value = `; ${document.cookie}`;
@@ -325,6 +329,58 @@
           
           console.log('Drawer auth check - Cookie status:', hasAuthState ? 'Auth cookie found' : 'No auth cookie', document.cookie);
           
+          // If we're viewing someone else's drawer
+          if (requestedDrawerId) {
+            if (!hasAuthState) {
+              // Show login prompt for non-authenticated users trying to view others' drawers
+              showLoginPrompt();
+              return false;
+            }
+            
+            // Try to fetch the requested drawer
+            try {
+              const response = await fetch(`/api/users/${requestedDrawerId}`, {
+                credentials: 'include'
+              });
+              
+              if (!response.ok) {
+                showNotFoundMessage();
+                return false;
+              }
+              
+              const data = await response.json();
+              userData = data.user;
+              
+              // If viewing someone else's drawer, disable editing
+              communique.contentEditable = "false";
+              lurkerMode.disabled = true;
+              
+              // Update page title
+              document.title = `${userData.display_name || userData.username}'s Drawer - R3L:F`;
+              
+              // Update heading
+              const drawerTitle = document.querySelector('.drawer-title h1');
+              if (drawerTitle) {
+                drawerTitle.innerHTML = `
+                  <span class="material-icons" aria-hidden="true">folder_shared</span>
+                  ${userData.display_name || userData.username}'s Drawer
+                `;
+              }
+              
+              const drawerSubtitle = document.querySelector('.drawer-title p');
+              if (drawerSubtitle) {
+                drawerSubtitle.textContent = "View their content and connections";
+              }
+              
+              return true;
+            } catch (error) {
+              console.error('Error fetching drawer:', error);
+              showNotFoundMessage();
+              return false;
+            }
+          }
+          
+          // Viewing own drawer
           if (!hasAuthState) {
             showLoginPrompt();
             return false;
@@ -357,16 +413,49 @@
       // Show login prompt if not authenticated
       function showLoginPrompt() {
         const drawerContainer = document.querySelector('.drawer-container');
-        const cardElements = document.querySelectorAll('.card');
+        const cardElements = document.querySelectorAll('.card, .rpc-container');
         
         if (drawerContainer) {
           drawerContainer.innerHTML = `
             <div class="login-prompt">
               <h2>Authentication Required</h2>
-              <p>You need to be logged in to view your drawer.</p>
-              <a href="./login.html" class="btn">
-                <span class="material-icons">login</span>
-                Log In
+              <p>You need to be logged in to view this drawer.</p>
+              <div class="mt-4">
+                <a href="./auth/login.html" class="btn">
+                  <span class="material-icons">login</span>
+                  Log In
+                </a>
+              </div>
+              <div class="mt-2">
+                <p>Don't have an account yet?</p>
+                <a href="./auth/register.html" class="btn btn-secondary">
+                  <span class="material-icons">person_add</span>
+                  Create Account
+                </a>
+              </div>
+            </div>
+          `;
+        }
+        
+        // Hide other content sections
+        cardElements.forEach(card => {
+          card.style.display = 'none';
+        });
+      }
+      
+      // Show not found message
+      function showNotFoundMessage() {
+        const drawerContainer = document.querySelector('.drawer-container');
+        const cardElements = document.querySelectorAll('.card, .rpc-container');
+        
+        if (drawerContainer) {
+          drawerContainer.innerHTML = `
+            <div class="not-found-message">
+              <h2>Drawer Not Found</h2>
+              <p>The drawer you're looking for doesn't exist or you don't have permission to view it.</p>
+              <a href="./index.html" class="btn">
+                <span class="material-icons">home</span>
+                Return to Home
               </a>
             </div>
           `;

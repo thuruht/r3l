@@ -251,7 +251,8 @@ export class Router {
         
         return this.jsonResponse({ 
           success: true, 
-          userId: result.userId 
+          userId: result.userId,
+          recoveryKey: result.recoveryKey 
         }, 200, result.headers);
       } catch (error) {
         console.error('JWT register error:', error);
@@ -308,6 +309,11 @@ export class Router {
     // Reset password with recovery key
     if (path === '/api/auth/jwt/reset-password' && request.method === 'POST') {
       return this.jwtAuthHandler.resetPassword(request, env);
+    }
+    
+    // Generate new recovery key for authenticated user
+    if (path === '/api/auth/jwt/generate-recovery-key' && request.method === 'POST') {
+      return this.jwtAuthHandler.generateNewRecoveryKey(request, env);
     }
     
     return this.notFoundResponse();
@@ -477,27 +483,8 @@ export class Router {
       }
       
       try {
-        // Get total files count
-        const totalFilesResult = await env.R3L_DB.prepare(`
-          SELECT COUNT(*) as count FROM content WHERE user_id = ?
-        `).bind(userId).first<{count: number}>();
-        
-        // Get archived files count
-        const archivedFilesResult = await env.R3L_DB.prepare(`
-          SELECT COUNT(*) as count FROM content WHERE user_id = ? AND is_archived = 1
-        `).bind(userId).first<{count: number}>();
-        
-        // Get connections count (this is a placeholder - implement based on your connections schema)
-        const connectionsResult = await env.R3L_DB.prepare(`
-          SELECT COUNT(*) as count FROM connections WHERE user_id = ? OR connected_user_id = ?
-        `).bind(userId, userId).first<{count: number}>();
-        
-        const stats = {
-          total_files: totalFilesResult?.count || 0,
-          archived_files: archivedFilesResult?.count || 0,
-          connections: connectionsResult?.count || 0
-        };
-        
+        // Use the statistics handler to get user stats
+        const stats = await this.statsHandler.getUserStats(userId, env);
         return this.jsonResponse(stats);
       } catch (error) {
         console.error('Error fetching user stats:', error);
@@ -528,8 +515,32 @@ export class Router {
    * Handle stats routes
    */
   private async handleStatsRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
+    // Check for authenticated user
+    const token = this.getAuthToken(request);
+    let authenticatedUserId: string | null = null;
+    
+    if (token) {
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
+    }
+    
     console.log(`Stats route requested: ${path}`);
+    
+    // System stats - admin only
+    if (path === '/api/stats/system' && request.method === 'GET') {
+      // TODO: Add admin check here
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        const stats = await this.statsHandler.getSystemStats(env);
+        return this.jsonResponse(stats);
+      } catch (error) {
+        console.error('Error fetching system stats:', error);
+        return this.errorResponse('Failed to fetch system stats');
+      }
+    }
+    
     return this.notFoundResponse();
   }
   
@@ -642,12 +653,45 @@ export class Router {
    * Handle drawer routes
    */
   private async handleDrawerRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Get authenticated user first
+    // Get authenticated user
     const token = this.getAuthToken(request);
     let authenticatedUserId: string | null = null;
     
     if (token) {
       authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
+    }
+    
+    // Random drawer (public or for authenticated users)
+    if (path === '/api/random-drawer' && request.method === 'GET') {
+      if (!authenticatedUserId) {
+        // For non-authenticated users, return a 401 so frontend can show demo data
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        const randomDrawer = await this.drawerHandler.getRandomDrawer(env);
+        return this.jsonResponse(randomDrawer);
+      } catch (error) {
+        console.error('Error fetching random drawer:', error);
+        return this.errorResponse('Failed to fetch random drawer');
+      }
+    }
+    
+    // Get drawer by ID
+    if (path.match(/^\/api\/drawer\/[^/]+$/) && request.method === 'GET') {
+      const drawerId = path.split('/').pop() as string;
+      
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        const drawer = await this.drawerHandler.getDrawerById(drawerId, env);
+        return this.jsonResponse(drawer);
+      } catch (error) {
+        console.error('Error fetching drawer:', error);
+        return this.errorResponse('Failed to fetch drawer');
+      }
     }
     
     // Get user drawers
@@ -660,7 +704,6 @@ export class Router {
       return this.jsonResponse(drawers);
     }
     
-    // Other drawer routes
     return this.notFoundResponse();
   }
   
@@ -777,6 +820,7 @@ export class Router {
     return this.jsonResponse({ error: message }, status);
   }
   
+
   /**
    * Create a not found response
    */

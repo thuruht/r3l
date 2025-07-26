@@ -3,7 +3,10 @@
  * Provides a consistent navigation bar across all pages
  */
 
-import { isAuthenticated, validateAuth, logout, debugLog } from '../auth-helper.js';
+// Define a simple debug log function
+const debugLog = (component, message, data) => {
+  console.log(`[${component}] ${message}`, data || '');
+};
 
 export class NavigationBar {
   /**
@@ -84,44 +87,18 @@ export class NavigationBar {
       return null;
     };
     
-    // Check for authentication state cookie (which is accessible to JavaScript)
-    const authStateCookie = getCookie('r3l_auth_state');
-    const hasAuthState = authStateCookie === 'true';
+    // Check for JWT cookie (but note that it's HttpOnly and won't be accessible to JavaScript)
+    // We'll instead fetch the validation endpoint
     const loginItem = document.getElementById('nav-login-item');
     
     console.log('[NavigationBar] Auth state check:', {
-      authStateCookie,
-      hasAuthState,
-      loginItemFound: !!loginItem,
-      allCookies: document.cookie
+      allCookies: document.cookie,
+      loginItemFound: !!loginItem
     });
     
-    // If auth state is not found but should be there, try to fix it
-    if (!hasAuthState && loginItem) {
-      console.log('[NavigationBar] Auth state not found, trying to fix it...');
-      // Try to fetch the fix-cookies endpoint
-      fetch('/api/auth/fix-cookies', {
-        credentials: 'include'
-      }).then(response => {
-        console.log('[NavigationBar] Fix-cookies response:', response.status);
-        // Check if cookies are now set
-        setTimeout(() => {
-          const newAuthState = getCookie('r3l_auth_state');
-          console.log('[NavigationBar] After fix attempt - new auth state:', newAuthState);
-          // If successful, reload the page
-          if (newAuthState === 'true') {
-            console.log('[NavigationBar] Auth state fixed, reloading page');
-            window.location.reload();
-          }
-        }, 500);
-      }).catch(err => {
-        console.error('[NavigationBar] Error fixing cookies:', err);
-      });
-    }
-    
-    // If logged in, update the login link to show user profile
-    if (hasAuthState && loginItem) {
-      console.log('[NavigationBar] Auth state found, fetching user profile...');
+    // Directly fetch the profile to check authentication status
+    if (loginItem) {
+      console.log('[NavigationBar] Checking JWT authentication status...');
       // Fetch user data from API
       this.fetchUserProfile()
         .then(user => {
@@ -136,7 +113,7 @@ export class NavigationBar {
                       `<span class="material-icons">account_circle</span>`
                     }
                   </span>
-                  <span class="user-name">${user.display_name}</span>
+                  <span class="user-name">${user.displayName || user.username}</span>
                 </a>
                 <div class="user-dropdown">
                   <a href="/profile.html" class="dropdown-item">
@@ -161,16 +138,14 @@ export class NavigationBar {
               this.logout();
             });
           } else {
-            console.log('[NavigationBar] User profile was null');
-            this.handleAuthError('User profile not found');
+            console.log('[NavigationBar] User profile was null, showing login link');
           }
         })
         .catch(err => {
           console.error('[NavigationBar] Failed to fetch user profile:', err);
-          this.handleAuthError(err.message);
+          // User is not authenticated, show login link (no need to do anything)
+          console.log('[NavigationBar] No auth, showing login link');
         });
-    } else {
-      console.log('[NavigationBar] No auth state found, showing login link');
     }
   }
   
@@ -187,9 +162,9 @@ export class NavigationBar {
       });
       
       // Use credentials: 'include' to ensure cookies are sent with the request
-      console.log('[NavigationBar] Fetching profile from /api/auth/validate with credentials:include');
+      console.log('[NavigationBar] Fetching profile from /api/auth/jwt/profile with credentials:include');
       const startTime = performance.now();
-      const response = await fetch('/api/auth/validate', {
+      const response = await fetch('/api/auth/jwt/profile', {
         credentials: 'include'
       });
       const endTime = performance.now();
@@ -207,7 +182,7 @@ export class NavigationBar {
       
       const data = await response.json();
       console.log('[NavigationBar] Profile data:', data);
-      return data.user;
+      return data;
     } catch (error) {
       console.error('[NavigationBar] Error fetching user profile:', error);
       return null;
@@ -218,10 +193,6 @@ export class NavigationBar {
    * Handle authentication errors
    */
   static handleAuthError() {
-    // Clear auth cookies
-    document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
     // Reset login item
     const loginItem = document.getElementById('nav-login-item');
     if (loginItem) {
@@ -239,7 +210,7 @@ export class NavigationBar {
     console.log('Logging out...');
     
     // Call logout API
-    fetch('/api/auth/logout', {
+    fetch('/api/auth/jwt/logout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -248,21 +219,13 @@ export class NavigationBar {
     })
     .then(response => {
       console.log('Logout response:', response.status, response.statusText);
-      // Clear auth cookies (even though the server should do this)
-      document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
       // Reload the page to force a refresh of all components
-      window.location.reload();
+      window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out successfully.');
     })
     .catch(error => {
       console.error('Logout error:', error);
-      // Clear auth cookies anyway
-      document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-      
       // Reload the page to force a refresh of all components
-      window.location.reload();
+      window.location.href = '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
     });
   }
 }

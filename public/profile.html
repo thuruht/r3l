@@ -129,6 +129,15 @@
       cursor: pointer;
     }
     
+    .recovery-key-btn {
+      padding: 0.5rem 1rem;
+      background-color: var(--warning-color, #f97316);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
     .logout-btn {
       padding: 0.5rem 1rem;
       background-color: transparent;
@@ -145,6 +154,87 @@
     
     .not-authenticated p {
       margin-bottom: 2rem;
+    }
+    
+    /* Modal Styles */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    
+    .modal {
+      background-color: var(--surface-color);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    
+    .modal-title {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: var(--accent-color);
+    }
+    
+    .modal-content {
+      margin-bottom: 1.5rem;
+    }
+    
+    .recovery-key-display {
+      background-color: var(--background-color);
+      padding: 1rem;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 1.2rem;
+      text-align: center;
+      margin: 1rem 0;
+      -webkit-user-select: all;
+      user-select: all;
+      border: 1px dashed var(--border-color);
+    }
+    
+    .modal-actions {
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    .modal-warning {
+      color: var(--warning-color, #f97316);
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
+    
+    .copy-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    
+    .close-btn {
+      background-color: var(--text-secondary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+    }
+    
+    .hidden {
+      display: none;
     }
   </style>
 </head>
@@ -188,7 +278,7 @@
         <div class="profile-stats">
           <div class="stat-card">
             <p id="stat-contributions" class="stat-value">0</p>
-            <p class="stat-label">Contributions</p>
+            <p class="stat-label">Content Items</p>
           </div>
           <div class="stat-card">
             <p id="stat-drawers" class="stat-value">0</p>
@@ -209,7 +299,27 @@
         
         <div class="action-buttons">
           <button id="edit-profile-btn" class="edit-profile-btn">Edit Profile</button>
+          <button id="generate-recovery-key-btn" class="recovery-key-btn">Generate Recovery Key</button>
           <button id="logout-btn" class="logout-btn">Log Out</button>
+        </div>
+      </div>
+      
+      <!-- Recovery Key Modal -->
+      <div id="recovery-key-modal" class="modal-overlay hidden">
+        <div class="modal">
+          <h2 class="modal-title">Your New Recovery Key</h2>
+          <div class="modal-content">
+            <p class="modal-warning">IMPORTANT: Save this recovery key in a secure location. It will only be shown once!</p>
+            <p>If you forget your password, you will need this key to recover your account.</p>
+            <div id="recovery-key-display" class="recovery-key-display">
+              Loading...
+            </div>
+            <p>Please copy this key and store it securely. It cannot be retrieved later.</p>
+          </div>
+          <div class="modal-actions">
+            <button id="copy-recovery-key-btn" class="copy-btn">Copy to Clipboard</button>
+            <button id="close-modal-btn" class="close-btn">I've Saved It</button>
+          </div>
         </div>
       </div>
     </div>
@@ -244,7 +354,14 @@
       
       const authProvidersEl = document.getElementById('auth-providers');
       const editProfileBtn = document.getElementById('edit-profile-btn');
+      const generateRecoveryKeyBtn = document.getElementById('generate-recovery-key-btn');
       const logoutBtn = document.getElementById('logout-btn');
+      
+      // Recovery key modal elements
+      const recoveryKeyModal = document.getElementById('recovery-key-modal');
+      const recoveryKeyDisplay = document.getElementById('recovery-key-display');
+      const copyRecoveryKeyBtn = document.getElementById('copy-recovery-key-btn');
+      const closeModalBtn = document.getElementById('close-modal-btn');
       
       // Check for new registration notification
       const urlParams = new URLSearchParams(window.location.search);
@@ -320,6 +437,15 @@
           `;
           authProvidersEl.appendChild(jwtProvider);
           
+          // Add recovery key information
+          const recoveryKeyInfo = document.createElement('div');
+          recoveryKeyInfo.className = 'auth-provider';
+          recoveryKeyInfo.innerHTML = `
+            <span class="material-icons">security</span>
+            <span>Recovery Key</span>
+          `;
+          authProvidersEl.appendChild(recoveryKeyInfo);
+          
           // For legacy support, if these fields exist
           if (user.orcidId) {
             const orcidProvider = document.createElement('div');
@@ -343,15 +469,22 @@
           
           // Try to load user stats if available
           try {
+            console.log(`Fetching stats for user ${user.id}`);
             const statsResponse = await fetch(`/api/users/${user.id}/stats`, {
               credentials: 'include'
             });
             
+            console.log('Stats response:', statsResponse.status, statsResponse.statusText);
+            
             if (statsResponse.ok) {
               const stats = await statsResponse.json();
+              console.log('Stats data:', stats);
+              
               statContributionsEl.textContent = stats.contributions || 0;
               statDrawersEl.textContent = stats.drawers || 0;
               statConnectionsEl.textContent = stats.connections || 0;
+            } else {
+              console.warn(`Stats fetch failed with status: ${statsResponse.status}`);
             }
           } catch (statsError) {
             console.warn('Could not load stats:', statsError);
@@ -367,6 +500,66 @@
           editProfileBtn.addEventListener('click', () => {
             // Redirect to edit profile page (to be implemented)
             window.location.href = '/edit-profile.html';
+          });
+          
+          // Set up generate recovery key button
+          generateRecoveryKeyBtn.addEventListener('click', async () => {
+            try {
+              // Show a confirmation dialog
+              const confirmed = confirm(
+                'WARNING: Generating a new recovery key will invalidate your old key. ' +
+                'Make sure to save the new key securely. Continue?'
+              );
+              
+              if (!confirmed) {
+                return;
+              }
+              
+              // Generate new recovery key
+              const response = await fetch('/api/auth/jwt/generate-recovery-key', {
+                method: 'POST',
+                credentials: 'include'
+              });
+              
+              if (!response.ok) {
+                throw new Error(`Failed to generate recovery key: ${response.status} ${response.statusText}`);
+              }
+              
+              const result = await response.json();
+              
+              if (!result.success || !result.recoveryKey) {
+                throw new Error('Invalid response from server');
+              }
+              
+              // Display the recovery key in the modal
+              recoveryKeyDisplay.textContent = result.recoveryKey;
+              recoveryKeyModal.classList.remove('hidden');
+              
+              // Set up copy button only once
+              copyRecoveryKeyBtn.onclick = () => {
+                navigator.clipboard.writeText(result.recoveryKey)
+                  .then(() => {
+                    const originalText = copyRecoveryKeyBtn.textContent;
+                    copyRecoveryKeyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                      copyRecoveryKeyBtn.textContent = originalText;
+                    }, 2000);
+                  })
+                  .catch(err => {
+                    console.error('Failed to copy: ', err);
+                    alert('Failed to copy to clipboard. Please select and copy the key manually.');
+                  });
+              };
+              
+              // Set up close button only once
+              closeModalBtn.onclick = () => {
+                recoveryKeyModal.classList.add('hidden');
+              };
+              
+            } catch (error) {
+              console.error('Recovery key generation error:', error);
+              alert('Failed to generate recovery key. Please try again.');
+            }
           });
           
           // Set up logout button

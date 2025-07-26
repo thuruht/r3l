@@ -7,14 +7,7 @@
   <link rel="stylesheet" href="css/rel-f-global.css">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
   <script src="js/font-loader.js" defer></script>
-  <script src="vendor/leaflet/leaflet.min.js" defer></script>
-  <script type="module" src="src/globe/globe-visualizer.js" defer></script>
-  <script type="module">
-    import { NavigationBar } from './js/components/navigation.js';
-    document.addEventListener('DOMContentLoaded', () => {
-      NavigationBar.init('map');
-    });
-  </script>
+  <script src="vendor/leaflet/leaflet.min.js"></script>
   <style>
     .map-container {
       width: 100%;
@@ -70,6 +63,38 @@
     }
     .loading-indicator.active {
       display: block;
+    }
+    /* Attribution modal */
+    .attribution-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .attribution-modal.hidden {
+      display: none;
+    }
+    .modal-content {
+      background-color: var(--bg-primary);
+      border-radius: 8px;
+      padding: 20px;
+      max-width: 600px;
+      width: 90%;
+    }
+    .close-modal {
+      margin-top: 15px;
+    }
+    .error-message {
+      padding: 20px;
+      text-align: center;
+      background-color: var(--bg-secondary);
+      border-radius: 8px;
     }
   </style>
 </head>
@@ -142,345 +167,385 @@
       <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
     </div>
   </footer>
-
-  <div id="loading-indicator" class="loading-indicator">
-    <span class="material-icons" style="font-size: 48px;">hourglass_top</span>
-    <p>Loading map data...</p>
-  </div>
   
-  <script>
-    document.addEventListener('DOMContentLoaded', async function() {
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    import { GlobeVisualizer } from './src/globe/globe-visualizer.js';
+    
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Initialize navigation
+      NavigationBar.init('map');
+      
       // Initialize the map visualizer
       const visualizer = new GlobeVisualizer('map-container');
       const loadingIndicator = document.getElementById('loading-indicator');
       
+      // Initialize map
+      await initMap(visualizer, loadingIndicator);
+    });
+    
+    // Initialize the map
+    async function initMap(visualizer, loadingIndicator) {
       // Show loading indicator
       loadingIndicator.classList.add('active');
       
-      const { loaded, error } = await visualizer.init();
-      
-      // Hide loading indicator
-      loadingIndicator.classList.remove('active');
-      
-      if (!loaded) {
-        console.error('Failed to load map:', error);
-        document.getElementById('map-container').innerHTML = `
-          <div class="error-message">
-            <p>Failed to load map: ${error || 'Unknown error'}</p>
-            <button id="retry-load" class="btn">Retry</button>
-          </div>
-        `;
-        document.getElementById('retry-load')?.addEventListener('click', () => visualizer.init());
-        return;
+      try {
+        const { loaded, error } = await visualizer.init();
+        
+        // Hide loading indicator
+        loadingIndicator.classList.remove('active');
+        
+        if (!loaded) {
+          console.error('Failed to load map:', error);
+          document.getElementById('map-container').innerHTML = `
+            <div class="error-message">
+              <p>Failed to load map: ${error || 'Unknown error'}</p>
+              <button id="retry-load" class="btn">Retry</button>
+            </div>
+          `;
+          document.getElementById('retry-load')?.addEventListener('click', () => initMap(visualizer, loadingIndicator));
+          return;
+        }
+        
+        // Load data into the map
+        await loadData(visualizer, loadingIndicator);
+        
+        // Handle filter changes
+        document.getElementById('data-type').addEventListener('change', () => loadData(visualizer, loadingIndicator));
+        document.getElementById('time-range').addEventListener('change', () => loadData(visualizer, loadingIndicator));
+        document.getElementById('refresh-map').addEventListener('click', () => loadData(visualizer, loadingIndicator));
+        
+        // Handle window resize
+        window.addEventListener('resize', () => visualizer.resize());
+      } catch (err) {
+        console.error('Error initializing map:', err);
+        loadingIndicator.classList.remove('active');
       }
+    }
+    
+    // Load data into the map
+    async function loadData(visualizer, loadingIndicator) {
+      visualizer.clear();
       
-      // Function to fetch location data from API
-      async function fetchLocationData() {
+      const data = await fetchLocationData(loadingIndicator);
+      
+      // Add points
+      data.points.forEach(point => visualizer.addPoint(point));
+      
+      // Add connections
+      data.connections.forEach(connection => visualizer.addConnection(connection));
+    }
+    
+    // Function to fetch location data from API
+    async function fetchLocationData(loadingIndicator) {
+      try {
+        loadingIndicator.classList.add('active');
+        
+        // Check if user is authenticated
+        const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+        
+        // Get the search parameters from the URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const lat = urlParams.get('lat');
+        const lng = urlParams.get('lng');
+        const radius = urlParams.get('radius') || '10';
+        const dataType = document.getElementById('data-type').value;
+        const timeRange = document.getElementById('time-range').value;
+        
+        let endpoint = '/api/search?';
+        let params = new URLSearchParams();
+        
+        // If lat/lng provided, do a location search
+        if (lat && lng) {
+          endpoint = `/api/search/location?lat=${lat}&lng=${lng}&radius=${radius}&limit=20`;
+          
+          // Add filters
+          if (dataType !== 'all') {
+            endpoint += `&type=${dataType}`;
+          }
+          
+          if (timeRange !== 'all') {
+            const now = Date.now();
+            let timeLimit;
+            
+            switch (timeRange) {
+              case 'recent':
+                timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
+                break;
+              case 'month':
+                timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
+                break;
+              case 'year':
+                timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
+                break;
+            }
+            
+            if (timeLimit) {
+              endpoint += `&date_start=${timeLimit}`;
+            }
+          }
+        } else {
+          // Otherwise do a regular search with type filter for geo-tagged content
+          params.append('type', 'geo');
+          params.append('limit', '20');
+          
+          // Add filters
+          if (dataType !== 'all') {
+            params.append('type', dataType);
+          }
+          
+          if (timeRange !== 'all') {
+            const now = Date.now();
+            let timeLimit;
+            
+            switch (timeRange) {
+              case 'recent':
+                timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
+                break;
+              case 'month':
+                timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
+                break;
+              case 'year':
+                timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
+                break;
+            }
+            
+            if (timeLimit) {
+              params.append('date_start', timeLimit.toString());
+            }
+          }
+          
+          endpoint += params.toString();
+        }
+        
+        let mapData = {
+          points: [],
+          connections: []
+        };
+        
         try {
-          loadingIndicator.classList.add('active');
-          
-          // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
-          
-          // Get the search parameters from the URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const lat = urlParams.get('lat');
-          const lng = urlParams.get('lng');
-          const radius = urlParams.get('radius') || '10';
-          const dataType = document.getElementById('data-type').value;
-          const timeRange = document.getElementById('time-range').value;
-          
-          let endpoint = '/api/search?';
-          let params = new URLSearchParams();
-          
-          // If lat/lng provided, do a location search
-          if (lat && lng) {
-            endpoint = `/api/search/location?lat=${lat}&lng=${lng}&radius=${radius}&limit=20`;
-            
-            // Add filters
-            if (dataType !== 'all') {
-              endpoint += `&type=${dataType}`;
-            }
-            
-            if (timeRange !== 'all') {
-              const now = Date.now();
-              let timeLimit;
-              
-              switch (timeRange) {
-                case 'recent':
-                  timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
-                  break;
-                case 'month':
-                  timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
-                  break;
-                case 'year':
-                  timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
-                  break;
-              }
-              
-              if (timeLimit) {
-                endpoint += `&date_start=${timeLimit}`;
-              }
-            }
-          } else {
-            // Otherwise do a regular search with type filter for geo-tagged content
-            params.append('type', 'geo');
-            params.append('limit', '20');
-            
-            // Add filters
-            if (dataType !== 'all') {
-              params.append('type', dataType);
-            }
-            
-            if (timeRange !== 'all') {
-              const now = Date.now();
-              let timeLimit;
-              
-              switch (timeRange) {
-                case 'recent':
-                  timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
-                  break;
-                case 'month':
-                  timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
-                  break;
-                case 'year':
-                  timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
-                  break;
-              }
-              
-              if (timeLimit) {
-                params.append('date_start', timeLimit.toString());
-              }
-            }
-            
-            endpoint += params.toString();
-          }
-          
-          const response = await fetch(endpoint, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin' // Include cookies for auth
-          });
-          
-          if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
-          }
-          
-          const data = await response.json();
-          
-          // Process API response into map data format
-          const mapData = {
-            points: [],
-            connections: []
-          };
-          
-          // Process location data into points
-          if (data && Array.isArray(data)) {
-            data.forEach(item => {
-              // Skip items without location data
-              if (!item.location || !item.location.lat || !item.location.lng) {
-                return;
-              }
-              
-              mapData.points.push({
-                coordinates: [item.location.lng, item.location.lat],
-                properties: {
-                  name: item.title || 'Untitled',
-                  description: item.description || 'No description',
-                  icon: getIconForContentType(item.type),
-                  color: getColorForContentType(item.type)
-                }
-              });
+          // Only attempt to fetch data if authenticated
+          if (isAuthenticated) {
+            const response = await fetch(endpoint, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'same-origin' // Include cookies for auth
             });
             
-            // Generate connections between nearby points (within 100km)
-            // This is a simple example - in a real app we'd use actual connection data
-            const addedConnections = new Set();
+            if (!response.ok) {
+              throw new Error(`API error: ${response.status}`);
+            }
             
-            for (let i = 0; i < mapData.points.length; i++) {
-              for (let j = i + 1; j < mapData.points.length; j++) {
-                const point1 = mapData.points[i];
-                const point2 = mapData.points[j];
+            const data = await response.json();
+            
+            // Process API response into map data format
+            
+            // Process location data into points
+            if (data && Array.isArray(data)) {
+              data.forEach(item => {
+                // Skip items without location data
+                if (!item.location || !item.location.lat || !item.location.lng) {
+                  return;
+                }
                 
-                // Calculate rough distance
-                const [lng1, lat1] = point1.coordinates;
-                const [lng2, lat2] = point2.coordinates;
-                
-                const distance = calculateDistance(lat1, lng1, lat2, lng2);
-                
-                // If points are close enough, add a connection
-                if (distance < 100) { // 100km
-                  const connectionKey = `${i}-${j}`;
+                mapData.points.push({
+                  coordinates: [item.location.lng, item.location.lat],
+                  properties: {
+                    name: item.title || 'Untitled',
+                    description: item.description || 'No description',
+                    icon: getIconForContentType(item.type),
+                    color: getColorForContentType(item.type)
+                  }
+                });
+              });
+              
+              // Generate connections between nearby points (within 100km)
+              // This is a simple example - in a real app we'd use actual connection data
+              const addedConnections = new Set();
+              
+              for (let i = 0; i < mapData.points.length; i++) {
+                for (let j = i + 1; j < mapData.points.length; j++) {
+                  const point1 = mapData.points[i];
+                  const point2 = mapData.points[j];
                   
-                  if (!addedConnections.has(connectionKey)) {
-                    mapData.connections.push({
-                      source: point1.coordinates,
-                      target: point2.coordinates,
-                      properties: {
-                        name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
-                        description: `Distance: ${Math.round(distance)} km`,
-                        color: 'var(--accent-color)'
-                      }
-                    });
+                  // Calculate rough distance
+                  const [lng1, lat1] = point1.coordinates;
+                  const [lng2, lat2] = point2.coordinates;
+                  
+                  const distance = calculateDistance(lat1, lng1, lat2, lng2);
+                  
+                  // If points are close enough, add a connection
+                  if (distance < 100) { // 100km
+                    const connectionKey = `${i}-${j}`;
                     
-                    addedConnections.add(connectionKey);
+                    if (!addedConnections.has(connectionKey)) {
+                      mapData.connections.push({
+                        source: point1.coordinates,
+                        target: point2.coordinates,
+                        properties: {
+                          name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
+                          description: `Distance: ${Math.round(distance)} km`,
+                          color: 'var(--accent-color)'
+                        }
+                      });
+                      
+                      addedConnections.add(connectionKey);
+                    }
                   }
                 }
               }
             }
+          } else {
+            console.log('User not authenticated, using demo data');
           }
-          
-          loadingIndicator.classList.remove('active');
-          return mapData;
         } catch (error) {
-          console.error('Error fetching location data:', error);
-          loadingIndicator.classList.remove('active');
-          
-          // Fallback to default/demo locations if API fails
-          return {
-            points: [
-              {
-                coordinates: [-74.0060, 40.7128],
-                properties: {
-                  name: 'New York',
-                  description: 'Research data on urban planning',
-                  icon: 'document',
-                  color: 'var(--accent-color)'
-                }
-              },
-              {
-                coordinates: [-118.2437, 34.0522],
-                properties: {
-                  name: 'Los Angeles',
-                  description: 'Climate change impact study',
-                  icon: 'document',
-                  color: 'var(--accent-color)'
-                }
-              },
-              {
-                coordinates: [-0.1278, 51.5074],
-                properties: {
-                  name: 'London',
-                  description: 'Historical architecture analysis',
-                  icon: 'document',
-                  color: 'var(--accent-color)'
-                }
-              },
-              {
-                coordinates: [2.3522, 48.8566],
-                properties: {
-                  name: 'Paris',
-                  description: 'Social dynamics research',
-                  icon: 'document',
-                  color: 'var(--accent-color)'
-                }
-              },
-              {
-                coordinates: [139.6503, 35.6762],
-                properties: {
-                  name: 'Tokyo',
-                  description: 'Urban transportation efficiency',
-                  icon: 'document',
-                  color: 'var(--accent-color)'
-                }
-              }
-            ],
-            connections: [
-              {
-                source: [-74.0060, 40.7128],
-                target: [-0.1278, 51.5074],
-                properties: {
-                  name: 'New York - London Connection',
-                  description: 'Research collaboration',
-                  color: 'var(--accent-color)'
-                }
-              },
-              {
-                source: [-0.1278, 51.5074],
-                target: [2.3522, 48.8566],
-                properties: {
-                  name: 'London - Paris Connection',
-                  description: 'European research network',
-                  color: 'var(--accent-color)'
-                }
-              }
-            ]
-          };
+          console.error('Error fetching data from API:', error);
         }
+        
+        // If no data was loaded (either not authenticated or error), use demo data
+        if (mapData.points.length === 0) {
+          // Only show demo data for non-authenticated users
+          if (!isAuthenticated) {
+            console.log('Using demo data for non-authenticated user');
+            mapData = getDemoMapData();
+          } else {
+            console.log('No geographic data available for authenticated user');
+          }
+        }
+        
+        loadingIndicator.classList.remove('active');
+        return mapData;
+      } catch (error) {
+        console.error('Error in fetchLocationData:', error);
+        loadingIndicator.classList.remove('active');
+        
+        // Fallback to demo data
+        return getDemoMapData();
       }
-      
-      // Helper function to calculate distance between two coordinates in km
-      function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371; // Radius of the earth in km
-        const dLat = deg2rad(lat2 - lat1);
-        const dLon = deg2rad(lon2 - lon1);
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2)
-        ; 
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        const d = R * c; // Distance in km
-        return d;
-      }
-      
-      function deg2rad(deg) {
-        return deg * (Math.PI/180);
-      }
-      
-      // Helper function to get icon for content type
-      function getIconForContentType(type) {
-        if (!type) return 'document';
-        
-        if (type.startsWith('image/')) return 'image';
-        if (type.startsWith('audio/')) return 'audio';
-        if (type.startsWith('video/')) return 'video';
-        if (type.startsWith('text/')) return 'document';
-        if (type.includes('pdf')) return 'pdf';
-        
-        return 'document';
-      }
-      
-      // Helper function to get color for content type
-      function getColorForContentType(type) {
-        if (!type) return 'var(--accent-color)';
-        
-        if (type.startsWith('image/')) return 'var(--success)';
-        if (type.startsWith('audio/')) return 'var(--info)';
-        if (type.startsWith('video/')) return 'var(--warning)';
-        if (type.startsWith('text/')) return 'var(--accent-color)';
-        if (type.includes('pdf')) return 'var(--error)';
-        
-        return 'var(--accent-color)';
-      }
-      
-      // Load data into the map
-      async function loadData() {
-        visualizer.clear();
-        
-        const data = await fetchLocationData();
-        
-        // Add points
-        data.points.forEach(point => visualizer.addPoint(point));
-        
-        // Add connections
-        data.connections.forEach(connection => visualizer.addConnection(connection));
-      }
-      
-      // Initial data load
-      loadData();
-      
-      // Handle filter changes
-      document.getElementById('data-type').addEventListener('change', loadData);
-      document.getElementById('time-range').addEventListener('change', loadData);
-      document.getElementById('refresh-map').addEventListener('click', loadData);
-      
-      // Handle window resize
-      window.addEventListener('resize', () => visualizer.resize());
-    });
+    }
     
+    // Get demo map data for non-authenticated users
+    function getDemoMapData() {
+      return {
+        points: [
+          {
+            coordinates: [-74.0060, 40.7128],
+            properties: {
+              name: 'New York',
+              description: 'Research data on urban planning',
+              icon: 'document',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            coordinates: [-118.2437, 34.0522],
+            properties: {
+              name: 'Los Angeles',
+              description: 'Climate change impact study',
+              icon: 'document',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            coordinates: [-0.1278, 51.5074],
+            properties: {
+              name: 'London',
+              description: 'Historical architecture analysis',
+              icon: 'document',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            coordinates: [2.3522, 48.8566],
+            properties: {
+              name: 'Paris',
+              description: 'Social dynamics research',
+              icon: 'document',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            coordinates: [139.6503, 35.6762],
+            properties: {
+              name: 'Tokyo',
+              description: 'Urban transportation efficiency',
+              icon: 'document',
+              color: 'var(--accent-color)'
+            }
+          }
+        ],
+        connections: [
+          {
+            source: [-74.0060, 40.7128],
+            target: [-0.1278, 51.5074],
+            properties: {
+              name: 'New York - London Connection',
+              description: 'Research collaboration',
+              color: 'var(--accent-color)'
+            }
+          },
+          {
+            source: [-0.1278, 51.5074],
+            target: [2.3522, 48.8566],
+            properties: {
+              name: 'London - Paris Connection',
+              description: 'European research network',
+              color: 'var(--accent-color)'
+            }
+          }
+        ]
+      };
+    }
+    
+    // Helper function to calculate distance between two coordinates in km
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Radius of the earth in km
+      const dLat = deg2rad(lat2 - lat1);
+      const dLon = deg2rad(lon2 - lon1);
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2)
+      ; 
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+      const d = R * c; // Distance in km
+      return d;
+    }
+    
+    function deg2rad(deg) {
+      return deg * (Math.PI/180);
+    }
+    
+    // Helper function to get icon for content type
+    function getIconForContentType(type) {
+      if (!type) return 'document';
+      
+      if (type.startsWith('image/')) return 'image';
+      if (type.startsWith('audio/')) return 'audio';
+      if (type.startsWith('video/')) return 'video';
+      if (type.startsWith('text/')) return 'document';
+      if (type.includes('pdf')) return 'pdf';
+      
+      return 'document';
+    }
+    
+    // Helper function to get color for content type
+    function getColorForContentType(type) {
+      if (!type) return 'var(--accent-color)';
+      
+      if (type.startsWith('image/')) return 'var(--success)';
+      if (type.startsWith('audio/')) return 'var(--info)';
+      if (type.startsWith('video/')) return 'var(--warning)';
+      if (type.startsWith('text/')) return 'var(--accent-color)';
+      if (type.includes('pdf')) return 'var(--error)';
+      
+      return 'var(--accent-color)';
+    }
+  </script>
+  
+  <script>
     // Map attribution modal
     function showMapAttribution() {
       // Create modal if it doesn't exist

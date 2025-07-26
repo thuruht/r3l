@@ -23,8 +23,8 @@ export class MemoryCache<K extends string | number, V> {
   constructor(defaultTTL: number = 300000) { // 5 minutes by default
     this.defaultTTL = defaultTTL;
     
-    // Clean up expired entries periodically
-    setInterval(() => this.cleanup(), 60000); // Clean up every minute
+    // Don't set interval in constructor to avoid global scope issues
+    // Cleanup will be called manually when appropriate
   }
   
   /**
@@ -88,7 +88,7 @@ export class MemoryCache<K extends string | number, V> {
   /**
    * Remove all expired entries from the cache
    */
-  private cleanup(): void {
+  cleanup(): void {
     const now = Date.now();
     
     for (const [key, entry] of this.cache.entries()) {

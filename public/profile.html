@@ -812,17 +812,35 @@
           // Set avatar if available
           if (user.avatarUrl) {
             profileAvatarEl.src = user.avatarUrl;
+            // Reset any custom styling
+            profileAvatarEl.style = '';
+            profileAvatarEl.innerHTML = '';
+          } else if (user.avatar_key) {
+            profileAvatarEl.src = `/api/files/${user.avatar_key}`;
+            // Reset any custom styling
+            profileAvatarEl.style = '';
+            profileAvatarEl.innerHTML = '';
           } else {
             // Create an avatar with the first letter of the display name
             const initial = (user.displayName || user.username || '?').charAt(0).toUpperCase();
-            profileAvatarEl.src = '';
-            profileAvatarEl.style.display = 'flex';
-            profileAvatarEl.style.alignItems = 'center';
-            profileAvatarEl.style.justifyContent = 'center';
-            profileAvatarEl.style.fontSize = '3rem';
-            profileAvatarEl.style.color = 'white';
-            profileAvatarEl.style.backgroundColor = '#6d28d9';
-            profileAvatarEl.innerHTML = initial;
+            
+            // Use default SVG if we can't generate an initial
+            if (!initial || initial === '?') {
+              profileAvatarEl.src = '/icons/user-default.svg';
+              // Reset any custom styling
+              profileAvatarEl.style = '';
+              profileAvatarEl.innerHTML = '';
+            } else {
+              // Create an initial-based avatar
+              profileAvatarEl.src = '';  // Clear the src
+              profileAvatarEl.style.display = 'flex';
+              profileAvatarEl.style.alignItems = 'center';
+              profileAvatarEl.style.justifyContent = 'center';
+              profileAvatarEl.style.fontSize = '3rem';
+              profileAvatarEl.style.color = 'white';
+              profileAvatarEl.style.backgroundColor = '#6d28d9';
+              profileAvatarEl.innerHTML = initial;
+            }
           }
           
           // Show authentication providers
@@ -916,6 +934,9 @@
                 if (result.success && result.avatarUrl) {
                   // Update avatar with the new URL
                   profileAvatarEl.src = result.avatarUrl;
+                  // Reset any custom styling
+                  profileAvatarEl.style = '';
+                  profileAvatarEl.innerHTML = '';
                 } else {
                   throw new Error('Invalid response from server');
                 }
@@ -925,8 +946,16 @@
                 // Reset to previous avatar or default
                 if (user.avatarUrl) {
                   profileAvatarEl.src = user.avatarUrl;
+                  profileAvatarEl.style = '';
+                  profileAvatarEl.innerHTML = '';
+                } else if (user.avatar_key) {
+                  profileAvatarEl.src = `/api/files/${user.avatar_key}`;
+                  profileAvatarEl.style = '';
+                  profileAvatarEl.innerHTML = '';
                 } else {
                   profileAvatarEl.src = '/icons/user-default.svg';
+                  profileAvatarEl.style = '';
+                  profileAvatarEl.innerHTML = '';
                 }
               }
             });

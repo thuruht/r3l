@@ -655,7 +655,23 @@
         } else if (userData.avatar_key) {
           userAvatar.src = `/api/files/${userData.avatar_key}`;
         } else {
-          userAvatar.src = './icons/user-default.svg';
+          // Create an avatar with the first letter of the display name if possible
+          const initial = (userData.display_name || userData.username || '?').charAt(0).toUpperCase();
+          
+          // Use default SVG if we can't generate an initial
+          if (!initial || initial === '?') {
+            userAvatar.src = './icons/user-default.svg';
+          } else {
+            // Create an initial-based avatar
+            userAvatar.src = '';  // Clear the src
+            userAvatar.style.display = 'flex';
+            userAvatar.style.alignItems = 'center';
+            userAvatar.style.justifyContent = 'center';
+            userAvatar.style.fontSize = '2rem';
+            userAvatar.style.color = 'white';
+            userAvatar.style.backgroundColor = '#6d28d9';
+            userAvatar.innerHTML = initial;
+          }
         }
         
         // Set communique if available

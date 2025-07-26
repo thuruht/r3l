@@ -5,8 +5,14 @@
 
 import { notificationManager } from './notification.js';
 
-// Define a simple debug log function
-const debugLog = (component, message, data) => {
+// Define a simple debug log fu                <span class="user-avatar">
+                    ${user.avatarUrl ? 
+                      `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />` : 
+                      user.avatar_key ?
+                      `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />` :
+                      `<span class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>`
+                    }
+                  </span>onst debugLog = (component, message, data) => {
   console.log(`[${component}] ${message}`, data || '');
 };
 
@@ -185,17 +191,17 @@ export class NavigationBar {
           console.log('[NavigationBar] User profile fetched:', user);
           if (user) {
             loginItem.innerHTML = `
-              <div class="user-profile-nav">
+                            <div class="user-profile-nav">
                 <a href="/profile.html" class="nav-link user-profile-link">
                   <span class="user-avatar">
-                    ${user.avatar_url ? 
-                      `<img src="${user.avatar_url}" alt="${user.display_name || user.username}" class="avatar-small" />` : 
+                    ${user.avatarUrl ? 
+                      `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />` : 
                       user.avatar_key ?
-                      `<img src="/api/files/${user.avatar_key}" alt="${user.display_name || user.username}" class="avatar-small" />` :
-                      `<img src="/icons/user-default.svg" alt="${user.display_name || user.username}" class="avatar-small" />`
+                      `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />` :
+                      `<span class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>`
                     }
                   </span>
-                  <span class="user-name">${user.display_name || user.username}</span>
+                  <span class="user-name">${user.displayName || user.username}</span>
                 </a>
                 <div class="user-dropdown">
                   <a href="/profile.html" class="dropdown-item">

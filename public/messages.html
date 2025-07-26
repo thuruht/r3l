@@ -726,10 +726,12 @@
           
           conversationEl.innerHTML = `
             <div class="conversation-avatar">
-              <span class="material-icons">person</span>
+              ${conversation.otherUserAvatar ? `<img src="${conversation.otherUserAvatar}" alt="${conversation.otherUserName || 'User'}" class="avatar-small">` : 
+              conversation.otherUserAvatarKey ? `<img src="/api/files/${conversation.otherUserAvatarKey}" alt="${conversation.otherUserName || 'User'}" class="avatar-small">` :
+              `<span>${(conversation.otherUserName || 'U').charAt(0).toUpperCase()}</span>`}
             </div>
             <div class="conversation-info">
-              <div class="conversation-name">${conversation.otherUserId}</div>
+              <div class="conversation-name">${conversation.otherUserName || conversation.otherUserId}</div>
               <div class="conversation-preview">
                 ${conversation.isLastMessageFromMe ? 'You: ' : ''}
                 ${conversation.isLastMessageEncrypted ? '[Encrypted]' : conversation.lastMessagePreview || 'No messages yet'}
@@ -793,9 +795,11 @@
         // Update header
         chatHeader.innerHTML = `
           <div class="conversation-avatar">
-            <span class="material-icons">person</span>
+            ${data.otherUser?.avatarUrl ? `<img src="${data.otherUser.avatarUrl}" alt="${data.otherUser?.username || 'Unknown User'}" class="avatar-small">` : 
+             data.otherUser?.avatarKey ? `<img src="/api/files/${data.otherUser.avatarKey}" alt="${data.otherUser?.username || 'Unknown User'}" class="avatar-small">` :
+             `<span>${(data.otherUser?.username || 'U').charAt(0).toUpperCase()}</span>`}
           </div>
-          <div class="chat-name">${data.otherUser?.username || 'Unknown User'}</div>
+          <div class="chat-name">${data.otherUser?.displayName || data.otherUser?.username || 'Unknown User'}</div>
         `;
         
         // Render messages
@@ -1024,8 +1028,8 @@
             userEl.innerHTML = `
               <div class="search-result-avatar">
                 ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.username}" class="avatar-small">` : 
-                user.avatar_key ? `<img src="/api/files/${user.avatar_key}" alt="${user.username}" class="avatar-small">` :
-                `<img src="/icons/user-default.svg" alt="${user.username}" class="avatar-small">`}
+                 user.avatar_key ? `<img src="/api/files/${user.avatar_key}" alt="${user.username}" class="avatar-small">` :
+                 `<span>${user.username.charAt(0).toUpperCase()}</span>`}
               </div>
               <div class="search-result-info">
                 <div class="search-result-name">${user.display_name || user.username}</div>
@@ -1070,8 +1074,8 @@
         chatHeader.innerHTML = `
           <div class="conversation-avatar">
             ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.username}" class="avatar-small">` : 
-            user.avatar_key ? `<img src="/api/files/${user.avatar_key}" alt="${user.username}" class="avatar-small">` :
-            `<img src="/icons/user-default.svg" alt="${user.username}" class="avatar-small">`}
+             user.avatar_key ? `<img src="/api/files/${user.avatar_key}" alt="${user.username}" class="avatar-small">` :
+             `<span>${user.username.charAt(0).toUpperCase()}</span>`}
           </div>
           <div class="chat-name">${user.display_name || user.username}</div>
         `;

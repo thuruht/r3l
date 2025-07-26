@@ -664,26 +664,27 @@
         const userAvatar = document.getElementById('user-avatar');
         if (userData.avatar_url) {
           userAvatar.src = userData.avatar_url;
+          // Reset any custom styling
+          userAvatar.style = '';
+          userAvatar.innerHTML = '';
         } else if (userData.avatar_key) {
           userAvatar.src = `/api/files/${userData.avatar_key}`;
+          // Reset any custom styling
+          userAvatar.style = '';
+          userAvatar.innerHTML = '';
         } else {
-          // Create an avatar with the first letter of the display name if possible
+          // Create an avatar with the first letter of the display name
           const initial = (userData.display_name || userData.username || '?').charAt(0).toUpperCase();
           
-          // Use default SVG if we can't generate an initial
-          if (!initial || initial === '?') {
-            userAvatar.src = './icons/user-default.svg';
-          } else {
-            // Create an initial-based avatar
-            userAvatar.src = '';  // Clear the src
-            userAvatar.style.display = 'flex';
-            userAvatar.style.alignItems = 'center';
-            userAvatar.style.justifyContent = 'center';
-            userAvatar.style.fontSize = '2rem';
-            userAvatar.style.color = 'white';
-            userAvatar.style.backgroundColor = '#6d28d9';
-            userAvatar.innerHTML = initial;
-          }
+          // Create an initial-based avatar
+          userAvatar.src = '';  // Clear the src
+          userAvatar.style.display = 'flex';
+          userAvatar.style.alignItems = 'center';
+          userAvatar.style.justifyContent = 'center';
+          userAvatar.style.fontSize = '2rem';
+          userAvatar.style.color = 'white';
+          userAvatar.style.backgroundColor = '#6d28d9';
+          userAvatar.innerHTML = initial;
         }
         
         // Set communique if available

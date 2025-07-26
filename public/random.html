@@ -66,8 +66,15 @@
       <div id="drawer-content" class="hidden">
         <div class="drawer-container">
           <div class="drawer-header">
-            <h3 id="drawer-username">Username</h3>
-            <p class="drawer-subtitle" id="drawer-subtitle">User's Communique</p>
+            <div class="flex gap-4 items-center">
+              <div class="drawer-icon">
+                <div id="user-avatar" class="avatar-large"></div>
+              </div>
+              <div>
+                <h3 id="drawer-username">Username</h3>
+                <p class="drawer-subtitle" id="drawer-subtitle">User's Communique</p>
+              </div>
+            </div>
           </div>
           
           <div class="communique" id="communique-content">
@@ -180,6 +187,24 @@
               communiqueContent.innerHTML = data.communique || '<em>This user hasn\'t set a communique yet.</em>';
               drawerConnectionCount.textContent = `${data.connectionCount} connections`;
               visitDrawerLink.href = `./drawer.html?id=${data.userId}`;
+              
+              // Set the avatar
+              const userAvatar = document.getElementById('user-avatar');
+              if (data.avatarUrl) {
+                userAvatar.innerHTML = `<img src="${data.avatarUrl}" alt="${data.username}" class="avatar-large">`;
+              } else if (data.avatarKey) {
+                userAvatar.innerHTML = `<img src="/api/files/${data.avatarKey}" alt="${data.username}" class="avatar-large">`;
+              } else {
+                // Create an initial-based avatar
+                const initial = data.username.charAt(0).toUpperCase();
+                userAvatar.style.display = 'flex';
+                userAvatar.style.alignItems = 'center';
+                userAvatar.style.justifyContent = 'center';
+                userAvatar.style.fontSize = '2rem';
+                userAvatar.style.color = 'white';
+                userAvatar.style.backgroundColor = '#6d28d9';
+                userAvatar.innerHTML = initial;
+              }
               
               // Populate recent files
               recentFiles.innerHTML = '';

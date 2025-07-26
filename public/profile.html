@@ -824,23 +824,15 @@
             // Create an avatar with the first letter of the display name
             const initial = (user.displayName || user.username || '?').charAt(0).toUpperCase();
             
-            // Use default SVG if we can't generate an initial
-            if (!initial || initial === '?') {
-              profileAvatarEl.src = '/icons/user-default.svg';
-              // Reset any custom styling
-              profileAvatarEl.style = '';
-              profileAvatarEl.innerHTML = '';
-            } else {
-              // Create an initial-based avatar
-              profileAvatarEl.src = '';  // Clear the src
-              profileAvatarEl.style.display = 'flex';
-              profileAvatarEl.style.alignItems = 'center';
-              profileAvatarEl.style.justifyContent = 'center';
-              profileAvatarEl.style.fontSize = '3rem';
-              profileAvatarEl.style.color = 'white';
-              profileAvatarEl.style.backgroundColor = '#6d28d9';
-              profileAvatarEl.innerHTML = initial;
-            }
+            // Use initial-based avatar
+            profileAvatarEl.src = '';  // Clear the src
+            profileAvatarEl.style.display = 'flex';
+            profileAvatarEl.style.alignItems = 'center';
+            profileAvatarEl.style.justifyContent = 'center';
+            profileAvatarEl.style.fontSize = '3rem';
+            profileAvatarEl.style.color = 'white';
+            profileAvatarEl.style.backgroundColor = '#6d28d9';
+            profileAvatarEl.innerHTML = initial;
           }
           
           // Show authentication providers

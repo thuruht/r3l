@@ -33,6 +33,41 @@
       background-color: var(--accent-color-light);
     }
     
+    .profile-avatar-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+    }
+    
+    .avatar-upload-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .profile-avatar-container:hover .avatar-upload-overlay {
+      opacity: 1;
+    }
+    
+    .avatar-upload-button {
+      color: white;
+      cursor: pointer;
+    }
+    
+    .avatar-upload-button .material-icons {
+      font-size: 28px;
+    }
+    
     .profile-info {
       flex-grow: 1;
     }
@@ -458,7 +493,15 @@
       <!-- Authenticated state -->
       <div id="profile-data" class="profile-container hidden">
         <div class="profile-header">
-          <img id="profile-avatar" src="/icons/user-default.svg" alt="Profile avatar" class="profile-avatar">
+          <div class="profile-avatar-container">
+            <img id="profile-avatar" src="/icons/user-default.svg" alt="Profile avatar" class="profile-avatar">
+            <div class="avatar-upload-overlay hidden" id="avatar-upload-overlay">
+              <label for="avatar-upload" class="avatar-upload-button">
+                <span class="material-icons">photo_camera</span>
+              </label>
+              <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+            </div>
+          </div>
           <div class="profile-info">
             <h2 id="profile-name" class="profile-name">User Name</h2>
             <p id="profile-username" class="profile-username">@username</p>
@@ -830,6 +873,64 @@
           // Load user's map points
           try {
             console.log(`Fetching map points for user ${user.id}`);
+            
+            // Set up avatar upload
+            const avatarUploadOverlay = document.getElementById('avatar-upload-overlay');
+            const avatarUploadInput = document.getElementById('avatar-upload');
+            
+            // Show overlay when hovering over avatar
+            avatarUploadOverlay.classList.remove('hidden');
+            
+            // Handle avatar file selection
+            avatarUploadInput.addEventListener('change', async (event) => {
+              const file = event.target.files[0];
+              if (!file) return;
+              
+              // Validate file type
+              if (!file.type.startsWith('image/')) {
+                alert('Please select an image file (PNG, JPG, GIF, etc.)');
+                return;
+              }
+              
+              // Show loading state
+              profileAvatarEl.src = '/icons/loading-spinner.svg';
+              
+              try {
+                // Create form data
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Upload avatar
+                const response = await fetch('/api/files/avatar', {
+                  method: 'POST',
+                  credentials: 'include',
+                  body: formData
+                });
+                
+                if (!response.ok) {
+                  throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success && result.avatarUrl) {
+                  // Update avatar with the new URL
+                  profileAvatarEl.src = result.avatarUrl;
+                } else {
+                  throw new Error('Invalid response from server');
+                }
+              } catch (error) {
+                console.error('Avatar upload error:', error);
+                alert('Failed to upload avatar. Please try again.');
+                // Reset to previous avatar or default
+                if (user.avatarUrl) {
+                  profileAvatarEl.src = user.avatarUrl;
+                } else {
+                  profileAvatarEl.src = '/icons/user-default.svg';
+                }
+              }
+            });
+            
             const mapPointsResponse = await fetch(`/api/globe/data-points?userId=${user.id}`, {
               credentials: 'include'
             });

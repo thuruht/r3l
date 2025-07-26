@@ -41,6 +41,8 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 2. **Drawer/RCC System**
    - Public profiles with customizable interfaces
    - Personal content organization
+   - Customizable communiques with HTML and file embedding
+   - Avatar/profile image support with file upload
 
 3. **Private Cache**
    - Secure storage for personal files
@@ -175,13 +177,20 @@ r3l-realigned/
 - 🔄 Drawer customization
 - 🔄 Messaging UI integration
 - 🔄 User settings for location and visibility preferences
+- 🔄 Association web enhancements
+- 🔄 "Lurker in the Mist" mode implementation
 
-### Pending
+### Completed
 
-- ⏳ ORCID authentication implementation
-- ⏳ Final deployment preparation
-- ⏳ Testing of all user flows
-- ⏳ Documentation completion
+- ✅ Project documentation update
+- ✅ Help and FAQ page creation
+- ✅ Removal of GitHub/ORCID authentication
+- ✅ Drawer/Communique distinction clarification
+- ✅ HTML sanitization for user-generated content
+- ✅ File embedding in communiques
+- ✅ JWT-based authentication with recovery keys
+- ✅ Avatar upload and management system
+- ✅ User profile image integration in UI
 
 ## Color Scheme
 

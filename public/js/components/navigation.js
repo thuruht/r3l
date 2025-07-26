@@ -37,6 +37,14 @@ export class NavigationBar {
               <span class="material-icons">public</span>
               <span class="nav-label">Map</span>
             </a></li>
+            <li><a href="/connect.html" class="nav-link ${currentPage === 'connect' ? 'active' : ''}">
+              <span class="material-icons">people</span>
+              <span class="nav-label">Connect</span>
+            </a></li>
+            <li><a href="/messages.html" class="nav-link ${currentPage === 'messages' ? 'active' : ''}">
+              <span class="material-icons">chat</span>
+              <span class="nav-label">Messages</span>
+            </a></li>
             <li><a href="/search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
               <span class="material-icons">search</span>
               <span class="nav-label">Search</span>
@@ -53,6 +61,10 @@ export class NavigationBar {
             <li><a href="/upload.html" class="nav-link ${currentPage === 'upload' ? 'active' : ''}">
               <span class="material-icons">upload_file</span>
               <span class="nav-label">Upload</span>
+            </a></li>
+            <li><a href="/help.html" class="nav-link ${currentPage === 'help' ? 'active' : ''}">
+              <span class="material-icons">help_outline</span>
+              <span class="nav-label">Help</span>
             </a></li>
             <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
               <span class="material-icons">login</span>
@@ -125,20 +137,22 @@ export class NavigationBar {
             loginItem.innerHTML = `
               <div class="user-profile-nav">
                 <a href="/profile.html" class="nav-link user-profile-link">
-                  <span class="user-avatar glow-accent">
+                  <span class="user-avatar">
                     ${user.avatar_url ? 
-                      `<img src="${user.avatar_url}" alt="${user.display_name}" class="avatar-img" />` : 
-                      `<span class="material-icons">account_circle</span>`
+                      `<img src="${user.avatar_url}" alt="${user.display_name || user.username}" class="avatar-small" />` : 
+                      user.avatar_key ?
+                      `<img src="/api/files/${user.avatar_key}" alt="${user.display_name || user.username}" class="avatar-small" />` :
+                      `<img src="/icons/user-default.svg" alt="${user.display_name || user.username}" class="avatar-small" />`
                     }
                   </span>
-                  <span class="user-name">${user.displayName || user.username}</span>
+                  <span class="user-name">${user.display_name || user.username}</span>
                 </a>
                 <div class="user-dropdown">
                   <a href="/profile.html" class="dropdown-item">
                     <span class="material-icons">person</span>
                     My Profile
                   </a>
-                  <a href="/drawer.html?user=${user.username}" class="dropdown-item">
+                  <a href="/drawer.html" class="dropdown-item">
                     <span class="material-icons">folder</span>
                     My Drawer
                   </a>

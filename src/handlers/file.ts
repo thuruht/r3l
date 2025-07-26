@@ -3,5 +3,179 @@ import { Env } from '../types/env';
 export class FileHandler {
   constructor() {}
   
-  // Add stub methods as needed
+  /**
+   * Upload a file to R2 storage
+   * @param fileData The file data buffer
+   * @param fileName Original file name
+   * @param contentType MIME type of the file
+   * @param metadata Additional metadata to store with the file
+   * @param env Environment variables
+   * @returns Object with the file key and URL
+   */
+  async uploadFile(
+    fileData: ArrayBuffer,
+    fileName: string,
+    contentType: string,
+    metadata: { [key: string]: string },
+    env: Env
+  ): Promise<{ key: string; url: string }> {
+    try {
+      // Generate a unique file key based on timestamp and random string
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 12);
+      const fileExtension = fileName.split('.').pop();
+      const fileKey = `${timestamp}-${randomStr}.${fileExtension}`;
+      
+      // Add some standard metadata
+      const fullMetadata = {
+        ...metadata,
+        originalName: fileName,
+        uploadedAt: timestamp.toString(),
+      };
+      
+      // Upload to R2 bucket
+      await env.R3L_CONTENT_BUCKET.put(fileKey, fileData, {
+        httpMetadata: {
+          contentType: contentType,
+        },
+        customMetadata: fullMetadata,
+      });
+      
+      // Return the file key and a URL that can be used to access the file
+      return {
+        key: fileKey,
+        url: `/api/files/${fileKey}`,
+      };
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      throw new Error('Failed to upload file');
+    }
+  }
+  
+  /**
+   * Upload an avatar image for a user
+   * @param userId User ID
+   * @param fileData File data buffer
+   * @param fileName Original file name
+   * @param contentType MIME type of the file
+   * @param env Environment variables
+   * @returns Object with the avatar key and URL
+   */
+  async uploadAvatar(
+    userId: string,
+    fileData: ArrayBuffer,
+    fileName: string,
+    contentType: string,
+    env: Env
+  ): Promise<{ avatarKey: string; avatarUrl: string }> {
+    try {
+      // Validate that this is an image file
+      if (!contentType.startsWith('image/')) {
+        throw new Error('Only image files are allowed for avatars');
+      }
+      
+      // Get the file extension
+      const fileExtension = fileName.split('.').pop()?.toLowerCase();
+      
+      // Validate file extension
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+      if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
+        throw new Error('Invalid image file format. Allowed formats: JPG, PNG, GIF, WebP, SVG');
+      }
+      
+      // Set the avatar metadata
+      const metadata = {
+        type: 'avatar',
+        userId,
+      };
+      
+      // Create a avatar-specific file key
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 12);
+      const avatarKey = `avatars/${userId}/${timestamp}-${randomStr}.${fileExtension}`;
+      
+      // Upload to R2 bucket
+      await env.R3L_CONTENT_BUCKET.put(avatarKey, fileData, {
+        httpMetadata: {
+          contentType: contentType,
+          cacheControl: 'public, max-age=31536000', // Cache for 1 year
+        },
+        customMetadata: {
+          ...metadata,
+          originalName: fileName,
+          uploadedAt: timestamp.toString(),
+        },
+      });
+      
+      // Update the user's avatar key in the database
+      const updateResult = await env.R3L_DB.prepare(`
+        UPDATE users
+        SET avatar_key = ?, updated_at = ?
+        WHERE id = ?
+      `).bind(avatarKey, Date.now(), userId).run();
+      
+      if (!updateResult) {
+        throw new Error('Failed to update user avatar in database');
+      }
+      
+      // Return the avatar key and URL
+      return {
+        avatarKey,
+        avatarUrl: `/api/files/avatars/${avatarKey}`,
+      };
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get a file from R2 storage
+   * @param fileKey The file key in R2
+   * @param env Environment variables
+   * @returns Response with the file data
+   */
+  async getFile(fileKey: string, env: Env): Promise<Response> {
+    try {
+      // Get the file from R2
+      const file = await env.R3L_CONTENT_BUCKET.get(fileKey);
+      
+      if (!file) {
+        return new Response('File not found', { status: 404 });
+      }
+      
+      // Get the file data and headers
+      const data = await file.arrayBuffer();
+      
+      // Create response with appropriate headers
+      return new Response(data, {
+        headers: {
+          'Content-Type': file.httpMetadata?.contentType || 'application/octet-stream',
+          'Cache-Control': file.httpMetadata?.cacheControl || 'public, max-age=86400',
+          'Content-Disposition': `inline; filename="${encodeURIComponent(
+            file.customMetadata?.originalName || fileKey
+          )}"`,
+        },
+      });
+    } catch (error) {
+      console.error('Error getting file:', error);
+      return new Response('Error retrieving file', { status: 500 });
+    }
+  }
+  
+  /**
+   * Delete a file from R2 storage
+   * @param fileKey The file key in R2
+   * @param env Environment variables
+   * @returns True if the file was deleted successfully
+   */
+  async deleteFile(fileKey: string, env: Env): Promise<boolean> {
+    try {
+      await env.R3L_CONTENT_BUCKET.delete(fileKey);
+      return true;
+    } catch (error) {
+      console.error('Error deleting file:', error);
+      return false;
+    }
+  }
 }

@@ -14,7 +14,7 @@ import { FileHandler } from './handlers/file';
 import { GlobeHandler } from './handlers/globe';
 import { DrawerHandler } from './handlers/drawer';
 import { MessagingHandler } from './handlers/messaging';
-import { Env } from './types/env';
+import { Env, FileUpload } from './types/env';
 import { isSecureRequest } from './cookie-helper';
 import { extractJWTFromRequest } from './jwt-helper';
 
@@ -146,16 +146,356 @@ export class Router {
     if (path === '/api/users' && request.method === 'GET') {
       const authenticatedUserId = await this.getAuthenticatedUser(request, env);
       
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
       // Parse query parameters
       const url = new URL(request.url);
-      const limit = parseInt(url.searchParams.get('limit') || '10');
-      const offset = parseInt(url.searchParams.get('offset') || '0');
-      const search = url.searchParams.get('search') || '';
+      const limit = parseInt(url.searchParams.get('limit') || '12');
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const offset = (page - 1) * limit;
       
-      // Instead of using listUsers which doesn't exist, we'll stub this
-      // TODO: Implement a proper user listing method that supports pagination and search
-      const users: any[] = [];
-      return this.jsonResponse(users);
+      try {
+        // Get total count of users (excluding the current user)
+        const countQuery = `
+          SELECT COUNT(*) as total
+          FROM users
+          WHERE id != ?
+        `;
+        
+        const countResult = await env.R3L_DB.prepare(countQuery)
+          .bind(authenticatedUserId)
+          .first();
+        
+        const total = countResult ? (countResult.total as number) : 0;
+        const totalPages = Math.ceil(total / limit);
+        
+        // Query users with pagination
+        const query = `
+          SELECT 
+            id, 
+            username, 
+            display_name, 
+            bio, 
+            avatar_url,
+            created_at,
+            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
+            (SELECT COUNT(*) FROM connections WHERE 
+              (user_id = users.id OR connected_user_id = users.id) 
+              AND status = 'accepted' AND type = 'mutual'
+            ) AS connection_count
+          FROM users
+          WHERE id != ?
+          ORDER BY username ASC
+          LIMIT ? OFFSET ?
+        `;
+        
+        const result = await env.R3L_DB.prepare(query)
+          .bind(authenticatedUserId, limit, offset)
+          .all();
+        
+        const users = result.results || [];
+        
+        // For each user, determine the connection status with the current user
+        const usersWithConnectionStatus = await Promise.all(users.map(async (user: any) => {
+          const connectionStatus = await this.getUserConnectionStatus(authenticatedUserId, user.id, env);
+          return {
+            ...user,
+            connectionStatus
+          };
+        }));
+        
+        return this.jsonResponse({
+          users: usersWithConnectionStatus,
+          page,
+          totalPages,
+          total
+        });
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        return this.errorResponse('Failed to fetch users');
+      }
+    }
+    
+    // Search users
+    if (path === '/api/users/search' && request.method === 'GET') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      // Parse query parameters
+      const url = new URL(request.url);
+      const query = url.searchParams.get('query') || '';
+      const filter = url.searchParams.get('filter') || 'all';
+      const limit = parseInt(url.searchParams.get('limit') || '12');
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const offset = (page - 1) * limit;
+      
+      try {
+        let sqlQuery = '';
+        let countQuery = '';
+        let params: any[] = [];
+        
+        // Base query to search users
+        if (query) {
+          // Search by username or display name
+          sqlQuery = `
+            SELECT 
+              id, 
+              username, 
+              display_name, 
+              bio, 
+              avatar_url,
+              created_at,
+              (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
+              (SELECT COUNT(*) FROM connections WHERE 
+                (user_id = users.id OR connected_user_id = users.id) 
+                AND status = 'accepted' AND type = 'mutual'
+              ) AS connection_count
+            FROM users
+            WHERE id != ? AND (
+              username LIKE ? OR
+              display_name LIKE ?
+            )
+          `;
+          
+          countQuery = `
+            SELECT COUNT(*) as total
+            FROM users
+            WHERE id != ? AND (
+              username LIKE ? OR
+              display_name LIKE ?
+            )
+          `;
+          
+          params = [authenticatedUserId, `%${query}%`, `%${query}%`];
+        } else {
+          // Filter based on connection status
+          switch (filter) {
+            case 'connected':
+              // Users the current user is connected to
+              sqlQuery = `
+                SELECT 
+                  u.id, 
+                  u.username, 
+                  u.display_name, 
+                  u.bio, 
+                  u.avatar_url,
+                  u.created_at,
+                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
+                  (SELECT COUNT(*) FROM connections WHERE 
+                    (user_id = u.id OR connected_user_id = u.id) 
+                    AND status = 'accepted' AND type = 'mutual'
+                  ) AS connection_count
+                FROM users u
+                INNER JOIN connections c ON 
+                  (c.user_id = ? AND c.connected_user_id = u.id) OR
+                  (c.connected_user_id = ? AND c.user_id = u.id)
+                WHERE c.status = 'accepted'
+              `;
+              
+              countQuery = `
+                SELECT COUNT(DISTINCT u.id) as total
+                FROM users u
+                INNER JOIN connections c ON 
+                  (c.user_id = ? AND c.connected_user_id = u.id) OR
+                  (c.connected_user_id = ? AND c.user_id = u.id)
+                WHERE c.status = 'accepted'
+              `;
+              
+              params = [authenticatedUserId, authenticatedUserId];
+              break;
+              
+            case 'mutual':
+              // Users with mutual connections
+              sqlQuery = `
+                SELECT 
+                  u.id, 
+                  u.username, 
+                  u.display_name, 
+                  u.bio, 
+                  u.avatar_url,
+                  u.created_at,
+                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
+                  (SELECT COUNT(*) FROM connections WHERE 
+                    (user_id = u.id OR connected_user_id = u.id) 
+                    AND status = 'accepted' AND type = 'mutual'
+                  ) AS connection_count
+                FROM users u
+                WHERE u.id != ? AND EXISTS (
+                  SELECT 1 FROM connections c1
+                  INNER JOIN connections c2 ON 
+                    (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id)
+                  WHERE 
+                    c1.user_id = ? AND 
+                    c2.user_id = u.id AND
+                    c1.status = 'accepted' AND
+                    c2.status = 'accepted'
+                )
+              `;
+              
+              countQuery = `
+                SELECT COUNT(*) as total
+                FROM users u
+                WHERE u.id != ? AND EXISTS (
+                  SELECT 1 FROM connections c1
+                  INNER JOIN connections c2 ON 
+                    (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id)
+                  WHERE 
+                    c1.user_id = ? AND 
+                    c2.user_id = u.id AND
+                    c1.status = 'accepted' AND
+                    c2.status = 'accepted'
+                )
+              `;
+              
+              params = [authenticatedUserId, authenticatedUserId];
+              break;
+              
+            case 'pending':
+              // Users with pending connection requests
+              sqlQuery = `
+                SELECT 
+                  u.id, 
+                  u.username, 
+                  u.display_name, 
+                  u.bio, 
+                  u.avatar_url,
+                  u.created_at,
+                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
+                  (SELECT COUNT(*) FROM connections WHERE 
+                    (user_id = u.id OR connected_user_id = u.id) 
+                    AND status = 'accepted' AND type = 'mutual'
+                  ) AS connection_count
+                FROM users u
+                INNER JOIN connections c ON 
+                  (c.user_id = ? AND c.connected_user_id = u.id) OR
+                  (c.connected_user_id = ? AND c.user_id = u.id)
+                WHERE c.status = 'pending'
+              `;
+              
+              countQuery = `
+                SELECT COUNT(DISTINCT u.id) as total
+                FROM users u
+                INNER JOIN connections c ON 
+                  (c.user_id = ? AND c.connected_user_id = u.id) OR
+                  (c.connected_user_id = ? AND c.user_id = u.id)
+                WHERE c.status = 'pending'
+              `;
+              
+              params = [authenticatedUserId, authenticatedUserId];
+              break;
+              
+            case 'nearby':
+              // Users with content near the current user's location
+              sqlQuery = `
+                SELECT 
+                  u.id, 
+                  u.username, 
+                  u.display_name, 
+                  u.bio, 
+                  u.avatar_url,
+                  u.created_at,
+                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
+                  (SELECT COUNT(*) FROM connections WHERE 
+                    (user_id = u.id OR connected_user_id = u.id) 
+                    AND status = 'accepted' AND type = 'mutual'
+                  ) AS connection_count
+                FROM users u
+                INNER JOIN (
+                  SELECT DISTINCT user_id FROM geo_points
+                  WHERE user_id != ?
+                  LIMIT 100
+                ) g ON u.id = g.user_id
+                WHERE u.id != ?
+              `;
+              
+              countQuery = `
+                SELECT COUNT(DISTINCT u.id) as total
+                FROM users u
+                INNER JOIN (
+                  SELECT DISTINCT user_id FROM geo_points
+                  WHERE user_id != ?
+                  LIMIT 100
+                ) g ON u.id = g.user_id
+                WHERE u.id != ?
+              `;
+              
+              params = [authenticatedUserId, authenticatedUserId];
+              break;
+              
+            default:
+              // All users
+              sqlQuery = `
+                SELECT 
+                  id, 
+                  username, 
+                  display_name, 
+                  bio, 
+                  avatar_url,
+                  created_at,
+                  (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
+                  (SELECT COUNT(*) FROM connections WHERE 
+                    (user_id = users.id OR connected_user_id = users.id) 
+                    AND status = 'accepted' AND type = 'mutual'
+                  ) AS connection_count
+                FROM users
+                WHERE id != ?
+              `;
+              
+              countQuery = `
+                SELECT COUNT(*) as total
+                FROM users
+                WHERE id != ?
+              `;
+              
+              params = [authenticatedUserId];
+          }
+        }
+        
+        // Add pagination
+        sqlQuery += ' ORDER BY username ASC LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+        
+        // Get total count
+        const countResult = await env.R3L_DB.prepare(countQuery)
+          .bind(...params.slice(0, -2))
+          .first();
+        
+        const total = countResult ? (countResult.total as number) : 0;
+        const totalPages = Math.ceil(total / limit);
+        
+        // Get users
+        const result = await env.R3L_DB.prepare(sqlQuery)
+          .bind(...params)
+          .all();
+        
+        const users = result.results || [];
+        
+        // For each user, determine the connection status with the current user
+        const usersWithConnectionStatus = await Promise.all(users.map(async (user: any) => {
+          const connectionStatus = await this.getUserConnectionStatus(authenticatedUserId, user.id, env);
+          return {
+            ...user,
+            connectionStatus
+          };
+        }));
+        
+        return this.jsonResponse({
+          users: usersWithConnectionStatus,
+          query,
+          filter,
+          page,
+          totalPages,
+          total
+        });
+      } catch (error) {
+        console.error('Error searching users:', error);
+        return this.errorResponse('Failed to search users');
+      }
     }
     
     return this.notFoundResponse();
@@ -1030,8 +1370,168 @@ export class Router {
    * Handle file routes
    */
   private async handleFileRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`File route requested: ${path}`);
+    // Get file from R2 storage
+    if (path.match(/^\/api\/files\/[^/]+/) && request.method === 'GET') {
+      const fileKey = path.replace('/api/files/', '');
+      return this.fileHandler.getFile(fileKey, env);
+    }
+    
+    // Upload avatar image - requires authentication
+    if (path === '/api/files/avatar' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        // Check if this is a multipart form request
+        const contentType = request.headers.get('Content-Type') || '';
+        
+        if (!contentType.includes('multipart/form-data')) {
+          return this.errorResponse('Invalid request format. Expected multipart/form-data.', 400);
+        }
+        
+        // Parse the multipart form data
+        const formData = await request.formData();
+        const fileEntry = formData.get('file');
+        
+        if (!fileEntry) {
+          return this.errorResponse('No file provided', 400);
+        }
+        
+        if (typeof fileEntry === 'string') {
+          return this.errorResponse('Invalid file format', 400);
+        }
+        
+        // Cast to our custom FileUpload type for TypeScript
+        const file = fileEntry as unknown as FileUpload;
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          return this.errorResponse('Only image files are allowed for avatars', 400);
+        }
+        
+        // Get file data
+        const fileData = await file.arrayBuffer();
+        
+        // Upload avatar
+        const result = await this.fileHandler.uploadAvatar(
+          authenticatedUserId,
+          fileData,
+          file.name,
+          file.type,
+          env
+        );
+        
+        return this.jsonResponse({
+          success: true,
+          avatarKey: result.avatarKey,
+          avatarUrl: result.avatarUrl
+        });
+      } catch (error) {
+        console.error('Error uploading avatar:', error);
+        
+        const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
+        return this.errorResponse(errorMessage, 500);
+      }
+    }
+    
+    // Upload generic file - requires authentication
+    if (path === '/api/files/upload' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        // Check if this is a multipart form request
+        const contentType = request.headers.get('Content-Type') || '';
+        
+        if (!contentType.includes('multipart/form-data')) {
+          return this.errorResponse('Invalid request format. Expected multipart/form-data.', 400);
+        }
+        
+        // Parse the multipart form data
+        const formData = await request.formData();
+        const fileEntry = formData.get('file');
+        const metadata = formData.get('metadata') as string;
+        
+        if (!fileEntry) {
+          return this.errorResponse('No file provided', 400);
+        }
+        
+        if (typeof fileEntry === 'string') {
+          return this.errorResponse('Invalid file format', 400);
+        }
+        
+        // Cast to our custom FileUpload type for TypeScript
+        const file = fileEntry as unknown as FileUpload;
+        
+        // Parse metadata if provided
+        let parsedMetadata: { [key: string]: string } = {
+          userId: authenticatedUserId
+        };
+        
+        if (metadata) {
+          try {
+            const jsonMetadata = JSON.parse(metadata);
+            parsedMetadata = { ...parsedMetadata, ...jsonMetadata };
+          } catch (e) {
+            console.warn('Invalid metadata JSON, using default metadata');
+          }
+        }
+        
+        // Get file data
+        const fileData = await file.arrayBuffer();
+        
+        // Upload file
+        const result = await this.fileHandler.uploadFile(
+          fileData,
+          file.name,
+          file.type || 'application/octet-stream',
+          parsedMetadata,
+          env
+        );
+        
+        return this.jsonResponse({
+          success: true,
+          key: result.key,
+          url: result.url
+        });
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        return this.errorResponse('Failed to upload file', 500);
+      }
+    }
+    
+    // Delete file - requires authentication
+    if (path.match(/^\/api\/files\/[^/]+/) && request.method === 'DELETE') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      try {
+        const fileKey = path.replace('/api/files/', '');
+        
+        // TODO: Check file ownership before deleting
+        
+        const success = await this.fileHandler.deleteFile(fileKey, env);
+        
+        if (!success) {
+          return this.errorResponse('Failed to delete file', 500);
+        }
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error deleting file:', error);
+        return this.errorResponse('Failed to delete file', 500);
+      }
+    }
+    
     return this.notFoundResponse();
   }
   
@@ -1583,9 +2083,365 @@ export class Router {
   /**
    * Handle association routes
    */
-  private async handleAssociationRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
-    // Implement association routes
+  private async handleAssociationRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Get authenticated user for permissions
+    const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+    
+    // Check if authenticated
+    if (!authenticatedUserId) {
+      return this.errorResponse('Authentication required', 401);
+    }
+    
+    // Handle connection routes
+    if (path.startsWith('/api/connections/')) {
+      return this.handleConnectionRoutes(request, env, path, authenticatedUserId);
+    }
+    
+    // Implement other association routes here
+    
     return this.notFoundResponse();
+  }
+  
+  /**
+   * Handle connection routes
+   */
+  private async handleConnectionRoutes(request: Request, env: Env, path: string, userId: string): Promise<Response> {
+    // Create connection request
+    if (path === '/api/connections/request' && request.method === 'POST') {
+      try {
+        const { userId: targetUserId, connectionType, message } = await request.json() as {
+          userId: string;
+          connectionType: 'mutual' | 'follow' | 'lurk';
+          message?: string;
+        };
+        
+        if (!targetUserId) {
+          return this.errorResponse('Target user ID is required');
+        }
+        
+        if (!['mutual', 'follow', 'lurk'].includes(connectionType)) {
+          return this.errorResponse('Invalid connection type');
+        }
+        
+        // Check if connection already exists
+        const existingConnection = await this.getConnection(userId, targetUserId, env);
+        
+        if (existingConnection) {
+          return this.errorResponse('Connection already exists', 400);
+        }
+        
+        // Create the connection request
+        const status = connectionType === 'mutual' ? 'pending' : 'accepted';
+        const timestamp = Date.now();
+        
+        const query = `
+          INSERT INTO connections (
+            id,
+            user_id,
+            connected_user_id,
+            type,
+            status,
+            message,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const connectionId = crypto.randomUUID();
+        
+        await env.R3L_DB.prepare(query).bind(
+          connectionId,
+          userId,
+          targetUserId,
+          connectionType,
+          status,
+          message || '',
+          timestamp,
+          timestamp
+        ).run();
+        
+        // If mutual connection, create notification for target user
+        if (connectionType === 'mutual') {
+          // Create notification for target user
+          await this.notificationHandler.createNotification(
+            targetUserId,
+            'connection',
+            `New connection request`,
+            `${userId} has sent you a connection request`,
+            JSON.stringify({ userId, connectionId }),
+            env
+          );
+        }
+        
+        return this.jsonResponse({
+          success: true,
+          id: connectionId,
+          status
+        });
+      } catch (error) {
+        console.error('Error creating connection request:', error);
+        return this.errorResponse('Failed to create connection request');
+      }
+    }
+    
+    // Accept connection request
+    if (path.match(/^\/api\/connections\/request\/[^/]+\/accept$/) && request.method === 'POST') {
+      try {
+        const requestUserId = path.split('/')[3];
+        
+        // Find the connection request
+        const query = `
+          SELECT * FROM connections
+          WHERE user_id = ? AND connected_user_id = ? AND status = 'pending'
+        `;
+        
+        const result = await env.R3L_DB.prepare(query)
+          .bind(requestUserId, userId)
+          .first();
+        
+        if (!result) {
+          return this.errorResponse('Connection request not found', 404);
+        }
+        
+        // Update the connection status
+        const updateQuery = `
+          UPDATE connections
+          SET status = 'accepted', updated_at = ?
+          WHERE user_id = ? AND connected_user_id = ?
+        `;
+        
+        await env.R3L_DB.prepare(updateQuery)
+          .bind(Date.now(), requestUserId, userId)
+          .run();
+        
+        // Create notification for the request sender
+        await this.notificationHandler.createNotification(
+          requestUserId,
+          'connection',
+          `Connection request accepted`,
+          `${userId} has accepted your connection request`,
+          JSON.stringify({ userId }),
+          env
+        );
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error accepting connection request:', error);
+        return this.errorResponse('Failed to accept connection request');
+      }
+    }
+    
+    // Decline connection request
+    if (path.match(/^\/api\/connections\/request\/[^/]+\/decline$/) && request.method === 'POST') {
+      try {
+        const requestUserId = path.split('/')[3];
+        
+        // Find the connection request
+        const query = `
+          DELETE FROM connections
+          WHERE user_id = ? AND connected_user_id = ? AND status = 'pending'
+        `;
+        
+        await env.R3L_DB.prepare(query)
+          .bind(requestUserId, userId)
+          .run();
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error declining connection request:', error);
+        return this.errorResponse('Failed to decline connection request');
+      }
+    }
+    
+    // Get all connections
+    if (path === '/api/connections' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const type = url.searchParams.get('type') || 'all';
+        const status = url.searchParams.get('status') || 'accepted';
+        
+        let query = `
+          SELECT 
+            c.*,
+            u.username as connected_username,
+            u.display_name as connected_display_name,
+            u.avatar_url as connected_avatar_url
+          FROM connections c
+          JOIN users u ON 
+            CASE
+              WHEN c.user_id = ? THEN u.id = c.connected_user_id
+              WHEN c.connected_user_id = ? THEN u.id = c.user_id
+            END
+          WHERE 
+            (c.user_id = ? OR c.connected_user_id = ?)
+        `;
+        
+        const params = [userId, userId, userId, userId];
+        
+        // Filter by type
+        if (type !== 'all') {
+          query += ' AND c.type = ?';
+          params.push(type);
+        }
+        
+        // Filter by status
+        if (status !== 'all') {
+          query += ' AND c.status = ?';
+          params.push(status);
+        }
+        
+        query += ' ORDER BY c.updated_at DESC';
+        
+        const result = await env.R3L_DB.prepare(query)
+          .bind(...params)
+          .all();
+        
+        const connections = result.results || [];
+        
+        // Transform connections to include direction
+        const transformedConnections = connections.map((conn: any) => {
+          const isOutgoing = conn.user_id === userId;
+          return {
+            id: conn.id,
+            type: conn.type,
+            status: conn.status,
+            message: conn.message,
+            createdAt: conn.created_at,
+            updatedAt: conn.updated_at,
+            isOutgoing,
+            otherUserId: isOutgoing ? conn.connected_user_id : conn.user_id,
+            otherUser: {
+              id: isOutgoing ? conn.connected_user_id : conn.user_id,
+              username: conn.connected_username,
+              displayName: conn.connected_display_name,
+              avatarUrl: conn.connected_avatar_url
+            }
+          };
+        });
+        
+        return this.jsonResponse(transformedConnections);
+      } catch (error) {
+        console.error('Error fetching connections:', error);
+        return this.errorResponse('Failed to fetch connections');
+      }
+    }
+    
+    // Get connection with specific user
+    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'GET') {
+      try {
+        const otherUserId = path.split('/').pop() as string;
+        
+        const connection = await this.getConnection(userId, otherUserId, env);
+        
+        if (!connection) {
+          return this.jsonResponse({ exists: false });
+        }
+        
+        return this.jsonResponse({
+          exists: true,
+          connection
+        });
+      } catch (error) {
+        console.error('Error fetching connection:', error);
+        return this.errorResponse('Failed to fetch connection');
+      }
+    }
+    
+    // Remove connection
+    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
+      try {
+        const otherUserId = path.split('/').pop() as string;
+        
+        // Delete the connection
+        const query = `
+          DELETE FROM connections
+          WHERE 
+            (user_id = ? AND connected_user_id = ?) OR
+            (user_id = ? AND connected_user_id = ?)
+        `;
+        
+        await env.R3L_DB.prepare(query)
+          .bind(userId, otherUserId, otherUserId, userId)
+          .run();
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing connection:', error);
+        return this.errorResponse('Failed to remove connection');
+      }
+    }
+    
+    return this.notFoundResponse();
+  }
+  
+  /**
+   * Get connection between two users
+   */
+  private async getConnection(userId: string, otherUserId: string, env: Env): Promise<any | null> {
+    try {
+      const query = `
+        SELECT * FROM connections
+        WHERE 
+          (user_id = ? AND connected_user_id = ?) OR
+          (user_id = ? AND connected_user_id = ?)
+      `;
+      
+      const result = await env.R3L_DB.prepare(query)
+        .bind(userId, otherUserId, otherUserId, userId)
+        .first();
+      
+      if (!result) {
+        return null;
+      }
+      
+      const connection = result as any;
+      const isOutgoing = connection.user_id === userId;
+      
+      return {
+        id: connection.id,
+        type: connection.type,
+        status: connection.status,
+        message: connection.message,
+        createdAt: connection.created_at,
+        updatedAt: connection.updated_at,
+        isOutgoing
+      };
+    } catch (error) {
+      console.error('Error getting connection:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * Get connection status between authenticated user and another user
+   */
+  private async getUserConnectionStatus(userId: string, otherUserId: string, env: Env): Promise<string> {
+    try {
+      const connection = await this.getConnection(userId, otherUserId, env);
+      
+      if (!connection) {
+        return 'none';
+      }
+      
+      if (connection.status === 'pending') {
+        return connection.isOutgoing ? 'pending_outgoing' : 'pending_incoming';
+      }
+      
+      if (connection.status === 'accepted') {
+        if (connection.type === 'mutual') {
+          return 'mutual';
+        } else if (connection.type === 'follow') {
+          return connection.isOutgoing ? 'following' : 'followed_by';
+        } else if (connection.type === 'lurk') {
+          return connection.isOutgoing ? 'lurking' : 'lurked_by';
+        }
+      }
+      
+      return 'none';
+    } catch (error) {
+      console.error('Error getting connection status:', error);
+      return 'none';
+    }
   }
   
   /**

@@ -1,22 +1,36 @@
-# R3L:F - Research Ecosystem for Living Futures
+# R3L:F - Relational Ephemeral Filenet
 
-R3L:F is an anti-algorithmic, ephemeral, user-controlled, privacy-first file-sharing platform.
+R3L:F is a decentralized, ephemeral, anti-algorithmic social file-sharing platform that prioritizes user control, organic discovery, and community-driven archiving.
 
 ## Core Philosophy
 
-- **Anti-algorithmic**: Content discovery is based on direct connections and explicit user actions
-- **Ephemeral by default**: Content expires after 7 days unless explicitly preserved by uploader (user), or by voting - see Community-driven archiving.
-- **User-controlled**: Users have full control over their content and connections
+- **Relational**: Users are connected visually in an association web but only through explicit, mutually agreed relationships
+- **Ephemeral by default**: Content expires after 7 days unless explicitly preserved through personal or community archiving
+- **User-controlled**: Users have full control over their content, connections, and visibility
 - **Privacy-focused**: Uses privacy-respecting technologies throughout the stack
 - **Community-driven archiving**: Important content can be preserved through explicit voting
+- **Anti-algorithmic**: No engagement optimization or content ranking - pure user-controlled discovery
+
+## Key Features
+
+- **Personal Archive ("Drawer") & Communique**: Customizable public profile with themeable interface
+- **File & Archive System**: Upload and share any file format with natural expiration cycle
+- **Avatar Management**: Upload custom profile images or use default icons
+- **Association Web**: D3.js visualization of user connections with degrees of separation
+- **Lurker in the Mist Mode**: Low-visibility status for privacy-conscious browsing
+- **Inbox & Notifications**: Centralized system for messages, alerts, and connection prompts
+- **Search & Discovery**: Non-algorithmic content discovery through multiple criteria
+- **Real-time Messaging**: Secure direct messaging with end-to-end encryption
+- **Community Archiving**: Democratic content preservation through voting
+- **HTML/CSS Customization**: Safe content embedding and styling in communiques
 
 ## Technology Stack
 
-- **Backend**: Cloudflare Workers, D1, R2, KV, Durable Objects, OpenAuth
+- **Backend**: Cloudflare Workers, D1, R2, KV, Durable Objects
 - **Frontend**: HTML, CSS, JavaScript with consolidated global styling
 - **Fonts**: Bunny Fonts (privacy-respecting alternative to Google Fonts)
-- **Visualization**: D3.js for Association Web
-- **Authentication**: GitHub and ORCID OAuth via OpenAuth
+- **Visualization**: D3.js for Association Web and geographic mapping
+- **Authentication**: JWT-based secure authentication with recovery keys
 
 ## Deployment
 
@@ -36,41 +50,48 @@ This project is designed to be deployed to Cloudflare Workers. All file paths ar
 4. Set up required secrets (DO NOT add these to your code or wrangler.jsonc):
    ```
    wrangler secret put R3L_APP_SECRET
-   wrangler secret put GITHUB_CLIENT_ID
-   wrangler secret put GITHUB_CLIENT_SECRET
-   wrangler secret put ORCID_CLIENT_ID
-   wrangler secret put ORCID_CLIENT_SECRET
-   wrangler secret put R3L_ADMIN_ORCID_ID
    wrangler secret put CLOUDFLARE_ACCOUNT_ID
    ```
-5. Deploy with OpenAuth integration:
-   ```
-   ./deploy-openauth.sh
-   ```
-   
-   Or deploy manually with these steps:
+
+5. Deploy with these steps:
    
    a. Deploy the database migrations:
    ```
    # Apply migrations to the main database
    ./migrations/apply-migrations.sh
-   
-   # Apply migrations to the auth database
-   ./setup-auth.sh
    ```
    
-   b. Deploy the auth server:
-   ```
-   npx wrangler deploy --config wrangler.auth.jsonc
-   ```
-   
-   c. Set up service binding:
-   ```
-   ./setup-service-binding.sh
-   ```
-   
-   d. Deploy the main application:
+   b. Deploy the main application:
    ```
    npm run build
    npm run deploy
    ```
+
+## Project Structure
+
+The project follows a modular architecture:
+
+- `public/`: Frontend assets (HTML, CSS, JS)
+- `src/`: Backend code (TypeScript)
+  - `handlers/`: Request handlers for different features
+  - `core/`: Core functionality and utilities
+  - `types/`: TypeScript type definitions
+- `migrations/`: Database schema and migrations
+
+## Documentation
+
+- [Project Documentation](./project-documentation.md): Detailed technical documentation
+- [Help & FAQ](./public/help.html): Comprehensive user guide and frequently asked questions
+- [Philosophy & Motivation](./public/reMDE.md): In-depth explanation of project principles
+
+## Contributing
+
+Contributions are welcome if they align with the guiding principles:
+- No engagement optimization
+- No corporate/capitalist manipulation
+- Minimalist, user-controlled interactions
+- Privacy-first, ephemeral but intentional
+
+## License
+
+&copy; 2025 R3L:F Project - All Rights Reserved

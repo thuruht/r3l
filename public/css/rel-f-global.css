@@ -863,20 +863,14 @@ section:has(h2:contains("Core Concepts")) .file-grid {
 }
 
 .user-avatar {
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: var(--accent-purple);
-}
-
-.avatar-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .user-name {
@@ -895,7 +889,7 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
   padding: var(--space-2) 0;
-  z-index: var(--z-dropdown);
+  z-index: 100; /* Increased z-index to be higher than hero overlay */
   display: none;
   border: 1px solid var(--border-primary);
 }
@@ -1276,6 +1270,41 @@ hr {
 
 .archive-button .material-icons {
   font-size: 18px;
+}
+
+/* Avatar styles */
+#user-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-lavender);
+  box-shadow: 0 0 8px rgba(162, 120, 255, 0.6);
+}
+
+.avatar-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--accent-lavender);
+}
+
+.avatar-medium {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-lavender);
+}
+
+.avatar-large {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-lavender);
+  box-shadow: 0 0 8px rgba(162, 120, 255, 0.6);
 }
 
 /* Utility classes */

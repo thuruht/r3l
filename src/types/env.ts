@@ -2,28 +2,44 @@
 import type { D1Database as CloudflareD1Database, Fetcher } from '@cloudflare/workers-types';
 
 export interface Env {
-  R3L_DB: ExtendedD1Database;
-  R3L_USER_EMBEDDINGS: KVNamespace;
-  R3L_AI: AI;
-  R3L_KV: KVNamespace;
+  // Define environment variables
+  WRANGLER_CLIENT_ID?: string;
+  WRANGLER_CLIENT_SECRET?: string;
+  ORCID_CLIENT_ID?: string;
+  ORCID_CLIENT_SECRET?: string;
+  ORCID_REDIRECT_URI?: string;
+  R3L_APP_SECRET?: string;
+  JWT_SECRET?: string;
+  
+  // Define KV namespace bindings
+  R3L_USERS: KVNamespace;
   R3L_SESSIONS: KVNamespace;
-  R3L_COLLABORATION: DurableObjectNamespace;
+  R3L_USER_EMBEDDINGS: KVNamespace;
+  R3L_KV: KVNamespace;
+  
+  // Define Durable Object bindings
   R3L_CONNECTIONS: DurableObjectNamespace;
   R3L_VISUALIZATION: DurableObjectNamespace;
+  R3L_COLLABORATION: DurableObjectNamespace;
+  
+  // Define R2 bucket bindings
   R3L_CONTENT_BUCKET: R2Bucket;
-  R3L_ADMIN_ORCID_ID: string;
-  ORCID_CLIENT_ID: string;
-  ORCID_CLIENT_SECRET: string;
-  ORCID_REDIRECT_URI: string;
-  GITHUB_CLIENT_ID: string;
-  GITHUB_CLIENT_SECRET: string;
-  GITHUB_REDIRECT_URI: string;
-  REALTIME_API_TOKEN: string;
-  CLOUDFLARE_ACCOUNT_ID: string;
-  JWT_SECRET: string;
-  ASSETS: {
-    fetch(request: Request): Promise<Response>;
-  };
+  
+  // Define D1 database binding
+  R3L_DB: D1Database;
+  
+  // Define Workers AI binding
+  R3L_AI: AI;
+  
+  // Define static asset binding
+  ASSETS: Fetcher;
+}
+
+// Custom type for file uploads to help with TypeScript checking
+export interface FileUpload {
+  name: string;
+  type: string;
+  arrayBuffer(): Promise<ArrayBuffer>;
 }
 
 // R2 bucket interface

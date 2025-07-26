@@ -194,7 +194,7 @@
       <div class="drawer-header">
         <div class="flex gap-4 items-center">
           <div class="drawer-icon">
-            <span class="material-icons" style="font-size: 48px;">account_circle</span>
+            <img id="user-avatar" src="./icons/user-default.svg" alt="User avatar" class="avatar-large">
           </div>
           <div>
             <h2 id="user-name">Username</h2>
@@ -647,6 +647,16 @@
           formatDate(userData.created_at) : 
           'Recently';
         userJoined.textContent = joinedDate;
+        
+        // Set avatar if available
+        const userAvatar = document.getElementById('user-avatar');
+        if (userData.avatar_url) {
+          userAvatar.src = userData.avatar_url;
+        } else if (userData.avatar_key) {
+          userAvatar.src = `/api/files/${userData.avatar_key}`;
+        } else {
+          userAvatar.src = './icons/user-default.svg';
+        }
         
         // Set communique if available
         if (userData.preferences && userData.preferences.communique) {

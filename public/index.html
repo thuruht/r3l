@@ -14,6 +14,7 @@
       height: 70vh;
       min-height: 500px;
       margin-bottom: var(--space-8);
+      margin-top: var(--space-8); /* Add margin to push hero below navbar */
       background-color: var(--bg-deep);
       border-radius: var(--radius-lg);
       overflow: hidden;
@@ -34,7 +35,7 @@
       padding: var(--space-8);
       background: linear-gradient(to bottom, rgba(14, 31, 28, 0.7), rgba(14, 31, 28, 0.95));
       text-align: center;
-      z-index: 10;
+      z-index: 5; /* Reduce z-index so dropdown menus can appear above */
     }
     
     .hero-title {
@@ -195,7 +196,7 @@
           R3L:F
         </h1>
         <p class="hero-subtitle">
-          A decentralized, ephemeral, anti-algorithmic social file-sharing platform where you control your connections and content lifecycle.
+          A decentralized, ephemeral, anti-algorithmic social file-sharing platform where you control your connections and content lifecycle. No engagement optimization, no corporate manipulation, just intentional sharing and meaningful connections.
         </p>
         
         <div class="hero-actions">
@@ -206,6 +207,10 @@
           <a href="network.html" class="btn btn-secondary hero-btn">
             <span class="material-icons">hub</span>
             Explore the Network
+          </a>
+          <a href="help.html" class="btn btn-secondary hero-btn">
+            <span class="material-icons">help_outline</span>
+            Learn More
           </a>
         </div>
       </div>
@@ -276,6 +281,10 @@
         <a href="random.html" class="btn btn-secondary">
           <span class="material-icons">shuffle</span>
           Random Communique
+        </a>
+        <a href="help.html" class="btn btn-secondary">
+          <span class="material-icons">help_outline</span>
+          Help & FAQ
         </a>
       </div>
     </div>

@@ -672,6 +672,21 @@ export class Router {
     // Get authenticated user first
     const authenticatedUserId = await this.getAuthenticatedUser(request, env);
     
+    // Get current user profile
+    if (path === '/api/users/me' && request.method === 'GET') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      
+      const user = await this.userHandler.getUser(authenticatedUserId, env);
+      
+      if (!user) {
+        return this.errorResponse('User not found', 404);
+      }
+      
+      return this.jsonResponse(user);
+    }
+    
     // Get user profile
     if (path.match(/^\/api\/users\/[^/]+$/) && request.method === 'GET') {
       const userId = path.split('/').pop() as string;
@@ -879,6 +894,35 @@ export class Router {
       } catch (error) {
         console.error('Error creating content:', error);
         return this.errorResponse('Failed to create content');
+      }
+    }
+    
+    // Get content tags
+    if (path.match(/^\/api\/content\/[^/]+\/tags$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      
+      try {
+        const query = `
+          SELECT t.id, t.name
+          FROM tags t
+          JOIN content_tags ct ON t.id = ct.tag_id
+          WHERE ct.content_id = ?
+          ORDER BY t.name ASC
+        `;
+        
+        const result = await env.R3L_DB.prepare(query)
+          .bind(contentId)
+          .all();
+        
+        const tags = result.results || [];
+        
+        return this.jsonResponse({
+          contentId,
+          tags
+        });
+      } catch (error) {
+        console.error('Error fetching content tags:', error);
+        return this.errorResponse('Failed to fetch content tags');
       }
     }
     
@@ -2130,6 +2174,220 @@ export class Router {
           return this.errorResponse('Connection already exists', 400);
         }
         
+        // Create a new connection request
+        const status = connectionType === 'mutual' ? 'pending' : 'accepted';
+        
+        const query = `
+          INSERT INTO connections (
+            user_id,
+            connected_user_id,
+            type,
+            status,
+            message,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        const now = Date.now();
+        
+        await env.R3L_DB.prepare(query).bind(
+          userId,
+          targetUserId,
+          connectionType,
+          status,
+          message || '',
+          now,
+          now
+        ).run();
+        
+        // If it's a mutual connection, send a notification to the target user
+        if (connectionType === 'mutual') {
+          await this.notificationHandler.createNotification(
+            targetUserId,
+            userId,
+            'connection_request',
+            message || 'Connection request',
+            env
+          );
+        }
+        
+        return this.jsonResponse({
+          success: true,
+          connectionType,
+          status
+        });
+      } catch (error) {
+        console.error('Error creating connection request:', error);
+        return this.errorResponse('Failed to create connection request');
+      }
+    }
+    // Respond to connection request
+    if (path.match(/^\/api\/connections\/[^/]+\/respond$/) && request.method === 'POST') {
+      try {
+        const otherUserId = path.split('/')[3];
+        const { response } = await request.json() as { response: 'accept' | 'reject' };
+        
+        if (!['accept', 'reject'].includes(response)) {
+          return this.errorResponse('Invalid response type');
+        }
+        
+        // Get the connection
+        const connection = await this.getConnection(otherUserId, userId, env);
+        
+        if (!connection) {
+          return this.errorResponse('Connection request not found');
+        }
+        
+        if (connection.status !== 'pending') {
+          return this.errorResponse('Connection is not pending');
+        }
+        
+        // Update the connection status
+        const status = response === 'accept' ? 'accepted' : 'rejected';
+        const query = `
+          UPDATE connections
+          SET status = ?, updated_at = ?
+          WHERE 
+            (user_id = ? AND connected_user_id = ?) OR
+            (user_id = ? AND connected_user_id = ?)
+        `;
+        
+        await env.R3L_DB.prepare(query)
+          .bind(status, Date.now(), otherUserId, userId, userId, otherUserId)
+          .run();
+        
+        // Send notification to the requester
+        await this.notificationHandler.createNotification(
+          otherUserId,
+          userId,
+          response === 'accept' ? 'connection_accepted' : 'connection_rejected',
+          response === 'accept' ? 'Connection request accepted' : 'Connection request rejected',
+          env
+        );
+        
+        return this.jsonResponse({
+          success: true,
+          status
+        });
+      } catch (error) {
+        console.error('Error responding to connection request:', error);
+        return this.errorResponse('Failed to respond to connection request');
+      }
+    }
+    
+    // Get connection
+    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'GET') {
+      try {
+        const otherUserId = path.split('/').pop() as string;
+        
+        // Get the connection
+        const connection = await this.getConnection(userId, otherUserId, env);
+        
+        if (!connection) {
+          return this.jsonResponse({ exists: false });
+        }
+        
+        return this.jsonResponse({
+          exists: true,
+          connection
+        });
+      } catch (error) {
+        console.error('Error fetching connection:', error);
+        return this.errorResponse('Failed to fetch connection');
+      }
+    }
+    
+    // Get connection network data
+    if (path === '/api/connections/network' && request.method === 'GET') {
+      try {
+        // Fetch a network of connections within 2 degrees of separation
+        const query = `
+          WITH user_connections AS (
+            -- Direct connections of the user
+            SELECT 
+              user_id, 
+              connected_user_id,
+              'direct' as connection_type,
+              created_at
+            FROM connections
+            WHERE 
+              (user_id = ? OR connected_user_id = ?) 
+              AND status = 'accepted' 
+              AND type = 'mutual'
+            
+            UNION
+            
+            -- Second-degree connections (connections of connections)
+            SELECT 
+              c2.user_id,
+              c2.connected_user_id,
+              'second-degree' as connection_type,
+              c2.created_at
+            FROM connections c1
+            JOIN connections c2 ON 
+              (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id OR
+               c1.user_id = c2.user_id OR c1.user_id = c2.connected_user_id)
+            WHERE 
+              ((c1.user_id = ? OR c1.connected_user_id = ?) AND
+               c1.user_id != c2.user_id AND
+               c1.user_id != c2.connected_user_id AND
+               c1.connected_user_id != c2.user_id AND
+               c1.connected_user_id != c2.connected_user_id)
+              AND c1.status = 'accepted' 
+              AND c1.type = 'mutual'
+              AND c2.status = 'accepted'
+              AND c2.type = 'mutual'
+          )
+          SELECT DISTINCT
+            user_id,
+            connected_user_id,
+            connection_type,
+            created_at
+          FROM user_connections
+          ORDER BY created_at DESC
+          LIMIT 100
+        `;
+        
+        const result = await env.R3L_DB.prepare(query)
+          .bind(userId, userId, userId, userId)
+          .all();
+        
+        const connections = result.results || [];
+        
+        return this.jsonResponse({
+          connections
+        });
+      } catch (error) {
+        console.error('Error fetching connection network:', error);
+        return this.errorResponse('Failed to fetch connection network');
+      }
+    }
+    
+    // Remove connection
+    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
+      try {
+        const otherUserId = path.split('/').pop() as string;
+        
+        // Delete the connection
+        const query = `
+          DELETE FROM connections
+          WHERE 
+            (user_id = ? AND connected_user_id = ?) OR
+            (user_id = ? AND connected_user_id = ?)
+        `;
+        
+        await env.R3L_DB.prepare(query)
+          .bind(userId, otherUserId, otherUserId, userId)
+          .run();
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing connection:', error);
+        return this.errorResponse('Failed to remove connection');
+      }
+    }
+        
         // Create the connection request
         const status = connectionType === 'mutual' ? 'pending' : 'accepted';
         const timestamp = Date.now();
@@ -2596,6 +2854,67 @@ export class Router {
       } catch (error) {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
+      }
+    }
+    
+    // Tag search
+    if (path === '/api/search/tags' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit') || '15');
+        
+        // Get authenticated user for permissions
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+        
+        let sql = `
+          SELECT 
+            t.id,
+            t.name,
+            COUNT(ct.content_id) as count
+          FROM tags t
+          LEFT JOIN content_tags ct ON t.id = ct.tag_id
+        `;
+        
+        const params = [];
+        
+        // If there's a search query
+        if (query) {
+          sql += ` WHERE t.name LIKE ? `;
+          params.push(`%${query}%`);
+        }
+        
+        // If not authenticated, only include public content
+        if (!authenticatedUserId) {
+          sql += params.length > 0 ? ' AND ' : ' WHERE ';
+          sql += `
+            (ct.content_id IS NULL OR EXISTS (
+              SELECT 1 FROM content c 
+              WHERE c.id = ct.content_id AND c.visibility = 'public'
+            ))
+          `;
+        }
+        
+        // Group by tag and sort by usage count
+        sql += `
+          GROUP BY t.id, t.name
+          ORDER BY count DESC, t.name ASC
+          LIMIT ?
+        `;
+        
+        params.push(limit);
+        
+        const result = await env.R3L_DB.prepare(sql).bind(...params).all();
+        const tags = result.results || [];
+        
+        return this.jsonResponse({
+          query,
+          tags,
+          total: tags.length
+        });
+      } catch (error) {
+        console.error('Error performing tag search:', error);
+        return this.errorResponse('Failed to perform tag search');
       }
     }
     

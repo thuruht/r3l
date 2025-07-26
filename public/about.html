@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About R3L:F</title>
+  <link rel="stylesheet" href="./css/rel-f-global.css">
+  <link rel="stylesheet" href="./css/rel-f-accent.css">
+  <script src="./js/font-loader.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>
+      <span class="material-icons" aria-hidden="true">info</span>
+      About R3L:F
+    </h1>
+
+    <section class="card">
+      <h2>Project Philosophy</h2>
+      <p>R3L:F (Relational Ephemeral Filenet) is an anti-algorithmic social file-sharing platform designed to put human connection back at the center of online interaction. We prioritize intentional sharing over algorithmic optimization, meaningful connections over viral engagement, and user control over corporate manipulation.</p>
+      
+      <p>Our approach stands in contrast to traditional social networks by:</p>
+      <ul>
+        <li>Making content ephemeral by default to keep communities fresh and relevant</li>
+        <li>Using explicit, mutual connections rather than one-sided follows</li>
+        <li>Prioritizing file sharing as the foundation of interaction</li>
+        <li>Ensuring chronological ordering and user-controlled filtering instead of engagement-optimized feeds</li>
+        <li>Visualizing connections in an intuitive association web</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>Core Concepts</h2>
+      
+      <div class="grid-cols-3">
+        <div class="card card-alt">
+          <h3>Relational</h3>
+          <p>The "R" in R3L:F stands for the relationship-centered approach. Users connect through explicit, mutually agreed relationships rather than one-sided follows. These connections are visualized in the association web, showing the strength and nature of relationships.</p>
+        </div>
+        
+        <div class="card card-alt">
+          <h3>Ephemeral</h3>
+          <p>The "E" in R3L:F represents the ephemeral nature of content. By default, content expires after 7 days unless it's archived by community consensus. This ensures that the platform remains fresh and relevant, rather than accumulating forgotten content indefinitely.</p>
+        </div>
+        
+        <div class="card card-alt">
+          <h3>Filenet</h3>
+          <p>The "F" in R3L:F stands for Filenet - a social network where files (documents, images, audio, video, and creative works) are the foundation of interaction. Content is the focus, not likes or shallow engagement metrics.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Project History</h2>
+      <p>R3L:F was conceived as an alternative to algorithm-driven social platforms that optimize for engagement at the expense of user well-being and meaningful connection. The project began as a proof of concept exploring how social platforms might be designed differently if they prioritized human connection over algorithmic optimization.</p>
+      
+      <p>The first prototype was developed in mid-2024, with a focus on creating a minimalist interface that emphasized file sharing and direct connection. The current version represents an evolution of those early ideas, with enhanced features for visualization, ephemeral content management, and community archiving.</p>
+    </section>
+
+    <section class="card">
+      <h2>Technology Stack</h2>
+      <p>R3L:F is built using modern web technologies with a focus on performance, security, and scalability:</p>
+      
+      <ul>
+        <li><strong>Frontend:</strong> HTML, CSS, JavaScript (Vanilla)</li>
+        <li><strong>Backend:</strong> Cloudflare Workers (Edge computing)</li>
+        <li><strong>Database:</strong> Cloudflare D1 (SQLite at the edge)</li>
+        <li><strong>File Storage:</strong> Cloudflare R2 (S3-compatible object storage)</li>
+        <li><strong>Real-time Features:</strong> Cloudflare Durable Objects</li>
+        <li><strong>Visualization:</strong> D3.js for association web</li>
+        <li><strong>Maps:</strong> Leaflet.js for geographic visualization</li>
+      </ul>
+      
+      <p>The platform is designed to be lightweight and efficient, with most processing happening at the edge to ensure low latency and high availability worldwide.</p>
+    </section>
+
+    <section class="card" id="developer-info">
+      <h2>Developer Information</h2>
+      <!-- This section is left intentionally minimal for the user to add their own information by hand -->
+      <div class="developer-placeholder">
+        <p>Developer information will be added here.</p>
+        <p><em>This space is reserved for developers to add their own information and links.</em></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Future Roadmap</h2>
+      <p>R3L:F is under active development with several exciting features planned for future releases:</p>
+      
+      <ul>
+        <li>Enhanced content archiving with community voting mechanisms</li>
+        <li>Improved file type support and preview capabilities</li>
+        <li>Advanced privacy controls and granular sharing options</li>
+        <li>Enhanced association web with thematic clustering</li>
+        <li>Additional customization options for communiques</li>
+        <li>Mobile applications for iOS and Android</li>
+      </ul>
+      
+      <p>We're committed to maintaining the core philosophy of the platform while expanding its capabilities to meet the needs of our community.</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto text-accent">"the rel is what you make it"</p>
+    <div class="footer-links">
+      <a href="index.html">Home</a> | 
+      <a href="help.html">Help</a> | 
+      <a href="about.html">About</a> | 
+      <a href="sitemap.html">Site Map</a>
+    </div>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Initialize the navigation bar
+      NavigationBar.init('about');
+    });
+  </script>
+</body>
+</html>

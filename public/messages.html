@@ -997,7 +997,8 @@
             throw new Error('Failed to search users');
           }
           
-          const users = await response.json();
+          const data = await response.json();
+          const users = data.users || [];
           
           if (users.length === 0) {
             searchResults.innerHTML = `

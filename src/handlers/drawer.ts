@@ -183,8 +183,8 @@ export class DrawerHandler {
         FROM users u
         JOIN content c ON u.id = c.user_id
         WHERE c.is_public = 1 
-        AND JSON_EXTRACT(u.preferences, '$.lurker_mode') IS NULL
-        OR JSON_EXTRACT(u.preferences, '$.lurker_mode') = 0
+        AND (JSON_EXTRACT(u.preferences, '$.lurker_mode') IS NULL
+        OR JSON_EXTRACT(u.preferences, '$.lurker_mode') = 0)
         GROUP BY u.id
         ORDER BY RANDOM()
         LIMIT 1

@@ -401,12 +401,17 @@
           
           // Prepare API endpoints
           let contentEndpoint = '/api/search?limit=30';
-          let usersEndpoint = '/api/users?limit=10';
+          let usersEndpoint = '/api/users?limit=20';
           let tagsEndpoint = '/api/search/tags?limit=15';
           
           // Fetch data in parallel
-          const [contentResponse, tagsResponse] = await Promise.all([
+          const [contentResponse, usersResponse, tagsResponse] = await Promise.all([
             fetch(contentEndpoint, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin'
+            }),
+            fetch(usersEndpoint, {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'same-origin'
@@ -418,12 +423,17 @@
             })
           ]);
           
-          if (!contentResponse.ok || !tagsResponse.ok) {
+          if (!contentResponse.ok || !tagsResponse.ok || (isAuthenticated && !usersResponse.ok)) {
             throw new Error('API request failed');
           }
           
-          const content = await contentResponse.json();
-          const tags = await tagsResponse.json();
+          const contentData = await contentResponse.json();
+          const tagsData = await tagsResponse.json();
+          let userData = { users: [] };
+          
+          if (isAuthenticated && usersResponse.ok) {
+            userData = await usersResponse.json();
+          }
           
           // Create network data structure
           const networkData = {
@@ -432,6 +442,7 @@
           };
           
           // Process content/files
+          const content = contentData.results || [];
           const files = content.map(item => ({
             id: item.id,
             label: item.title || 'Untitled',
@@ -440,13 +451,14 @@
             created: item.created_at,
             expires: item.expires_at,
             isArchived: item.is_archived,
-            isSelf: isAuthenticated && item.user_id === 'user6' // Placeholder for actual user ID
+            isSelf: isAuthenticated && item.user_id === userData.currentUserId
           }));
           
           // Add files to nodes
           networkData.nodes.push(...files);
           
           // Process tags
+          const tags = tagsData.tags || [];
           const tagNodes = tags.map(tag => ({
             id: `tag-${tag.id || tag.name}`,
             label: tag.name,
@@ -457,20 +469,53 @@
           // Add tags to nodes
           networkData.nodes.push(...tagNodes);
           
-          // Get unique user IDs from content
-          const userIds = Array.from(new Set(files.map(file => file.creator)));
-          
-          // Create user nodes 
-          // Note: In a real implementation, we would fetch user details from API
-          const users = userIds.map(userId => ({
-            id: userId,
-            label: userId === 'user6' ? 'YOU' : `User-${userId.slice(0, 5)}`,
+          // Get users from API response
+          const users = userData.users || [];
+          const userNodes = users.map(user => ({
+            id: user.id,
+            label: user.display_name || user.username,
             type: 'user',
-            isSelf: userId === 'user6' // Placeholder for actual user ID
+            bio: user.bio,
+            avatar: user.avatar_url,
+            connectionCount: user.connection_count,
+            contentCount: user.content_count,
+            connectionStatus: user.connectionStatus,
+            isSelf: false
           }));
           
-          // Add users to nodes
-          networkData.nodes.push(...users);
+          // Get authenticated user if available
+          let currentUser = null;
+          if (isAuthenticated) {
+            try {
+              const currentUserResponse = await fetch('/api/users/me', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              });
+              
+              if (currentUserResponse.ok) {
+                const currentUserData = await currentUserResponse.json();
+                currentUser = {
+                  id: currentUserData.id,
+                  label: currentUserData.display_name || currentUserData.username,
+                  type: 'user',
+                  bio: currentUserData.bio,
+                  avatar: currentUserData.avatar_url,
+                  connectionCount: currentUserData.connection_count,
+                  contentCount: currentUserData.content_count,
+                  isSelf: true
+                };
+                
+                // Add current user to nodes
+                networkData.nodes.push(currentUser);
+              }
+            } catch (error) {
+              console.error('Error fetching current user:', error);
+            }
+          }
+          
+          // Add user nodes
+          networkData.nodes.push(...userNodes);
           
           // Create links between files and their creators
           files.forEach(file => {
@@ -483,38 +528,153 @@
           });
           
           // Create links between files and tags
-          // In a real implementation, we would fetch file-tag associations from API
-          // For now, we'll create some random associations
-          files.forEach(file => {
-            // Assign 1-3 random tags to each file
-            const numTags = Math.floor(Math.random() * 3) + 1;
-            const randomTags = tagNodes
-              .sort(() => 0.5 - Math.random())
-              .slice(0, numTags);
+          // Fetch content-tag associations or create random ones if not available
+          try {
+            for (const file of files) {
+              const fileTagsResponse = await fetch(`/api/content/${file.id}/tags`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              });
+              
+              if (fileTagsResponse.ok) {
+                const fileTagsData = await fileTagsResponse.json();
+                const fileTags = fileTagsData.tags || [];
+                
+                fileTags.forEach(tag => {
+                  const tagNode = tagNodes.find(t => t.label === tag.name);
+                  if (tagNode) {
+                    networkData.links.push({
+                      source: file.id,
+                      target: tagNode.id,
+                      type: 'tag',
+                      weight: 1
+                    });
+                  }
+                });
+              } else {
+                // Fallback to random tags if API fails
+                const numTags = Math.floor(Math.random() * 3) + 1;
+                const randomTags = tagNodes
+                  .sort(() => 0.5 - Math.random())
+                  .slice(0, numTags);
+                
+                randomTags.forEach(tag => {
+                  networkData.links.push({
+                    source: file.id,
+                    target: tag.id,
+                    type: 'tag',
+                    weight: 1
+                  });
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching file tags:', error);
             
-            randomTags.forEach(tag => {
-              networkData.links.push({
-                source: file.id,
-                target: tag.id,
-                type: 'tag',
-                weight: 1
+            // Fallback to random tags
+            files.forEach(file => {
+              const numTags = Math.floor(Math.random() * 3) + 1;
+              const randomTags = tagNodes
+                .sort(() => 0.5 - Math.random())
+                .slice(0, numTags);
+              
+              randomTags.forEach(tag => {
+                networkData.links.push({
+                  source: file.id,
+                  target: tag.id,
+                  type: 'tag',
+                  weight: 1
+                });
               });
             });
-          });
+          }
           
-          // Create connections between users
-          // In a real implementation, we would fetch user connections from API
-          // For now, we'll create some random connections
-          for (let i = 0; i < users.length; i++) {
-            for (let j = i + 1; j < users.length; j++) {
-              // Create a connection with 30% probability
-              if (Math.random() < 0.3) {
-                networkData.links.push({
-                  source: users[i].id,
-                  target: users[j].id,
-                  type: 'connection',
-                  weight: 2
+          // Create connections between users based on real connection data
+          if (isAuthenticated) {
+            try {
+              // Get connections for each user
+              for (const user of userNodes) {
+                if (user.connectionStatus && user.connectionStatus === 'accepted') {
+                  // If this user is connected to the current user
+                  if (currentUser) {
+                    networkData.links.push({
+                      source: currentUser.id,
+                      target: user.id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                }
+              }
+              
+              // Try to get connections between other users
+              const connectionsResponse = await fetch('/api/connections/network', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              });
+              
+              if (connectionsResponse.ok) {
+                const connectionsData = await connectionsResponse.json();
+                const connections = connectionsData.connections || [];
+                
+                connections.forEach(conn => {
+                  networkData.links.push({
+                    source: conn.user_id,
+                    target: conn.connected_user_id,
+                    type: 'connection',
+                    weight: 2
+                  });
                 });
+              } else {
+                // Fallback to some random connections between users
+                for (let i = 0; i < userNodes.length; i++) {
+                  for (let j = i + 1; j < userNodes.length; j++) {
+                    // Create a connection with 20% probability
+                    if (Math.random() < 0.2) {
+                      networkData.links.push({
+                        source: userNodes[i].id,
+                        target: userNodes[j].id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching connections:', error);
+              
+              // Fallback to random connections
+              for (let i = 0; i < userNodes.length; i++) {
+                for (let j = i + 1; j < userNodes.length; j++) {
+                  // Create a connection with 20% probability
+                  if (Math.random() < 0.2) {
+                    networkData.links.push({
+                      source: userNodes[i].id,
+                      target: userNodes[j].id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                }
+              }
+            }
+          } else {
+            // For non-authenticated users, create random connections
+            const allUsers = [...userNodes];
+            for (let i = 0; i < allUsers.length; i++) {
+              for (let j = i + 1; j < allUsers.length; j++) {
+                // Create a connection with 20% probability
+                if (Math.random() < 0.2) {
+                  networkData.links.push({
+                    source: allUsers[i].id,
+                    target: allUsers[j].id,
+                    type: 'connection',
+                    weight: 2
+                  });
+                }
               }
             }
           }

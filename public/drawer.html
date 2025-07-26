@@ -226,6 +226,13 @@
             <span class="material-icons">code</span>
           </button>
           <div class="flex-1"></div>
+          <div class="visibility-toggle">
+            <label for="communique-public" class="flex items-center gap-1">
+              <input type="checkbox" id="communique-public" checked>
+              <span class="material-icons" title="Public">visibility</span>
+              <span>Public</span>
+            </label>
+          </div>
           <button class="btn btn-small btn-secondary" id="save-communique" title="Save">
             <span class="material-icons">save</span> Save
           </button>
@@ -679,6 +686,12 @@
           communique.innerHTML = userData.preferences.communique;
         }
         
+        // Set communique visibility toggle
+        const communiquePublic = document.getElementById('communique-public');
+        if (userData.preferences && userData.preferences.communique_public !== undefined) {
+          communiquePublic.checked = userData.preferences.communique_public;
+        }
+        
         // Set lurker mode if available
         if (userData.preferences && userData.preferences.lurker_mode !== undefined) {
           lurkerMode.checked = userData.preferences.lurker_mode;
@@ -754,6 +767,8 @@
         if (!userData) return;
         
         try {
+          const isPublic = document.getElementById('communique-public').checked;
+          
           const response = await fetch(`/api/users/${userData.id}/preferences`, {
             method: 'PATCH',
             headers: {
@@ -761,7 +776,8 @@
             },
             credentials: 'include',
             body: JSON.stringify({
-              communique: communique.innerHTML
+              communique: communique.innerHTML,
+              communique_public: isPublic
             })
           });
           

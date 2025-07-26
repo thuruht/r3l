@@ -775,7 +775,7 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   color: var(--text-primary);
 }
 
-  /* Navigation */
+/* Navigation */
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -843,6 +843,65 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   font-weight: 600;
 }
 
+/* Dropdown navigation */
+.dropdown-container {
+  position: relative;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+.dropdown-toggle::after {
+  content: 'expand_more';
+  font-family: 'Material Icons';
+  font-size: 18px;
+  margin-left: var(--space-1);
+}
+
+.nav-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 220px;
+  background-color: var(--bg-container);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-medium);
+  padding: var(--space-2) 0;
+  z-index: var(--z-dropdown);
+  display: none;
+  border: 1px solid var(--border-primary);
+}
+
+.dropdown-container:hover .nav-dropdown {
+  display: block;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background-color: rgba(162, 120, 255, 0.1);
+  color: var(--accent-purple);
+  text-decoration: none;
+}
+
+.dropdown-item.active {
+  color: var(--accent-purple);
+  background-color: rgba(162, 120, 255, 0.15);
+  font-weight: 600;
+}
+
 /* User profile in navigation */
 .user-profile-nav {
   position: relative;
@@ -889,7 +948,7 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
   padding: var(--space-2) 0;
-  z-index: 100; /* Increased z-index to be higher than hero overlay */
+  z-index: var(--z-dropdown);
   display: none;
   border: 1px solid var(--border-primary);
 }
@@ -928,6 +987,25 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   color: var(--accent-green);
   font-style: italic;
   margin-bottom: var(--space-4);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.footer-links a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.footer-links a:hover {
+  color: var(--accent-purple);
+  text-decoration: underline;
 }
 
 /* Custom scrollbar */

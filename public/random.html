@@ -228,49 +228,127 @@
       
       // Function to load demo data for non-authenticated users
       function loadDemoData() {
-        const demoData = {
-          username: 'DemoResearcher',
-          subtitle: 'Climate Science Communique',
-          communique: `
-            <p>Welcome to my drawer! I'm researching climate adaptation strategies in urban environments. 
-            My work focuses on sustainable building materials and community-driven adaptation approaches.</p>
-            <p>Looking to connect with others interested in:</p>
-            <ul>
-              <li>Urban heat island mitigation</li>
-              <li>Green infrastructure</li>
-              <li>Community resilience planning</li>
-            </ul>
-            <p>Feel free to reach out if our research interests align!</p>
-          `,
-          connectionCount: 42,
-          userId: 'demo-123',
-          recentFiles: [
-            {
-              id: 'demo-file-1',
-              title: 'Urban Heat Patterns Analysis',
-              type: 'application/pdf',
-              expiresIn: 14
-            },
-            {
-              id: 'demo-file-2',
-              title: 'Community Survey Results',
-              type: 'text/csv',
-              expiresIn: 7
-            },
-            {
-              id: 'demo-file-3',
-              title: 'Green Roof Implementation Guide',
-              type: 'application/pdf',
-              expiresIn: 30
-            },
-            {
-              id: 'demo-file-4',
-              title: 'Temperature Monitoring Dataset',
-              type: 'application/json',
-              expiresIn: 5
-            }
-          ]
-        };
+        // Create an array of demo users and select one randomly
+        const demoUsers = [
+          {
+            username: 'DemoResearcher',
+            subtitle: 'Climate Science Communique',
+            communique: `
+              <p>Welcome to my drawer! I'm researching climate adaptation strategies in urban environments. 
+              My work focuses on sustainable building materials and community-driven adaptation approaches.</p>
+              <p>Looking to connect with others interested in:</p>
+              <ul>
+                <li>Urban heat island mitigation</li>
+                <li>Green infrastructure</li>
+                <li>Community resilience planning</li>
+              </ul>
+              <p>Feel free to reach out if our research interests align!</p>
+            `,
+            connectionCount: 42,
+            userId: 'demo-123',
+            recentFiles: [
+              {
+                id: 'demo-file-1',
+                title: 'Urban Heat Patterns Analysis',
+                type: 'application/pdf',
+                expiresIn: 14
+              },
+              {
+                id: 'demo-file-2',
+                title: 'Community Survey Results',
+                type: 'text/csv',
+                expiresIn: 7
+              },
+              {
+                id: 'demo-file-3',
+                title: 'Green Roof Implementation Guide',
+                type: 'application/pdf',
+                expiresIn: 30
+              },
+              {
+                id: 'demo-file-4',
+                title: 'Temperature Monitoring Dataset',
+                type: 'application/json',
+                expiresIn: 5
+              }
+            ]
+          },
+          {
+            username: 'DataScientist5000',
+            subtitle: 'ML & AI Research',
+            communique: `
+              <p>My drawer focuses on open machine learning research and applications for social good.</p>
+              <p>Current projects:</p>
+              <ul>
+                <li>Computer vision for habitat conservation</li>
+                <li>NLP techniques for accessible education</li>
+                <li>Federated learning for privacy-preserving research</li>
+              </ul>
+              <p>Open to collaborations and sharing datasets!</p>
+            `,
+            connectionCount: 78,
+            userId: 'demo-456',
+            recentFiles: [
+              {
+                id: 'demo-file-5',
+                title: 'CNN Architecture Comparison',
+                type: 'application/pdf',
+                expiresIn: 20
+              },
+              {
+                id: 'demo-file-6',
+                title: 'Wildlife Detection Dataset',
+                type: 'application/zip',
+                expiresIn: 14
+              },
+              {
+                id: 'demo-file-7',
+                title: 'Transfer Learning Tutorial',
+                type: 'text/markdown',
+                expiresIn: 60
+              }
+            ]
+          },
+          {
+            username: 'HistoricalArchivist',
+            subtitle: 'Digital Preservation Research',
+            communique: `
+              <p>I study digital preservation techniques and metadata standards for historical documents.</p>
+              <p>Research interests:</p>
+              <ul>
+                <li>Long-term digital archiving</li>
+                <li>OCR improvements for historical texts</li>
+                <li>Community-based archive development</li>
+              </ul>
+              <p>Looking for collaborators on oral history collection projects!</p>
+            `,
+            connectionCount: 35,
+            userId: 'demo-789',
+            recentFiles: [
+              {
+                id: 'demo-file-8',
+                title: 'Metadata Standards Comparison',
+                type: 'application/pdf',
+                expiresIn: 45
+              },
+              {
+                id: 'demo-file-9',
+                title: 'OCR Error Analysis',
+                type: 'text/csv',
+                expiresIn: 30
+              },
+              {
+                id: 'demo-file-10',
+                title: 'Digital Preservation Guidelines',
+                type: 'text/markdown',
+                expiresIn: 90
+              }
+            ]
+          }
+        ];
+
+        // Select a random demo user
+        const demoData = demoUsers[Math.floor(Math.random() * demoUsers.length)];
         
         // Update the UI with the demo data
         randomDrawerTitle.textContent = `${demoData.username}'s Drawer (Demo)`;

@@ -18,7 +18,7 @@ export class NavigationBar {
   static init(currentPage) {
     debugLog('NavigationBar', 'Initializing navigation bar', { currentPage });
     
-    // Create the navigation HTML - More compact design with logo on left, nav items on right
+    // Create the navigation HTML - Organized with dropdown menus for better organization
     const navHtml = `
       <div class="navbar">
         <div class="nav-brand">
@@ -29,43 +29,93 @@ export class NavigationBar {
         </div>
         <nav>
           <ul class="nav-menu">
-            <li><a href="/network.html" class="nav-link ${currentPage === 'network' ? 'active' : ''}">
-              <span class="material-icons">hub</span>
-              <span class="nav-label">Association Web</span>
-            </a></li>
-            <li><a href="/map.html" class="nav-link ${currentPage === 'map' ? 'active' : ''}">
-              <span class="material-icons">public</span>
-              <span class="nav-label">Map</span>
-            </a></li>
-            <li><a href="/connect.html" class="nav-link ${currentPage === 'connect' ? 'active' : ''}">
-              <span class="material-icons">people</span>
-              <span class="nav-label">Connect</span>
-            </a></li>
-            <li><a href="/messages.html" class="nav-link ${currentPage === 'messages' ? 'active' : ''}">
-              <span class="material-icons">chat</span>
-              <span class="nav-label">Messages</span>
-            </a></li>
+            <!-- Main navigation items with focused primary items -->
+            <li class="dropdown-container">
+              <a href="#" class="nav-link dropdown-toggle">
+                <span class="material-icons">explore</span>
+                <span class="nav-label">Explore</span>
+              </a>
+              <div class="nav-dropdown">
+                <a href="/network.html" class="dropdown-item ${currentPage === 'network' ? 'active' : ''}">
+                  <span class="material-icons">hub</span>
+                  Association Web
+                </a>
+                <a href="/map.html" class="dropdown-item ${currentPage === 'map' ? 'active' : ''}">
+                  <span class="material-icons">public</span>
+                  Map
+                </a>
+                <a href="/random.html" class="dropdown-item ${currentPage === 'random' ? 'active' : ''}">
+                  <span class="material-icons">shuffle</span>
+                  Random Communique
+                </a>
+              </div>
+            </li>
+            
+            <!-- Connect and Collaborate group -->
+            <li class="dropdown-container">
+              <a href="#" class="nav-link dropdown-toggle">
+                <span class="material-icons">people</span>
+                <span class="nav-label">Connect</span>
+              </a>
+              <div class="nav-dropdown">
+                <a href="/connect.html" class="dropdown-item ${currentPage === 'connect' ? 'active' : ''}">
+                  <span class="material-icons">person_add</span>
+                  Find People
+                </a>
+                <a href="/messages.html" class="dropdown-item ${currentPage === 'messages' ? 'active' : ''}">
+                  <span class="material-icons">chat</span>
+                  Messages
+                </a>
+              </div>
+            </li>
+            
+            <!-- Content group -->
+            <li class="dropdown-container">
+              <a href="#" class="nav-link dropdown-toggle">
+                <span class="material-icons">folder</span>
+                <span class="nav-label">Content</span>
+              </a>
+              <div class="nav-dropdown">
+                <a href="/drawer.html" class="dropdown-item ${currentPage === 'drawer' ? 'active' : ''}">
+                  <span class="material-icons">folder</span>
+                  My Drawer
+                </a>
+                <a href="/upload.html" class="dropdown-item ${currentPage === 'upload' ? 'active' : ''}">
+                  <span class="material-icons">upload_file</span>
+                  Upload Files
+                </a>
+              </div>
+            </li>
+            
+            <!-- Keep Search as a main item -->
             <li><a href="/search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
               <span class="material-icons">search</span>
               <span class="nav-label">Search</span>
             </a></li>
-            <li><a href="/random.html" class="nav-link tooltip ${currentPage === 'random' ? 'active' : ''}">
-              <span class="material-icons">shuffle</span>
-              <span class="tooltip-text">Random Communique</span>
-              <span class="nav-label">Random</span>
-            </a></li>
-            <li><a href="/drawer.html" class="nav-link ${currentPage === 'drawer' ? 'active' : ''}">
-              <span class="material-icons">folder</span>
-              <span class="nav-label">Drawer</span>
-            </a></li>
-            <li><a href="/upload.html" class="nav-link ${currentPage === 'upload' ? 'active' : ''}">
-              <span class="material-icons">upload_file</span>
-              <span class="nav-label">Upload</span>
-            </a></li>
-            <li><a href="/help.html" class="nav-link ${currentPage === 'help' ? 'active' : ''}">
-              <span class="material-icons">help_outline</span>
-              <span class="nav-label">Help</span>
-            </a></li>
+            
+            <!-- Help and About dropdown -->
+            <li class="dropdown-container">
+              <a href="#" class="nav-link dropdown-toggle">
+                <span class="material-icons">help_outline</span>
+                <span class="nav-label">Info</span>
+              </a>
+              <div class="nav-dropdown">
+                <a href="/help.html" class="dropdown-item ${currentPage === 'help' ? 'active' : ''}">
+                  <span class="material-icons">help_outline</span>
+                  Help & FAQ
+                </a>
+                <a href="/about.html" class="dropdown-item ${currentPage === 'about' ? 'active' : ''}">
+                  <span class="material-icons">info</span>
+                  About
+                </a>
+                <a href="/sitemap.html" class="dropdown-item ${currentPage === 'sitemap' ? 'active' : ''}">
+                  <span class="material-icons">map</span>
+                  Site Map
+                </a>
+              </div>
+            </li>
+            
+            <!-- Login remains a direct link -->
             <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
               <span class="material-icons">login</span>
               <span class="nav-label">Login</span>

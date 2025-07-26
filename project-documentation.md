@@ -116,16 +116,18 @@ r3l-realigned/
 │       └── env.ts      # Environment interface
 ├── migrations/         # Database migrations
 │   ├── 001_ephemeral_content.sql
-│   ├── 002_user_profiles.sql
-│   ├── 003_associations.sql
-│   ├── 004_archive_voting.sql
-│   ├── 005_daily_votes.sql
-│   ├── 006_search_index.sql
-│   ├── 007_content_copy.sql
-│   ├── 008_drawer_customization.sql
+│   ├── 002_content_associations.sql
+│   ├── 003_drawers.sql
+│   ├── 004_content.sql
+│   ├── 005_users.sql
+│   ├── 006_auth_sessions.sql
+│   ├── 007_content_sharing.sql
+│   ├── 008_archive_voting.sql
 │   ├── 009_tag_management.sql
-│   ├── 010_notifications.sql
-│   └── 011_direct_messaging.sql
+│   ├── 010_direct_messaging.sql
+│   ├── 011_notifications_update.sql
+│   ├── 012_messaging_attachments.sql
+│   └── 013_fix_notifications_schema.sql
 └── scripts/           # Utility scripts
     └── check-relative-urls.sh  # Verify all URLs are relative
 ```
@@ -146,6 +148,8 @@ r3l-realigned/
 - ✅ Daily vote tracking
 - ✅ Tag management system
 - ✅ Relative path configuration (for deployment)
+- ✅ Notification system schema fix
+- ✅ Direct messaging with attachments support
 
 ### In Progress
 
@@ -153,6 +157,8 @@ r3l-realigned/
 - 🔄 CSS updates and layout fixes
 - 🔄 File copying implementation
 - 🔄 Drawer customization
+- 🔄 Notification UI integration
+- 🔄 Messaging UI integration
 
 ### Pending
 

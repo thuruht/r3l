@@ -5,7 +5,7 @@
  */
 
 import { Env } from '../types/env';
-import { UserHandler } from './user';
+import { UserHandler } from '../handlers/user';
 import { 
   generateJWT, 
   verifyJWT, 

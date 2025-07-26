@@ -3,6 +3,8 @@
  * Provides a consistent navigation bar across all pages
  */
 
+import { notificationManager } from './notification.js';
+
 // Define a simple debug log function
 const debugLog = (component, message, data) => {
   console.log(`[${component}] ${message}`, data || '');
@@ -70,8 +72,24 @@ export class NavigationBar {
       
       // Check if user is logged in and update navigation accordingly
       this.updateAuthState();
+      
+      // Load notification CSS
+      this.loadNotificationStyles();
     } else {
       debugLog('NavigationBar', 'Error: Header element not found');
+    }
+  }
+  
+  /**
+   * Load notification CSS
+   */
+  static loadNotificationStyles() {
+    // Check if the notification CSS is already loaded
+    if (!document.querySelector('link[href="/css/notifications.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = '/css/notifications.css';
+      document.head.appendChild(link);
     }
   }
   
@@ -137,6 +155,10 @@ export class NavigationBar {
               e.preventDefault();
               this.logout();
             });
+            
+            // Initialize notification system
+            notificationManager.createNotificationElements();
+            notificationManager.startPolling(30000); // Poll every 30 seconds
           } else {
             console.log('[NavigationBar] User profile was null, showing login link');
           }

@@ -31,7 +31,6 @@
   "logpush": true,
   
   // Configure observability for tracing and monitoring
-  // Reduced sampling rate to prevent worker timeouts
   "observability": {
     "enabled": true,
     "head_sampling_rate": 0.1

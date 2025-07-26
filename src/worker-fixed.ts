@@ -1,6 +1,6 @@
 import { Env } from './types/env';
 import { Router } from './router';
-import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime';
+import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime-fixed';
 
 // Export Durable Object classes
 export { ConnectionsObject, VisualizationObject, CollaborationRoom };
@@ -35,11 +35,8 @@ export default {
     
     // Process content expirations on schedule
     if (event.cron === '0 */6 * * *') { // Every 6 hours
-      // For now, log the scheduled event since the contentHandler doesn't have processExpirations
+      // For now, log the scheduled event
       console.log('Scheduled task triggered:', event.cron);
-      
-      // This is a placeholder for future content expiration logic
-      // ctx.waitUntil(router.getContentHandler.processExpirations(env));
     }
   }
 };

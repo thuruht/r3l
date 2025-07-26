@@ -13,6 +13,7 @@ import { AIHandler } from './handlers/ai';
 import { FileHandler } from './handlers/file';
 import { GlobeHandler } from './handlers/globe';
 import { DrawerHandler } from './handlers/drawer';
+import { MessagingHandler } from './handlers/messaging';
 import { Env } from './types/env';
 import { isSecureRequest } from './cookie-helper';
 import { extractJWTFromRequest } from './jwt-helper';
@@ -32,6 +33,7 @@ export class Router {
   private fileHandler: FileHandler;
   private globeHandler: GlobeHandler;
   private drawerHandler: DrawerHandler;
+  private messagingHandler: MessagingHandler;
   
   constructor() {
     this.jwtAuthHandler = new JWTAuthHandler();
@@ -45,6 +47,7 @@ export class Router {
     this.fileHandler = new FileHandler();
     this.globeHandler = new GlobeHandler();
     this.drawerHandler = new DrawerHandler();
+    this.messagingHandler = new MessagingHandler();
   }
   
   /**
@@ -129,6 +132,10 @@ export class Router {
     
     if (path.startsWith('/api/drawer/')) {
       return this.handleDrawerRoutes(request, env, path);
+    }
+    
+    if (path.startsWith('/api/messages/')) {
+      return this.handleMessagingRoutes(request, env, path);
     }
     
     if (path.startsWith('/api/debug/')) {
@@ -548,8 +555,76 @@ export class Router {
    * Handle notification routes
    */
   private async handleNotificationRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    // Check for unsupported methods or paths
-    console.log(`Notification route requested: ${path}`);
+    // Check for authenticated user
+    const token = this.getAuthToken(request);
+    let authenticatedUserId: string | null = null;
+    
+    if (token) {
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
+    }
+    
+    if (!authenticatedUserId) {
+      return this.errorResponse('Authentication required', 401);
+    }
+    
+    // Get user's notifications
+    if (path === '/api/notifications' && request.method === 'GET') {
+      const url = new URL(request.url);
+      const limit = parseInt(url.searchParams.get('limit') || '20');
+      const offset = parseInt(url.searchParams.get('offset') || '0');
+      
+      const notifications = await this.notificationHandler.getUserNotifications(
+        authenticatedUserId,
+        limit,
+        offset,
+        env
+      );
+      
+      return this.jsonResponse(notifications);
+    }
+    
+    // Get unread notification count
+    if (path === '/api/notifications/unread-count' && request.method === 'GET') {
+      const count = await this.notificationHandler.getUnreadCount(authenticatedUserId, env);
+      return this.jsonResponse({ count });
+    }
+    
+    // Mark notifications as read
+    if (path === '/api/notifications/mark-read' && request.method === 'POST') {
+      try {
+        const data = await request.json() as { ids: string[] };
+        
+        if (!Array.isArray(data.ids)) {
+          return this.errorResponse('Invalid request format', 400);
+        }
+        
+        await this.notificationHandler.markAsRead(authenticatedUserId, data.ids, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error marking notifications as read:', error);
+        return this.errorResponse('Invalid request format', 400);
+      }
+    }
+    
+    // Mark all notifications as read
+    if (path === '/api/notifications/mark-all-read' && request.method === 'POST') {
+      await this.notificationHandler.markAllAsRead(authenticatedUserId, env);
+      return this.jsonResponse({ success: true });
+    }
+    
+    // Delete a notification
+    if (path.match(/^\/api\/notifications\/[^/]+$/) && request.method === 'DELETE') {
+      const notificationId = path.split('/').pop() as string;
+      
+      await this.notificationHandler.deleteNotification(
+        authenticatedUserId,
+        notificationId,
+        env
+      );
+      
+      return this.jsonResponse({ success: true });
+    }
+    
     return this.notFoundResponse();
   }
   
@@ -557,6 +632,134 @@ export class Router {
    * Handle tag routes
    */
   private async handleTagRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+    return this.notFoundResponse();
+  }
+  
+  /**
+   * Handle messaging routes
+   */
+  private async handleMessagingRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Check for authenticated user
+    const token = this.getAuthToken(request);
+    let authenticatedUserId: string | null = null;
+    
+    if (token) {
+      authenticatedUserId = await this.jwtAuthHandler.validateToken(request, env);
+    }
+    
+    if (!authenticatedUserId) {
+      return this.errorResponse('Authentication required', 401);
+    }
+    
+    // Get user's conversations
+    if (path === '/api/messages/conversations' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const limit = parseInt(url.searchParams.get('limit') || '20');
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+        
+        const conversations = await this.messagingHandler.getUserConversations(
+          authenticatedUserId,
+          env,
+          limit,
+          offset
+        );
+        
+        return this.jsonResponse(conversations);
+      } catch (error) {
+        console.error('Error fetching conversations:', error);
+        return this.errorResponse('Failed to fetch conversations');
+      }
+    }
+    
+    // Get messages from a conversation
+    if (path.match(/^\/api\/messages\/conversations\/[^/]+$/) && request.method === 'GET') {
+      try {
+        const conversationId = path.split('/').pop() as string;
+        
+        const url = new URL(request.url);
+        const limit = parseInt(url.searchParams.get('limit') || '50');
+        const before = url.searchParams.get('before') || undefined;
+        
+        const messages = await this.messagingHandler.getConversationMessages(
+          authenticatedUserId,
+          conversationId,
+          limit,
+          before,
+          env
+        );
+        
+        return this.jsonResponse(messages);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        return this.errorResponse('Failed to fetch messages');
+      }
+    }
+    
+    // Send a message
+    if (path === '/api/messages/send' && request.method === 'POST') {
+      try {
+        const { recipientId, content, attachments } = await request.json() as {
+          recipientId: string;
+          content: string;
+          attachments?: string[];
+        };
+        
+        if (!recipientId || !content) {
+          return this.errorResponse('Recipient ID and content are required');
+        }
+        
+        const result = await this.messagingHandler.sendMessage(
+          authenticatedUserId,
+          recipientId,
+          content,
+          attachments || [],
+          env
+        );
+        
+        return this.jsonResponse(result);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        return this.errorResponse('Failed to send message');
+      }
+    }
+    
+    // Delete a message
+    if (path.match(/^\/api\/messages\/[^/]+$/) && request.method === 'DELETE') {
+      try {
+        const messageId = path.split('/').pop() as string;
+        
+        await this.messagingHandler.deleteMessage(
+          authenticatedUserId,
+          messageId,
+          env
+        );
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        return this.errorResponse('Failed to delete message');
+      }
+    }
+    
+    // Mark conversation as read
+    if (path.match(/^\/api\/messages\/conversations\/[^/]+\/read$/) && request.method === 'POST') {
+      try {
+        const conversationId = path.split('/')[3];
+        
+        await this.messagingHandler.markConversationAsRead(
+          authenticatedUserId,
+          conversationId,
+          env
+        );
+        
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error marking conversation as read:', error);
+        return this.errorResponse('Failed to mark conversation as read');
+      }
+    }
+    
     return this.notFoundResponse();
   }
   

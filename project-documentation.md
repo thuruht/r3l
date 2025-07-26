@@ -19,9 +19,10 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 - **Cloudflare Workers**: Serverless JavaScript execution environment for the application logic
 - **D1 Database**: SQL database for structured data (user profiles, content metadata, associations, votes)
 - **R2 Storage**: Object storage for files and content
-- **KV**: Key-value storage for fast access to cached data and session management
-- **Durable Objects**: Used for maintaining state and coordinating real-time features
+- **KV**: Key-value storage for fast access to cached data, session management, and notifications
+- **Durable Objects**: Used for maintaining state, coordinating real-time features, messaging, and notifications with hibernation support
 - **RealtimeKit**: For real-time collaboration and messaging features
+- **Service Bindings**: For modular architecture and secure component communication
 
 ### Frontend
 
@@ -65,6 +66,20 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
    - Random communique/user button for serendipitous discovery
    - Alternative to algorithmic recommendations
 
+9. **Real-time Notifications and Messaging**
+   - Durable Objects-based real-time user notifications
+   - Secure direct messaging system with end-to-end encryption
+   - Unobtrusive notification display in navigation bar
+   - KV-backed notification storage for performance
+   - Support for system notifications and user-to-user messages
+   - Hibernate-enabled Durable Objects for cost-effective scaling
+
+10. **Collaboration and Work Groups**
+    - Team-based file sharing and collaboration
+    - Real-time document editing capabilities
+    - Permission-based access control for group resources
+    - Activity tracking and notification system for group actions
+
 ## Project Structure
 
 ```
@@ -93,6 +108,9 @@ r3l-realigned/
 │   │   ├── content-copy.ts # Content copying
 │   │   ├── drawer-copy.ts # Drawer copying
 │   │   ├── random-drawer.ts # Random content
+│   │   ├── notification.ts # Notification system
+│   │   ├── messaging.ts # Direct messaging
+│   │   ├── collaboration.ts # Group collaboration
 │   │   └── filenet.ts  # File network
 │   └── types/          # TypeScript type definitions
 │       └── env.ts      # Environment interface
@@ -105,7 +123,9 @@ r3l-realigned/
 │   ├── 006_search_index.sql
 │   ├── 007_content_copy.sql
 │   ├── 008_drawer_customization.sql
-│   └── 009_tag_management.sql
+│   ├── 009_tag_management.sql
+│   ├── 010_notifications.sql
+│   └── 011_direct_messaging.sql
 └── scripts/           # Utility scripts
     └── check-relative-urls.sh  # Verify all URLs are relative
 ```

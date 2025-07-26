@@ -1,52 +1,59 @@
 #!/bin/bash
 
-echo "R3L Deployment Script"
-echo "====================="
-echo ""
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-# Step 1: Verify that secrets are set
-echo "Step 1: Verifying secrets..."
-SECRETS=$(npx wrangler secret list)
+echo -e "${BLUE}=====================================${NC}"
+echo -e "${BLUE}     R3L:F Deployment Script        ${NC}"
+echo -e "${BLUE}=====================================${NC}"
 
-if [[ $SECRETS != *"GITHUB_CLIENT_ID"* || $SECRETS != *"GITHUB_CLIENT_SECRET"* || 
-      $SECRETS != *"ORCID_CLIENT_ID"* || $SECRETS != *"ORCID_CLIENT_SECRET"* ]]; then
-    echo "❌ Missing required secrets. Please run ./reset-auth-secrets.sh first."
-    exit 1
-fi
-echo "✅ Secrets verified"
-echo ""
+# Step 1: Verify environment
+echo -e "\n${YELLOW}Step 1: Verifying environment${NC}"
+WRANGLER_VERSION=$(npx wrangler --version)
+echo -e "Using: ${GREEN}${WRANGLER_VERSION}${NC}"
 
 # Step 2: Build the project
-echo "Step 2: Building project..."
+echo -e "\n${YELLOW}Step 2: Building project...${NC}"
 npm run build
 if [ $? -ne 0 ]; then
-    echo "❌ Build failed. Please fix any errors and try again."
+    echo -e "${RED}❌ Build failed. Please fix any errors and try again.${NC}"
     exit 1
 fi
-echo "✅ Build successful"
-echo ""
+echo -e "${GREEN}✅ Build successful${NC}"
 
-# Step 3: Deploy without the service binding temporarily
-echo "Step 3: Deploying without service binding..."
-echo "Note: We'll temporarily modify wrangler.jsonc to remove the service binding that's causing issues"
+# Step 3: Run database migrations
+echo -e "\n${YELLOW}Step 3: Running database migrations${NC}"
+echo -e "${BLUE}Local migrations first...${NC}"
+for file in migrations/*.sql; do
+  echo "Applying migration: $file"
+  npx wrangler d1 execute R3L_DB --local --file="$file" || echo -e "${YELLOW}Migration already applied or not applicable locally: $file${NC}"
+done
 
-# Create a backup of wrangler.jsonc
-cp wrangler.jsonc wrangler.jsonc.bak
+echo -e "${BLUE}Remote migrations...${NC}"
+read -p "Do you want to apply migrations to the remote database? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  for file in migrations/*.sql; do
+    echo "Applying remote migration: $file"
+    npx wrangler d1 execute R3L_DB --remote --file="$file" || echo -e "${YELLOW}Migration already applied or not applicable remotely: $file${NC}"
+  done
+else
+  echo -e "${YELLOW}Skipping remote migrations.${NC}"
+fi
 
-# Modify wrangler.jsonc to remove the service binding section
-sed -i '/  "services": \[/,/  \],/d' wrangler.jsonc
-
-# Deploy without the service binding
+# Step 4: Deploy
+echo -e "\n${YELLOW}Step 4: Deploying to Cloudflare Workers...${NC}"
 npx wrangler deploy
 
-# Restore the original wrangler.jsonc
-mv wrangler.jsonc.bak wrangler.jsonc
+if [ $? -ne 0 ]; then
+  echo -e "${RED}❌ Deployment failed.${NC}"
+  exit 1
+fi
 
-echo ""
-echo "✅ Deployment complete!"
-echo ""
-echo "Note: The OAUTH_PROVIDER service binding was removed for this deployment."
-echo "In the future, you'll need to create the 'workers-oauth-provider' worker"
-echo "or use a different authentication approach."
-echo ""
-echo "Your site should now be available at: https://r3l.distorted.work"
+echo -e "\n${GREEN}✅ Deployment complete!${NC}"
+echo -e "${BLUE}Your site should now be available at: ${GREEN}https://r3l.distorted.work${NC}"
+echo -e "${BLUE}=====================================${NC}"

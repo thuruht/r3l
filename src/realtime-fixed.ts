@@ -1,7 +1,5 @@
-/**
- * Realtime functionality for R3L
- * Implements Durable Object classes for realtime connections, visualization, and collaboration
- */
+// Fixed version of realtime.ts that handles all Durable Object functionality
+// This consolidates functionality from both realtime.ts and collaboration.ts
 
 import { Env } from './types/env';
 
@@ -78,7 +76,7 @@ export class ConnectionsObject {
       // Handle internal API for notifications
       if (url.pathname === '/notify') {
         if (request.method === 'POST') {
-          const data = await request.json() as { userId: string; notification: any };
+          const data = await request.json();
           
           // Send notification to all connections for this user
           const notification = JSON.stringify({
@@ -103,14 +101,7 @@ export class ConnectionsObject {
       // Handle internal API for direct messages
       if (url.pathname === '/message') {
         if (request.method === 'POST') {
-          const data = await request.json() as { 
-            userId: string; 
-            fromUserId: string; 
-            messageId: string; 
-            content: string;
-            attachments?: string[];
-            createdAt: number 
-          };
+          const data = await request.json();
           
           // Send message to all connections for this user
           const message = JSON.stringify({
@@ -119,7 +110,6 @@ export class ConnectionsObject {
               messageId: data.messageId,
               fromUserId: data.fromUserId,
               content: data.content,
-              attachments: data.attachments,
               createdAt: data.createdAt
             }
           });
@@ -150,7 +140,7 @@ export class ConnectionsObject {
       }
       
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
+    } catch (error) {
       // Handle errors according to Cloudflare best practices
       console.error('Error in ConnectionsObject fetch:', error);
       
@@ -318,7 +308,7 @@ export class VisualizationObject {
       }
       
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
+    } catch (error) {
       // Handle errors according to Cloudflare best practices
       console.error('Error in VisualizationObject fetch:', error);
       
@@ -558,7 +548,7 @@ export class CollaborationRoom {
       }
       
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
+    } catch (error) {
       // Handle errors according to Cloudflare best practices
       console.error('Error in CollaborationRoom fetch:', error);
       

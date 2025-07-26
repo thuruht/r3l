@@ -14,6 +14,44 @@
     });
   </script>
   <style>
+    .view-mode-toggle {
+      display: flex;
+      margin-bottom: 1rem;
+      gap: 1rem;
+    }
+    
+    .view-mode-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: 1px solid var(--accent);
+      background-color: var(--bg-medium);
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .view-mode-btn:hover {
+      background-color: var(--bg-lighter);
+    }
+    
+    .view-mode-btn.active {
+      background-color: var(--accent);
+      color: white;
+    }
+    
+    .map-container {
+      width: 100%;
+      height: 80vh;
+      background-color: var(--bg-darker);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      display: none;
+    }
+    
     .network-container {
       width: 100%;
       height: 80vh;
@@ -21,6 +59,67 @@
       border-radius: 8px;
       position: relative;
       overflow: hidden;
+    }
+    
+    .map-controls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .map-control-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      background-color: var(--bg-darker);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .map-control-btn:hover {
+      background-color: var(--accent);
+      color: white;
+    }
+    
+    .map-panel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: var(--bg-medium);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+      z-index: 1001;
+      width: 80%;
+      max-width: 500px;
+    }
+    
+    .map-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 10px;
     }
 
     .network-controls {
@@ -225,6 +324,17 @@
       <p>Explore the emergent connections between files, users, and topics in the Rel</p>
     </div>
 
+    <div class="view-mode-toggle">
+      <button id="network-view-btn" class="view-mode-btn active">
+        <span class="material-icons">hub</span>
+        Network View
+      </button>
+      <button id="map-view-btn" class="view-mode-btn">
+        <span class="material-icons">map</span>
+        Map View
+      </button>
+    </div>
+
     <div class="filter-section">
       <h3>Filter View</h3>
       <div class="filter-options">
@@ -300,11 +410,65 @@
       </div>
 
       <div class="time-slider-container">
-        <div class="time-slider-label">Time Window: <span id="time-value">Last 7 days</span></div>
-        <input type="range" id="time-slider" class="time-slider" min="1" max="30" value="7">
+        <label for="time-slider" class="time-slider-label">Time Window: <span id="time-value">Last 7 days</span></label>
+        <input type="range" id="time-slider" class="time-slider" min="1" max="30" value="7" title="Adjust time window from 1 to 30 days">
       </div>
 
       <svg id="network-svg" width="100%" height="100%"></svg>
+    </div>
+    
+    <div class="map-container mt-4">
+      <div id="map-view" style="width: 100%; height: 100%;"></div>
+      <div class="map-controls">
+        <button id="view-all-points" class="map-control-btn">
+          <span class="material-icons">public</span>
+          View All
+        </button>
+        <button id="add-map-point" class="map-control-btn">
+          <span class="material-icons">add_location</span>
+          Add Point
+        </button>
+      </div>
+      
+      <!-- Map point form panel -->
+      <div id="add-point-panel" class="map-panel" style="display: none;">
+        <h3>Add Map Point</h3>
+        <form id="add-point-form" class="map-form">
+          <div class="form-group">
+            <label for="point-title">Title</label>
+            <input type="text" id="point-title" class="r3l-input" required>
+          </div>
+          <div class="form-group">
+            <label for="point-description">Description</label>
+            <textarea id="point-description" class="r3l-input" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="point-type">Type</label>
+            <select id="point-type" class="r3l-input">
+              <option value="personal">Personal</option>
+              <option value="content">Content</option>
+              <option value="event">Event</option>
+              <option value="location">Location</option>
+            </select>
+          </div>
+          <div class="form-group" id="content-association-group" style="display: none;">
+            <label for="associated-content">Associated Content</label>
+            <select id="associated-content" class="r3l-input">
+              <option value="">Select content...</option>
+              <!-- Will be populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <p id="coordinates-display">Click on map to set location</p>
+            <input type="hidden" id="latitude" name="latitude">
+            <input type="hidden" id="longitude" name="longitude">
+          </div>
+          <div class="form-group form-actions">
+            <button type="button" id="cancel-add-point" class="btn btn-secondary">Cancel</button>
+            <button type="submit" id="save-point" class="btn" disabled>Save Point</button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div class="node-details mt-4" id="node-details" style="display: none;">
@@ -332,6 +496,7 @@
 
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
+    import { GlobeVisualizer } from './src/globe/globe-visualizer.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize the navigation bar
@@ -353,6 +518,315 @@
       const detailsContent = document.getElementById('details-content');
       const closeDetails = document.getElementById('close-details');
       const viewItem = document.getElementById('view-item');
+      
+      // View switching elements
+      const networkViewBtn = document.getElementById('network-view-btn');
+      const mapViewBtn = document.getElementById('map-view-btn');
+      const networkContainer = document.querySelector('.network-container');
+      const mapContainer = document.querySelector('.map-container');
+      
+      // Map elements
+      const mapView = document.getElementById('map-view');
+      const addMapPoint = document.getElementById('add-map-point');
+      const viewAllPoints = document.getElementById('view-all-points');
+      const addPointPanel = document.getElementById('add-point-panel');
+      const addPointForm = document.getElementById('add-point-form');
+      const cancelAddPoint = document.getElementById('cancel-add-point');
+      const savePoint = document.getElementById('save-point');
+      const pointTitle = document.getElementById('point-title');
+      const pointDescription = document.getElementById('point-description');
+      const pointType = document.getElementById('point-type');
+      const associatedContent = document.getElementById('associated-content');
+      const contentAssociationGroup = document.getElementById('content-association-group');
+      const coordinatesDisplay = document.getElementById('coordinates-display');
+      const latitudeInput = document.getElementById('latitude');
+      const longitudeInput = document.getElementById('longitude');
+      
+      // Map variables
+      let globe;
+      let mapInitialized = false;
+      let tempMarker = null;
+      
+      // View switching functionality
+      networkViewBtn.addEventListener('click', () => {
+        networkViewBtn.classList.add('active');
+        mapViewBtn.classList.remove('active');
+        networkContainer.style.display = 'block';
+        mapContainer.style.display = 'none';
+      });
+      
+      mapViewBtn.addEventListener('click', () => {
+        networkViewBtn.classList.remove('active');
+        mapViewBtn.classList.add('active');
+        networkContainer.style.display = 'none';
+        mapContainer.style.display = 'block';
+        
+        // Initialize map if it hasn't been yet
+        if (!mapInitialized) {
+          initMap();
+          mapInitialized = true;
+        }
+      });
+      
+      // Initialize the map
+      function initMap() {
+        // Initialize the globe visualizer
+        globe = new GlobeVisualizer('map-view');
+        
+        // Setup map click handler for adding points
+        globe.onMapClick((e) => {
+          if (addPointPanel.style.display === 'block') {
+            // Update marker position and form values
+            const { lat, lng } = e.latlng;
+            
+            // Update hidden form inputs
+            latitudeInput.value = lat.toFixed(6);
+            longitudeInput.value = lng.toFixed(6);
+            
+            // Update display text
+            coordinatesDisplay.textContent = `Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+            
+            // Add or move temporary marker
+            if (tempMarker) {
+              globe.removeMarker(tempMarker);
+            }
+            tempMarker = globe.addTempMarker(lat, lng);
+            
+            // Enable the save button
+            savePoint.disabled = false;
+          }
+        });
+        
+        // Load data points from API
+        loadMapData();
+        
+        // Setup add point button
+        addMapPoint.addEventListener('click', () => {
+          // Show the add point panel
+          addPointPanel.style.display = 'block';
+          
+          // Show message on map
+          globe.setMessage('Click on the map to set a location');
+          
+          // Reset form
+          addPointForm.reset();
+          latitudeInput.value = '';
+          longitudeInput.value = '';
+          coordinatesDisplay.textContent = 'Click on map to set location';
+          savePoint.disabled = true;
+          
+          // Remove any existing temporary marker
+          if (tempMarker) {
+            globe.removeMarker(tempMarker);
+            tempMarker = null;
+          }
+          
+          // Load user's content for the dropdown
+          loadUserContent();
+        });
+        
+        // Point type change handler
+        pointType.addEventListener('change', () => {
+          if (pointType.value === 'content') {
+            contentAssociationGroup.style.display = 'block';
+          } else {
+            contentAssociationGroup.style.display = 'none';
+          }
+        });
+        
+        // Cancel button handler
+        cancelAddPoint.addEventListener('click', () => {
+          // Hide the panel
+          addPointPanel.style.display = 'none';
+          
+          // Clear message
+          globe.clearMessage();
+          
+          // Remove temporary marker
+          if (tempMarker) {
+            globe.removeMarker(tempMarker);
+            tempMarker = null;
+          }
+        });
+        
+        // Form submission handler
+        addPointForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          
+          // Validate form
+          if (!latitudeInput.value || !longitudeInput.value) {
+            alert('Please click on the map to set a location');
+            return;
+          }
+          
+          if (!pointTitle.value) {
+            alert('Please enter a title');
+            return;
+          }
+          
+          // Prepare data
+          const pointData = {
+            title: pointTitle.value,
+            description: pointDescription.value,
+            type: pointType.value,
+            latitude: parseFloat(latitudeInput.value),
+            longitude: parseFloat(longitudeInput.value)
+          };
+          
+          // Add content ID if this is a content point
+          if (pointType.value === 'content' && associatedContent.value) {
+            pointData.content_id = associatedContent.value;
+          }
+          
+          // Submit data to API
+          saveMapPoint(pointData);
+        });
+        
+        // View all points button
+        viewAllPoints.addEventListener('click', () => {
+          // Reset view to show all points
+          globe.resetView();
+        });
+      }
+      
+      // Load map data points from API
+      async function loadMapData() {
+        try {
+          const response = await fetch('/api/globe/points', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            if (data.points && data.points.length > 0) {
+              // Add markers to the map
+              data.points.forEach(point => {
+                const markerOptions = {
+                  title: point.title,
+                  description: point.description,
+                  id: point.id,
+                  type: point.type,
+                  content_id: point.content_id
+                };
+                
+                globe.addMarker(point.latitude, point.longitude, markerOptions);
+              });
+              
+              // Center the map on the points
+              globe.resetView();
+            } else {
+              // Show a message if no points
+              globe.setMessage('No map points found. Add some by clicking the "Add Point" button!');
+            }
+          } else {
+            // Show error message
+            globe.setMessage('Error loading map data. Try refreshing the page.');
+            console.error('Error loading map data:', await response.text());
+          }
+        } catch (error) {
+          console.error('Error fetching map data:', error);
+          globe.setMessage('Error loading map data. Try refreshing the page.');
+        }
+      }
+      
+      // Load user's content for the dropdown
+      async function loadUserContent() {
+        try {
+          // Check if user is authenticated
+          if (!document.cookie.includes('r3l_auth_state=true')) {
+            contentAssociationGroup.style.display = 'none';
+            return;
+          }
+          
+          const response = await fetch('/api/content/mine', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Clear existing options except the first one
+            while (associatedContent.options.length > 1) {
+              associatedContent.remove(1);
+            }
+            
+            // Add content items to dropdown
+            if (data.content && data.content.length > 0) {
+              data.content.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.title || 'Untitled';
+                associatedContent.appendChild(option);
+              });
+              
+              // Show the content association group
+              contentAssociationGroup.style.display = pointType.value === 'content' ? 'block' : 'none';
+            } else {
+              // Hide the content association group if no content
+              contentAssociationGroup.style.display = 'none';
+            }
+          } else {
+            console.error('Error loading user content:', await response.text());
+            contentAssociationGroup.style.display = 'none';
+          }
+        } catch (error) {
+          console.error('Error fetching user content:', error);
+          contentAssociationGroup.style.display = 'none';
+        }
+      }
+      
+      // Save map point to API
+      async function saveMapPoint(pointData) {
+        try {
+          const response = await fetch('/api/globe/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(pointData)
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            
+            // Hide the panel
+            addPointPanel.style.display = 'none';
+            
+            // Clear message
+            globe.clearMessage();
+            
+            // Remove temporary marker
+            if (tempMarker) {
+              globe.removeMarker(tempMarker);
+              tempMarker = null;
+            }
+            
+            // Add the new point as a permanent marker
+            const markerOptions = {
+              title: pointData.title,
+              description: pointData.description,
+              id: data.id,
+              type: pointData.type,
+              content_id: pointData.content_id
+            };
+            
+            globe.addMarker(pointData.latitude, pointData.longitude, markerOptions);
+            
+            // Show success message
+            globe.setMessage('Point added successfully!', 3000); // Auto-hide after 3 seconds
+          } else {
+            console.error('Error saving map point:', await response.text());
+            alert('Error saving map point. Please try again.');
+          }
+        } catch (error) {
+          console.error('Error saving map point:', error);
+          alert('Error saving map point. Please try again.');
+        }
+      }
       
       // Set initial dimensions
       const width = networkSvg.clientWidth;

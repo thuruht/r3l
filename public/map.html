@@ -96,6 +96,69 @@
       background-color: var(--bg-secondary);
       border-radius: 8px;
     }
+    
+    /* Add point panel styles */
+    .add-point-panel {
+      background-color: var(--surface-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .add-point-panel h3 {
+      margin-top: 0;
+      margin-bottom: 1rem;
+      color: var(--accent-color);
+    }
+    
+    .add-point-panel .form-group {
+      margin-bottom: 1rem;
+    }
+    
+    .add-point-panel label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    
+    .add-point-panel input[type="text"],
+    .add-point-panel input[type="number"],
+    .add-point-panel textarea {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+    }
+    
+    .add-point-panel .form-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .add-point-panel .help-text {
+      background-color: rgba(0, 0, 0, 0.05);
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 1rem;
+    }
+    
+    .add-point-panel .help-text p {
+      margin: 0.5rem 0;
+      font-size: 0.9rem;
+    }
+    
+    .add-point-panel .help-text .note {
+      color: var(--text-secondary);
+      font-style: italic;
+    }
+    
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -133,7 +196,54 @@
           <button id="refresh-map" class="btn btn-secondary">
             <span class="material-icons">refresh</span> Refresh
           </button>
+          
+          <button id="add-point-btn" class="btn btn-accent">
+            <span class="material-icons">add_location</span> Add Point
+          </button>
         </div>
+      </div>
+      
+      <!-- Add point form panel (hidden by default) -->
+      <div id="add-point-panel" class="add-point-panel hidden">
+        <h3>Add Map Point</h3>
+        <form id="add-point-form">
+          <div class="form-group">
+            <label for="point-title">Title</label>
+            <input type="text" id="point-title" name="title" required placeholder="Name this location">
+          </div>
+          
+          <div class="form-group">
+            <label for="point-description">Description</label>
+            <textarea id="point-description" name="description" rows="3" placeholder="Why is this location significant?"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="point-lat">Latitude</label>
+            <input type="number" id="point-lat" name="latitude" step="0.000001" required readonly>
+          </div>
+          
+          <div class="form-group">
+            <label for="point-lng">Longitude</label>
+            <input type="number" id="point-lng" name="longitude" step="0.000001" required readonly>
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="point-public" name="isPublic" checked>
+              Public (visible to everyone)
+            </label>
+          </div>
+          
+          <div class="form-group help-text">
+            <p>Click on the map to set the location or drag the marker to adjust position.</p>
+            <p class="note">Adding a point will make it visible to others based on your privacy setting.</p>
+          </div>
+          
+          <div class="form-actions">
+            <button type="submit" class="btn btn-accent">Save Point</button>
+            <button type="button" id="cancel-add-point" class="btn btn-secondary">Cancel</button>
+          </div>
+        </form>
       </div>
       
       <div id="loading-indicator" class="loading-indicator">
@@ -182,6 +292,42 @@
       
       // Initialize map
       await initMap(visualizer, loadingIndicator);
+      
+      // Check if we're being asked to add a point (from profile or other pages)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('action') === 'add-point') {
+        // Check if user is authenticated
+        const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+        if (isAuthenticated) {
+          // Wait a moment for the map to fully load
+          setTimeout(() => {
+            // Click the add point button programmatically
+            document.getElementById('add-point-btn').click();
+            
+            // If coordinates were provided, set them
+            const lat = urlParams.get('lat');
+            const lng = urlParams.get('lng');
+            if (lat && lng) {
+              const latNum = parseFloat(lat);
+              const lngNum = parseFloat(lng);
+              
+              if (!isNaN(latNum) && !isNaN(lngNum)) {
+                // Set values in form
+                document.getElementById('point-lat').value = latNum.toFixed(6);
+                document.getElementById('point-lng').value = lngNum.toFixed(6);
+                
+                // Pan map to location
+                visualizer.map.setView([latNum, lngNum], 15);
+                
+                // Create a fake click event for the marker
+                visualizer.onMapClick({
+                  latlng: { lat: latNum, lng: lngNum }
+                });
+              }
+            }
+          }, 500);
+        }
+      }
     });
     
     // Initialize the map
@@ -217,6 +363,9 @@
         
         // Handle window resize
         window.addEventListener('resize', () => visualizer.resize());
+        
+        // Add point functionality
+        setupAddPointFeature(visualizer);
       } catch (err) {
         console.error('Error initializing map:', err);
         loadingIndicator.classList.remove('active');
@@ -424,6 +573,145 @@
         // Fallback to demo data
         return getDemoMapData();
       }
+    }
+    
+    // Set up add point feature
+    function setupAddPointFeature(visualizer) {
+      const addPointBtn = document.getElementById('add-point-btn');
+      const addPointPanel = document.getElementById('add-point-panel');
+      const addPointForm = document.getElementById('add-point-form');
+      const cancelAddPoint = document.getElementById('cancel-add-point');
+      const pointLatInput = document.getElementById('point-lat');
+      const pointLngInput = document.getElementById('point-lng');
+      
+      let tempMarker = null;
+      let isAddingPoint = false;
+      
+      // Show add point panel
+      addPointBtn.addEventListener('click', () => {
+        // Check if user is authenticated
+        const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+        if (!isAuthenticated) {
+          alert('You need to log in to add map points.');
+          window.location.href = '/auth/login.html?redirect=' + encodeURIComponent(window.location.href);
+          return;
+        }
+        
+        // Show the panel
+        addPointPanel.classList.remove('hidden');
+        isAddingPoint = true;
+        
+        // Tell user to click on the map
+        visualizer.setMessage('Click on the map to select a location for your point. Drag the marker to adjust position.');
+        
+        // Enable click events on the map
+        visualizer.onMapClick((e) => {
+          if (!isAddingPoint) return;
+          
+          const { lat, lng } = e.latlng;
+          
+          // Set the coordinates in the form
+          pointLatInput.value = lat.toFixed(6);
+          pointLngInput.value = lng.toFixed(6);
+          
+          // Remove previous temp marker if exists
+          if (tempMarker) {
+            visualizer.removeMarker(tempMarker);
+          }
+          
+          // Add temporary marker
+          tempMarker = visualizer.addTempMarker([lng, lat], {
+            name: 'New Point',
+            description: 'Your new map point',
+            icon: 'location',
+            color: 'var(--accent-color)'
+          });
+        });
+      });
+      
+      // Cancel adding point
+      cancelAddPoint.addEventListener('click', () => {
+        addPointPanel.classList.add('hidden');
+        isAddingPoint = false;
+        
+        // Clear temp marker
+        if (tempMarker) {
+          visualizer.removeMarker(tempMarker);
+          tempMarker = null;
+        }
+        
+        // Clear form
+        addPointForm.reset();
+        
+        // Clear message
+        visualizer.clearMessage();
+      });
+      
+      // Submit form to add point
+      addPointForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Get form data
+        const title = document.getElementById('point-title').value;
+        const description = document.getElementById('point-description').value;
+        const latitude = parseFloat(pointLatInput.value);
+        const longitude = parseFloat(pointLngInput.value);
+        const isPublic = document.getElementById('point-public').checked;
+        
+        // Validate coordinates
+        if (isNaN(latitude) || isNaN(longitude)) {
+          alert('Please click on the map to set a location.');
+          return;
+        }
+        
+        try {
+          // Create the point
+          const response = await fetch('/api/globe/points', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+              title,
+              description,
+              latitude,
+              longitude,
+              isPublic
+            })
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to create point: ${response.status} ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          
+          // Show success message
+          alert('Map point added successfully!');
+          
+          // Clear temp marker
+          if (tempMarker) {
+            visualizer.removeMarker(tempMarker);
+            tempMarker = null;
+          }
+          
+          // Hide form and reset
+          addPointPanel.classList.add('hidden');
+          addPointForm.reset();
+          isAddingPoint = false;
+          
+          // Clear message
+          visualizer.clearMessage();
+          
+          // Reload data to show the new point
+          const loadingIndicator = document.getElementById('loading-indicator');
+          await loadData(visualizer, loadingIndicator);
+        } catch (error) {
+          console.error('Error adding map point:', error);
+          alert('Failed to add map point. Please try again.');
+        }
+      });
     }
     
     // Get demo map data for non-authenticated users

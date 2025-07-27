@@ -79,7 +79,6 @@
       max-height: 0;
       overflow: hidden;
       transition: max-height 0.5s ease-out;
-      display: none;
     }
     
     .collapsible.active + .collapsible-content {
@@ -570,16 +569,17 @@
           const content = this.nextElementSibling;
           
           if (content.style.maxHeight && content.style.maxHeight !== '0px') {
-            content.style.maxHeight = null;
+            content.style.maxHeight = '0px';
+            setTimeout(() => {
+              content.style.display = 'none';
+            }, 500); // Wait for transition to complete
           } else {
             // First ensure all content is visible for proper height calculation
             content.style.display = 'block';
-            // Set a temporary fixed height to ensure content is rendered
-            content.style.maxHeight = '1000px';
-            // Get the actual scrollHeight after rendering
-            setTimeout(() => {
+            // Get the scrollHeight after rendering
+            requestAnimationFrame(() => {
               content.style.maxHeight = content.scrollHeight + 'px';
-            }, 10);
+            });
           }
         });
       });
@@ -629,12 +629,10 @@
             
             button.classList.add('active');
             content.style.display = 'block';
-            // Set a temporary fixed height to ensure content is rendered
-            content.style.maxHeight = '1000px';
-            // Get the actual scrollHeight after rendering
-            setTimeout(() => {
+            // Get the scrollHeight after rendering
+            requestAnimationFrame(() => {
               content.style.maxHeight = content.scrollHeight + 'px';
-            }, 10);
+            });
             section.style.display = 'block';
           }
         });

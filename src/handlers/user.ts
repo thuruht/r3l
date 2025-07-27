@@ -29,6 +29,7 @@ export interface UserProfile {
   created_at: number;
   updated_at: number;
   avatar_key?: string;
+  avatar_url?: string;
   email?: string;
   preferences: UserPreferences;
 }

@@ -981,7 +981,7 @@
               FORBID_ATTR: ['onerror', 'onload', 'onclick', 'onmouseover']
             });
             
-            communiquePreview.innerHTML = sanitizedHtml;
+            communiquePreview.innerHTML = sanitizedHtml || '<p class="text-muted">No content yet. Add your communique in edit mode.</p>';
             communique.classList.add('hidden');
             communiquePreview.classList.remove('hidden');
             togglePreviewBtn.innerHTML = '<span class="material-icons">edit</span> Edit';

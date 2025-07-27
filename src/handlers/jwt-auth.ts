@@ -280,8 +280,9 @@ async register(
         email: user.email,
         createdAt: user.created_at,
         updatedAt: user.updated_at,
-        // Remove avatar_url as it doesn't exist in the UserProfile type
-        // Add other fields as needed
+        avatarUrl: user.avatar_url,
+        avatar_key: user.avatar_key,
+        preferences: user.preferences
       }), {
         status: 200,
         headers: {

@@ -139,7 +139,7 @@ export class Router {
       return this.handleStatsRoutes(request, env, path);
     }
     
-    if (path.startsWith('/api/notifications/')) {
+    if (path.startsWith('/api/notifications') || path === '/api/notifications') {
       return this.handleNotificationRoutes(request, env, path);
     }
     

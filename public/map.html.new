@@ -99,65 +99,61 @@
     
     /* Add point panel styles */
     .add-point-panel {
-      background-color: var(--surface-color);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .add-point-panel.hidden {
+      display: none;
+    }
+    
+    .add-point-container {
+      background-color: var(--bg-primary);
       border-radius: 8px;
       padding: 20px;
-      margin-bottom: 1rem;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-    
-    .add-point-panel h3 {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      color: var(--accent-color);
-    }
-    
-    .add-point-panel .form-group {
-      margin-bottom: 1rem;
-    }
-    
-    .add-point-panel label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-    
-    .add-point-panel input[type="text"],
-    .add-point-panel input[type="number"],
-    .add-point-panel textarea {
+      max-width: 500px;
       width: 100%;
-      padding: 0.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      background-color: var(--background-color);
-      color: var(--text-primary);
+      max-height: 90vh;
+      overflow-y: auto;
     }
     
-    .add-point-panel .form-actions {
+    .add-point-header {
       display: flex;
-      gap: 1rem;
-      margin-top: 1.5rem;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
     
-    .add-point-panel .help-text {
-      background-color: rgba(0, 0, 0, 0.05);
-      padding: 10px;
-      border-radius: 4px;
-      margin-top: 1rem;
+    .add-point-header h3 {
+      margin: 0;
     }
     
-    .add-point-panel .help-text p {
-      margin: 0.5rem 0;
-      font-size: 0.9rem;
-    }
-    
-    .add-point-panel .help-text .note {
+    .add-point-close {
+      background: none;
+      border: none;
+      cursor: pointer;
       color: var(--text-secondary);
-      font-style: italic;
+      font-size: 24px;
     }
     
-    .hidden {
-      display: none;
+    .form-row {
+      margin-bottom: 15px;
+    }
+    
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -171,102 +167,115 @@
   <main>
     <div class="container">
       <div class="page-header">
-        <h1>Geographic Connections</h1>
-        <p class="subtitle">Explore content, users, and connections geographically</p>
+        <h1>Geographic Map</h1>
+        <p class="subtitle">Explore content with geographical connections</p>
       </div>
       
       <div class="control-panel">
-        <div class="filter-group">
-          <label for="data-type">Show:</label>
+        <div class="filter-container">
+          <label for="data-type">Data Type:</label>
           <select id="data-type">
-            <option value="all">All</option>
-            <option value="content">Content</option>
-            <option value="users">Users</option>
-            <option value="events">Events</option>
+            <option value="all">All Types</option>
+            <option value="document">Documents</option>
+            <option value="image">Images</option>
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+            <option value="geo">Geographic Only</option>
           </select>
           
-          <label for="time-range">Time:</label>
+          <label for="time-range">Time Range:</label>
           <select id="time-range">
             <option value="all">All Time</option>
-            <option value="recent">Recent (7 days)</option>
+            <option value="recent" selected>Recent (7 days)</option>
             <option value="month">Past Month</option>
             <option value="year">Past Year</option>
           </select>
           
-          <button id="refresh-map" class="btn btn-secondary">
-            <span class="material-icons">refresh</span> Refresh
+          <button id="refresh-map" class="btn">
+            <span class="material-icons">refresh</span>
+            Refresh
           </button>
           
-          <button id="add-point-btn" class="btn btn-accent">
-            <span class="material-icons">add_location</span> Add Point
+          <button id="add-point-btn" class="btn">
+            <span class="material-icons">add_location</span>
+            Add Point
           </button>
         </div>
       </div>
       
-      <!-- Add point form panel (hidden by default) -->
-      <div id="add-point-panel" class="add-point-panel hidden">
-        <h3>Add Map Point</h3>
-        <form id="add-point-form">
-          <div class="form-group">
-            <label for="point-title">Title</label>
-            <input type="text" id="point-title" name="title" required placeholder="Name this location">
-          </div>
-          
-          <div class="form-group">
-            <label for="point-description">Description</label>
-            <textarea id="point-description" name="description" rows="3" placeholder="Why is this location significant?"></textarea>
-          </div>
-          
-          <div class="form-group">
-            <label for="point-lat">Latitude</label>
-            <input type="number" id="point-lat" name="latitude" step="0.000001" required readonly>
-          </div>
-          
-          <div class="form-group">
-            <label for="point-lng">Longitude</label>
-            <input type="number" id="point-lng" name="longitude" step="0.000001" required readonly>
-          </div>
-          
-          <div class="form-group">
-            <label>
-              <input type="checkbox" id="point-public" name="isPublic" checked>
-              Public (visible to everyone)
-            </label>
-          </div>
-          
-          <div class="form-group help-text">
-            <p>Click on the map to set the location or drag the marker to adjust position.</p>
-            <p class="note">Adding a point will make it visible to others based on your privacy setting.</p>
-          </div>
-          
-          <div class="form-actions">
-            <button type="submit" class="btn btn-accent">Save Point</button>
-            <button type="button" id="cancel-add-point" class="btn btn-secondary">Cancel</button>
-          </div>
-        </form>
-      </div>
-      
       <div id="loading-indicator" class="loading-indicator">
-        <span class="material-icons" style="font-size: 48px;">hourglass_top</span>
         <p>Loading map data...</p>
       </div>
       
       <div id="map-container" class="map-container"></div>
       
-      <div class="map-info">
-        <h2>About the Map</h2>
-        <p>
-          This map shows geographic connections between content, users, and events in the R3L:F network.
-          Content is placed on the map based on geographic metadata when available.
-        </p>
-        <p>
-          <strong>Note:</strong> Geographic information is optional and only displayed when explicitly shared.
-          No location data is collected unless voluntarily provided.
-        </p>
-        
-        <div class="attribution">
-          <p>Map data © <a href="javascript:void(0)" onclick="showMapAttribution()">OpenStreetMap</a> contributors</p>
+      <div class="attribution">
+        <button id="show-attribution" class="btn-secondary">View Map Attribution</button>
+      </div>
+    </div>
+    
+    <!-- Add point panel -->
+    <div id="add-point-panel" class="add-point-panel hidden">
+      <div class="add-point-container">
+        <div class="add-point-header">
+          <h3>Add Map Point</h3>
+          <button id="close-add-point" class="add-point-close">&times;</button>
         </div>
+        
+        <form id="add-point-form">
+          <div class="form-row">
+            <label for="point-title">Title:</label>
+            <input type="text" id="point-title" name="title" required>
+          </div>
+          
+          <div class="form-row">
+            <label for="point-description">Description:</label>
+            <textarea id="point-description" name="description" rows="3"></textarea>
+          </div>
+          
+          <div class="form-row">
+            <label for="point-lat">Latitude:</label>
+            <input type="text" id="point-lat" name="lat" required readonly>
+          </div>
+          
+          <div class="form-row">
+            <label for="point-lng">Longitude:</label>
+            <input type="text" id="point-lng" name="lng" required readonly>
+          </div>
+          
+          <div class="form-row">
+            <label for="point-type">Type:</label>
+            <select id="point-type" name="type">
+              <option value="location">Location</option>
+              <option value="event">Event</option>
+              <option value="landmark">Landmark</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+          
+          <div class="form-row">
+            <label for="point-tags">Tags (comma separated):</label>
+            <input type="text" id="point-tags" name="tags" placeholder="e.g., travel, research, architecture">
+          </div>
+          
+          <div class="form-actions">
+            <button type="button" id="cancel-add-point" class="btn-secondary">Cancel</button>
+            <button type="submit" class="btn">Save Point</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- Attribution modal -->
+    <div id="attribution-modal" class="attribution-modal hidden">
+      <div class="modal-content">
+        <h3>Map Attribution</h3>
+        <p>The maps on this site are powered by:</p>
+        <ul>
+          <li>© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors</li>
+          <li>© <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> - An open-source JavaScript library for mobile-friendly interactive maps</li>
+        </ul>
+        <button id="close-attribution" class="btn close-modal">Close</button>
       </div>
     </div>
   </main>
@@ -277,26 +286,36 @@
       <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
     </div>
   </footer>
-  
+
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
     import { GlobeVisualizer } from './js/globe/globe-visualizer.js';
     
-    document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
       // Initialize navigation
       NavigationBar.init('map');
       
-      // Initialize the map visualizer
+      // Initialize map
       const visualizer = new GlobeVisualizer('map-container');
       const loadingIndicator = document.getElementById('loading-indicator');
       
-      // Initialize map
-      await initMap(visualizer, loadingIndicator);
+      initMap(visualizer, loadingIndicator);
       
-      // Check if we're being asked to add a point (from profile or other pages)
+      // Set up map attribution modal
+      document.getElementById('show-attribution').addEventListener('click', () => {
+        document.getElementById('attribution-modal').classList.remove('hidden');
+      });
+      
+      document.getElementById('close-attribution').addEventListener('click', () => {
+        document.getElementById('attribution-modal').classList.add('hidden');
+      });
+      
+      // Check for URL parameters to see if we should auto-add a point
       const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.get('action') === 'add-point') {
-        // Check if user is authenticated
+      const action = urlParams.get('action');
+      
+      if (action === 'add-point') {
+        // User was redirected here to add a point
         const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
         if (isAuthenticated) {
           // Wait a moment for the map to fully load
@@ -406,7 +425,7 @@
         
         // If lat/lng provided, do a location search
         if (lat && lng) {
-          endpoint = `/api/search/location`;
+          endpoint = '/api/search/location';
           params.append('lat', lat);
           params.append('lng', lng);
           params.append('radius', radius);
@@ -507,13 +526,17 @@
             
             // Process location data into points
             results.forEach(item => {
+              // Handle different location data formats
+              const lat = item.lat || (item.location && item.location.lat);
+              const lng = item.lng || (item.location && item.location.lng);
+              
               // Skip items without location data
-              if (!item.lat || !item.lng) {
+              if (!lat || !lng) {
                 return;
               }
               
               mapData.points.push({
-                coordinates: [item.lng, item.lat],
+                coordinates: [lng, lat],
                 properties: {
                   name: item.title || 'Untitled',
                   description: item.description || 'No description',
@@ -521,115 +544,39 @@
                   color: getColorForContentType(item.type)
                 }
               });
+            });
             
-              // Generate connections between nearby points (within 100km)
-              // This is a simple example - in a real app we'd use actual connection data
-              const addedConnections = new Set();
-              
-              for (let i = 0; i < mapData.points.length; i++) {
-                for (let j = i + 1; j < mapData.points.length; j++) {
-                  const point1 = mapData.points[i];
-                  const point2 = mapData.points[j];
-                  
-                  // Calculate rough distance
-                  const [lng1, lat1] = point1.coordinates;
-                  const [lng2, lat2] = point2.coordinates;
-                  
-                  const distance = calculateDistance(lat1, lng1, lat2, lng2);
-                  
-                  // If points are close enough, add a connection
-                  if (distance < 100) { // 100km
-                    const connectionKey = `${i}-${j}`;
-                    
-                    if (!addedConnections.has(connectionKey)) {
-                      mapData.connections.push({
-                        source: point1.coordinates,
-                        target: point2.coordinates,
-                        properties: {
-                          name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
-                          description: `Distance: ${Math.round(distance)} km`,
-                          color: 'var(--accent-color)'
-                        }
-                      });
-                      
-                      addedConnections.add(connectionKey);
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            console.log('User not authenticated, using demo data');
-          }
-        } catch (error) {
-          console.error('Error fetching data from API:', error);
-        }
-        
-        // If no data was loaded (either not authenticated or error), use demo data
-        if (mapData.points.length === 0) {
-          // Only show demo data for non-authenticated users
-          if (!isAuthenticated) {
-            console.log('Using demo data for non-authenticated user');
-            mapData = getDemoMapData();
-          } else {
-            console.log('No geographic data available for authenticated user');
-          }
-        }
-        
-        loadingIndicator.classList.remove('active');
-        return mapData;
-      } catch (error) {
-        console.error('Error in fetchLocationData:', error);
-        loadingIndicator.classList.remove('active');
-        
-        // Fallback to demo data
-        return getDemoMapData();
-      }
-    }
+            // Generate connections between nearby points (within 100km)
+            // This is a simple example - in a real app we'd use actual connection data
+            const addedConnections = new Set();
+            
+            for (let i = 0; i < mapData.points.length; i++) {
+              for (let j = i + 1; j < mapData.points.length; j++) {
+                const point1 = mapData.points[i];
+                const point2 = mapData.points[j];
                 
-                mapData.points.push({
-                  coordinates: [item.location.lng, item.location.lat],
-                  properties: {
-                    name: item.title || 'Untitled',
-                    description: item.description || 'No description',
-                    icon: getIconForContentType(item.type),
-                    color: getColorForContentType(item.type)
-                  }
-                });
-              });
-              
-              // Generate connections between nearby points (within 100km)
-              // This is a simple example - in a real app we'd use actual connection data
-              const addedConnections = new Set();
-              
-              for (let i = 0; i < mapData.points.length; i++) {
-                for (let j = i + 1; j < mapData.points.length; j++) {
-                  const point1 = mapData.points[i];
-                  const point2 = mapData.points[j];
+                // Calculate rough distance
+                const [lng1, lat1] = point1.coordinates;
+                const [lng2, lat2] = point2.coordinates;
+                
+                const distance = calculateDistance(lat1, lng1, lat2, lng2);
+                
+                // If points are close enough, add a connection
+                if (distance < 100) { // 100km
+                  const connectionKey = `${i}-${j}`;
                   
-                  // Calculate rough distance
-                  const [lng1, lat1] = point1.coordinates;
-                  const [lng2, lat2] = point2.coordinates;
-                  
-                  const distance = calculateDistance(lat1, lng1, lat2, lng2);
-                  
-                  // If points are close enough, add a connection
-                  if (distance < 100) { // 100km
-                    const connectionKey = `${i}-${j}`;
+                  if (!addedConnections.has(connectionKey)) {
+                    mapData.connections.push({
+                      source: point1.coordinates,
+                      target: point2.coordinates,
+                      properties: {
+                        name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
+                        description: `Distance: ${Math.round(distance)} km`,
+                        color: 'var(--accent-color)'
+                      }
+                    });
                     
-                    if (!addedConnections.has(connectionKey)) {
-                      mapData.connections.push({
-                        source: point1.coordinates,
-                        target: point2.coordinates,
-                        properties: {
-                          name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
-                          description: `Distance: ${Math.round(distance)} km`,
-                          color: 'var(--accent-color)'
-                        }
-                      });
-                      
-                      addedConnections.add(connectionKey);
-                    }
+                    addedConnections.add(connectionKey);
                   }
                 }
               }
@@ -669,6 +616,7 @@
       const addPointPanel = document.getElementById('add-point-panel');
       const addPointForm = document.getElementById('add-point-form');
       const cancelAddPoint = document.getElementById('cancel-add-point');
+      const closeAddPoint = document.getElementById('close-add-point');
       const pointLatInput = document.getElementById('point-lat');
       const pointLngInput = document.getElementById('point-lng');
       
@@ -689,102 +637,90 @@
         addPointPanel.classList.remove('hidden');
         isAddingPoint = true;
         
-        // Tell user to click on the map
-        visualizer.setMessage('Click on the map to select a location for your point. Drag the marker to adjust position.');
+        // Display message on the map
+        visualizer.setMessage('Click on the map to set a location for your point');
         
-        // Enable click events on the map
-        visualizer.onMapClick((e) => {
-          if (!isAddingPoint) return;
-          
-          const { lat, lng } = e.latlng;
-          
-          // Set the coordinates in the form
-          pointLatInput.value = lat.toFixed(6);
-          pointLngInput.value = lng.toFixed(6);
-          
-          // Remove previous temp marker if exists
-          if (tempMarker) {
-            visualizer.removeMarker(tempMarker);
-          }
-          
-          // Add temporary marker
-          tempMarker = visualizer.addTempMarker([lng, lat], {
-            name: 'New Point',
-            description: 'Your new map point',
-            icon: 'location',
-            color: 'var(--accent-color)'
-          });
-        });
+        // Listen for map clicks
+        visualizer.map.on('click', handleMapClick);
       });
       
-      // Cancel adding point
-      cancelAddPoint.addEventListener('click', () => {
-        addPointPanel.classList.add('hidden');
-        isAddingPoint = false;
+      // Handle map click
+      function handleMapClick(e) {
+        if (!isAddingPoint) return;
         
-        // Clear temp marker
+        const { lat, lng } = e.latlng;
+        
+        // Update form fields
+        pointLatInput.value = lat.toFixed(6);
+        pointLngInput.value = lng.toFixed(6);
+        
+        // Add temporary marker
+        if (tempMarker) {
+          visualizer.removeMarker(tempMarker);
+        }
+        
+        tempMarker = visualizer.addTempMarker([lng, lat], { name: 'New Point' });
+      }
+      
+      // Close add point panel
+      function closeAddPointPanel() {
+        addPointPanel.classList.add('hidden');
+        
+        // Clean up
+        visualizer.map.off('click', handleMapClick);
+        visualizer.clearMessage();
+        
         if (tempMarker) {
           visualizer.removeMarker(tempMarker);
           tempMarker = null;
         }
         
-        // Clear form
-        addPointForm.reset();
-        
-        // Clear message
-        visualizer.clearMessage();
-      });
+        isAddingPoint = false;
+      }
       
-      // Submit form to add point
+      cancelAddPoint.addEventListener('click', closeAddPointPanel);
+      closeAddPoint.addEventListener('click', closeAddPointPanel);
+      
+      // Handle form submission
       addPointForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
-        // Get form data
-        const title = document.getElementById('point-title').value;
-        const description = document.getElementById('point-description').value;
-        const latitude = parseFloat(pointLatInput.value);
-        const longitude = parseFloat(pointLngInput.value);
-        const isPublic = document.getElementById('point-public').checked;
-        
-        // Validate coordinates
-        if (isNaN(latitude) || isNaN(longitude)) {
+        if (!pointLatInput.value || !pointLngInput.value) {
           alert('Please click on the map to set a location.');
           return;
         }
         
+        // Get form data
+        const formData = new FormData(addPointForm);
+        const pointData = {
+          title: formData.get('title'),
+          description: formData.get('description'),
+          lat: parseFloat(formData.get('lat')),
+          lng: parseFloat(formData.get('lng')),
+          type: formData.get('type'),
+          tags: formData.get('tags')?.split(',').map(tag => tag.trim()) || []
+        };
+        
         try {
-          // Create the point
           const response = await fetch('/api/globe/points', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
-            credentials: 'include',
-            body: JSON.stringify({
-              title,
-              description,
-              latitude,
-              longitude,
-              isPublic
-            })
+            body: JSON.stringify(pointData),
+            credentials: 'same-origin'
           });
           
           if (!response.ok) {
-            throw new Error(`Failed to create point: ${response.status} ${response.statusText}`);
+            throw new Error(`API error: ${response.status}`);
           }
           
           const result = await response.json();
+          console.log('Point added successfully:', result);
           
-          // Show success message
-          alert('Map point added successfully!');
+          alert('Point added successfully!');
           
-          // Clear temp marker
-          if (tempMarker) {
-            visualizer.removeMarker(tempMarker);
-            tempMarker = null;
-          }
-          
-          // Hide form and reset
+          // Close panel and reset form
           addPointPanel.classList.add('hidden');
           addPointForm.reset();
           isAddingPoint = false;
@@ -894,64 +830,52 @@
       return deg * (Math.PI/180);
     }
     
-    // Helper function to get icon for content type
+    // Get icon for content type
     function getIconForContentType(type) {
-      if (!type) return 'document';
-      
-      if (type.startsWith('image/')) return 'image';
-      if (type.startsWith('audio/')) return 'audio';
-      if (type.startsWith('video/')) return 'video';
-      if (type.startsWith('text/')) return 'document';
-      if (type.includes('pdf')) return 'pdf';
-      
-      return 'document';
+      switch (type) {
+        case 'document':
+          return 'description';
+        case 'image':
+          return 'image';
+        case 'audio':
+          return 'music_note';
+        case 'video':
+          return 'videocam';
+        case 'location':
+          return 'place';
+        case 'event':
+          return 'event';
+        case 'landmark':
+          return 'public';
+        case 'personal':
+          return 'person';
+        default:
+          return 'public';
+      }
     }
     
-    // Helper function to get color for content type
+    // Get color for content type
     function getColorForContentType(type) {
-      if (!type) return 'var(--accent-color)';
-      
-      if (type.startsWith('image/')) return 'var(--success)';
-      if (type.startsWith('audio/')) return 'var(--info)';
-      if (type.startsWith('video/')) return 'var(--warning)';
-      if (type.startsWith('text/')) return 'var(--accent-color)';
-      if (type.includes('pdf')) return 'var(--error)';
-      
-      return 'var(--accent-color)';
-    }
-  </script>
-  
-  <script>
-    // Map attribution modal
-    function showMapAttribution() {
-      // Create modal if it doesn't exist
-      let modal = document.getElementById('attribution-modal');
-      
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'attribution-modal';
-        modal.className = 'attribution-modal';
-        
-        modal.innerHTML = `
-          <div class="modal-content">
-            <h3>Map Attribution</h3>
-            <p>Map data © OpenStreetMap contributors</p>
-            <p>OpenStreetMap® is open data, licensed under the Open Data Commons Open Database License (ODbL) by the OpenStreetMap Foundation (OSMF).</p>
-            <p>The cartography in the map tiles is licensed under the Creative Commons Attribution-ShareAlike 2.0 license (CC BY-SA).</p>
-            <button class="close-modal">Close</button>
-          </div>
-        `;
-        
-        document.body.appendChild(modal);
-        
-        // Add close button functionality
-        modal.querySelector('.close-modal').addEventListener('click', function() {
-          modal.classList.add('hidden');
-        });
+      switch (type) {
+        case 'document':
+          return 'var(--accent-blue)';
+        case 'image':
+          return 'var(--accent-purple)';
+        case 'audio':
+          return 'var(--accent-green)';
+        case 'video':
+          return 'var(--accent-red)';
+        case 'location':
+          return 'var(--accent-blue)';
+        case 'event':
+          return 'var(--accent-green)';
+        case 'landmark':
+          return 'var(--accent-purple)';
+        case 'personal':
+          return 'var(--accent-color)';
+        default:
+          return 'var(--accent-color)';
       }
-      
-      // Show the modal
-      modal.classList.remove('hidden');
     }
   </script>
 </body>

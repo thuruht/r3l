@@ -234,11 +234,11 @@
           <h3>Preferences</h3>
           
           <div class="preference-toggle">
-            <span>Default Content Visibility</span>
+            <span id="visibility-label">Default Content Visibility</span>
             <div>
               <span class="mr-2">Private</span>
               <label class="toggle-switch">
-                <input type="checkbox" id="contentVisibility" name="contentVisibility" checked>
+                <input type="checkbox" id="contentVisibility" name="contentVisibility" checked aria-labelledby="visibility-label" title="Toggle content visibility between private and public">
                 <span class="slider"></span>
               </label>
               <span class="ml-2">Public</span>
@@ -246,17 +246,17 @@
           </div>
           
           <div class="preference-toggle">
-            <span>Email Notifications</span>
+            <span id="email-notifications-label">Email Notifications</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="emailNotifications" name="emailNotifications" checked>
+              <input type="checkbox" id="emailNotifications" name="emailNotifications" checked aria-labelledby="email-notifications-label" title="Toggle email notifications">
               <span class="slider"></span>
             </label>
           </div>
           
           <div class="preference-toggle">
-            <span>Show Location By Default</span>
+            <span id="show-location-label">Show Location By Default</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="showLocation" name="showLocation">
+              <input type="checkbox" id="showLocation" name="showLocation" aria-labelledby="show-location-label" title="Toggle location visibility">
               <span class="slider"></span>
             </label>
           </div>

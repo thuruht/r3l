@@ -16,7 +16,7 @@
 - **Privacy Settings**: Added privacy settings in profile.html
 - **Non-demo Search**: Implemented working non-algorithmic search functionality
 - **User Connections**: Enhanced user connection system with proper statuses
-- **Communique Public Toggle**: Added public/private toggle for communiques
+- **Communique Public Toggle**: Added public/private toggle for communiques *J*is thois toggling between editing view and public appearance view? it should be. (add to TODO.md)
 - **Avatar Management**: Implemented avatar upload and selection
 - **Lurker Mode**: Enhanced "Lurker in the Mist" mode for privacy-focused exploration
 

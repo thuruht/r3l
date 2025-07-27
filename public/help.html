@@ -3,253 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Help & FAQ - R3L:F</title>
-  <link rel="stylesheet" href="./css/rel-f-global.css">
-  <link rel="stylesheet" href="./css/rel-f-accent.css">
-  <link rel="stylesheet" href="./css/collapsible.css">
-  <script src="./js/font-loader.js" defer></script>
+  <title>R3L:F - Help & FAQ</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <script src="js/font-loader.js" defer></script>
   <style>
-    .help-container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: var(--space-6);
-    }
-    
-    .help-hero {
-      background-color: var(--bg-container);
-      border-radius: var(--radius-lg);
-      padding: var(--space-8);
-      margin-bottom: var(--space-8);
+    /* Help page specific styles */
+    .help-header {
+      margin-bottom: 2rem;
       text-align: center;
-      border: 1px solid var(--accent-purple-muted);
-      box-shadow: 0 8px 24px var(--accent-purple-glow);
     }
     
-    .help-hero h1 {
-      color: var(--accent-purple);
-      margin-bottom: var(--space-4);
-      font-size: var(--fs-3xl);
+    .help-header h1 {
+      margin-bottom: 0.5rem;
+      color: var(--accent-color);
     }
     
-    .help-section {
-      background-color: var(--bg-container);
-      border-radius: var(--radius-md);
-      padding: var(--space-6);
-      margin-bottom: var(--space-6);
-      border-left: 4px solid var(--accent-purple);
-    }
-    
-    .help-section h2 {
-      color: var(--accent-green);
-      margin-bottom: var(--space-4);
-      font-size: var(--fs-xl);
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    
-    .help-section h3 {
-      color: var(--accent-cyan);
-      margin: var(--space-4) 0 var(--space-2);
-      font-size: var(--fs-lg);
-    }
-    
-    .help-card {
-      background-color: var(--bg-container-alt);
-      border-radius: var(--radius-md);
-      padding: var(--space-4);
-      margin: var(--space-4) 0;
-    }
-    
-    .faq-item {
-      background-color: var(--bg-container-alt);
-      border-radius: var(--radius-md);
-      padding: var(--space-4);
-      margin-bottom: var(--space-4);
-      border-left: 3px solid var(--accent-cyan);
-      transition: transform var(--transition-normal);
-    }
-    
-    .faq-item:hover {
-      transform: translateX(5px);
-    }
-    
-    .faq-question {
-      font-weight: bold;
-      color: var(--accent-green);
-      margin-bottom: var(--space-2);
-      cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .faq-answer {
-      display: none;
-      padding-top: var(--space-2);
-      border-top: 1px solid var(--bg-secondary);
-      margin-top: var(--space-2);
-    }
-    
-    .faq-answer.active {
-      display: block;
-    }
-    
-    .toc {
-      background-color: var(--bg-container-alt);
-      border-radius: var(--radius-md);
-      padding: var(--space-4);
-      margin-bottom: var(--space-6);
-      position: sticky;
-      top: var(--space-4);
-    }
-    
-    .toc h3 {
-      color: var(--accent-purple);
-      margin-bottom: var(--space-3);
-    }
-    
-    .toc ul {
-      list-style-type: none;
-      padding-left: var(--space-2);
-    }
-    
-    .toc li {
-      margin-bottom: var(--space-2);
-    }
-    
-    .toc a {
-      color: var(--accent-cyan);
-      text-decoration: none;
-      transition: color var(--transition-normal);
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-    
-    .toc a:hover {
-      color: var(--accent-cyan-hover);
-      text-decoration: underline;
-    }
-    
-    .tip-box {
-      background-color: rgba(162, 120, 255, 0.1);
-      border-left: 4px solid var(--accent-purple);
-      padding: var(--space-4);
-      margin: var(--space-4) 0;
-      border-radius: var(--radius-md);
-    }
-    
-    .warning-box {
-      background-color: rgba(255, 156, 102, 0.1);
-      border-left: 4px solid var(--warning);
-      padding: var(--space-4);
-      margin: var(--space-4) 0;
-      border-radius: var(--radius-md);
-    }
-    
-    .grid-2col {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: var(--space-4);
-      margin: var(--space-4) 0;
-    }
-    
-    .steps-list {
-      counter-reset: steps;
-      list-style-type: none;
-      padding-left: var(--space-2);
-    }
-    
-    .steps-list li {
-      position: relative;
-      padding-left: var(--space-6);
-      margin-bottom: var(--space-4);
-      counter-increment: steps;
-    }
-    
-    .steps-list li::before {
-      content: counter(steps);
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 24px;
-      height: 24px;
-      background-color: var(--accent-purple);
-      color: var(--bg-deep);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-    }
-    
-    .help-nav {
-      display: flex;
-      justify-content: space-between;
-      margin-top: var(--space-8);
-    }
-    
-    @media (max-width: 768px) {
-      .grid-2col {
-        grid-template-columns: 1fr;
-      }
-    }
-    
-    .ephemeral-lifecycle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin: var(--space-6) 0;
-      position: relative;
-    }
-    
-    .lifecycle-step {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      width: 30%;
-      z-index: 2;
-    }
-    
-    .lifecycle-step .icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background-color: var(--bg-container-alt);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: var(--space-2);
-      border: 2px solid var(--accent-purple);
-    }
-    
-    .lifecycle-step .label {
-      color: var(--accent-green);
-      font-weight: bold;
-    }
-    
-    .lifecycle-step .description {
-      font-size: var(--fs-sm);
+    .help-header p {
+      font-size: 1.1rem;
       color: var(--text-secondary);
     }
     
-    .lifecycle-line {
-      position: absolute;
-      top: 24px;
-      left: 10%;
-      right: 10%;
-      height: 2px;
-      background: linear-gradient(to right, var(--accent-purple), var(--warning));
-      z-index: 1;
+    .help-container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 0;
     }
     
-    .feature-icon {
-      font-size: 36px;
-      color: var(--accent-purple);
-      margin-bottom: var(--space-2);
-      filter: drop-shadow(0 0 8px var(--accent-purple-glow));
+    .help-section {
+      margin-bottom: 2rem;
+      background-color: var(--surface-color);
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+    
+    .collapsible {
+      background-color: var(--surface-color);
+      color: var(--accent-color);
+      cursor: pointer;
+      padding: 1rem;
+      width: 100%;
+      border: none;
+      text-align: left;
+      outline: none;
+      font-size: 1.2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background-color 0.3s;
+    }
+    
+    .collapsible:hover {
+      background-color: var(--hover-color);
+    }
+    
+    .collapsible span {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .collapsible:after {
+      content: '\002B';
+      color: var(--text-secondary);
+      font-weight: bold;
+      margin-left: auto;
+    }
+    
+    .active:after {
+      content: "\2212";
+    }
+    
+    .collapsible-content {
+      padding: 0 1rem;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-out;
+      display: none;
+    }
+    
+    .collapsible.active + .collapsible-content {
+      display: block;
+    }
+    
+    .help-card {
+      padding: 1rem;
+      margin: 1rem 0;
+      background-color: var(--bg-secondary);
+      border-radius: 4px;
+    }
+    
+    .help-card h3 {
+      margin-top: 0;
+      color: var(--accent-color);
+    }
+    
+    .help-card ul {
+      padding-left: 1.5rem;
+    }
+    
+    .help-card li {
+      margin-bottom: 0.5rem;
+    }
+    
+    .help-image {
+      max-width: 100%;
+      border-radius: 4px;
+      margin: 1rem 0;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .feature-card {
+      background-color: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: transform 0.2s;
+    }
+    
+    .feature-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .feature-card .material-icons {
+      font-size: 2.5rem;
+      color: var(--accent-color);
+      margin-bottom: 1rem;
+    }
+    
+    .search-box {
+      width: 100%;
+      padding: 1rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--surface-color);
+    }
+    
+    @media (max-width: 768px) {
+      .feature-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -260,577 +160,493 @@
     </div>
   </header>
 
-  <main class="container">
-    <div class="help-hero">
-      <h1><span class="material-icons" aria-hidden="true">help_outline</span> R3L:F Help & FAQ</h1>
-      <p>Your comprehensive guide to the Relational Ephemeral Filenet</p>
-    </div>
-    
-    <div class="grid-2col">
-      <div class="toc">
-        <h3>Quick Navigation</h3>
-        <ul>
-          <li><a href="#getting-started"><span class="material-icons" aria-hidden="true">rocket_launch</span> Getting Started</a></li>
-          <li><a href="#account-management"><span class="material-icons" aria-hidden="true">account_circle</span> Account Management</a></li>
-          <li><a href="#content-lifecycle"><span class="material-icons" aria-hidden="true">timer</span> Content Lifecycle</a></li>
-          <li><a href="#drawer-communique"><span class="material-icons" aria-hidden="true">archive</span> Drawer & Communique</a></li>
-          <li><a href="#association-web"><span class="material-icons" aria-hidden="true">hub</span> Association Web</a></li>
-          <li><a href="#lurker-mode"><span class="material-icons" aria-hidden="true">visibility_off</span> Lurker in the Mist</a></li>
-          <li><a href="#search-discovery"><span class="material-icons" aria-hidden="true">search</span> Search & Discovery</a></li>
-          <li><a href="#inbox-notifications"><span class="material-icons" aria-hidden="true">notifications</span> Inbox & Notifications</a></li>
-          <li><a href="#privacy-security"><span class="material-icons" aria-hidden="true">security</span> Privacy & Security</a></li>
-          <li><a href="#philosophy"><span class="material-icons" aria-hidden="true">psychology</span> Philosophy & Motivation</a></li>
-        </ul>
-      </div>
-      
+  <main>
+    <div class="container">
       <div class="help-container">
+        <div class="help-header">
+          <h1>Help & FAQ</h1>
+          <p>Find answers to common questions and learn how to use R3L:F effectively</p>
+        </div>
+        
+        <input type="text" id="help-search" class="search-box" placeholder="Search for help topics...">
+        
         <section id="getting-started" class="help-section collapsible-section">
           <button type="button" class="collapsible">
             <span>
-              <span class="material-icons" aria-hidden="true">rocket_launch</span> Getting Started
+              <span class="material-icons" aria-hidden="true">rocket_launch</span>
+              Getting Started
             </span>
           </button>
           <div class="collapsible-content">
-            <h3>What is R3L:F?</h3>
-            <p>R3L:F (Relational Ephemeral Filenet) is a decentralized, ephemeral, anti-algorithmic social file-sharing platform that prioritizes user control, organic discovery, and community-driven archiving. Unlike traditional social media, R3L:F is designed to be non-corporate, minimalist, and free of algorithmic engagement farming.</p>
+            <div class="help-card">
+              <h3>What is R3L:F?</h3>
+              <p>R3L:F (Relational Ephemeral Filenet) is a platform designed for creating, sharing, and discovering content without algorithmic interference. It emphasizes user control, ephemeral content, and community-driven archiving.</p>
+            </div>
             
-            <div class="tip-box">
-              <strong>Key differentiators:</strong>
+            <div class="help-card">
+              <h3>Navigation</h3>
+              <p>The main navigation bar provides access to all R3L:F features:</p>
               <ul>
-              <li><strong>Anti-algorithmic:</strong> No engagement optimization or content ranking</li>
-              <li><strong>Ephemeral by default:</strong> Content expires after 7 days unless explicitly preserved</li>
-              <li><strong>User-controlled:</strong> You decide what to share and how long it stays visible</li>
-              <li><strong>Privacy-focused:</strong> Uses privacy-respecting technologies throughout</li>
-              <li><strong>Community-driven archiving:</strong> Important content can be preserved through explicit voting</li>
-            </ul>
-          </div>
-          
-          <h3>How to Join R3L:F</h3>
-          <ol class="steps-list">
-            <li>Visit the <a href="index.html">home page</a> and click "Get Started" or "Create Account"</li>
-            <li>Choose a username and secure password</li>
-            <li>Complete your account setup by creating a recovery key</li>
-            <li>Customize your "drawer" (personal profile) and communique</li>
-            <li>Start uploading and sharing content</li>
-          </ol>
-          
-          <h3>Basic Navigation</h3>
-          <div class="help-card">
-            <p>The main navigation bar provides access to all R3L:F features:</p>
-            <ul>
-              <li><strong>Home:</strong> Return to the main landing page</li>
-              <li><strong>Network:</strong> Explore the association web visualization</li>
-              <li><strong>Map:</strong> Geographic visualization of content and users</li>
-              <li><strong>Search:</strong> Find content using various criteria</li>
-              <li><strong>Random:</strong> Discover random communiques</li>
-              <li><strong>Upload:</strong> Share new content</li>
-              <li><strong>Drawer:</strong> Your personal archive and public profile</li>
-              <li><strong>Inbox:</strong> Access notifications and messages</li>
-              <li><strong>Profile:</strong> Manage your account settings</li>
-            </ul>
-          </div>
-        </section>
-        
-        <section id="account-management" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">account_circle</span> Account Management</h2>
-          
-          <h3>Creating Your Account</h3>
-          <p>R3L:F uses a secure authentication system with JWT tokens. To create an account:</p>
-          <ol class="steps-list">
-            <li>Visit the registration page</li>
-            <li>Choose a username (this will be your public identifier)</li>
-            <li>Create a strong password</li>
-            <li>Generate a recovery key (important for account recovery)</li>
-          </ol>
-          
-          <div class="warning-box">
-            <strong>Important:</strong> Store your recovery key in a safe place. This is your only method to recover your account if you forget your password. R3L:F does not store your password and cannot reset it for you.
-          </div>
-          
-          <h3>Managing Your Profile</h3>
-          <p>Your profile page contains personal settings that control how you appear and interact within R3L:F:</p>
-          <ul>
-            <li><strong>Display Name:</strong> How you appear to others (can be different from your username)</li>
-            <li><strong>Avatar:</strong> Upload a custom profile image or choose from defaults</li>
-            <li><strong>Bio:</strong> A brief description visible on your profile</li>
-            <li><strong>Visibility Settings:</strong> Control your presence in the association web</li>
-            <li><strong>Lurker Mode:</strong> Toggle low-visibility status</li>
-            <li><strong>Location Sharing:</strong> Control whether your content appears on the map</li>
-            <li><strong>Change Password:</strong> Update your account security</li>
-          </ul>
-          
-          <h3>Account Security Best Practices</h3>
-          <div class="help-card">
-            <ul>
-              <li>Use a strong, unique password that you don't use elsewhere</li>
-              <li>Store your recovery key in a secure location (password manager or physical backup)</li>
-              <li>Regularly review your account activity</li>
-              <li>Be mindful of what information you share in your profile and communique</li>
-              <li>Log out when using shared devices</li>
-            </ul>
-          </div>
-          
-          <h3>Customizing Your Avatar</h3>
-          <div class="help-card">
-            <p>Your avatar is your visual identity in R3L:F and appears in your drawer, communique, and the navigation bar:</p>
-            <ol class="steps-list">
-              <li>Go to your Profile page</li>
-              <li>In the Avatar section, click "Change Avatar"</li>
-              <li>Upload an image (JPG, PNG, or SVG recommended)</li>
-              <li>Crop and adjust as needed</li>
-              <li>Click "Save" to update your avatar</li>
-            </ol>
-            <p>Your avatar will appear in your drawer, communique, navigation bar, messages, and anywhere your profile is referenced.</p>
-            <p>If you don't upload a custom avatar, a default icon will be used instead.</p>
-          </div>
-        </section>
-        
-        <section id="content-lifecycle" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">timer</span> Content Lifecycle</h2>
-          
-          <h3>Ephemeral Content Explained</h3>
-          <p>All content on R3L:F is ephemeral by default, meaning it expires after 7 days unless explicitly preserved. This design choice ensures that data remains fresh and relevant rather than accumulating indefinitely.</p>
-          
-          <div class="ephemeral-lifecycle">
-            <div class="lifecycle-line"></div>
-            
-            <div class="lifecycle-step">
-              <div class="icon">
-                <span class="material-icons">add_circle</span>
-              </div>
-              <div class="label">Upload</div>
-              <div class="description">Content is shared and active for 7 days</div>
+                <li><strong>Home:</strong> Return to the main landing page</li>
+                <li><strong>Map:</strong> Explore content geographically</li>
+                <li><strong>Network:</strong> Visualize content and user connections</li>
+                <li><strong>Search:</strong> Find content and users</li>
+                <li><strong>Random:</strong> Discover random content</li>
+                <li><strong>Messages:</strong> Access your conversations</li>
+                <li><strong>User Menu:</strong> Access your profile, drawer, settings, and more</li>
+              </ul>
             </div>
             
-            <div class="lifecycle-step">
-              <div class="icon">
-                <span class="material-icons">timer</span>
-              </div>
-              <div class="label">Marked for Deletion</div>
-              <div class="description">Final 24-hour countdown begins</div>
+            <div class="help-card">
+              <h3>Creating an Account</h3>
+              <p>To create an account:</p>
+              <ol>
+                <li>Click "Login" in the top-right corner</li>
+                <li>Select "Register" on the login page</li>
+                <li>Choose a username and password</li>
+                <li>Provide a display name</li>
+                <li>Complete the registration process</li>
+              </ol>
+              <p><strong>Important:</strong> Store your recovery key in a safe place. It's the only way to recover your account if you forget your password.</p>
             </div>
-            
-            <div class="lifecycle-step">
-              <div class="icon">
-                <span class="material-icons">auto_delete</span>
-              </div>
-              <div class="label">Auto-Deleted</div>
-              <div class="description">Unless archived or preserved</div>
-            </div>
-          </div>
-          
-          <h3>Ways to Preserve Content</h3>
-          <ol>
-            <li><strong>Personal Archive:</strong> You can add content to your personal drawer to preserve it privately</li>
-            <li><strong>Community Archiving:</strong> Content that receives enough votes from the community can be preserved in the public archive</li>
-            <li><strong>Last Communique:</strong> Non-archived content is appended to your last communique before deletion, creating a record of what was shared</li>
-          </ol>
-          
-          <h3>Archive Voting System</h3>
-          <p>The community archiving system works as follows:</p>
-          <ul>
-            <li>Each user receives a limited number of archive votes daily</li>
-            <li>Content that exceeds a threshold of votes is eligible for community archiving</li>
-            <li>The content creator can flag high-vote content for permanent community storage</li>
-            <li>Archived content remains searchable and accessible to all users</li>
-          </ul>
-          
-          <div class="tip-box">
-            <strong>Pro Tip:</strong> Use your daily votes strategically to help preserve valuable content that benefits the community. The limited vote allocation prevents gaming the system and ensures that only truly valuable content is preserved.
           </div>
         </section>
         
-        <section id="drawer-communique" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">archive</span> Drawer & Communique</h2>
-          
-          <h3>Understanding Your Drawer</h3>
-          <p>Your "drawer" is both your personal archive and public profile. It has two primary components:</p>
-          <ol>
-            <li><strong>Personal Archive:</strong> Your private collection of saved content</li>
-            <li><strong>Public Communique:</strong> A customizable, public-facing presentation of your identity and selected content</li>
-          </ol>
-          
-          <h3>Creating and Customizing Your Communique</h3>
-          <p>The communique is your public-facing profile that others see when they visit your drawer. You can customize it to express your identity:</p>
-          <ol class="steps-list">
-            <li>Visit your drawer page and click "Edit Communique"</li>
-            <li>Use the rich text editor to add text, links, and basic formatting</li>
-            <li>Insert HTML and CSS for more advanced customization (all code is sanitized for security)</li>
-            <li>Embed uploaded content by copying the embed code from your archive</li>
-            <li>Save your changes to publish your communique</li>
-          </ol>
-          
-          <div class="help-card">
-            <strong>Communique HTML/CSS Guidelines:</strong>
-            <p>You can use most HTML tags and CSS properties in your communique, including:</p>
-            <ul>
-              <li>Text formatting: headings, paragraphs, lists, bold, italic, etc.</li>
-              <li>Links to internal and external resources</li>
-              <li>Images and media (embedded from your archive or external sources)</li>
-              <li>Basic CSS for layout, colors, fonts, and animations</li>
-              <li>Embedding content from your personal archive</li>
-            </ul>
-            <p>All HTML is sanitized to remove potentially harmful elements like scripts, iframes from untrusted sources, and certain event handlers.</p>
-          </div>
-          
-          <h3>Managing Your Personal Archive</h3>
-          <p>Your personal archive allows you to save and organize content:</p>
-          <ul>
-            <li>Add content to your archive by clicking "Add to Drawer" on any content</li>
-            <li>Organize content with notes and tags</li>
-            <li>Control which items are visible in your public communique</li>
-            <li>Remove items from your archive when no longer needed</li>
-          </ul>
-          
-          <div class="tip-box">
-            <strong>Pro Tip:</strong> Unconfigured drawers only show an anonymous avatar & display name and cannot join the association web. Take time to customize your communique to fully participate in the Rel.
-          </div>
-        </section>
-        
-        <section id="association-web" class="help-section collapsible-section">
+        <section id="profile-drawer" class="help-section collapsible-section">
           <button type="button" class="collapsible">
             <span>
-              <span class="material-icons" aria-hidden="true">hub</span> Association Web
+              <span class="material-icons" aria-hidden="true">account_circle</span>
+              Profile & Drawer
             </span>
           </button>
           <div class="collapsible-content">
-            <h3>What is the Association Web?</h3>
-            <p>The Association Web is a visual representation of the connections between users in R3L:F. It's automatically generated from public contact lists and shows how users are related to each other through degrees of connection.</p>
-            
             <div class="help-card">
-              <strong>Key features of the Association Web:</strong>
+              <h3>Understanding Profile vs. Drawer</h3>
+              <p>R3L:F distinguishes between your private profile and public drawer:</p>
               <ul>
-                <li>Automatically generated from public contact lists</li>
-                <li>Shows branching structure of connections with degrees of separation</li>
-                <li>Reveals potential connections and mutual contacts</li>
-                <li>Visualizes your place in the broader R3L:F community</li>
-              </ul>
-            </div>          <h3>Navigating the Association Web</h3>
-          <p>To explore the Association Web:</p>
-          <ol class="steps-list">
-            <li>Click "Network" in the main navigation</li>
-            <li>The visualization shows users as circles, content as squares, and tags as diamonds</li>
-            <li>Hover over nodes to see details</li>
-            <li>Click on user nodes to visit their drawer/communique</li>
-            <li>Use the zoom and pan controls to navigate the web</li>
-            <li>Filter the view using the control panel on the left</li>
-          </ol>
-          
-          <h3>Public vs. Private Contacts</h3>
-          <p>In R3L:F, contacts can be designated as either public or private:</p>
-          <ul>
-            <li><strong>Public contacts</strong> appear in the association web, creating visible connections</li>
-            <li><strong>Private contacts</strong> remain hidden from the association web</li>
-            <li>All mutual relationships must be explicitly agreed upon by both parties</li>
-          </ul>
-          
-          <div class="warning-box">
-            <strong>Note:</strong> The Association Web only shows connections that both users have agreed to make public. There are no unwanted labels or connections - all relationships must be explicitly agreed upon.
-          </div>
-        </section>
-        
-        <section id="lurker-mode" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">visibility_off</span> Lurker in the Mist</h2>
-          
-          <h3>What is "Lurker in the Mist" Mode?</h3>
-          <p>"Lurker in the Mist" is a low-visibility status option for users who prefer minimal presence in the R3L:F ecosystem. When enabled, this mode affects how you appear to others and how you discover content.</p>
-          
-          <div class="help-card">
-            <strong>Effects of Lurker Mode:</strong>
-            <ul>
-              <li>Your presence in the Association Web is muted and connections are obscured</li>
-              <li>Your content appears with randomization in search results</li>
-              <li>Your profile appears with minimal information in listings</li>
-              <li>You receive modified recommendations based on broader patterns</li>
-              <li>Your activities have reduced visibility to other users</li>
-            </ul>
-          </div>
-          
-          <h3>Enabling Lurker Mode</h3>
-          <p>To enable "Lurker in the Mist" mode:</p>
-          <ol class="steps-list">
-            <li>Go to your Profile page</li>
-            <li>Find the "Visibility Settings" section</li>
-            <li>Toggle the "Lurker in the Mist" option</li>
-            <li>Adjust additional visibility preferences if desired</li>
-            <li>Save your changes</li>
-          </ol>
-          
-          <div class="tip-box">
-            <strong>Privacy Note:</strong> Lurker mode provides additional privacy but is not complete anonymity. Your content and interactions are still identifiable to users who directly connect with you. For maximum privacy, consider using minimal personal information in your profile and communique.
-          </div>
-        </section>
-        
-        <section id="search-discovery" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">search</span> Search & Discovery</h2>
-          
-          <h3>Anti-Algorithmic Search</h3>
-          <p>R3L:F features an anti-algorithmic approach to content discovery. This means:</p>
-          <ul>
-            <li>No engagement optimization or content ranking based on predicted interests</li>
-            <li>No filter bubbles that limit what you see</li>
-            <li>Pure chronological ordering and user-controlled filtering</li>
-            <li>Everything is searchable but not algorithmically promoted</li>
-          </ul>
-          
-          <h3>Search Options</h3>
-          <p>R3L:F offers several ways to discover content:</p>
-          <div class="grid-2col">
-            <div class="help-card">
-              <div class="feature-icon material-icons">search</div>
-              <h4>Basic Search</h4>
-              <p>Search by keywords, filtering by:</p>
-              <ul>
-                <li>File type (MIME/extension)</li>
-                <li>User-defined tags/categories</li>
-                <li>Date uploaded</li>
-                <li>Match "all" or "any" criteria</li>
+                <li><strong>Profile:</strong> Your personal settings page where you can update your information, preferences, and manage your content.</li>
+                <li><strong>Drawer:</strong> Your public presence visible to other users, featuring your communiqué and curated content.</li>
               </ul>
             </div>
             
             <div class="help-card">
-              <div class="feature-icon material-icons">shuffle</div>
-              <h4>Random Discovery</h4>
-              <p>Discover content serendipitously:</p>
+              <h3>Managing Your Profile</h3>
+              <p>To update your profile:</p>
+              <ol>
+                <li>Click your username in the top-right corner</li>
+                <li>Select "Profile"</li>
+                <li>Edit your display name, bio, avatar, and other settings</li>
+                <li>Save your changes</li>
+              </ol>
+            </div>
+            
+            <div class="help-card">
+              <h3>Creating Your Communiqué</h3>
+              <p>Your communiqué is a public statement or message in your drawer:</p>
+              <ol>
+                <li>Go to your drawer (User Menu > Drawer)</li>
+                <li>Click "Edit Communiqué"</li>
+                <li>Create your message using the editor</li>
+                <li>Toggle between edit and preview modes</li>
+                <li>Save when finished</li>
+              </ol>
+              <p>HTML formatting is supported but sanitized for security.</p>
+            </div>
+            
+            <div class="help-card">
+              <h3>Avatar Management</h3>
+              <p>To update your avatar:</p>
+              <ol>
+                <li>Go to your Profile</li>
+                <li>Click on the avatar image or icon</li>
+                <li>Upload a new image (JPG, PNG) or choose from default options</li>
+                <li>Save your changes</li>
+              </ol>
+              <p>Your avatar will appear on your profile, drawer, and in conversations.</p>
+            </div>
+          </div>
+        </section>
+        
+        <section id="content-management" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">description</span>
+              Content Management
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <div class="help-card">
+              <h3>Creating Content</h3>
+              <p>To create new content:</p>
+              <ol>
+                <li>Click "Upload" in the navigation menu</li>
+                <li>Select the type of content you want to create</li>
+                <li>Fill in the title, description, and other details</li>
+                <li>Set privacy options (public or private)</li>
+                <li>Upload any associated files</li>
+                <li>Save your content</li>
+              </ol>
+            </div>
+            
+            <div class="help-card">
+              <h3>Ephemeral Content</h3>
+              <p>By default, content on R3L:F is ephemeral, meaning it has a limited lifespan:</p>
               <ul>
-                <li>Random communique button</li>
-                <li>Random content exploration</li>
-                <li>Alternative to algorithmic recommendations</li>
+                <li>Content becomes eligible for expiration after a period of inactivity</li>
+                <li>Community interest (views, saves, votes) can extend content lifespan</li>
+                <li>You can personally archive content to preserve it</li>
+                <li>Community archiving occurs when enough users vote to preserve valuable content</li>
               </ul>
             </div>
             
             <div class="help-card">
-              <div class="feature-icon material-icons">location_on</div>
-              <h4>Location Search</h4>
-              <p>Find content by location:</p>
+              <h3>Tagging Content</h3>
+              <p>Tags help organize and discover content:</p>
+              <ol>
+                <li>When creating or editing content, add relevant tags</li>
+                <li>Separate tags with commas</li>
+                <li>Use specific, descriptive tags to improve discoverability</li>
+                <li>Avoid generic or overly broad tags</li>
+              </ol>
+            </div>
+            
+            <div class="help-card">
+              <h3>Adding Geographic Data</h3>
+              <p>You can associate content with geographic locations:</p>
+              <ol>
+                <li>When creating content, select "Add Location"</li>
+                <li>Choose a location on the map</li>
+                <li>Alternatively, visit the Map page and click "Add Point"</li>
+                <li>Fill in location details and link to content if desired</li>
+              </ol>
+              <p>Geographic data helps users discover content through the Map feature.</p>
+            </div>
+          </div>
+        </section>
+        
+        <section id="connections" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">people</span>
+              Connections & Messaging
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <div class="help-card">
+              <h3>Connection Types</h3>
+              <p>R3L:F offers different ways to connect with other users:</p>
               <ul>
-                <li>Map-based content discovery</li>
-                <li>Geographic visualization</li>
-                <li>Location filtering options</li>
+                <li><strong>Mutual Connection:</strong> Two-way connection requiring acceptance from both parties</li>
+                <li><strong>Follow:</strong> One-way connection to track another user's public content</li>
+                <li><strong>Lurk:</strong> A more private form of following with enhanced privacy</li>
               </ul>
             </div>
             
             <div class="help-card">
-              <div class="feature-icon material-icons">bookmark</div>
-              <h4>Global Community Archive</h4>
-              <p>Browse community-archived content:</p>
+              <h3>Finding & Connecting with Users</h3>
+              <p>To connect with other users:</p>
+              <ol>
+                <li>Find users through Search, Map, Network, or content pages</li>
+                <li>Visit their drawer</li>
+                <li>Click "Connect" and select the connection type</li>
+                <li>Add an optional message for mutual connection requests</li>
+                <li>Wait for acceptance if requesting a mutual connection</li>
+              </ol>
+            </div>
+            
+            <div class="help-card">
+              <h3>Messaging</h3>
+              <p>To send messages to other users:</p>
+              <ol>
+                <li>Click "Messages" in the navigation menu</li>
+                <li>Select an existing conversation or click "New Message"</li>
+                <li>Search for and select a user to message</li>
+                <li>Type your message and press send</li>
+              </ol>
+              <p>You can only message users with whom you have a mutual connection.</p>
+            </div>
+            
+            <div class="help-card">
+              <h3>Attachments</h3>
+              <p>To include attachments in messages:</p>
+              <ol>
+                <li>In a conversation, click the attachment icon</li>
+                <li>Select a file to upload</li>
+                <li>Add a message to accompany the attachment</li>
+                <li>Send the message</li>
+              </ol>
+              <p>Supported attachment types include images, documents, and other file formats.</p>
+            </div>
+          </div>
+        </section>
+        
+        <section id="navigation" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">explore</span>
+              Map & Network Features
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <div class="help-card">
+              <h3>Using the Map</h3>
+              <p>The Map feature allows you to explore content geographically:</p>
               <ul>
-                <li>Content preserved by community voting</li>
-                <li>Historically significant material</li>
-                <li>Organized by tags and categories</li>
+                <li>Browse the map to discover content in different locations</li>
+                <li>Filter content by type, date, and other criteria</li>
+                <li>Add your own points of interest</li>
+                <li>Connect geographic points to content</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Adding Map Points</h3>
+              <p>To add a point to the map:</p>
+              <ol>
+                <li>Navigate to the Map page</li>
+                <li>Click "Add Point"</li>
+                <li>Click on the map to set the location</li>
+                <li>Fill in the point details (title, description)</li>
+                <li>Set privacy options</li>
+                <li>Save the point</li>
+              </ol>
+            </div>
+            
+            <div class="help-card">
+              <h3>Exploring the Network</h3>
+              <p>The Network feature visualizes connections between content and users:</p>
+              <ul>
+                <li>See how content is related through tags, authors, and other associations</li>
+                <li>Discover user connections and content networks</li>
+                <li>Zoom, pan, and interact with the visualization</li>
+                <li>Switch between different view modes</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Finding Related Content</h3>
+              <p>The Network view helps you discover related content:</p>
+              <ol>
+                <li>Start with a piece of content or a user</li>
+                <li>Explore the connections that branch out</li>
+                <li>Click on nodes to view details</li>
+                <li>Follow connections to discover new content</li>
+              </ol>
+            </div>
+          </div>
+        </section>
+        
+        <section id="privacy" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">security</span>
+              Privacy & Security
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <div class="help-card">
+              <h3>Lurker in the Mist Mode</h3>
+              <p>"Lurker in the Mist" is a privacy feature that randomizes search results and recommendations:</p>
+              <ul>
+                <li>Enables a more serendipitous browsing experience</li>
+                <li>Reduces algorithmic tracking and filter bubbles</li>
+                <li>Adjustable randomness level in your profile settings</li>
+                <li>Helps discover content you might not otherwise encounter</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Content Privacy Settings</h3>
+              <p>Control who can see your content:</p>
+              <ul>
+                <li><strong>Public:</strong> Visible to all users</li>
+                <li><strong>Private:</strong> Visible only to you</li>
+                <li><strong>Connections:</strong> Visible only to your mutual connections</li>
+                <li>Privacy settings can be set per content item</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Account Security</h3>
+              <p>Keeping your account secure:</p>
+              <ul>
+                <li>Use a strong, unique password</li>
+                <li>Store your recovery key securely</li>
+                <li>Check active sessions in your profile settings</li>
+                <li>Log out from shared devices</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Data & Privacy</h3>
+              <p>R3L:F is designed with privacy in mind:</p>
+              <ul>
+                <li>No tracking cookies or surveillance</li>
+                <li>No algorithmic profiling</li>
+                <li>Ephemeral content reduces digital footprint</li>
+                <li>Geographic data is only collected when explicitly shared</li>
               </ul>
             </div>
           </div>
-          
-          <h3>Content Bookmarking</h3>
-          <p>The bookmarking system in R3L:F allows you to:</p>
-          <ul>
-            <li>Mark content for later reference</li>
-            <li>Contribute to public bookmark counts (anonymous, not user-tracked)</li>
-            <li>Help content become eligible for community archiving</li>
-            <li>Organize content you find valuable</li>
-          </ul>
-          
-          <div class="tip-box">
-            <strong>Pro Tip:</strong> Use tags effectively when uploading content to make it more discoverable. Well-tagged content is easier to find through search and helps others discover your contributions.
-          </div>
         </section>
         
-        <section id="inbox-notifications" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">notifications</span> Inbox & Notifications</h2>
-          
-          <h3>The Inbox System</h3>
-          <p>R3L:F uses a centralized inbox for all notifications and messages, with no intrusive pop-ups. Your inbox contains:</p>
-          <ul>
-            <li>Direct messages from other users</li>
-            <li>System notifications about your content</li>
-            <li>Expiration alerts for content about to be deleted</li>
-            <li>Connection requests and suggestions</li>
-            <li>Community archive voting notifications</li>
-          </ul>
-          
-          <h3>Direct Messaging</h3>
-          <p>The direct messaging system allows private communication between users:</p>
-          <ol class="steps-list">
-            <li>Start a conversation by clicking "Message" on another user's drawer</li>
-            <li>Send text messages and file attachments</li>
-            <li>All messages are secured with end-to-end encryption</li>
-            <li>Conversations are organized in your inbox</li>
-          </ol>
-          
-          <h3>Mutual Connection Prompts</h3>
-          <p>R3L:F may suggest mutual connections based on interaction patterns:</p>
-          <ul>
-            <li>Frequent viewing of the same user's content</li>
-            <li>Repeated engagement with the same group or files</li>
-            <li>Co-archiving 5 or 10 shared files</li>
-          </ul>
-          <p>These suggestions appear in your inbox and require explicit confirmation from both parties to establish a connection.</p>
-          
-          <h3>Content Expiration Notifications</h3>
-          <p>R3L:F notifies you about content that's about to expire:</p>
-          <ul>
-            <li>Initial notification when content is marked for deletion (24 hours before deletion)</li>
-            <li>Final notification in the last hour before permanent deletion</li>
-            <li>Options to archive personally, nominate for community archiving, or let expire</li>
-          </ul>
-          
-          <div class="warning-box">
-            <strong>Important:</strong> Content deletion is permanent after the 24-hour grace period. Make sure to check your notifications regularly to avoid losing content you want to keep.
+        <section id="troubleshooting" class="help-section collapsible-section">
+          <button type="button" class="collapsible">
+            <span>
+              <span class="material-icons" aria-hidden="true">build</span>
+              Troubleshooting
+            </span>
+          </button>
+          <div class="collapsible-content">
+            <div class="help-card">
+              <h3>Login Issues</h3>
+              <p>If you're having trouble logging in:</p>
+              <ul>
+                <li>Check that you're using the correct username and password</li>
+                <li>Clear your browser cache and cookies</li>
+                <li>Try using a different browser</li>
+                <li>Use your recovery key if you've forgotten your password</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Content Not Appearing</h3>
+              <p>If content you've created isn't appearing:</p>
+              <ul>
+                <li>Check your privacy settings to ensure it's visible</li>
+                <li>Verify that you're logged in</li>
+                <li>Try refreshing the page</li>
+                <li>Check if the content has expired (check your archive)</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>Missing Notifications</h3>
+              <p>If you're not receiving notifications:</p>
+              <ul>
+                <li>Check your notification settings in your profile</li>
+                <li>Make sure you're logged in</li>
+                <li>Try refreshing the page</li>
+                <li>Check your browser permissions for notifications</li>
+              </ul>
+            </div>
+            
+            <div class="help-card">
+              <h3>File Upload Problems</h3>
+              <p>If you're having trouble uploading files:</p>
+              <ul>
+                <li>Check that your file is under the size limit (10MB)</li>
+                <li>Ensure the file format is supported</li>
+                <li>Try a different browser</li>
+                <li>Compress large images before uploading</li>
+              </ul>
+            </div>
           </div>
         </section>
-        
-        <section id="privacy-security" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">security</span> Privacy & Security</h2>
-          
-          <h3>Privacy-First Approach</h3>
-          <p>R3L:F is built with privacy as a fundamental principle:</p>
-          <ul>
-            <li>No tracking of user behavior for advertising or recommendation algorithms</li>
-            <li>No collection of unnecessary personal data</li>
-            <li>No third-party analytics or tracking scripts</li>
-            <li>Bunny Fonts instead of Google Fonts</li>
-            <li>JWT-based authentication with secure HttpOnly cookies</li>
-          </ul>
-          
-          <h3>Security Features</h3>
-          <div class="help-card">
-            <p>R3L:F implements several security measures to protect your data:</p>
-            <ul>
-              <li>End-to-end encryption for direct messages</li>
-              <li>HTML sanitization for user-generated content</li>
-              <li>Secure authentication with password hashing</li>
-              <li>Recovery key system for account recovery</li>
-              <li>Content access controls based on user preferences</li>
-            </ul>
-          </div>
-          
-          <h3>Control Over Your Data</h3>
-          <p>R3L:F gives you control over your information:</p>
-          <ul>
-            <li><strong>Mutual Contributor Opt-Out:</strong> Hide your name from shared files</li>
-            <li><strong>Permanent Hide List:</strong> Ignore specific connections indefinitely</li>
-            <li><strong>Manual History Clearing:</strong> With multi-step confirmation</li>
-            <li><strong>Content Lifecycle Control:</strong> Decide what expires and what stays</li>
-            <li><strong>Visibility Settings:</strong> Control who sees your content and connections</li>
-          </ul>
-          
-          <div class="warning-box">
-            <strong>Note on Anonymity:</strong> R3L:F supports pseudonymous users but not completely anonymous profiles. Unconfigured drawers remain limited (only showing a communique, no web presence).
-          </div>
-        </section>
-        
-        <section id="philosophy" class="help-section">
-          <h2><span class="material-icons" aria-hidden="true">psychology</span> Philosophy & Motivation</h2>
-          
-          <h3>Why R3L:F Exists</h3>
-          <p>R3L:F was created as an alternative to traditional social media platforms, with a focus on:</p>
-          <ul>
-            <li><strong>User Agency:</strong> Giving people control over their digital presence</li>
-            <li><strong>Digital Decay:</strong> Embracing the natural lifecycle of information</li>
-            <li><strong>Intentional Preservation:</strong> Making archiving an active choice</li>
-            <li><strong>Meaningful Connections:</strong> Focusing on quality over quantity</li>
-            <li><strong>Privacy Respect:</strong> Building with privacy as a foundational principle</li>
-          </ul>
-          
-          <h3>Anti-Algorithmic Stance</h3>
-          <p>R3L:F deliberately rejects algorithmic content curation because:</p>
-          <ul>
-            <li>Algorithms often prioritize engagement over user well-being</li>
-            <li>Recommendation systems create filter bubbles that limit discovery</li>
-            <li>Engagement optimization can promote divisive or sensationalist content</li>
-            <li>User agency is diminished when algorithms decide what you see</li>
-            <li>Organic, serendipitous discovery leads to more diverse experiences</li>
-          </ul>
-          
-          <h3>Ephemerality as a Feature</h3>
-          <p>The ephemeral nature of R3L:F is a deliberate design choice:</p>
-          <div class="help-card">
-            <p>Content expires after 7 days by default because:</p>
-            <ul>
-              <li>It reduces digital clutter and information overload</li>
-              <li>It encourages more authentic sharing without permanent records</li>
-              <li>It makes preservation an active, intentional choice</li>
-              <li>It mirrors the natural way information flows in real-world communities</li>
-              <li>It creates space for evolution and change over time</li>
-            </ul>
-          </div>
-          
-          <h3>Community-Driven Values</h3>
-          <p>R3L:F embodies several core values:</p>
-          <ul>
-            <li><strong>DIY Ethos:</strong> Encouraging creativity and personal expression</li>
-            <li><strong>Community Curation:</strong> Collective decision-making about what's worth preserving</li>
-            <li><strong>Non-Corporate Structure:</strong> Building outside the attention economy</li>
-            <li><strong>Minimalist Interaction:</strong> Focusing on content rather than metrics</li>
-            <li><strong>Intentional Connection:</strong> Creating relationships through mutual agreement</li>
-          </ul>
-          
-          <div class="tip-box">
-            <p>In the words of our community motto: <em>"the rel is what you make it"</em></p>
-            <p>R3L:F exists outside of traditional social media structures. It is a social file-sharing network, not a clout-driven platform. Users interact through shared content, association, and voluntary archival rather than likes and followers.</p>
-          </div>
-        </section>
-        
-        <div class="help-nav">
-          <a href="index.html" class="btn btn-secondary">
-            <span class="material-icons">home</span>
-            Return to Home
-          </a>
-          <a href="drawer.html" class="btn">
-            <span class="material-icons">account_box</span>
-            View Your Drawer
-          </a>
-        </div>
       </div>
     </div>
   </main>
 
-  <footer class="footer">
-    <p class="footer-motto text-accent">"the rel is what you make it"</p>
-    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  <footer>
+    <div class="container">
+      <p>R3L:F - Relational Ephemeral Filenet</p>
+      <p>Anti-algorithmic, Ephemeral by Default, Community-driven</p>
+    </div>
   </footer>
 
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
-
+    
     document.addEventListener('DOMContentLoaded', () => {
-      // Initialize the navigation bar
+      // Initialize navigation
       NavigationBar.init('help');
       
-      // Add interactivity to FAQ items
-      document.querySelectorAll('.faq-question').forEach(question => {
-        question.addEventListener('click', () => {
-          const answer = question.nextElementSibling;
-          answer.classList.toggle('active');
-          
-          // Update icon
-          const icon = question.querySelector('.material-icons');
-          if (answer.classList.contains('active')) {
-            icon.textContent = 'expand_less';
-          } else {
-            icon.textContent = 'expand_more';
-          }
-        });
-      });
-      
-      // Add interactivity to collapsible sections
+      // Setup collapsible sections
       const collapsibles = document.querySelectorAll('.collapsible');
+      
       collapsibles.forEach(collapsible => {
         collapsible.addEventListener('click', function() {
           this.classList.toggle('active');
           const content = this.nextElementSibling;
-          if (content.style.maxHeight) {
+          
+          if (content.style.maxHeight && content.style.maxHeight !== '0px') {
             content.style.maxHeight = null;
           } else {
-            content.style.maxHeight = content.scrollHeight + "px";
+            // First ensure all content is visible for proper height calculation
+            content.style.display = 'block';
+            // Set a temporary fixed height to ensure content is rendered
+            content.style.maxHeight = '1000px';
+            // Get the actual scrollHeight after rendering
+            setTimeout(() => {
+              content.style.maxHeight = content.scrollHeight + 'px';
+            }, 10);
           }
         });
       });
       
-      // Collapse all sections by default
-      collapsibles.forEach(collapsible => {
-        collapsible.nextElementSibling.style.maxHeight = null;
+      // Expand section if URL hash exists
+      const hash = window.location.hash;
+      if (hash) {
+        const section = document.querySelector(hash);
+        if (section) {
+          const button = section.querySelector('.collapsible');
+          button.click();
+          section.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+      
+      // Handle search functionality
+      const searchInput = document.getElementById('help-search');
+      
+      searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        
+        if (query.length < 2) {
+          // Reset all sections if query is too short
+          document.querySelectorAll('.help-card').forEach(card => {
+            card.style.display = 'block';
+          });
+          
+          document.querySelectorAll('.collapsible-section').forEach(section => {
+            section.style.display = 'block';
+          });
+          
+          return;
+        }
+        
+        // Search through all help cards
+        document.querySelectorAll('.help-card').forEach(card => {
+          const text = card.textContent.toLowerCase();
+          const match = text.includes(query);
+          
+          card.style.display = match ? 'block' : 'none';
+          
+          // Expand section if it contains a match
+          if (match) {
+            const section = card.closest('.collapsible-section');
+            const button = section.querySelector('.collapsible');
+            const content = button.nextElementSibling;
+            
+            button.classList.add('active');
+            content.style.display = 'block';
+            // Set a temporary fixed height to ensure content is rendered
+            content.style.maxHeight = '1000px';
+            // Get the actual scrollHeight after rendering
+            setTimeout(() => {
+              content.style.maxHeight = content.scrollHeight + 'px';
+            }, 10);
+            section.style.display = 'block';
+          }
+        });
+        
+        // Hide sections with no visible cards
+        document.querySelectorAll('.collapsible-section').forEach(section => {
+          const visibleCards = Array.from(section.querySelectorAll('.help-card')).filter(card => {
+            return card.style.display !== 'none';
+          });
+          
+          section.style.display = visibleCards.length > 0 ? 'block' : 'none';
+        });
       });
     });
   </script>

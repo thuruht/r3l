@@ -31,6 +31,7 @@
       border-radius: 50%;
       object-fit: cover;
       background-color: var(--accent-color-light);
+      display: block;
     }
     
     .profile-avatar-container {
@@ -500,7 +501,7 @@
       <div id="profile-data" class="profile-container hidden">
         <div class="profile-header">
           <div class="profile-avatar-container">
-            <div id="profile-avatar" class="profile-avatar"></div>
+            <img id="profile-avatar" class="profile-avatar" alt="Profile Avatar">
             <div class="avatar-upload-overlay hidden" id="avatar-upload-overlay">
               <label for="avatar-upload" class="avatar-upload-button">
                 <span class="material-icons">photo_camera</span>
@@ -824,27 +825,33 @@
           // Set avatar if available
           if (user.avatarUrl) {
             profileAvatarEl.src = user.avatarUrl;
+            profileAvatarEl.alt = `${user.displayName || user.username}'s avatar`;
             // Reset any custom styling
             profileAvatarEl.style = '';
-            profileAvatarEl.innerHTML = '';
           } else if (user.avatar_key) {
             profileAvatarEl.src = `/api/files/${user.avatar_key}`;
+            profileAvatarEl.alt = `${user.displayName || user.username}'s avatar`;
             // Reset any custom styling
             profileAvatarEl.style = '';
-            profileAvatarEl.innerHTML = '';
           } else {
-            // Create an avatar with the first letter of the display name
-            const initial = (user.displayName || user.username || '?').charAt(0).toUpperCase();
+            // Create a separate element for the initial avatar
+            const initialAvatar = document.createElement('div');
+            initialAvatar.className = 'profile-avatar';
+            initialAvatar.style.display = 'flex';
+            initialAvatar.style.alignItems = 'center';
+            initialAvatar.style.justifyContent = 'center';
+            initialAvatar.style.fontSize = '3rem';
+            initialAvatar.style.color = 'white';
+            initialAvatar.style.backgroundColor = '#6d28d9';
             
-            // Use initial-based avatar
-            profileAvatarEl.src = '';  // Clear the src
-            profileAvatarEl.style.display = 'flex';
-            profileAvatarEl.style.alignItems = 'center';
-            profileAvatarEl.style.justifyContent = 'center';
-            profileAvatarEl.style.fontSize = '3rem';
-            profileAvatarEl.style.color = 'white';
-            profileAvatarEl.style.backgroundColor = '#6d28d9';
-            profileAvatarEl.innerHTML = initial;
+            const initial = (user.displayName || user.username || '?').charAt(0).toUpperCase();
+            initialAvatar.textContent = initial;
+            
+            // Replace the img with the div
+            profileAvatarEl.parentNode.replaceChild(initialAvatar, profileAvatarEl);
+            
+            // Update the reference to the new element
+            document.getElementById('profile-avatar-container').querySelector('.profile-avatar');
           }
           
           // Show authentication providers

@@ -213,13 +213,14 @@
         <div class="preference-toggle mt-4">
           <span>Drawer Visibility</span>
           <div>
-            <span class="mr-2">Private</span>
-            <label class="toggle-switch">
-              <input type="checkbox" id="drawerVisibility" name="drawerVisibility" checked>
+            <span class="mr-2" id="visibility-private">Private</span>
+            <label class="toggle-switch" for="drawerVisibility">
+              <input type="checkbox" id="drawerVisibility" name="drawerVisibility" checked aria-labelledby="visibility-label visibility-private visibility-public">
               <span class="slider"></span>
             </label>
-            <span class="ml-2">Public</span>
+            <span class="ml-2" id="visibility-public">Public</span>
           </div>
+          <span id="visibility-label" class="sr-only">Drawer visibility toggle</span>
         </div>
         
         <div class="form-actions mt-6">

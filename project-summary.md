@@ -21,7 +21,11 @@ R3L:F (Relationship:Formation) is a platform designed to facilitate authentic hu
    - Privacy settings
 
 2. **Content**
-   - Communiques (public/private toggle- this should toggle between editing and viewing the public appearance* important, unimmplemented? please correct) **ADD to TODO!!
+    - Communiques (public/private toggle)
+    - Ephemeral content lifecycle
+    - Community archiving system
+    - Content associations and tagging
+    - Drawers (public profiles)
    - Ephemeral content lifecycle
    - Community archiving system
    - Content associations and tagging

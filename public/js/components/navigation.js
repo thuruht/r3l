@@ -192,7 +192,7 @@ export class NavigationBar {
                       `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />` : 
                       user.avatar_key ?
                       `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />` :
-                      `<span class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</span>`
+                      `<div class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</div>`
                     }
                   </span>
                   <span class="user-name">${user.displayName || user.username}</span>

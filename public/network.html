@@ -496,7 +496,7 @@
 
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
-    import { GlobeVisualizer } from './src/globe/globe-visualizer.js';
+    import { GlobeVisualizer } from './js/globe/globe-visualizer.js';
 
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize the navigation bar
@@ -872,42 +872,79 @@
           loadingIndicator.style.display = 'block';
           
           // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+          const isAuthenticated = document.cookie.includes('r3l_jwt=');
           
           // Prepare API endpoints
           let contentEndpoint = '/api/search?limit=30';
           let usersEndpoint = '/api/users?limit=20';
           let tagsEndpoint = '/api/search/tags?limit=15';
           
-          // Fetch data in parallel
-          const [contentResponse, usersResponse, tagsResponse] = await Promise.all([
-            fetch(contentEndpoint, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'same-origin'
-            }),
-            fetch(usersEndpoint, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'same-origin'
-            }),
-            fetch(tagsEndpoint, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'same-origin'
-            })
-          ]);
+          // Add current user endpoint
+          let currentUserEndpoint = '/api/auth/jwt/profile';
           
-          if (!contentResponse.ok || !tagsResponse.ok || (isAuthenticated && !usersResponse.ok)) {
+          // Fetch data in parallel
+          let responses;
+          try {
+            responses = await Promise.all([
+              fetch(contentEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              }),
+              fetch(usersEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              }),
+              fetch(tagsEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              }),
+              isAuthenticated ? fetch(currentUserEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              }) : Promise.resolve(null)
+            ]);
+          } catch (error) {
+            console.error('Error fetching API data:', error);
             throw new Error('API request failed');
           }
           
-          const contentData = await contentResponse.json();
-          const tagsData = await tagsResponse.json();
-          let userData = { users: [] };
+          const [contentResponse, usersResponse, tagsResponse, currentUserResponse] = responses;
           
-          if (isAuthenticated && usersResponse.ok) {
-            userData = await usersResponse.json();
+          // Check if essential responses are OK
+          if (!contentResponse.ok || !tagsResponse.ok) {
+            console.error('Essential API responses failed:', {
+              content: contentResponse.status,
+              tags: tagsResponse.status
+            });
+            throw new Error('Essential API request failed');
+          }
+          
+          // Parse JSON responses
+          let contentData, userData, tagsData, currentUserData;
+          
+          try {
+            contentData = await contentResponse.json();
+            
+            if (usersResponse && usersResponse.ok) {
+              userData = await usersResponse.json();
+            } else {
+              userData = { users: [] };
+            }
+            
+            tagsData = await tagsResponse.json();
+            
+            if (currentUserResponse && currentUserResponse.ok) {
+              currentUserData = await currentUserResponse.json();
+            } else {
+              currentUserData = null;
+            }
+          } catch (error) {
+            console.error('Error parsing API response:', error);
+            throw new Error('Failed to parse API response');
           }
           
           // Create network data structure
@@ -917,35 +954,84 @@
           };
           
           // Process content/files
-          const content = contentData.results || [];
+          let content = [];
+          
+          // Handle different response formats
+          if (contentData.results && Array.isArray(contentData.results)) {
+            content = contentData.results;
+          } else if (Array.isArray(contentData)) {
+            content = contentData;
+          } else if (contentData.content && Array.isArray(contentData.content)) {
+            content = contentData.content;
+          }
+          
+          // If we have no content, try one more approach
+          if (content.length === 0 && isAuthenticated) {
+            try {
+              const myContentResponse = await fetch('/api/content/mine', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              });
+              
+              if (myContentResponse.ok) {
+                const myContentData = await myContentResponse.json();
+                if (myContentData.content && Array.isArray(myContentData.content)) {
+                  content = myContentData.content;
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching personal content:', error);
+            }
+          }
+          
+          // Map content to file nodes
           const files = content.map(item => ({
-            id: item.id,
-            label: item.title || 'Untitled',
+            id: item.id || item.content_id,
+            label: item.title || item.name || 'Untitled',
             type: 'file',
-            creator: item.user_id,
-            created: item.created_at,
-            expires: item.expires_at,
-            isArchived: item.is_archived,
-            isSelf: isAuthenticated && item.user_id === userData.currentUserId
+            creator: item.user_id || item.creator_id,
+            created: item.created_at || item.created || Date.now(),
+            expires: item.expires_at || item.expires,
+            isArchived: item.is_archived || item.archived || false,
+            isSelf: isAuthenticated && currentUserData && item.user_id === currentUserData.id
           }));
           
           // Add files to nodes
           networkData.nodes.push(...files);
           
           // Process tags
-          const tags = tagsData.tags || [];
+          let tags = [];
+          
+          // Handle different response formats
+          if (tagsData.tags && Array.isArray(tagsData.tags)) {
+            tags = tagsData.tags;
+          } else if (Array.isArray(tagsData)) {
+            tags = tagsData;
+          }
+          
+          // Map tags to nodes
           const tagNodes = tags.map(tag => ({
             id: `tag-${tag.id || tag.name}`,
             label: tag.name,
             type: 'tag',
-            count: tag.count
+            count: tag.count || tag.usage_count || 1
           }));
           
           // Add tags to nodes
           networkData.nodes.push(...tagNodes);
           
-          // Get users from API response
-          const users = userData.users || [];
+          // Process users
+          let users = [];
+          
+          // Handle different response formats
+          if (userData.users && Array.isArray(userData.users)) {
+            users = userData.users;
+          } else if (Array.isArray(userData)) {
+            users = userData;
+          }
+          
+          // Map users to nodes
           const userNodes = users.map(user => ({
             id: user.id,
             label: user.display_name || user.username,
@@ -955,37 +1041,25 @@
             connectionCount: user.connection_count,
             contentCount: user.content_count,
             connectionStatus: user.connectionStatus,
-            isSelf: false
+            isSelf: isAuthenticated && currentUserData && user.id === currentUserData.id
           }));
           
-          // Get authenticated user if available
-          let currentUser = null;
-          if (isAuthenticated) {
-            try {
-              const currentUserResponse = await fetch('/api/users/me', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
-              });
-              
-              if (currentUserResponse.ok) {
-                const currentUserData = await currentUserResponse.json();
-                currentUser = {
-                  id: currentUserData.id,
-                  label: currentUserData.display_name || currentUserData.username,
-                  type: 'user',
-                  bio: currentUserData.bio,
-                  avatar: currentUserData.avatar_url,
-                  connectionCount: currentUserData.connection_count,
-                  contentCount: currentUserData.content_count,
-                  isSelf: true
-                };
-                
-                // Add current user to nodes
-                networkData.nodes.push(currentUser);
-              }
-            } catch (error) {
-              console.error('Error fetching current user:', error);
+          // Add current user if available
+          if (isAuthenticated && currentUserData) {
+            const currentUser = {
+              id: currentUserData.id,
+              label: currentUserData.display_name || currentUserData.username,
+              type: 'user',
+              bio: currentUserData.bio,
+              avatar: currentUserData.avatar_url,
+              connectionCount: currentUserData.connection_count,
+              contentCount: currentUserData.content_count,
+              isSelf: true
+            };
+            
+            // Add current user to nodes if not already present
+            if (!userNodes.some(u => u.id === currentUser.id)) {
+              networkData.nodes.push(currentUser);
             }
           }
           
@@ -994,12 +1068,14 @@
           
           // Create links between files and their creators
           files.forEach(file => {
-            networkData.links.push({
-              source: file.id,
-              target: file.creator,
-              type: 'creator',
-              weight: 3
-            });
+            if (file.creator) {
+              networkData.links.push({
+                source: file.id,
+                target: file.creator,
+                type: 'creator',
+                weight: 3
+              });
+            }
           });
           
           // Create links between files and tags
@@ -1028,26 +1104,46 @@
                   }
                 });
               } else {
-                // Fallback to random tags if API fails
-                const numTags = Math.floor(Math.random() * 3) + 1;
-                const randomTags = tagNodes
-                  .sort(() => 0.5 - Math.random())
-                  .slice(0, numTags);
-                
-                randomTags.forEach(tag => {
-                  networkData.links.push({
-                    source: file.id,
-                    target: tag.id,
-                    type: 'tag',
-                    weight: 1
+                // If content doesn't have tags endpoint, check if it has tags field
+                const contentItem = content.find(c => c.id === file.id);
+                if (contentItem && contentItem.tags) {
+                  const tagsList = typeof contentItem.tags === 'string' 
+                    ? contentItem.tags.split(',').map(t => t.trim()) 
+                    : contentItem.tags;
+                  
+                  tagsList.forEach(tagName => {
+                    const tagNode = tagNodes.find(t => t.label === tagName);
+                    if (tagNode) {
+                      networkData.links.push({
+                        source: file.id,
+                        target: tagNode.id,
+                        type: 'tag',
+                        weight: 1
+                      });
+                    }
                   });
-                });
+                } else {
+                  // Fallback to random tags if no tag data available
+                  const numTags = Math.floor(Math.random() * 3) + 1;
+                  const randomTags = tagNodes
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, numTags);
+                  
+                  randomTags.forEach(tag => {
+                    networkData.links.push({
+                      source: file.id,
+                      target: tag.id,
+                      type: 'tag',
+                      weight: 1
+                    });
+                  });
+                }
               }
             }
           } catch (error) {
-            console.error('Error fetching file tags:', error);
+            console.error('Error creating file-tag links:', error);
             
-            // Fallback to random tags
+            // Fallback to some tag connections
             files.forEach(file => {
               const numTags = Math.floor(Math.random() * 3) + 1;
               const randomTags = tagNodes
@@ -1065,26 +1161,11 @@
             });
           }
           
-          // Create connections between users based on real connection data
-          if (isAuthenticated) {
+          // Create connections between users
+          if (isAuthenticated && currentUserData) {
             try {
-              // Get connections for each user
-              for (const user of userNodes) {
-                if (user.connectionStatus && user.connectionStatus === 'accepted') {
-                  // If this user is connected to the current user
-                  if (currentUser) {
-                    networkData.links.push({
-                      source: currentUser.id,
-                      target: user.id,
-                      type: 'connection',
-                      weight: 2
-                    });
-                  }
-                }
-              }
-              
-              // Try to get connections between other users
-              const connectionsResponse = await fetch('/api/connections/network', {
+              // Try to get user connections
+              const connectionsResponse = await fetch('/api/connections', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin'
@@ -1095,6 +1176,41 @@
                 const connections = connectionsData.connections || [];
                 
                 connections.forEach(conn => {
+                  if (conn.status === 'accepted') {
+                    networkData.links.push({
+                      source: currentUserData.id,
+                      target: conn.user_id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                });
+              } else {
+                // Fallback to user statuses from user data
+                userNodes.forEach(user => {
+                  if (user.connectionStatus === 'accepted') {
+                    networkData.links.push({
+                      source: currentUserData.id,
+                      target: user.id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                });
+              }
+              
+              // Try to get connections between other users
+              const networkConnectionsResponse = await fetch('/api/connections/network', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin'
+              });
+              
+              if (networkConnectionsResponse.ok) {
+                const networkConnectionsData = await networkConnectionsResponse.json();
+                const networkConnections = networkConnectionsData.connections || [];
+                
+                networkConnections.forEach(conn => {
                   networkData.links.push({
                     source: conn.user_id,
                     target: conn.connected_user_id,
@@ -1103,9 +1219,14 @@
                   });
                 });
               } else {
-                // Fallback to some random connections between users
+                // Create some random connections if network endpoint fails
                 for (let i = 0; i < userNodes.length; i++) {
                   for (let j = i + 1; j < userNodes.length; j++) {
+                    // Skip connections to self
+                    if (userNodes[i].id === currentUserData.id || userNodes[j].id === currentUserData.id) {
+                      continue;
+                    }
+                    
                     // Create a connection with 20% probability
                     if (Math.random() < 0.2) {
                       networkData.links.push({

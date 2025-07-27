@@ -301,7 +301,11 @@
             params.append('randomness', '75');
           }
           
+          // Check if user is logged in
+          const isLoggedIn = document.cookie.includes('r3l_jwt=');
+          
           // Send request
+          console.log(`Fetching search results from ${endpoint}?${params.toString()}`);
           const response = await fetch(`${endpoint}?${params.toString()}`, {
             method: 'GET',
             headers: {
@@ -311,17 +315,99 @@
           });
           
           if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            console.error(`Search API error: ${response.status}, falling back to mock data`);
+            // Only use mock data if not logged in or error is severe
+            if (!isLoggedIn || response.status >= 500) {
+              return mockResults;
+            }
+            
+            // Try again with less restrictive query
+            return await retryWithSimplifiedQuery(endpoint, searchParams);
           }
           
           const data = await response.json();
-          return data;
+          console.log('Search API response:', data);
+          
+          // Handle different response formats
+          if (data.results && Array.isArray(data.results)) {
+            return data.results;
+          } else if (Array.isArray(data)) {
+            return data;
+          } else if (data && typeof data === 'object') {
+            // Extract results if they're in a different field
+            for (const key in data) {
+              if (Array.isArray(data[key])) {
+                return data[key];
+              }
+            }
+          }
+          
+          // If we got an unexpected format and user is logged in, try again with less restrictive query
+          console.warn('Unexpected API response format, retrying with simplified query');
+          if (isLoggedIn) {
+            return await retryWithSimplifiedQuery(endpoint, searchParams);
+          }
+          
+          // Fall back to mock data as last resort
+          console.warn('Falling back to mock data');
+          return mockResults;
         } catch (error) {
           console.error('Error fetching search results:', error);
           
-          // Fallback to mock results if API fails
+          // Check if user is logged in
+          const isLoggedIn = document.cookie.includes('r3l_jwt=');
+          
+          // Try again with less restrictive query if user is logged in
+          if (isLoggedIn) {
+            try {
+              return await retryWithSimplifiedQuery('/api/search', searchParams);
+            } catch (retryError) {
+              console.error('Retry failed:', retryError);
+            }
+          }
+          
+          // Fallback to mock results if all else fails
           return mockResults;
         }
+      }
+      
+      /**
+       * Retry search with simplified parameters in case the original query was too complex
+       */
+      async function retryWithSimplifiedQuery(endpoint, searchParams) {
+        // Create a simpler query - just the text search with no filters
+        const simpleParams = new URLSearchParams();
+        if (searchParams.query) {
+          simpleParams.append('q', searchParams.query);
+        }
+        simpleParams.append('limit', '20');
+        
+        console.log(`Retrying with simplified query: ${endpoint}?${simpleParams.toString()}`);
+        
+        const response = await fetch(`${endpoint}?${simpleParams.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          credentials: 'same-origin'
+        });
+        
+        if (!response.ok) {
+          console.error('Simplified query also failed, falling back to mock data');
+          return mockResults;
+        }
+        
+        const data = await response.json();
+        
+        // Handle different response formats
+        if (data.results && Array.isArray(data.results)) {
+          return data.results;
+        } else if (Array.isArray(data)) {
+          return data;
+        }
+        
+        // Last resort fallback
+        return mockResults;
       }
       
       // Format file size
@@ -360,48 +446,76 @@
       // Fallback mock results if API fails
       const mockResults = [
         { 
-          id: '1', 
-          title: 'research-notes.md', 
+          id: 'mock_1', 
+          title: 'Community Research Notes', 
           type: 'text/markdown', 
           size: 25680, 
           is_public: true, 
           created_at: Date.now() - 1 * 24 * 60 * 60 * 1000,
           expires_at: Date.now() + 6 * 24 * 60 * 60 * 1000,
           is_archived: false,
-          user_name: 'Researcher42'
+          user_name: 'Researcher42',
+          description: 'Collaborative notes on community research projects'
         },
         { 
-          id: '2', 
-          title: 'data-visualization.png', 
+          id: 'mock_2', 
+          title: 'Association Web Visualization', 
           type: 'image/png', 
           size: 356000, 
           is_public: true, 
           created_at: Date.now() - 2 * 24 * 60 * 60 * 1000,
           expires_at: Date.now() + 5 * 24 * 60 * 60 * 1000,
           is_archived: false,
-          user_name: 'VisualArtist'
+          user_name: 'VisualArtist',
+          description: 'Visualization of content associations in the network'
         },
         { 
-          id: '3', 
-          title: 'experiment-results.pdf', 
+          id: 'mock_3', 
+          title: 'Ephemeral Content Study', 
           type: 'application/pdf', 
           size: 2024000, 
           is_public: true, 
           created_at: Date.now() - 3 * 24 * 60 * 60 * 1000,
           expires_at: Date.now() + 4 * 24 * 60 * 60 * 1000,
           is_archived: false,
-          user_name: 'LabTeam'
+          user_name: 'ResearchTeam',
+          description: 'Study on the impact of ephemeral content on engagement'
         },
         { 
-          id: '4', 
-          title: 'field-recording.mp3', 
+          id: 'mock_4', 
+          title: 'Urban Sound Mapping', 
           type: 'audio/mp3', 
           size: 7120000, 
           is_public: true, 
           created_at: Date.now() - 4 * 24 * 60 * 60 * 1000,
           expires_at: Date.now() + 3 * 24 * 60 * 60 * 1000,
           is_archived: false,
-          user_name: 'SoundCollector'
+          user_name: 'SoundCollector',
+          description: 'Audio recordings from urban environments'
+        },
+        { 
+          id: 'mock_5', 
+          title: 'R3L:F Philosophy Overview', 
+          type: 'text/html', 
+          size: 42000, 
+          is_public: true, 
+          created_at: Date.now() - 1 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 10 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'NetworkAdmin',
+          description: 'Overview of the R3L:F philosophy and project goals'
+        },
+        { 
+          id: 'mock_6', 
+          title: 'Community Data Analysis', 
+          type: 'application/json', 
+          size: 187000, 
+          is_public: true, 
+          created_at: Date.now() - 2 * 24 * 60 * 60 * 1000,
+          expires_at: Date.now() + 5 * 24 * 60 * 60 * 1000,
+          is_archived: false,
+          user_name: 'DataAnalyst',
+          description: 'Analysis of community participation and engagement'
         }
       ];
       
@@ -461,14 +575,14 @@
               const template = document.getElementById('result-item-template');
               const resultItem = template.content.cloneNode(true);
               
-              // Map API response to expected format
+              // Map API response to expected format (handle different property names)
               const item = {
-                id: result.id,
+                id: result.id || result.content_id || '',
                 name: result.title || result.name || 'Untitled',
-                type: result.type || 'application/octet-stream',
-                size: result.size || 0,
-                expires: result.expires_at || result.expires,
-                user: result.user_name || result.user || 'Unknown'
+                type: result.type || result.content_type || 'application/octet-stream',
+                size: result.size || result.file_size || 0,
+                expires: result.expires_at || result.expires || null,
+                user: result.user_name || result.username || result.display_name || 'Unknown'
               };
               
               // Set file icon
@@ -489,7 +603,11 @@
               
               // Add click handler
               itemElement.addEventListener('click', () => {
-                window.location.href = `/content/${item.id}`;
+                // Check if content or drawer ID
+                const targetPath = item.id.startsWith('drawer_') 
+                  ? `/drawer.html?id=${item.id.replace('drawer_', '')}`
+                  : `/content/${item.id}`;
+                window.location.href = targetPath;
               });
               
               // Add to grid

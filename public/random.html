@@ -162,7 +162,7 @@
           randomDrawerTitle.textContent = 'Loading...';
           
           // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+          const isAuthenticated = document.cookie.includes('r3l_jwt=');
           
           // Decide whether to show demo data or real data
           if (isAuthenticated) {
@@ -171,6 +171,10 @@
             try {
               // Fetch a random public drawer from API
               const response = await fetch('./api/random-drawer', {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
                 credentials: 'same-origin' // Include cookies for auth
               });
               
@@ -185,8 +189,8 @@
               drawerUsername.textContent = data.username;
               drawerSubtitle.textContent = data.subtitle || 'User\'s Communique';
               communiqueContent.innerHTML = data.communique || '<em>This user hasn\'t set a communique yet.</em>';
-              drawerConnectionCount.textContent = `${data.connectionCount} connections`;
-              visitDrawerLink.href = `./drawer.html?id=${data.userId}`;
+              drawerConnectionCount.textContent = `${data.connectionCount || 0} connections`;
+              visitDrawerLink.href = `./drawer.html?id=${data.userId || data.id}`;
               
               // Set the avatar
               const userAvatar = document.getElementById('user-avatar');
@@ -218,11 +222,12 @@
                     <div class="file-icon">
                       <span class="material-icons">${fileIcon}</span>
                     </div>
-                    <div class="file-name">${file.title}</div>
-                    ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : ''}
+                    <div class="file-name">${file.title || file.name}</div>
+                    ${file.expiresIn ? `<div class="file-expiry">${file.expiresIn}d</div>` : 
+                      file.expires_at ? `<div class="file-expiry">${Math.ceil((file.expires_at - Date.now()) / (24 * 60 * 60 * 1000))}d</div>` : ''}
                   `;
                   fileItem.addEventListener('click', () => {
-                    window.location.href = `./file.html?id=${file.id}`;
+                    window.location.href = `./content/${file.id}`;
                   });
                   recentFiles.appendChild(fileItem);
                 });

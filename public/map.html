@@ -387,278 +387,92 @@
     
     // Function to fetch location data from API
     async function fetchLocationData(loadingIndicator) {
+      loadingIndicator.classList.add('active');
+
       try {
-        loadingIndicator.classList.add('active');
-        
         // Check if user is authenticated
         const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
-        
-        // Get the search parameters from the URL
+
+        // Get URL params and UI filters
         const urlParams = new URLSearchParams(window.location.search);
         const lat = urlParams.get('lat');
         const lng = urlParams.get('lng');
         const radius = urlParams.get('radius') || '10';
         const dataType = document.getElementById('data-type').value;
         const timeRange = document.getElementById('time-range').value;
-        
-        let endpoint = '/api/search';
-        let params = new URLSearchParams();
-        
-        // If lat/lng provided, do a location search
+
+        // Build params
+        const params = new URLSearchParams();
         if (lat && lng) {
-          endpoint = `/api/search/location`;
           params.append('lat', lat);
           params.append('lng', lng);
           params.append('radius', radius);
-          params.append('limit', '20');
-          
-          // Add filters
-          if (dataType !== 'all') {
-            params.append('type', dataType);
-          }
-          
-          if (timeRange !== 'all') {
-            const now = Date.now();
-            let timeLimit;
-            
-            switch (timeRange) {
-              case 'recent':
-                timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
-                break;
-              case 'month':
-                timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
-                break;
-              case 'year':
-                timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
-                break;
-            }
-            
-            if (timeLimit) {
-              params.append('date_start', timeLimit.toString());
-            }
-          }
-        } else {
-          // Otherwise do a regular search with type filter for geo-tagged content
-          params.append('type', 'geo');
-          params.append('limit', '20');
-          
-          // Add filters
-          if (dataType !== 'all') {
-            params.append('type', dataType);
-          }
-          
-          if (timeRange !== 'all') {
-            const now = Date.now();
-            let timeLimit;
-            
-            switch (timeRange) {
-              case 'recent':
-                timeLimit = now - (7 * 24 * 60 * 60 * 1000); // 7 days
-                break;
-              case 'month':
-                timeLimit = now - (30 * 24 * 60 * 60 * 1000); // 30 days
-                break;
-              case 'year':
-                timeLimit = now - (365 * 24 * 60 * 60 * 1000); // 365 days
-                break;
-            }
-            
-            if (timeLimit) {
-              params.append('date_start', timeLimit.toString());
-            }
-          }
         }
-        
-        let mapData = {
-          points: [],
-          connections: []
-        };
-        
-        try {
-          // Only attempt to fetch data if authenticated
-          if (isAuthenticated) {
-            console.log(`Fetching map data from ${endpoint}?${params.toString()}`);
-            
-            const response = await fetch(`${endpoint}?${params.toString()}`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              credentials: 'same-origin' // Include cookies for auth
-            });
-            
-            if (!response.ok) {
-              console.error(`API error: ${response.status}`);
-              throw new Error(`API error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log('Map API response:', data);
-            
-            // Process API response into map data format
-            let results = [];
-            
-            // Handle different response formats
-            if (data && data.results && Array.isArray(data.results)) {
-              results = data.results;
-            } else if (data && Array.isArray(data)) {
-              results = data;
-            }
-            
-            // Process location data into points
-            results.forEach(item => {
-              // Skip items without location data
-              if (!item.lat || !item.lng) {
-                return;
-              }
-              
-              mapData.points.push({
-                coordinates: [item.lng, item.lat],
-                properties: {
-                  name: item.title || 'Untitled',
-                  description: item.description || 'No description',
-                  icon: getIconForContentType(item.type),
-                  color: getColorForContentType(item.type)
-                }
-              });
-            
-              // Generate connections between nearby points (within 100km)
-              // This is a simple example - in a real app we'd use actual connection data
-              const addedConnections = new Set();
-              
-              for (let i = 0; i < mapData.points.length; i++) {
-                for (let j = i + 1; j < mapData.points.length; j++) {
-                  const point1 = mapData.points[i];
-                  const point2 = mapData.points[j];
-                  
-                  // Calculate rough distance
-                  const [lng1, lat1] = point1.coordinates;
-                  const [lng2, lat2] = point2.coordinates;
-                  
-                  const distance = calculateDistance(lat1, lng1, lat2, lng2);
-                  
-                  // If points are close enough, add a connection
-                  if (distance < 100) { // 100km
-                    const connectionKey = `${i}-${j}`;
-                    
-                    if (!addedConnections.has(connectionKey)) {
-                      mapData.connections.push({
-                        source: point1.coordinates,
-                        target: point2.coordinates,
-                        properties: {
-                          name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
-                          description: `Distance: ${Math.round(distance)} km`,
-                          color: 'var(--accent-color)'
-                        }
-                      });
-                      
-                      addedConnections.add(connectionKey);
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            console.log('User not authenticated, using demo data');
-          }
-        } catch (error) {
-          console.error('Error fetching data from API:', error);
+
+        if (dataType && dataType !== 'all') params.append('type', dataType);
+        if (timeRange && timeRange !== 'all') {
+          const now = Date.now();
+          let timeLimit = null;
+          if (timeRange === 'recent') timeLimit = now - 7 * 24 * 60 * 60 * 1000;
+          if (timeRange === 'month') timeLimit = now - 30 * 24 * 60 * 60 * 1000;
+          if (timeRange === 'year') timeLimit = now - 365 * 24 * 60 * 60 * 1000;
+          if (timeLimit) params.append('date_start', timeLimit.toString());
         }
-        
-        // If no data was loaded (either not authenticated or error), use demo data
-        if (mapData.points.length === 0) {
-          // Only show demo data for non-authenticated users
-          if (!isAuthenticated) {
-            console.log('Using demo data for non-authenticated user');
-            mapData = getDemoMapData();
-          } else {
-            console.log('No geographic data available for authenticated user');
-          }
+
+        // Default response structure
+        let mapData = { points: [], connections: [] };
+
+        if (!isAuthenticated) {
+          // Not authenticated -> demo data
+          loadingIndicator.classList.remove('active');
+          return getDemoMapData();
         }
-        
+
+        // Choose endpoint: prefer /api/globe/data-points for map listings
+        const apiEndpoint = `/api/globe/data-points?${params.toString()}`;
+
+        const response = await fetch(apiEndpoint, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+          console.error('Map API error:', response.status);
+          loadingIndicator.classList.remove('active');
+          return mapData;
+        }
+
+        const data = await response.json();
+
+        // Normalize results: accept {points: [...]}, array, or {results: [...]}
+        let results = [];
+        if (data && Array.isArray(data.points)) results = data.points;
+        else if (data && data.results && Array.isArray(data.results)) results = data.results;
+        else if (Array.isArray(data)) results = data;
+
+        // Map items to mapData.points
+        results.forEach(item => {
+          const latVal = item.lat || (item.location && item.location.lat);
+          const lngVal = item.lng || (item.location && item.location.lng);
+          if (!latVal || !lngVal) return;
+
+          mapData.points.push({
+            coordinates: [Number(lngVal), Number(latVal)],
+            properties: {
+              name: item.title || item.name || 'Untitled',
+              description: item.description || item.summary || '',
+              icon: getIconForContentType(item.type),
+              color: getColorForContentType(item.type)
+            }
+          });
+        });
+
         loadingIndicator.classList.remove('active');
         return mapData;
-      } catch (error) {
-        console.error('Error in fetchLocationData:', error);
+      } catch (err) {
+        console.error('Error in fetchLocationData:', err);
         loadingIndicator.classList.remove('active');
-        
-        // Fallback to demo data
-        return getDemoMapData();
-      }
-    }
-                
-                mapData.points.push({
-                  coordinates: [item.location.lng, item.location.lat],
-                  properties: {
-                    name: item.title || 'Untitled',
-                    description: item.description || 'No description',
-                    icon: getIconForContentType(item.type),
-                    color: getColorForContentType(item.type)
-                  }
-                });
-              });
-              
-              // Generate connections between nearby points (within 100km)
-              // This is a simple example - in a real app we'd use actual connection data
-              const addedConnections = new Set();
-              
-              for (let i = 0; i < mapData.points.length; i++) {
-                for (let j = i + 1; j < mapData.points.length; j++) {
-                  const point1 = mapData.points[i];
-                  const point2 = mapData.points[j];
-                  
-                  // Calculate rough distance
-                  const [lng1, lat1] = point1.coordinates;
-                  const [lng2, lat2] = point2.coordinates;
-                  
-                  const distance = calculateDistance(lat1, lng1, lat2, lng2);
-                  
-                  // If points are close enough, add a connection
-                  if (distance < 100) { // 100km
-                    const connectionKey = `${i}-${j}`;
-                    
-                    if (!addedConnections.has(connectionKey)) {
-                      mapData.connections.push({
-                        source: point1.coordinates,
-                        target: point2.coordinates,
-                        properties: {
-                          name: `Connection: ${point1.properties.name} - ${point2.properties.name}`,
-                          description: `Distance: ${Math.round(distance)} km`,
-                          color: 'var(--accent-color)'
-                        }
-                      });
-                      
-                      addedConnections.add(connectionKey);
-                    }
-                  }
-                }
-              }
-            }
-          } else {
-            console.log('User not authenticated, using demo data');
-          }
-        } catch (error) {
-          console.error('Error fetching data from API:', error);
-        }
-        
-        // If no data was loaded (either not authenticated or error), use demo data
-        if (mapData.points.length === 0) {
-          // Only show demo data for non-authenticated users
-          if (!isAuthenticated) {
-            console.log('Using demo data for non-authenticated user');
-            mapData = getDemoMapData();
-          } else {
-            console.log('No geographic data available for authenticated user');
-          }
-        }
-        
-        loadingIndicator.classList.remove('active');
-        return mapData;
-      } catch (error) {
-        console.error('Error in fetchLocationData:', error);
-        loadingIndicator.classList.remove('active');
-        
-        // Fallback to demo data
         return getDemoMapData();
       }
     }

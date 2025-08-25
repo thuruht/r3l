@@ -692,7 +692,7 @@
       // Load map data points from API
       async function loadMapData() {
         try {
-          const response = await fetch('/api/globe/points', {
+          const response = await fetch('/api/globe/data-points', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin'
@@ -740,38 +740,45 @@
             contentAssociationGroup.style.display = 'none';
             return;
           }
-          
-          const response = await fetch('/api/content/mine', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin'
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Clear existing options except the first one
-            while (associatedContent.options.length > 1) {
-              associatedContent.remove(1);
-            }
-            
-            // Add content items to dropdown
-            if (data.content && data.content.length > 0) {
-              data.content.forEach(item => {
-                const option = document.createElement('option');
-                option.value = item.id;
-                option.textContent = item.title || 'Untitled';
-                associatedContent.appendChild(option);
-              });
-              
-              // Show the content association group
-              contentAssociationGroup.style.display = pointType.value === 'content' ? 'block' : 'none';
+
+          // Default empty data
+          let data = { content: [] };
+
+          // If we have the current user, request their files
+          if (currentUserData && currentUserData.id) {
+            const resp = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
+              method: 'GET',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'same-origin'
+            });
+
+            if (resp.ok) {
+              data = await resp.json();
             } else {
-              // Hide the content association group if no content
+              console.error('Error loading user content:', resp.status);
               contentAssociationGroup.style.display = 'none';
+              return;
             }
+          }
+
+          // Clear existing options except the first one
+          while (associatedContent.options.length > 1) {
+            associatedContent.remove(1);
+          }
+
+          // Add content items to dropdown
+          if (data.content && data.content.length > 0) {
+            data.content.forEach(item => {
+              const option = document.createElement('option');
+              option.value = item.id;
+              option.textContent = item.title || 'Untitled';
+              associatedContent.appendChild(option);
+            });
+
+            // Show the content association group
+            contentAssociationGroup.style.display = pointType.value === 'content' ? 'block' : 'none';
           } else {
-            console.error('Error loading user content:', await response.text());
+            // Hide the content association group if no content
             contentAssociationGroup.style.display = 'none';
           }
         } catch (error) {
@@ -968,11 +975,21 @@
           // If we have no content, try one more approach
           if (content.length === 0 && isAuthenticated) {
             try {
-              const myContentResponse = await fetch('/api/content/mine', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
-              });
+              // Fetch user's own content via the user files endpoint
+              if (currentUserData && currentUserData.id) {
+                const myContentResponse = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
+                  method: 'GET',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'same-origin'
+                });
+
+                if (myContentResponse && myContentResponse.ok) {
+                  const myContentData = await myContentResponse.json();
+                  if (myContentData.files && Array.isArray(myContentData.files)) {
+                    content = myContentData.files;
+                  }
+                }
+              }
               
               if (myContentResponse.ok) {
                 const myContentData = await myContentResponse.json();

@@ -141,6 +141,79 @@ export class NavigationBar {
       debugLog('NavigationBar', 'Error: Header element not found');
     }
   }
+
+  /**
+   * Show a demo-mode banner with optional diagnostic controls
+   */
+  static showDemoBanner(message = 'The application is currently running in demo mode. Some features require a configured backend or an authenticated session.') {
+    // Avoid duplicating banner
+    if (document.getElementById('demo-mode-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'demo-mode-banner';
+    banner.className = 'demo-mode-banner container';
+    banner.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 12px;background:#fff3cd;border:1px solid #ffeeba;border-radius:6px;margin-top:8px;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <strong style="color:#856404">Demo mode</strong>
+          <span style="color:#856404">${message}</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button id="demo-run-diagnostics" class="btn btn-small">Run diagnostics</button>
+          <button id="demo-dismiss" class="btn btn-small">Dismiss</button>
+        </div>
+      </div>
+    `;
+
+    // Insert banner after header
+    const headerEl = document.querySelector('header');
+    if (headerEl && headerEl.parentNode) {
+      headerEl.parentNode.insertBefore(banner, headerEl.nextSibling);
+    } else {
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+
+    // Wire up diagnostics and dismiss
+    document.getElementById('demo-dismiss')?.addEventListener('click', () => {
+      banner.remove();
+    });
+
+    document.getElementById('demo-run-diagnostics')?.addEventListener('click', async () => {
+      const diagBtn = document.getElementById('demo-run-diagnostics');
+      if (diagBtn) diagBtn.textContent = 'Running...';
+      try {
+        // Call cookie-check endpoint (does not require auth)
+        const resp = await fetch('/api/debug/cookie-check', { credentials: 'include' });
+        const data = await resp.json().catch(() => ({ error: 'Invalid JSON response' }));
+        console.log('[Demo Diagnostics] /api/debug/cookie-check result:', resp.status, data);
+
+        // Show a compact result inline
+        const details = document.createElement('pre');
+        details.style.maxHeight = '240px';
+        details.style.overflow = 'auto';
+        details.style.marginTop = '8px';
+        details.textContent = JSON.stringify({ status: resp.status, body: data }, null, 2);
+        // Remove any previous details
+        const old = document.getElementById('demo-diagnostics-details');
+        if (old) old.remove();
+        details.id = 'demo-diagnostics-details';
+        banner.appendChild(details);
+      } catch (err) {
+        console.error('[Demo Diagnostics] Error:', err);
+        const errEl = document.createElement('div');
+        errEl.style.color = 'red';
+        errEl.textContent = `Diagnostics failed: ${err?.message || err}`;
+        banner.appendChild(errEl);
+      } finally {
+        if (diagBtn) diagBtn.textContent = 'Run diagnostics';
+      }
+    });
+  }
+
+  static clearDemoBanner() {
+    const el = document.getElementById('demo-mode-banner');
+    if (el) el.remove();
+  }
   
   /**
    * Load notification CSS
@@ -273,14 +346,23 @@ export class NavigationBar {
       });
       
       if (!response.ok) {
+        // Show demo banner to indicate non-functional backend or unauthenticated state
+        this.showDemoBanner(response.status === 401 ?
+          'You are not authenticated. Sign in to enable full functionality.' :
+          'Profile fetch failed - backend may be unavailable. Many features are disabled in demo mode.');
         throw new Error(`Invalid session: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       console.log('[NavigationBar] Profile data:', data);
+
+      // Clear demo banner if present (we have a valid authenticated session)
+      this.clearDemoBanner();
       return data;
     } catch (error) {
       console.error('[NavigationBar] Error fetching user profile:', error);
+      // Show demo banner for any error path
+      this.showDemoBanner();
       return null;
     }
   }

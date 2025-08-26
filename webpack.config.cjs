@@ -37,8 +37,8 @@ module.exports = {
       // Define any environment variables needed
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
     }),
-    // Note: removed the NormalModuleReplacementPlugin that pointed at a build-time stub.
-    // If you need to replace cloudflare:workers imports during build, add a replacement here.
+    // NOTE: If you need a build-time replacement for virtual modules (eg. cloudflare:workers)
+    // add a NormalModuleReplacementPlugin here pointing at an appropriate stub.
   ],
   optimization: {
     minimize: true,

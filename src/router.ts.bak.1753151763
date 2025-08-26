@@ -1,3 +1,9 @@
+// This file was archived to /archive/legacy-oauth/src/router.ts.bak.1753151763
+// Original content preserved in the archive. Remove this placeholder when ready.
+
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/router.ts.bak.1753151763';
+
+// End of archived content
 import { Env } from './types/env';
 import { UserHandler } from './handlers/user';
 import { AuthHandler } from './handlers/auth';

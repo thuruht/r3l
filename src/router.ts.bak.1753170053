@@ -2,18 +2,10 @@
 // Main router for the R3L:F application
 // Handles all API routes and static file serving
 
-import { AuthHandler } from './handlers/auth';
-import { UserHandler } from './handlers/user';
-import { ContentHandler } from './handlers/content';
-import { StatisticsHandler } from './handlers/statistics';
-import { NotificationHandler } from './handlers/notification';
-import { TagHandler } from './handlers/tag';
-import { SearchHandler } from './handlers/search';
-import { AIHandler } from './handlers/ai';
-import { FileHandler } from './handlers/file';
-import { GlobeHandler } from './handlers/globe';
-import { DrawerHandler } from './handlers/drawer';
-import { Env } from './types/env';
+// This file was archived to /archive/legacy-oauth/src/router.ts.bak.1753170053
+// Original content preserved in the archive. Remove this placeholder when ready.
+
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/router.ts.bak.1753170053';
 
 export class Router {
   private authHandler: AuthHandler;

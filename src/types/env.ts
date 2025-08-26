@@ -10,6 +10,9 @@ export interface Env {
   ORCID_CLIENT_ID?: string;
   ORCID_CLIENT_SECRET?: string;
   ORCID_REDIRECT_URI?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+  GITHUB_REDIRECT_URI?: string;
   R3L_APP_SECRET?: string;
   JWT_SECRET?: string;
 

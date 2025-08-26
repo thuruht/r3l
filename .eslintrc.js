@@ -12,6 +12,18 @@ module.exports = {
     es6: true,
     worker: true,
   },
+  // Ignore archived and legacy test pages to keep lint focused on current iteration
+  ignorePatterns: [
+    'archive/**',
+    'public/test-*.html',
+    'public/check-*.html',
+    'public/test-auth.html',
+    'src/router.ts.bak*',
+    'src/router.ts.backup',
+    'src/router.ts.error',
+    'src/router-new.ts',
+    'src/router.ts.*.bak*',
+  ],
   parserOptions: {
     ecmaVersion: 2022,
     sourceType: 'module'

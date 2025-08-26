@@ -1,0 +1,9 @@
+# Ignore generated, archived, and legacy test files
+archive/**
+public/test-*.html
+public/check-*.html
+public/test-auth.html
+src/router.ts.bak*
+src/router.ts.backup
+src/router.ts.error
+src/router-new.ts

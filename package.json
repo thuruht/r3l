@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "R3L:F - Research Ecosystem for Living Futures - Realigned with original Rel-F vision",
   "private": true,
+  "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",

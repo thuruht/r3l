@@ -1,8 +1,10 @@
-// This is a stub for the cloudflare:workers module
-// It provides the necessary exports for the @cloudflare/workers-oauth-provider to work during build
+// src/stubs/cloudflare-workers-stub.js
+// DEPRECATED: This build-time stub was used to allow importing a virtual
+// `cloudflare:workers` module during webpack builds. Modern builds should not
+// rely on this. We keep a minimal, well-documented stub to avoid breaking CI
+// until a build-time replacement is implemented.
+
 module.exports = {
-  // Add any required exports here
-  // This is just enough to make webpack happy
   Request: globalThis.Request,
   Response: globalThis.Response,
   URL: globalThis.URL,

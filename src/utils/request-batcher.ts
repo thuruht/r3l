@@ -1,4 +1,4 @@
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 
 /**
  * Generic interface for a batch processing function

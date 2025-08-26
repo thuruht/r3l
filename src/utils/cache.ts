@@ -3,7 +3,7 @@
  *
  * Provides methods for caching database query results
  */
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 
 /**
  * Cache manager class

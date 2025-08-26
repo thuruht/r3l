@@ -3,8 +3,8 @@
  * Ensures all required environment variables are present and correctly formatted
  */
 
-import { AppError } from '../types/errors';
-import { Env } from '../types/env';
+import { AppError } from '../types/errors.js';
+import { Env } from '../types/env.js';
 
 // Define required environment variables
 const REQUIRED_ENV_VARS = [

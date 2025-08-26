@@ -4,9 +4,11 @@
 import { Env } from './types/env.js';
 
 // Extend Env type to include the AUTH_SERVICE binding
-declare module './types/env' {
+declare module './types/env.js' {
   interface Env {
-    AUTH_SERVICE: Fetcher;
+    AUTH_SERVICE?: {
+      fetch: (input: string, init?: any) => Promise<Response>;
+    };
   }
 }
 

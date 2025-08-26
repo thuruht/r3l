@@ -412,7 +412,7 @@
             const avatarFormData = new FormData();
             avatarFormData.append('file', avatarFile);
             
-            const avatarResponse = await fetch('/api/content/upload', {
+            const avatarResponse = await fetch('/api/files/avatar', {
               method: 'POST',
               credentials: 'include',
               body: avatarFormData

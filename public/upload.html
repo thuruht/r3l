@@ -256,11 +256,14 @@
           // Send request to API
           const response = await fetch('/api/content', {
             method: 'POST',
+            credentials: 'include',
             body: formData
           });
           
           if (!response.ok) {
-            throw new Error(`Upload failed: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({}));
+            const errorMessage = errorData.error || `Upload failed: ${response.statusText}`;
+            throw new Error(errorMessage);
           }
           
           const result = await response.json();

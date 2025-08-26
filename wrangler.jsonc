@@ -20,15 +20,6 @@
     "command": "npx webpack"
   },
   
-  // Configure dev settings
-  "dev": {
-    "port": 8787,
-    "local_protocol": "http"
-  },
-  
-  // Enable worker analytics and logs in the dashboard
-  // This is the correct setting as of July 2025
-  "logpush": true,
   
   // Configure observability for tracing and monitoring
   "observability": {

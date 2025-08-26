@@ -20,36 +20,42 @@ export default {
     try {
       // Validate environment variables
       const validatedEnv = validateEnvironment(env);
-      
+
       // Create a router instance
       const router = new Router();
-      
+
       // Pass the request to the router for processing
       // This handles API routes and static assets
       return router.handle(request, validatedEnv);
     } catch (error) {
       console.error('Worker error:', error);
-      
+
       if (error instanceof AppError) {
-        return new Response(JSON.stringify({ 
-          error: error.code, 
-          message: error.message 
-        }), {
-          status: error.statusCode,
-          headers: { 'Content-Type': 'application/json' }
-        });
+        return new Response(
+          JSON.stringify({
+            error: error.code,
+            message: error.message,
+          }),
+          {
+            status: error.statusCode,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
       }
-      
-      return new Response(JSON.stringify({ 
-        error: 'INTERNAL_SERVER_ERROR', 
-        message: 'An unexpected error occurred' 
-      }), {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      });
+
+      return new Response(
+        JSON.stringify({
+          error: 'INTERNAL_SERVER_ERROR',
+          message: 'An unexpected error occurred',
+        }),
+        {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     }
   },
-  
+
   /**
    * Handle scheduled events
    * @param event The scheduled event
@@ -60,21 +66,22 @@ export default {
     try {
       // Validate environment variables
       const validatedEnv = validateEnvironment(env);
-      
+
       // Create a router instance
       const router = new Router();
-      
+
       // Process content expirations on schedule
-      if (event.cron === '0 */6 * * *') { // Every 6 hours
+      if (event.cron === '0 */6 * * *') {
+        // Every 6 hours
         console.log('Scheduled task triggered:', event.cron);
-        
+
         // This is a placeholder for future content expiration logic
         // ctx.waitUntil(router.getContentHandler.processExpirations(validatedEnv));
       }
     } catch (error) {
       console.error('Scheduled task error:', error);
     }
-  }
+  },
 };
 
 // Define the scheduled event interface

@@ -1,6 +1,6 @@
 /**
  * Cache manager for R3L:F
- * 
+ *
  * Provides methods for caching database query results
  */
 import { Env } from '../types/env';
@@ -11,7 +11,7 @@ import { Env } from '../types/env';
 export class CacheManager {
   private cache: KVNamespace;
   private defaultTTL: number = 300; // 5 minutes
-  
+
   /**
    * Create a cache manager
    * @param cache KV namespace to use for caching
@@ -19,7 +19,7 @@ export class CacheManager {
   constructor(cache: KVNamespace) {
     this.cache = cache;
   }
-  
+
   /**
    * Get a value from cache
    * @param key Cache key
@@ -33,7 +33,7 @@ export class CacheManager {
       return null;
     }
   }
-  
+
   /**
    * Set a value in cache
    * @param key Cache key
@@ -42,10 +42,10 @@ export class CacheManager {
    */
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     await this.cache.put(key, JSON.stringify(value), {
-      expirationTtl: ttl || this.defaultTTL
+      expirationTtl: ttl || this.defaultTTL,
     });
   }
-  
+
   /**
    * Delete a value from cache
    * @param key Cache key
@@ -53,7 +53,7 @@ export class CacheManager {
   async delete(key: string): Promise<void> {
     await this.cache.delete(key);
   }
-  
+
   /**
    * Cache with automatic key generation
    * @param keyPrefix Prefix for cache key
@@ -70,22 +70,22 @@ export class CacheManager {
   ): Promise<T> {
     // Generate a cache key
     const key = `${keyPrefix}:${keyParams.map(p => JSON.stringify(p)).join(':')}`;
-    
+
     // Try to get from cache
     const cached = await this.get<T>(key);
     if (cached !== null) {
       return cached;
     }
-    
+
     // Fetch fresh data
     const fresh = await fetcher();
-    
+
     // Cache the result
     await this.set(key, fresh, ttl);
-    
+
     return fresh;
   }
-  
+
   /**
    * Create a wrapper around database queries that automatically caches results
    * @param env Environment with DB access
@@ -93,7 +93,7 @@ export class CacheManager {
    */
   createDbCache(env: Env) {
     const self = this;
-    
+
     return {
       /**
        * Execute a cached query that returns a single row
@@ -116,13 +116,13 @@ export class CacheManager {
             const result = await env.R3L_DB.prepare(query)
               .bind(...params)
               .first<T>();
-            
+
             return result || null;
           },
           ttl
         );
       },
-      
+
       /**
        * Execute a cached query that returns multiple rows
        * @param prefix Cache key prefix
@@ -131,12 +131,7 @@ export class CacheManager {
        * @param ttl TTL in seconds
        * @returns Query results
        */
-      async all<T>(
-        prefix: string,
-        query: string,
-        params: any[] = [],
-        ttl?: number
-      ): Promise<T[]> {
+      async all<T>(prefix: string, query: string, params: any[] = [], ttl?: number): Promise<T[]> {
         return self.cached<T[]>(
           `${prefix}:all`,
           [query, ...params],
@@ -144,13 +139,13 @@ export class CacheManager {
             const result = await env.R3L_DB.prepare(query)
               .bind(...params)
               .all<T>();
-            
+
             return result.results || [];
           },
           ttl
         );
       },
-      
+
       /**
        * Invalidate cache for a specific prefix
        * @param prefix Cache key prefix to invalidate
@@ -158,12 +153,12 @@ export class CacheManager {
       async invalidate(prefix: string): Promise<void> {
         // List keys with prefix
         const keys = await self.cache.list({ prefix });
-        
+
         // Delete all matching keys
         for (const key of keys.keys) {
           await self.cache.delete(key.name);
         }
-      }
+      },
     };
   }
 }

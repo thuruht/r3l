@@ -50,17 +50,21 @@ export class UserHandler {
     env: Env
   ): Promise<string> {
     // Check if username is available
-    const existingUser = await env.R3L_DB.prepare(`
+    const existingUser = await env.R3L_DB.prepare(
+      `
       SELECT id FROM users WHERE username = ?
-    `).bind(username).first();
-    
+    `
+    )
+      .bind(username)
+      .first();
+
     if (existingUser) {
       throw new Error('Username already taken');
     }
-    
+
     const userId = crypto.randomUUID();
     const now = Date.now();
-    
+
     // Default preferences
     const defaultPreferences = {
       theme: 'system',
@@ -69,31 +73,35 @@ export class UserHandler {
       defaultContentVisibility: 'public',
       emailNotifications: true,
       showLocationByDefault: false,
-      communique: ''
+      communique: '',
     };
-    
+
     // Create user
-    await env.R3L_DB.prepare(`
+    await env.R3L_DB.prepare(
+      `
       INSERT INTO users (
         id, username, display_name, bio, created_at, updated_at,
         avatar_key, email, preferences
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      userId,
-      username,
-      displayName,
-      '',
-      now,
-      now,
-      null,
-      email,
-      JSON.stringify(defaultPreferences)
-    ).run();
-    
+    `
+    )
+      .bind(
+        userId,
+        username,
+        displayName,
+        '',
+        now,
+        now,
+        null,
+        email,
+        JSON.stringify(defaultPreferences)
+      )
+      .run();
+
     return userId;
   }
-  
+
   /**
    * Get a user by ID
    * @param userId User ID
@@ -101,29 +109,33 @@ export class UserHandler {
    * @returns User profile or null if not found
    */
   async getUser(userId: string, env: Env): Promise<UserProfile | null> {
-    const user = await env.R3L_DB.prepare(`
+    const user = await env.R3L_DB.prepare(
+      `
       SELECT * FROM users WHERE id = ?
-    `).bind(userId).first<{
-      id: string;
-      username: string;
-      display_name: string;
-      bio: string;
-      created_at: number;
-      updated_at: number;
-      orcid_id?: string;
-      avatar_key?: string;
-      preferences: string;
-    }>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{
+        id: string;
+        username: string;
+        display_name: string;
+        bio: string;
+        created_at: number;
+        updated_at: number;
+        orcid_id?: string;
+        avatar_key?: string;
+        preferences: string;
+      }>();
+
     if (!user) {
       return null;
     }
-    
+
     // Parse preferences JSON
     let preferences: UserPreferences;
     try {
       preferences = JSON.parse(user.preferences);
-      
+
       // Ensure lurkerModeEnabled exists (for backward compatibility)
       if (preferences.lurkerModeEnabled === undefined) {
         preferences.lurkerModeEnabled = false;
@@ -136,16 +148,16 @@ export class UserHandler {
         lurkerModeEnabled: false,
         defaultContentVisibility: 'public',
         emailNotifications: true,
-        showLocationByDefault: false
+        showLocationByDefault: false,
       };
     }
-    
+
     return {
       ...user,
-      preferences
+      preferences,
     };
   }
-  
+
   /**
    * Get a user by username
    * @param username Username
@@ -153,29 +165,33 @@ export class UserHandler {
    * @returns User profile or null if not found
    */
   async getUserByUsername(username: string, env: Env): Promise<UserProfile | null> {
-    const user = await env.R3L_DB.prepare(`
+    const user = await env.R3L_DB.prepare(
+      `
       SELECT * FROM users WHERE username = ?
-    `).bind(username).first<{
-      id: string;
-      username: string;
-      display_name: string;
-      bio: string;
-      created_at: number;
-      updated_at: number;
-      orcid_id?: string;
-      avatar_key?: string;
-      preferences: string;
-    }>();
-    
+    `
+    )
+      .bind(username)
+      .first<{
+        id: string;
+        username: string;
+        display_name: string;
+        bio: string;
+        created_at: number;
+        updated_at: number;
+        orcid_id?: string;
+        avatar_key?: string;
+        preferences: string;
+      }>();
+
     if (!user) {
       return null;
     }
-    
+
     // Parse preferences JSON
     let preferences: UserPreferences;
     try {
       preferences = JSON.parse(user.preferences);
-      
+
       // Ensure lurkerModeEnabled exists (for backward compatibility)
       if (preferences.lurkerModeEnabled === undefined) {
         preferences.lurkerModeEnabled = false;
@@ -188,17 +204,16 @@ export class UserHandler {
         lurkerModeEnabled: false,
         defaultContentVisibility: 'public',
         emailNotifications: true,
-        showLocationByDefault: false
+        showLocationByDefault: false,
       };
     }
-    
+
     return {
       ...user,
-      preferences
+      preferences,
     };
   }
-  
-  
+
   /**
    * Update a user's profile
    * @param userId User ID
@@ -215,46 +230,50 @@ export class UserHandler {
     env: Env
   ): Promise<void> {
     const user = await this.getUser(userId, env);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     const updateFields = [];
     const values = [];
-    
+
     if (updates.displayName !== undefined) {
       updateFields.push('display_name = ?');
       values.push(updates.displayName);
     }
-    
+
     if (updates.bio !== undefined) {
       updateFields.push('bio = ?');
       values.push(updates.bio);
     }
-    
+
     if (updates.avatarKey !== undefined) {
       updateFields.push('avatar_key = ?');
       values.push(updates.avatarKey);
     }
-    
+
     if (updateFields.length === 0) {
       // Nothing to update
       return;
     }
-    
+
     // Add updated_at and user_id
     updateFields.push('updated_at = ?');
     values.push(Date.now());
     values.push(userId);
-    
-    await env.R3L_DB.prepare(`
+
+    await env.R3L_DB.prepare(
+      `
       UPDATE users
       SET ${updateFields.join(', ')}
       WHERE id = ?
-    `).bind(...values).run();
+    `
+    )
+      .bind(...values)
+      .run();
   }
-  
+
   /**
    * Update user preferences
    * @param userId User ID
@@ -269,7 +288,7 @@ export class UserHandler {
    */
   private sanitizeHtml(html: string): string {
     if (!html) return '';
-    
+
     // Use our comprehensive sanitizer for communiques
     return Sanitizer.sanitizeCommunique(html);
   }
@@ -280,45 +299,51 @@ export class UserHandler {
     env: Env
   ): Promise<void> {
     const user = await this.getUser(userId, env);
-    
+
     if (!user) {
       throw new Error('User not found');
     }
-    
+
     // Sanitize communique HTML if present
     if (preferences.communique !== undefined) {
       preferences.communique = this.sanitizeHtml(preferences.communique);
     }
-    
+
     // Merge with existing preferences
     const updatedPreferences = {
       ...user.preferences,
-      ...preferences
+      ...preferences,
     };
-    
+
     // Validate lurkerModeRandomness
     if (updatedPreferences.lurkerModeRandomness !== undefined) {
-      updatedPreferences.lurkerModeRandomness = Math.max(0, Math.min(100, updatedPreferences.lurkerModeRandomness));
+      updatedPreferences.lurkerModeRandomness = Math.max(
+        0,
+        Math.min(100, updatedPreferences.lurkerModeRandomness)
+      );
     }
-    
-    await env.R3L_DB.prepare(`
+
+    await env.R3L_DB.prepare(
+      `
       UPDATE users
       SET preferences = ?, updated_at = ?
       WHERE id = ?
-    `).bind(
-      JSON.stringify(updatedPreferences),
-      Date.now(),
-      userId
-    ).run();
+    `
+    )
+      .bind(JSON.stringify(updatedPreferences), Date.now(), userId)
+      .run();
   }
-  
+
   /**
    * Get user content statistics
    * @param userId User ID
    * @param env Environment bindings
    * @returns Content statistics
    */
-  async getUserStats(userId: string, env: Env): Promise<{
+  async getUserStats(
+    userId: string,
+    env: Env
+  ): Promise<{
     totalContent: number;
     publicContent: number;
     privateContent: number;
@@ -326,42 +351,62 @@ export class UserHandler {
     drawerCount: number;
   }> {
     // Total content count
-    const totalContent = await env.R3L_DB.prepare(`
+    const totalContent = await env.R3L_DB.prepare(
+      `
       SELECT COUNT(*) as count FROM content WHERE user_id = ?
-    `).bind(userId).first<{count: number}>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+
     // Public content count
-    const publicContent = await env.R3L_DB.prepare(`
+    const publicContent = await env.R3L_DB.prepare(
+      `
       SELECT COUNT(*) as count FROM content 
       WHERE user_id = ? AND is_public = 1
-    `).bind(userId).first<{count: number}>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+
     // Private content count
-    const privateContent = await env.R3L_DB.prepare(`
+    const privateContent = await env.R3L_DB.prepare(
+      `
       SELECT COUNT(*) as count FROM content 
       WHERE user_id = ? AND is_public = 0
-    `).bind(userId).first<{count: number}>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+
     // Archived content count
-    const archivedContent = await env.R3L_DB.prepare(`
+    const archivedContent = await env.R3L_DB.prepare(
+      `
       SELECT COUNT(*) as count FROM content 
       WHERE user_id = ? AND archive_status != 'active'
-    `).bind(userId).first<{count: number}>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+
     // Drawer count
-    const drawerCount = await env.R3L_DB.prepare(`
+    const drawerCount = await env.R3L_DB.prepare(
+      `
       SELECT COUNT(*) as count FROM drawers WHERE user_id = ?
-    `).bind(userId).first<{count: number}>();
-    
+    `
+    )
+      .bind(userId)
+      .first<{ count: number }>();
+
     return {
       totalContent: totalContent?.count || 0,
       publicContent: publicContent?.count || 0,
       privateContent: privateContent?.count || 0,
       archivedContent: archivedContent?.count || 0,
-      drawerCount: drawerCount?.count || 0
+      drawerCount: drawerCount?.count || 0,
     };
   }
-  
+
   /**
    * Get user notifications
    * @param userId User ID
@@ -376,16 +421,20 @@ export class UserHandler {
     offset: number = 0,
     env: Env
   ): Promise<any[]> {
-    const result = await env.R3L_DB.prepare(`
+    const result = await env.R3L_DB.prepare(
+      `
       SELECT * FROM notifications
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `).bind(userId, limit, offset).all();
-    
+    `
+    )
+      .bind(userId, limit, offset)
+      .all();
+
     return result.results || [];
   }
-  
+
   /**
    * Mark notifications as read
    * @param userId User ID
@@ -400,19 +449,23 @@ export class UserHandler {
     if (notificationIds.length === 0) {
       return;
     }
-    
+
     // Update in batches of 100
     const batchSize = 100;
     for (let i = 0; i < notificationIds.length; i += batchSize) {
       const batch = notificationIds.slice(i, i + batchSize);
       const placeholders = batch.map(() => '?').join(',');
-      
-      await env.R3L_DB.prepare(`
+
+      await env.R3L_DB.prepare(
+        `
         UPDATE notifications
         SET read = 1
         WHERE id IN (${placeholders})
         AND user_id = ?
-      `).bind(...batch, userId).run();
+      `
+      )
+        .bind(...batch, userId)
+        .run();
     }
   }
 }

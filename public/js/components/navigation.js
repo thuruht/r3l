@@ -4,6 +4,8 @@
  */
 
 import { notificationManager } from './notification.js';
+import { getCookie, isAuthenticated, fixAuthCookies } from '../utils/cookie-helper.js';
+import { apiGet, apiPost, API_ENDPOINTS } from '../utils/api-helper.js';
 
 // Define a simple debug log function
 const debugLog = (component, message, data) => {
@@ -159,6 +161,7 @@ export class NavigationBar {
           <span style="color:#856404">${message}</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
+          <button id="demo-fix-cookies" class="btn btn-small">Fix Cookies</button>
           <button id="demo-run-diagnostics" class="btn btn-small">Run diagnostics</button>
           <button id="demo-dismiss" class="btn btn-small">Dismiss</button>
         </div>
@@ -178,24 +181,45 @@ export class NavigationBar {
       banner.remove();
     });
 
+    // Wire up fix cookies button
+    document.getElementById('demo-fix-cookies')?.addEventListener('click', async () => {
+      const fixBtn = document.getElementById('demo-fix-cookies');
+      if (fixBtn) fixBtn.textContent = 'Fixing...';
+      try {
+        await fixAuthCookies();
+        // Try to fetch profile again
+        await this.fetchUserProfile();
+        // If successful, the banner will be cleared automatically
+      } catch (err) {
+        console.error('[Cookie Fix] Error:', err);
+        const errEl = document.createElement('div');
+        errEl.style.color = 'red';
+        errEl.textContent = `Cookie fix failed: ${err?.message || err}`;
+        banner.appendChild(errEl);
+      } finally {
+        if (fixBtn) fixBtn.textContent = 'Fix Cookies';
+      }
+    });
+
     document.getElementById('demo-run-diagnostics')?.addEventListener('click', async () => {
       const diagBtn = document.getElementById('demo-run-diagnostics');
       if (diagBtn) diagBtn.textContent = 'Running...';
       try {
         // Call cookie-check endpoint (does not require auth)
-        const resp = await fetch('/api/debug/cookie-check', { credentials: 'include' });
-        const data = await resp.json().catch(() => ({ error: 'Invalid JSON response' }));
-        console.log('[Demo Diagnostics] /api/debug/cookie-check result:', resp.status, data);
+        const data = await apiGet(API_ENDPOINTS.DEBUG.COOKIE_CHECK);
+        console.log('[Demo Diagnostics] cookie-check result:', data);
 
         // Show a compact result inline
         const details = document.createElement('pre');
         details.style.maxHeight = '240px';
         details.style.overflow = 'auto';
         details.style.marginTop = '8px';
-        details.textContent = JSON.stringify({ status: resp.status, body: data }, null, 2);
+        details.textContent = JSON.stringify(data, null, 2);
+        
         // Remove any previous details
         const old = document.getElementById('demo-diagnostics-details');
         if (old) old.remove();
+        
         details.id = 'demo-diagnostics-details';
         banner.appendChild(details);
       } catch (err) {
@@ -232,19 +256,11 @@ export class NavigationBar {
    * Update navigation based on authentication state
    */
   static updateAuthState() {
-    // Function to get cookie value by name
-    const getCookie = (name) => {
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop().split(';').shift();
-      return null;
-    };
-    
-    // Check for JWT cookie (but note that it's HttpOnly and won't be accessible to JavaScript)
-    // We'll instead fetch the validation endpoint
     const loginItem = document.getElementById('nav-login-item');
     
     console.log('[NavigationBar] Auth state check:', {
+      authCookie: getCookie('r3l_auth_state'),
+      isAuth: isAuthenticated(),
       allCookies: document.cookie,
       loginItemFound: !!loginItem
     });
@@ -252,13 +268,14 @@ export class NavigationBar {
     // Directly fetch the profile to check authentication status
     if (loginItem) {
       console.log('[NavigationBar] Checking JWT authentication status...');
+      
       // Fetch user data from API
       this.fetchUserProfile()
         .then(user => {
           console.log('[NavigationBar] User profile fetched:', user);
           if (user) {
             loginItem.innerHTML = `
-                            <div class="user-profile-nav">
+              <div class="user-profile-nav">
                 <a href="/profile.html" class="nav-link user-profile-link">
                   <span class="user-avatar">
                     ${user.avatarUrl ? 
@@ -308,12 +325,14 @@ export class NavigationBar {
               });
           } else {
             console.log('[NavigationBar] User profile was null, showing login link');
+            this.handleAuthError();
           }
         })
         .catch(err => {
           console.error('[NavigationBar] Failed to fetch user profile:', err);
-          // User is not authenticated, show login link (no need to do anything)
+          // User is not authenticated, show login link
           console.log('[NavigationBar] No auth, showing login link');
+          this.handleAuthError();
         });
     }
   }
@@ -327,34 +346,30 @@ export class NavigationBar {
       // Debug cookie info
       console.log('[NavigationBar] Fetching profile - Current cookies:', {
         cookieString: document.cookie,
-        cookieLength: document.cookie.length
+        cookieLength: document.cookie.length,
+        authState: getCookie('r3l_auth_state')
       });
       
-      // Use credentials: 'include' to ensure cookies are sent with the request
-      console.log('[NavigationBar] Fetching profile from /api/auth/jwt/profile with credentials:include');
+      // Use API helper to fetch profile
+      console.log('[NavigationBar] Fetching profile from', API_ENDPOINTS.AUTH.PROFILE);
       const startTime = performance.now();
-      const response = await fetch('/api/auth/jwt/profile', {
-        credentials: 'include'
-      });
+      
+      const data = await apiGet(API_ENDPOINTS.AUTH.PROFILE);
+      
       const endTime = performance.now();
       
       console.log('[NavigationBar] Profile response:', {
-        status: response.status,
-        statusText: response.statusText,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
-        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
+        data,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`
       });
       
-      if (!response.ok) {
+      if (data.error) {
         // Show demo banner to indicate non-functional backend or unauthenticated state
-        this.showDemoBanner(response.status === 401 ?
+        this.showDemoBanner(data.status === 401 ?
           'You are not authenticated. Sign in to enable full functionality.' :
           'Profile fetch failed - backend may be unavailable. Many features are disabled in demo mode.');
-        throw new Error(`Invalid session: ${response.status} ${response.statusText}`);
+        throw new Error(`Invalid session: ${data.error}`);
       }
-
-      const data = await response.json();
-      console.log('[NavigationBar] Profile data:', data);
 
       // Clear demo banner if present (we have a valid authenticated session)
       this.clearDemoBanner();
@@ -387,23 +402,17 @@ export class NavigationBar {
   static logout() {
     console.log('Logging out...');
     
-    // Call logout API
-    fetch('/api/auth/jwt/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include'
-    })
-    .then(response => {
-      console.log('Logout response:', response.status, response.statusText);
-      // Reload the page to force a refresh of all components
-      window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out successfully.');
-    })
-    .catch(error => {
-      console.error('Logout error:', error);
-      // Reload the page to force a refresh of all components
-      window.location.href = '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
-    });
+    // Call logout API using our helper
+    apiPost(API_ENDPOINTS.AUTH.LOGOUT)
+      .then(response => {
+        console.log('Logout response:', response);
+        // Reload the page to force a refresh of all components
+        window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out successfully.');
+      })
+      .catch(error => {
+        console.error('Logout error:', error);
+        // Reload the page to force a refresh of all components
+        window.location.href = '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
+      });
   }
 }

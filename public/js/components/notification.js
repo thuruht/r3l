@@ -3,6 +3,8 @@
  * Handles fetching, displaying, and managing user notifications
  */
 
+import { API_ENDPOINTS, apiGet, apiPost, apiDelete } from '../utils/api-helper.js';
+
 // Define a simple debug log function
 const debugLog = (component, message, data) => {
   console.log(`[${component}] ${message}`, data || '');
@@ -148,6 +150,7 @@ export class NotificationManager {
 
   /**
    * Fetch unread notification count
+   * @returns {Promise<number>} Unread count
    */
   async fetchUnreadCount() {
     if (!this.initialized) {
@@ -156,27 +159,20 @@ export class NotificationManager {
     }
     
     try {
-      debugLog('NotificationManager', 'Fetching unread count from /api/notifications/unread-count');
+      debugLog('NotificationManager', `Fetching unread count from ${API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT}`);
       const startTime = performance.now();
       
-      const response = await fetch('/api/notifications/unread-count', {
-        credentials: 'include'
-      });
+      const data = await apiGet(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
       
       const endTime = performance.now();
       debugLog('NotificationManager', 'Unread count response', {
-        status: response.status,
-        statusText: response.statusText,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
-        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
+        data,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`
       });
       
-      if (!response.ok) {
-        throw new Error(`Error fetching unread count: ${response.status}`);
+      if (data.error) {
+        throw new Error(`Error fetching unread count: ${data.error}`);
       }
-      
-      const data = await response.json();
-      debugLog('NotificationManager', 'Unread count data', data);
       
       this.unreadCount = data.count || 0;
       this.updateBadge();
@@ -190,6 +186,7 @@ export class NotificationManager {
 
   /**
    * Fetch notifications
+   * @returns {Promise<Array>} Notifications
    */
   async fetchNotifications() {
     if (!this.initialized) {
@@ -198,26 +195,26 @@ export class NotificationManager {
     }
     
     try {
-      debugLog('NotificationManager', 'Fetching notifications from /api/notifications');
+      debugLog('NotificationManager', `Fetching notifications from ${API_ENDPOINTS.NOTIFICATIONS.LIST}`);
       const startTime = performance.now();
       
-      const response = await fetch('/api/notifications', {
-        credentials: 'include'
-      });
+      const data = await apiGet(API_ENDPOINTS.NOTIFICATIONS.LIST);
       
       const endTime = performance.now();
       debugLog('NotificationManager', 'Notifications response', {
-        status: response.status,
-        statusText: response.statusText,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
-        headers: [...response.headers.entries()].reduce((obj, [key, val]) => ({...obj, [key]: val}), {})
+        data,
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`
       });
       
-      if (!response.ok) {
-        throw new Error(`Error fetching notifications: ${response.status}`);
+      if (data.error) {
+        throw new Error(`Error fetching notifications: ${data.error}`);
       }
       
-      const notifications = await response.json();
+      // Handle different response formats
+      const notifications = Array.isArray(data) ? data : 
+                          data.notifications ? data.notifications : 
+                          data.results ? data.results : [];
+                          
       debugLog('NotificationManager', 'Received notifications', notifications);
       
       this.notifications = notifications;
@@ -300,8 +297,9 @@ export class NotificationManager {
           break;
       }
       
-      // Format date
-      const date = new Date(notification.createdAt);
+      // Format date - safely handle various date formats
+      const timestamp = notification.createdAt || notification.created_at || notification.timestamp || Date.now();
+      const date = new Date(timestamp);
       const formattedDate = date.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
@@ -318,7 +316,7 @@ export class NotificationManager {
             <h4>${notification.title}</h4>
             <span class="notification-time">${formattedDate}</span>
           </div>
-          <p>${notification.content}</p>
+          <p>${notification.content || notification.message || ''}</p>
         </div>
         <div class="notification-actions">
           <button class="mark-read-btn" aria-label="Mark as read">
@@ -419,22 +417,16 @@ export class NotificationManager {
   /**
    * Mark notifications as read
    * @param {string[]} ids - Array of notification IDs
+   * @returns {Promise<boolean>} Success
    */
   async markAsRead(ids) {
-    if (!ids || ids.length === 0) return;
+    if (!ids || ids.length === 0) return false;
     
     try {
-      const response = await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ ids }),
-        credentials: 'include'
-      });
+      const result = await apiPost(API_ENDPOINTS.NOTIFICATIONS.MARK_READ, { ids });
       
-      if (!response.ok) {
-        throw new Error(`Error marking notifications as read: ${response.status}`);
+      if (result.error) {
+        throw new Error(`Error marking notifications as read: ${result.error}`);
       }
       
       // Update local notifications
@@ -458,16 +450,14 @@ export class NotificationManager {
 
   /**
    * Mark all notifications as read
+   * @returns {Promise<boolean>} Success
    */
   async markAllAsRead() {
     try {
-      const response = await fetch('/api/notifications/mark-all-read', {
-        method: 'POST',
-        credentials: 'include'
-      });
+      const result = await apiPost(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ);
       
-      if (!response.ok) {
-        throw new Error(`Error marking all notifications as read: ${response.status}`);
+      if (result.error) {
+        throw new Error(`Error marking all notifications as read: ${result.error}`);
       }
       
       // Update local notifications
@@ -490,16 +480,14 @@ export class NotificationManager {
   /**
    * Delete a notification
    * @param {string} id - Notification ID
+   * @returns {Promise<boolean>} Success
    */
   async deleteNotification(id) {
     try {
-      const response = await fetch(`/api/notifications/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      const result = await apiDelete(API_ENDPOINTS.NOTIFICATIONS.DELETE(id));
       
-      if (!response.ok) {
-        throw new Error(`Error deleting notification: ${response.status}`);
+      if (result.error) {
+        throw new Error(`Error deleting notification: ${result.error}`);
       }
       
       // Remove from local notifications

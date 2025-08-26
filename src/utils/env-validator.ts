@@ -86,15 +86,15 @@ export function validateEnvironment(env: Env): Env {
   // If any variables are missing or invalid, throw an error
   if (missingVars.length > 0 || invalidVars.length > 0) {
     let errorMessage = '';
-    
+
     if (missingVars.length > 0) {
       errorMessage += `Missing required environment variables: ${missingVars.join(', ')}. `;
     }
-    
+
     if (invalidVars.length > 0) {
       errorMessage += `Invalid environment variables: ${invalidVars.join(', ')}. `;
     }
-    
+
     throw new EnvironmentError(errorMessage);
   }
 
@@ -112,7 +112,7 @@ export function getEnvVar<T>(env: Env, key: keyof Env, defaultValue?: T): T {
   if (env[key] === undefined && defaultValue === undefined) {
     throw new EnvironmentError(`Environment variable ${String(key)} is required but not provided`);
   }
-  
+
   return (env[key] !== undefined ? env[key] : defaultValue) as T;
 }
 
@@ -126,11 +126,11 @@ export function getEnvVar<T>(env: Env, key: keyof Env, defaultValue?: T): T {
 export function getNumericEnvVar(env: Env, key: keyof Env, defaultValue?: number): number {
   const value = getEnvVar<string>(env, key, defaultValue?.toString());
   const numValue = Number(value);
-  
+
   if (isNaN(numValue)) {
     throw new EnvironmentError(`Environment variable ${String(key)} must be a number`);
   }
-  
+
   return numValue;
 }
 
@@ -154,8 +154,12 @@ export function getBooleanEnvVar(env: Env, key: keyof Env, defaultValue?: boolea
  * @returns The parsed JSON environment variable
  */
 export function getJsonEnvVar<T>(env: Env, key: keyof Env, defaultValue?: T): T {
-  const value = getEnvVar<string>(env, key, defaultValue !== undefined ? JSON.stringify(defaultValue) : undefined);
-  
+  const value = getEnvVar<string>(
+    env,
+    key,
+    defaultValue !== undefined ? JSON.stringify(defaultValue) : undefined
+  );
+
   try {
     return JSON.parse(value) as T;
   } catch (error) {

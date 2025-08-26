@@ -8,5 +8,5 @@ module.exports = {
   URL: globalThis.URL,
   Headers: globalThis.Headers,
   FormData: globalThis.FormData,
-  crypto: globalThis.crypto
+  crypto: globalThis.crypto,
 };

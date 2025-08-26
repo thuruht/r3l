@@ -17,12 +17,12 @@ export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     // Create a router instance
     const router = new Router();
-    
+
     // Pass the request to the router for processing
     // This handles API routes and static assets
     return router.handle(request, env);
   },
-  
+
   /**
    * Handle scheduled events
    * @param event The scheduled event
@@ -32,13 +32,14 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     // Create a router instance
     const router = new Router();
-    
+
     // Process content expirations on schedule
-    if (event.cron === '0 */6 * * *') { // Every 6 hours
+    if (event.cron === '0 */6 * * *') {
+      // Every 6 hours
       // For now, log the scheduled event
       console.log('Scheduled task triggered:', event.cron);
     }
-  }
+  },
 };
 
 // Define the scheduled event interface

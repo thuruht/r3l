@@ -162,6 +162,7 @@
         // Fix cookies
         async function fixCookies() {
             try {
+                // Use the correct endpoint from fixed-router.ts
                 const response = await fetch('/api/auth/fix-cookies', {
                     credentials: 'include'
                 });

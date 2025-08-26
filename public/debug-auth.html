@@ -243,7 +243,8 @@
         responseDiv.textContent = 'Fixing auth cookie...';
         
         try {
-          const response = await fetch('/api/auth/fix-cookie', {
+          // Use the correct endpoint from fixed-router.ts
+          const response = await fetch('/api/auth/fix-cookies', {
             method: 'GET',
             credentials: 'include',
             headers: {

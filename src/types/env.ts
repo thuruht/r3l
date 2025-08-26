@@ -12,27 +12,27 @@ export interface Env {
   ORCID_REDIRECT_URI?: string;
   R3L_APP_SECRET?: string;
   JWT_SECRET?: string;
-  
+
   // Define KV namespace bindings
   R3L_USERS: KVNamespace;
   R3L_SESSIONS: KVNamespace;
   R3L_USER_EMBEDDINGS: KVNamespace;
   R3L_KV: KVNamespace;
-  
+
   // Define Durable Object bindings
   R3L_CONNECTIONS: DurableObjectNamespace;
   R3L_VISUALIZATION: DurableObjectNamespace;
   R3L_COLLABORATION: DurableObjectNamespace;
-  
+
   // Define R2 bucket bindings
   R3L_CONTENT_BUCKET: R2Bucket;
-  
+
   // Define D1 database binding
   R3L_DB: D1Database;
-  
+
   // Define Workers AI binding
   R3L_AI: AI;
-  
+
   // Define static asset binding
   ASSETS: Fetcher;
 }
@@ -46,7 +46,11 @@ export interface FileUpload {
 
 // R2 bucket interface
 export interface R2Bucket {
-  put(key: string, value: ReadableStream | ArrayBuffer | string, options?: R2PutOptions): Promise<R2Object>;
+  put(
+    key: string,
+    value: ReadableStream | ArrayBuffer | string,
+    options?: R2PutOptions
+  ): Promise<R2Object>;
   get(key: string, options?: R2GetOptions): Promise<R2Object | null>;
   delete(key: string): Promise<void>;
 }
@@ -131,7 +135,8 @@ type D1Response<T = unknown> = {
   };
 };
 
-export interface ExtendedD1Database extends Omit<CloudflareD1Database, 'prepare' | 'batch' | 'withSession'> {
+export interface ExtendedD1Database
+  extends Omit<CloudflareD1Database, 'prepare' | 'batch' | 'withSession'> {
   prepare(query: string): ExtendedD1PreparedStatement;
   batch(statements: ExtendedD1PreparedStatement[]): Promise<D1Response[]>;
   withSession(mode: D1SessionMode): ExtendedD1DatabaseSession;

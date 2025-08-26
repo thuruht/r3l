@@ -12,37 +12,35 @@ export class UserConnections {
   private websockets: WebSocket[] = [];
   private hibernationTimeout: number | null = null;
   private lastMessageTime = Date.now();
-  
+
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
     this.env = env;
-    
+
     // Set up a periodic alarm to clean inactive connections
     // This will run even during hibernation
     this.state.setAlarm(Date.now() + 60 * 1000); // Every minute
   }
-  
+
   /**
    * Handle a fetch request to the Durable Object
    */
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
-    
+
     // Extract user ID from URL or headers
-    this.userId = url.searchParams.get('userId') || 
-                  request.headers.get('X-User-Id') || 
-                  this.userId;
-    
+    this.userId = url.searchParams.get('userId') || request.headers.get('X-User-Id') || this.userId;
+
     if (!this.userId) {
       return new Response('User ID is required', { status: 400 });
     }
-    
+
     // Check for WebSocket upgrade
     if (request.headers.get('Upgrade') === 'websocket') {
       return this.handleWebSocketUpgrade(request);
     }
-    
+
     // Handle specific API endpoints
     switch (path) {
       case '/notify':
@@ -55,7 +53,7 @@ export class UserConnections {
         return new Response('Not found', { status: 404 });
     }
   }
-  
+
   /**
    * Handle WebSocket connection upgrade
    */
@@ -63,21 +61,21 @@ export class UserConnections {
     // Create a new WebSocket pair
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
-    
+
     // Accept the connection
     server.accept();
-    
+
     // Store the connection
     this.websockets.push(server);
-    
+
     // Set up event handlers
-    server.addEventListener('message', async (event) => {
+    server.addEventListener('message', async event => {
       try {
         this.lastMessageTime = Date.now();
-        
+
         // Parse the message
         const data = JSON.parse(event.data as string);
-        
+
         // Handle specific message types
         switch (data.type) {
           case 'ping':
@@ -90,7 +88,7 @@ export class UserConnections {
         console.error('Error handling WebSocket message:', error);
       }
     });
-    
+
     // Handle disconnection
     server.addEventListener('close', () => {
       // Remove this WebSocket from our list
@@ -98,37 +96,39 @@ export class UserConnections {
       if (index !== -1) {
         this.websockets.splice(index, 1);
       }
-      
+
       // If no more connections, schedule hibernation
       if (this.websockets.length === 0) {
         this.scheduleHibernation();
       }
     });
-    
+
     // Send welcome message
-    server.send(JSON.stringify({ 
-      type: 'connected', 
-      userId: this.userId, 
-      time: Date.now() 
-    }));
-    
+    server.send(
+      JSON.stringify({
+        type: 'connected',
+        userId: this.userId,
+        time: Date.now(),
+      })
+    );
+
     // Cancel any pending hibernation
     this.cancelHibernation();
-    
+
     // Return the client WebSocket
     return new Response(null, {
       status: 101,
-      webSocket: client
+      webSocket: client,
     });
   }
-  
+
   /**
    * Handle notification delivery
    */
   private async handleNotify(request: Request): Promise<Response> {
     try {
       // Parse notification data
-      const data = await request.json() as {
+      const data = (await request.json()) as {
         userId: string;
         notification: {
           id: string;
@@ -137,33 +137,33 @@ export class UserConnections {
           content: string;
           actionUrl?: string;
           createdAt: number;
-        }
+        };
       };
-      
+
       if (!data.userId || !data.notification) {
         return new Response('Invalid notification data', { status: 400 });
       }
-      
+
       // Broadcast to all connected WebSockets
       this.broadcast({
         type: 'notification',
-        notification: data.notification
+        notification: data.notification,
       });
-      
+
       return new Response('Notification sent', { status: 200 });
     } catch (error) {
       console.error('Error handling notification:', error);
       return new Response('Error processing notification', { status: 500 });
     }
   }
-  
+
   /**
    * Handle direct message delivery
    */
   private async handleMessage(request: Request): Promise<Response> {
     try {
       // Parse message data
-      const data = await request.json() as {
+      const data = (await request.json()) as {
         type: string;
         userId: string;
         fromUserId: string;
@@ -171,33 +171,33 @@ export class UserConnections {
         content: string;
         createdAt: number;
       };
-      
+
       if (!data.userId || !data.fromUserId || !data.messageId) {
         return new Response('Invalid message data', { status: 400 });
       }
-      
+
       // Broadcast to all connected WebSockets
       this.broadcast({
         type: 'new_message',
         fromUserId: data.fromUserId,
         messageId: data.messageId,
         content: data.content,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
       });
-      
+
       return new Response('Message delivered', { status: 200 });
     } catch (error) {
       console.error('Error handling message delivery:', error);
       return new Response('Error delivering message', { status: 500 });
     }
   }
-  
+
   /**
    * Broadcast a message to all connected WebSockets
    */
   private broadcast(message: any): void {
     const messageStr = JSON.stringify(message);
-    
+
     // Send to all connected WebSockets
     for (const ws of this.websockets) {
       try {
@@ -209,24 +209,27 @@ export class UserConnections {
       }
     }
   }
-  
+
   /**
    * Schedule hibernation if inactive
    */
   private scheduleHibernation(): void {
     // Cancel any existing timeout
     this.cancelHibernation();
-    
+
     // Schedule hibernation after 5 minutes of inactivity
-    this.hibernationTimeout = setTimeout(() => {
-      // Only hibernate if we still have no WebSockets
-      if (this.websockets.length === 0) {
-        console.log(`Hibernating UserConnections for user ${this.userId}`);
-      }
-      this.hibernationTimeout = null;
-    }, 5 * 60 * 1000);
+    this.hibernationTimeout = setTimeout(
+      () => {
+        // Only hibernate if we still have no WebSockets
+        if (this.websockets.length === 0) {
+          console.log(`Hibernating UserConnections for user ${this.userId}`);
+        }
+        this.hibernationTimeout = null;
+      },
+      5 * 60 * 1000
+    );
   }
-  
+
   /**
    * Cancel scheduled hibernation
    */
@@ -236,14 +239,14 @@ export class UserConnections {
       this.hibernationTimeout = null;
     }
   }
-  
+
   /**
    * Handle periodic alarm to clean inactive connections
    */
   async alarm(): Promise<void> {
     try {
       const now = Date.now();
-      
+
       // Check for stale WebSockets (no messages for 5 minutes)
       if (now - this.lastMessageTime > 5 * 60 * 1000) {
         // Close and remove all stale WebSockets
@@ -254,11 +257,11 @@ export class UserConnections {
             console.error('Error closing stale WebSocket:', error);
           }
         }
-        
+
         // Clear the WebSockets array
         this.websockets = [];
       }
-      
+
       // Schedule the next alarm
       this.state.setAlarm(Date.now() + 60 * 1000);
     } catch (error) {

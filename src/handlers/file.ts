@@ -2,7 +2,7 @@ import { Env } from '../types/env';
 
 export class FileHandler {
   constructor() {}
-  
+
   /**
    * Sanitize a filename to prevent security issues
    * @param fileName Original file name
@@ -11,16 +11,14 @@ export class FileHandler {
   private sanitizeFileName(fileName: string): string {
     // Remove any path components
     const baseName = fileName.replace(/^.*[\\\/]/, '');
-    
+
     // Replace any potentially dangerous characters
-    const sanitized = baseName
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .replace(/\.{2,}/g, '.'); // Prevent directory traversal
-    
+    const sanitized = baseName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.{2,}/g, '.'); // Prevent directory traversal
+
     // Limit length
     return sanitized.substring(0, 255);
   }
-  
+
   /**
    * Upload a file to R2 storage
    * @param fileData The file data buffer
@@ -43,28 +41,28 @@ export class FileHandler {
       if (fileData.byteLength > MAX_FILE_SIZE) {
         throw new Error(`File size exceeds 25MB limit`);
       }
-      
+
       // Validate file name
       if (!fileName || fileName.trim() === '') {
         throw new Error('File name is required');
       }
-      
+
       // Sanitize file name to prevent path traversal and other security issues
       const sanitizedFileName = this.sanitizeFileName(fileName);
-      
+
       // Generate a unique file key based on timestamp and random string
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 12);
       const fileExtension = sanitizedFileName.split('.').pop();
       const fileKey = `${timestamp}-${randomStr}.${fileExtension}`;
-      
+
       // Add some standard metadata
       const fullMetadata = {
         ...metadata,
         originalName: sanitizedFileName,
         uploadedAt: timestamp.toString(),
       };
-      
+
       // Upload to R2 bucket
       await env.R3L_CONTENT_BUCKET.put(fileKey, fileData, {
         httpMetadata: {
@@ -72,7 +70,7 @@ export class FileHandler {
         },
         customMetadata: fullMetadata,
       });
-      
+
       // Return the file key and a URL that can be used to access the file
       return {
         key: fileKey,
@@ -83,7 +81,7 @@ export class FileHandler {
       throw error; // Re-throw the error with more context if needed
     }
   }
-  
+
   /**
    * Upload an avatar image for a user
    * @param userId User ID
@@ -106,35 +104,35 @@ export class FileHandler {
       if (fileData.byteLength > MAX_AVATAR_SIZE) {
         throw new Error(`Avatar image exceeds 5MB limit`);
       }
-      
+
       // Validate that this is an image file
       if (!contentType.startsWith('image/')) {
         throw new Error('Only image files are allowed for avatars');
       }
-      
+
       // Sanitize file name
       const sanitizedFileName = this.sanitizeFileName(fileName);
-      
+
       // Get the file extension
       const fileExtension = sanitizedFileName.split('.').pop()?.toLowerCase();
-      
+
       // Validate file extension
       const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
       if (!fileExtension || !allowedExtensions.includes(fileExtension)) {
         throw new Error('Invalid image file format. Allowed formats: JPG, PNG, GIF, WebP, SVG');
       }
-      
+
       // Set the avatar metadata
       const metadata = {
         type: 'avatar',
         userId,
       };
-      
+
       // Create a avatar-specific file key
       const timestamp = Date.now();
       const randomStr = Math.random().toString(36).substring(2, 12);
       const avatarKey = `avatars/${userId}/${timestamp}-${randomStr}.${fileExtension}`;
-      
+
       // Upload to R2 bucket
       await env.R3L_CONTENT_BUCKET.put(avatarKey, fileData, {
         httpMetadata: {
@@ -147,18 +145,22 @@ export class FileHandler {
           uploadedAt: timestamp.toString(),
         },
       });
-      
+
       // Update the user's avatar key in the database
-      const updateResult = await env.R3L_DB.prepare(`
+      const updateResult = await env.R3L_DB.prepare(
+        `
         UPDATE users
         SET avatar_key = ?, updated_at = ?
         WHERE id = ?
-      `).bind(avatarKey, Date.now(), userId).run();
-      
+      `
+      )
+        .bind(avatarKey, Date.now(), userId)
+        .run();
+
       if (!updateResult) {
         throw new Error('Failed to update user avatar in database');
       }
-      
+
       // Return the avatar key and URL
       return {
         avatarKey,
@@ -169,7 +171,7 @@ export class FileHandler {
       throw error;
     }
   }
-  
+
   /**
    * Get a file from R2 storage
    * @param fileKey The file key in R2
@@ -180,14 +182,14 @@ export class FileHandler {
     try {
       // Get the file from R2
       const file = await env.R3L_CONTENT_BUCKET.get(fileKey);
-      
+
       if (!file) {
         return new Response('File not found', { status: 404 });
       }
-      
+
       // Get the file data and headers
       const data = await file.arrayBuffer();
-      
+
       // Create response with appropriate headers
       return new Response(data, {
         headers: {
@@ -203,7 +205,7 @@ export class FileHandler {
       return new Response('Error retrieving file', { status: 500 });
     }
   }
-  
+
   /**
    * Delete a file from R2 storage
    * @param fileKey The file key in R2

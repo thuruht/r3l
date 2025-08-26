@@ -2,19 +2,19 @@
 // Main router for the R3L:F application
 // Handles all API routes and static file serving
 
-import { AuthHandler } from './handlers/auth';
-import { UserHandler } from './handlers/user';
-import { ContentHandler } from './handlers/content';
-import { StatisticsHandler } from './handlers/statistics';
-import { NotificationHandler } from './handlers/notification';
-import { TagHandler } from './handlers/tag';
-import { SearchHandler } from './handlers/search';
-import { AIHandler } from './handlers/ai';
-import { FileHandler } from './handlers/file';
-import { GlobeHandler } from './handlers/globe';
-import { DrawerHandler } from './handlers/drawer';
-import { Env } from './types/env';
-import { createAuthCookies, createClearAuthCookies, isSecureRequest } from './cookie-helper';
+import { AuthHandler } from './handlers/auth.js';
+import { UserHandler } from './handlers/user.js';
+import { ContentHandler } from './handlers/content.js';
+import { StatisticsHandler } from './handlers/statistics.js';
+import { NotificationHandler } from './handlers/notification.js';
+import { TagHandler } from './handlers/tag.js';
+import { SearchHandler } from './handlers/search.js';
+import { AIHandler } from './handlers/ai.js';
+import { FileHandler } from './handlers/file.js';
+import { GlobeHandler } from './handlers/globe.js';
+import { DrawerHandler } from './handlers/drawer.js';
+import { Env } from './types/env.js';
+import { createAuthCookies, createClearAuthCookies, isSecureRequest } from './cookie-helper.js';
 
 // For debugging - log route processing
 const ROUTE_DEBUG = false;

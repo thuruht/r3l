@@ -1,6 +1,6 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider';
-import { Router } from './router';
-import { Env } from './types/env';
+import { Router } from './router.js';
+import { Env } from './types/env.js';
 
 /**
  * User object structure returned by the authorization system

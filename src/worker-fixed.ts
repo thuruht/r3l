@@ -1,6 +1,6 @@
-import { Env } from './types/env';
-import { Router } from './router';
-import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime-fixed';
+import { Env } from './types/env.js';
+import { Router } from './router.js';
+import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime-fixed.js';
 
 // Export Durable Object classes
 export { ConnectionsObject, VisualizationObject, CollaborationRoom };

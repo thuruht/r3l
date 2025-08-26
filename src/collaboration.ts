@@ -3,7 +3,7 @@
  * Implements Durable Object classes for real-time connections, visualization, and collaboration
  */
 
-import { Env } from './types/env';
+import { Env } from './types/env.js';
 
 /**
  * ConnectionsObject - Manages real-time user connections and presence

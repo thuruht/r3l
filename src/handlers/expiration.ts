@@ -1,5 +1,5 @@
-import { Env } from '../types/env';
-import { Logger } from '../utils/logger';
+import { Env } from '../types/env.js';
+import { Logger } from '../utils/logger.js';
 
 // Define interfaces for query results
 interface ContentWarningItem {

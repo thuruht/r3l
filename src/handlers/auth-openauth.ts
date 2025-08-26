@@ -1,6 +1,6 @@
-import { Env } from '../types/env';
-import { UserHandler } from './user';
-import { AuthServiceAdapter } from '../auth-service-adapter';
+import { Env } from '../types/env.js';
+import { UserHandler } from './user.js';
+import { AuthServiceAdapter } from '../auth-service-adapter.js';
 
 export class AuthHandler {
   private userHandler: UserHandler;

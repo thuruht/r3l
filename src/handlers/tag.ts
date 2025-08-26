@@ -1,4 +1,4 @@
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 
 interface TagRecord {
   tag: string;

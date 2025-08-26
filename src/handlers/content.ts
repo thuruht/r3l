@@ -1,9 +1,9 @@
-import { Env } from '../types/env';
-import { ContentLifecycle } from '../handlers/expiration';
-import { ValidationError } from '../types/errors';
-import { Validator } from '../validators';
-import { Sanitizer } from '../utils/sanitizer';
-import { Logger } from '../utils/logger';
+import { Env } from '../types/env.js';
+import { ContentLifecycle } from '../handlers/expiration.js';
+import { ValidationError } from '../types/errors.js';
+import { Validator } from '../validators.js';
+import { Sanitizer } from '../utils/sanitizer.js';
+import { Logger } from '../utils/logger.js';
 
 interface ContentItem {
   id: string;

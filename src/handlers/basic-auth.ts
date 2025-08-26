@@ -1,5 +1,5 @@
-import { Env } from '../types/env';
-import { UserHandler } from './user';
+import { Env } from '../types/env.js';
+import { UserHandler } from './user.js';
 import * as bcrypt from 'bcryptjs';
 
 interface BasicAuthSession {

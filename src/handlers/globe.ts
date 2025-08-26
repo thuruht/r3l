@@ -1,6 +1,6 @@
-import { Env } from '../types/env';
-import { RequestBatcher, BatchProcessor } from '../utils/request-batcher';
-import { MemoryCache } from '../utils/memory-cache';
+import { Env } from '../types/env.js';
+import { RequestBatcher, BatchProcessor } from '../utils/request-batcher.js';
+import { MemoryCache } from '../utils/memory-cache.js';
 
 export interface GeoPoint {
   id: string;

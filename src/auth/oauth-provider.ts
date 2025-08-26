@@ -1,6 +1,6 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider';
-import { Env } from '../types/env';
-import { Router } from '../router';
+import { Env } from '../types/env.js';
+import { Router } from '../router.js';
 
 // Define the default handler
 const defaultHandler = {

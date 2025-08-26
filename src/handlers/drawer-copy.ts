@@ -1,5 +1,5 @@
-import { Env } from '../types/env';
-import { ContentHandler } from './content';
+import { Env } from '../types/env.js';
+import { ContentHandler } from './content.js';
 
 interface AuthenticatedRequest extends Request {
   userId: string;

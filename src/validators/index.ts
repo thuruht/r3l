@@ -1,4 +1,4 @@
-import { Sanitizer } from '../utils/sanitizer';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export interface ValidationResult {
   valid: boolean;

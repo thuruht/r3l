@@ -5,8 +5,8 @@
  * Uses a combination of memory cache and KV storage for distributed rate limiting
  */
 
-import { Env } from '../types/env';
-import { MemoryCache } from '../utils/memory-cache';
+import { Env } from '../types/env.js';
+import { MemoryCache } from '../utils/memory-cache.js';
 
 // Interface for rate limit configuration
 export interface RateLimitConfig {

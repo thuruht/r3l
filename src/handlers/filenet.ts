@@ -1,5 +1,5 @@
-import { Env } from '../types/env';
-import { ContentLifecycle } from './expiration';
+import { Env } from '../types/env.js';
+import { ContentLifecycle } from './expiration.js';
 
 interface File {
   name: string;
@@ -152,7 +152,7 @@ export class FilenetHandler {
       // If user is authenticated and this is a download, record it
       if (request.authenticated && request.userId && isDownload) {
         // Import ContentHandler to record the download
-        const { ContentHandler } = await import('./content');
+  const { ContentHandler } = await import('./content.js');
         const contentHandler = new ContentHandler();
 
         // Record download asynchronously (don't await to speed up response)

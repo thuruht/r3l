@@ -4,8 +4,16 @@
  * Provides JWT-based authentication with secure HttpOnly cookies
  */
 
-import { Env } from '../types/env';
-import { UserHandler } from '../handlers/user';
+import { Env } from '../types/env.js';
+import { UserHandler } from '../handlers/user.js';
+/**
+ * JWT Authentication Handler for R3L:F
+ *
+ * Provides JWT-based authentication with secure HttpOnly cookies
+ */
+
+import { Env } from '../types/env.js';
+import { UserHandler } from '../handlers/user.js';
 import {
   generateJWT,
   verifyJWT,
@@ -14,8 +22,8 @@ import {
   extractJWTFromRequest,
   generateJWTAndSetCookie,
   testJWT,
-} from '../jwt-helper';
-import { isSecureRequest } from '../cookie-helper';
+} from '../jwt-helper.js';
+import { isSecureRequest } from '../cookie-helper.js';
 
 export class JWTAuthHandler {
   private userHandler: UserHandler;
@@ -24,14 +32,6 @@ export class JWTAuthHandler {
     this.userHandler = new UserHandler();
   }
 
-  /**
-   * Login with username and password
-   * @param username Username
-   * @param password Password
-   * @param request Request object for domain and security info
-   * @param env Environment
-   * @returns Response with JWT cookie if successful
-   */
   async login(
     username: string,
     password: string,
@@ -39,7 +39,6 @@ export class JWTAuthHandler {
     env: Env
   ): Promise<{ success: boolean; userId?: string; message?: string; headers?: Headers }> {
     try {
-      // Get user by username
       const user = await this.userHandler.getUserByUsername(username, env);
 
       if (!user) {
@@ -47,8 +46,6 @@ export class JWTAuthHandler {
         return { success: false, message: 'Invalid username or password' };
       }
 
-      // Verify password (in a real app, you'd hash the password)
-      // For this implementation, we'll use a basic password check from the database
       const passwordValid = await this.verifyPassword(user.id, password, env);
 
       if (!passwordValid) {
@@ -56,17 +53,14 @@ export class JWTAuthHandler {
         return { success: false, message: 'Invalid username or password' };
       }
 
-      // Generate JWT and set cookie
-      console.log(`JWTAuth - Login successful for user: ${username}`);
       const { headers, token } = await generateJWTAndSetCookie(
         user.id,
         request,
         user.display_name,
-        'user', // Default role
+        'user',
         env
       );
 
-      // Record login in audit log
       await this.recordLoginAttempt(user.id, true, request, env);
 
       return {
@@ -80,16 +74,6 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Register a new user
-   * @param username Username
-   * @param password Password
-   * @param displayName Display name
-   * @param email Email address
-   * @param request Request object for domain and security info
-   * @param env Environment
-   * @returns Response with JWT cookie if successful
-   */
   async register(
     username: string,
     password: string,
@@ -105,7 +89,6 @@ export class JWTAuthHandler {
     headers?: Headers;
   }> {
     try {
-      // Check if username is already taken
       const existingUser = await this.userHandler.getUserByUsername(username, env);
 
       if (existingUser) {
@@ -113,14 +96,11 @@ export class JWTAuthHandler {
         return { success: false, message: 'Username already exists' };
       }
 
-      // Create password hash
       const passwordHash = await this.hashPassword(password);
 
-      // Generate a recovery key - 12 characters alphanumeric
       const recoveryKey = this.generateRecoveryKey();
       const recoveryKeyHash = await this.hashPassword(recoveryKey);
 
-      // Create the user
       const userId = await this.createUserWithRecovery(
         username,
         displayName,
@@ -135,8 +115,6 @@ export class JWTAuthHandler {
         return { success: false, message: 'Failed to create user' };
       }
 
-      // Generate JWT and set cookie
-      console.log(`JWTAuth - Registration successful for user: ${username}`);
       const { headers, token } = await generateJWTAndSetCookie(
         userId,
         request,
@@ -148,7 +126,7 @@ export class JWTAuthHandler {
       return {
         success: true,
         userId,
-        recoveryKey, // Return the recovery key so it can be shown to the user ONCE
+        recoveryKey,
         headers,
       };
     } catch (error) {
@@ -157,38 +135,26 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Logout user by clearing JWT cookie
-   * @param request Request object for domain and security info
-   * @param env Environment
-   * @returns Response with cleared cookie
-   */
   async logout(request: Request, env: Env): Promise<{ success: boolean; headers: Headers }> {
     try {
-      // Extract domain and security info from request
       const url = new URL(request.url);
       const domain = url.hostname;
       const isSecure = isSecureRequest(request);
 
-      // Get JWT from request
       const token = extractJWTFromRequest(request);
 
-      // If token exists, validate it to get user ID for audit log
       if (token) {
         const payload = await verifyJWT(token, env);
         if (payload?.sub) {
-          // Record logout in audit log
           await this.recordLogout(payload.sub, request, env);
         }
       }
 
-      // Clear JWT cookie
       const headers = clearJWTCookie(domain, isSecure);
 
       return { success: true, headers };
     } catch (error) {
       console.error('JWTAuth - Logout error:', error);
-      // Even if there's an error, still clear the cookie
       const url = new URL(request.url);
       const domain = url.hostname;
       const isSecure = isSecureRequest(request);
@@ -198,15 +164,8 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Validate JWT token
-   * @param request Request object to extract token from
-   * @param env Environment
-   * @returns User ID if valid, null otherwise
-   */
   async validateToken(request: Request, env: Env): Promise<string | null> {
     try {
-      // Get JWT from request
       const token = extractJWTFromRequest(request);
 
       if (!token) {
@@ -214,7 +173,6 @@ export class JWTAuthHandler {
         return null;
       }
 
-      // Verify JWT
       console.log('JWTAuth - Validating token:', token.substring(0, 20) + '...');
       const payload = await verifyJWT(token, env);
 
@@ -223,7 +181,6 @@ export class JWTAuthHandler {
         return null;
       }
 
-      // Check if user exists
       const user = await this.userHandler.getUser(payload.sub, env);
 
       if (!user) {
@@ -239,15 +196,8 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Get user profile data
-   * @param request Request object to extract token from
-   * @param env Environment
-   * @returns User profile data if valid token, error response otherwise
-   */
   async getProfile(request: Request, env: Env): Promise<Response> {
     try {
-      // Validate token and get user ID
       const userId = await this.validateToken(request, env);
 
       if (!userId) {
@@ -264,7 +214,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user data
       const user = await this.userHandler.getUser(userId, env);
 
       if (!user) {
@@ -281,7 +230,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Return user profile data (camelCase for frontend compatibility)
       return new Response(
         JSON.stringify({
           id: user.id,
@@ -317,12 +265,6 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Check if a username exists
-   * @param request Request object with username
-   * @param env Environment
-   * @returns Response indicating if username exists
-   */
   async checkUsername(request: Request, env: Env): Promise<Response> {
     try {
       const { username } = (await request.json()) as { username: string };
@@ -342,7 +284,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Check if username exists
       const user = await this.userHandler.getUserByUsername(username, env);
 
       return new Response(
@@ -373,12 +314,6 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Verify a recovery key for an account
-   * @param request Request object with username and recovery key
-   * @param env Environment
-   * @returns Response with new recovery key if valid
-   */
   async verifyRecoveryKey(request: Request, env: Env): Promise<Response> {
     try {
       const { username, recoveryKey } = (await request.json()) as {
@@ -401,7 +336,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user by username
       const user = await this.userHandler.getUserByUsername(username, env);
 
       if (!user) {
@@ -419,7 +353,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user credentials
       const credentials = await env.R3L_DB.prepare(
         `
         SELECT recovery_key_hash FROM user_credentials
@@ -444,11 +377,9 @@ export class JWTAuthHandler {
         );
       }
 
-      // Verify recovery key
       const isValid = await this.verifyPasswordHash(recoveryKey, credentials.recovery_key_hash);
 
       if (!isValid) {
-        // Record failed recovery attempt
         await this.recordLoginAttempt(user.id, false, request, env);
 
         return new Response(
@@ -465,7 +396,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Generate a new recovery key
       const newRecoveryKey = this.generateRecoveryKey();
 
       return new Response(
@@ -498,12 +428,6 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Reset password using recovery key
-   * @param request Request object with username, recovery key, new password, and new recovery key
-   * @param env Environment
-   * @returns Response with success status
-   */
   async resetPassword(request: Request, env: Env): Promise<Response> {
     try {
       const { username, recoveryKey, newPassword, newRecoveryKey } = (await request.json()) as {
@@ -528,7 +452,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user by username
       const user = await this.userHandler.getUserByUsername(username, env);
 
       if (!user) {
@@ -546,7 +469,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user credentials
       const credentials = await env.R3L_DB.prepare(
         `
         SELECT recovery_key_hash FROM user_credentials
@@ -571,11 +493,9 @@ export class JWTAuthHandler {
         );
       }
 
-      // Verify recovery key
       const isValid = await this.verifyPasswordHash(recoveryKey, credentials.recovery_key_hash);
 
       if (!isValid) {
-        // Record failed recovery attempt
         await this.recordLoginAttempt(user.id, false, request, env);
 
         return new Response(
@@ -592,11 +512,9 @@ export class JWTAuthHandler {
         );
       }
 
-      // Hash new password and recovery key
       const newPasswordHash = await this.hashPassword(newPassword);
       const newRecoveryKeyHash = await this.hashPassword(newRecoveryKey);
 
-      // Update user credentials
       await env.R3L_DB.prepare(
         `
         UPDATE user_credentials
@@ -607,16 +525,14 @@ export class JWTAuthHandler {
         .bind(newPasswordHash, newRecoveryKeyHash, Date.now(), user.id)
         .run();
 
-      // Generate JWT and set cookie
       const { headers, token } = await generateJWTAndSetCookie(
         user.id,
         request,
         user.display_name,
-        'user', // Default role
+        'user',
         env
       );
 
-      // Record successful password reset
       await env.R3L_DB.prepare(
         `
         INSERT INTO auth_log (
@@ -659,15 +575,8 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Generate a new recovery key for a user
-   * @param request Request object
-   * @param env Environment
-   * @returns Response with new recovery key
-   */
   async generateNewRecoveryKey(request: Request, env: Env): Promise<Response> {
     try {
-      // Validate token and get user ID
       const userId = await this.validateToken(request, env);
 
       if (!userId) {
@@ -685,7 +594,6 @@ export class JWTAuthHandler {
         );
       }
 
-      // Get user data
       const user = await this.userHandler.getUser(userId, env);
 
       if (!user) {
@@ -703,11 +611,9 @@ export class JWTAuthHandler {
         );
       }
 
-      // Generate a new recovery key
       const newRecoveryKey = this.generateRecoveryKey();
       const newRecoveryKeyHash = await this.hashPassword(newRecoveryKey);
 
-      // Update user credentials with new recovery key hash
       await env.R3L_DB.prepare(
         `
         UPDATE user_credentials
@@ -718,7 +624,6 @@ export class JWTAuthHandler {
         .bind(newRecoveryKeyHash, Date.now(), userId)
         .run();
 
-      // Record recovery key generation in audit log
       await env.R3L_DB.prepare(
         `
         INSERT INTO auth_log (
@@ -765,29 +670,12 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Handle a test JWT endpoint
-   * @param request Request object
-   * @param env Environment
-   * @returns Response with test results
-   */
   async handleTestJWT(request: Request, env: Env): Promise<Response> {
     return testJWT(request, env);
   }
 
-  /**
-   * Verify a user's password
-   * @param userId User ID
-   * @param password Password to verify
-   * @param env Environment
-   * @returns Whether the password is valid
-   */
   private async verifyPassword(userId: string, password: string, env: Env): Promise<boolean> {
     try {
-      // In a real app, you'd retrieve the password hash from the database
-      // and compare it with the hash of the provided password
-
-      // For this implementation, we'll query the user credentials
       const result = await env.R3L_DB.prepare(
         `
         SELECT password_hash FROM user_credentials
@@ -801,9 +689,6 @@ export class JWTAuthHandler {
         return false;
       }
 
-      // For simplicity, we'll just compare the raw password with the hash
-      // In a real app, you'd use a proper password verification function
-      // like bcrypt.compare or Argon2.verify
       return await this.verifyPasswordHash(password, result.password_hash);
     } catch (error) {
       console.error('Error verifying password:', error);
@@ -811,26 +696,16 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Generate a secure recovery key
-   * @returns A random recovery key
-   */
   private generateRecoveryKey(): string {
-    // Generate a random 16-byte array
     const randomBytes = new Uint8Array(16);
     crypto.getRandomValues(randomBytes);
 
-    // Convert to a readable format: 4 groups of 5 characters
-    // Format: XXXXX-XXXXX-XXXXX-XXXXX
     const segments = [];
-
-    // Use specific character set to avoid confusing characters
-    const charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; // No 0, 1, I, O
+    const charset = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 
     for (let i = 0; i < 4; i++) {
       let segment = '';
       for (let j = 0; j < 5; j++) {
-        // Get a random index into the charset
         const randomIndex = randomBytes[i * 4 + j] % charset.length;
         segment += charset[randomIndex];
       }
@@ -840,16 +715,6 @@ export class JWTAuthHandler {
     return segments.join('-');
   }
 
-  /**
-   * Create a new user with credentials and recovery key
-   * @param username Username
-   * @param displayName Display name
-   * @param email Email address
-   * @param passwordHash Password hash
-   * @param recoveryKeyHash Recovery key hash
-   * @param env Environment
-   * @returns User ID if successful, null otherwise
-   */
   private async createUserWithRecovery(
     username: string,
     displayName: string,
@@ -859,12 +724,10 @@ export class JWTAuthHandler {
     env: Env
   ): Promise<string | null> {
     try {
-      // Start a transaction to ensure both user and credentials are created
       const userId = crypto.randomUUID();
       const credentialId = crypto.randomUUID();
       const now = Date.now();
 
-      // Create user record
       await env.R3L_DB.prepare(
         `
         INSERT INTO users (
@@ -877,7 +740,6 @@ export class JWTAuthHandler {
         .bind(userId, username, displayName, email, now, now)
         .run();
 
-      // Create user credentials with recovery key
       await env.R3L_DB.prepare(
         `
         INSERT INTO user_credentials (
@@ -896,69 +758,42 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Hash a password using bcrypt algorithm
-   * @param password Password to hash
-   * @returns Hashed password
-   */
   private async hashPassword(password: string): Promise<string> {
     try {
-      // We'll implement a production-quality password hashing that doesn't rely on bcrypt
-      // This is a secure algorithm designed for WebCrypto API
-
-      // Generate a salt (random value)
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const saltHex = Array.from(salt)
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
-      // Combine password with salt
       const encoder = new TextEncoder();
       const passwordWithSalt = encoder.encode(password + saltHex);
 
-      // Hash multiple times with incremental work factor to mimic PBKDF2
       let hashBuffer = await crypto.subtle.digest('SHA-256', passwordWithSalt);
 
-      // Apply multiple iterations (PBKDF2-like approach)
       for (let i = 0; i < 10000; i++) {
-        // Production-strength work factor
-        // Need to convert back to Uint8Array for next iteration
         const hashArray = new Uint8Array(hashBuffer);
         hashBuffer = await crypto.subtle.digest('SHA-256', hashArray);
       }
 
-      // Convert final hash to hex
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-      // Return in format: algorithm:iterations:salt:hash
       return `pbkdf2:10000:${saltHex}:${hashHex}`;
     } catch (error) {
       console.error('Error hashing password:', error);
-      // If hashing fails, return a placeholder that will never match
       return 'invalid-hash';
     }
   }
 
-  /**
-   * Verify a password hash
-   * @param password Password to verify
-   * @param hash Hash to compare against
-   * @returns Whether the password matches the hash
-   */
   private async verifyPasswordHash(password: string, hash: string): Promise<boolean> {
     try {
-      // Check if the hash is in the expected format
       if (!hash.includes(':')) {
         return false;
       }
 
-      // Split into parts
       const parts = hash.split(':');
 
-      // Handle different hash formats for backward compatibility
       if (hash.startsWith('pbkdf2:')) {
-        // New PBKDF2-like format: pbkdf2:iterations:salt:hash
         if (parts.length !== 4) {
           return false;
         }
@@ -970,54 +805,42 @@ export class JWTAuthHandler {
           return false;
         }
 
-        // Combine password with salt
         const encoder = new TextEncoder();
         const passwordWithSalt = encoder.encode(password + salt);
 
-        // Hash using the same algorithm and iterations
         let hashBuffer = await crypto.subtle.digest('SHA-256', passwordWithSalt);
 
-        // Apply multiple iterations (same as in hashPassword)
         for (let i = 0; i < iterations; i++) {
           const hashArray = new Uint8Array(hashBuffer);
           hashBuffer = await crypto.subtle.digest('SHA-256', hashArray);
         }
 
-        // Convert to hex
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // Compare the hashes
         return storedHash === hashHex;
       } else if (hash.startsWith('bcrypt:')) {
-        // Old bcrypt-like format for backward compatibility
         if (parts.length !== 3) {
           return false;
         }
 
         const [_, salt, storedHash] = parts;
 
-        // Combine password with salt
         const encoder = new TextEncoder();
         const passwordWithSalt = encoder.encode(password + salt);
 
-        // Use the old algorithm (10 iterations of SHA-256)
         let hashBuffer = await crypto.subtle.digest('SHA-256', passwordWithSalt);
 
         for (let i = 0; i < 9; i++) {
-          // 9 more times for 10 total
           const hashArray = new Uint8Array(hashBuffer);
           hashBuffer = await crypto.subtle.digest('SHA-256', hashArray);
         }
 
-        // Convert to hex
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // Compare the hashes
         return storedHash === hashHex;
       } else if (hash.startsWith('sha256:')) {
-        // Legacy SHA-256 format for backward compatibility
         const storedHash = hash.substring(7);
         const encoder = new TextEncoder();
         const data = encoder.encode(password);
@@ -1028,7 +851,6 @@ export class JWTAuthHandler {
         return storedHash === hashHex;
       }
 
-      // Unknown format
       return false;
     } catch (error) {
       console.error('Error verifying password hash:', error);
@@ -1036,13 +858,6 @@ export class JWTAuthHandler {
     }
   }
 
-  /**
-   * Record a login attempt in the audit log
-   * @param userId User ID
-   * @param success Whether the login was successful
-   * @param request Request object
-   * @param env Environment
-   */
   private async recordLoginAttempt(
     userId: string,
     success: boolean,
@@ -1054,7 +869,6 @@ export class JWTAuthHandler {
       const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
       const userAgent = request.headers.get('User-Agent') || 'unknown';
 
-      // Insert into auth_log table
       await env.R3L_DB.prepare(
         `
         INSERT INTO auth_log (
@@ -1067,23 +881,15 @@ export class JWTAuthHandler {
         .run();
     } catch (error) {
       console.error('Error recording login attempt:', error);
-      // Non-critical error, continue without failing
     }
   }
 
-  /**
-   * Record a logout in the audit log
-   * @param userId User ID
-   * @param request Request object
-   * @param env Environment
-   */
   private async recordLogout(userId: string, request: Request, env: Env): Promise<void> {
     try {
       const now = Date.now();
       const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
       const userAgent = request.headers.get('User-Agent') || 'unknown';
 
-      // Insert into auth_log table
       await env.R3L_DB.prepare(
         `
         INSERT INTO auth_log (
@@ -1096,7 +902,7 @@ export class JWTAuthHandler {
         .run();
     } catch (error) {
       console.error('Error recording logout:', error);
-      // Non-critical error, continue without failing
     }
   }
 }
+      )

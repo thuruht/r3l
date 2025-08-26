@@ -28,6 +28,10 @@ export class AuthServiceAdapter {
     try {
       console.log('AuthServiceAdapter - making request to auth service:', authUrl.toString());
 
+      if (!env.AUTH_SERVICE) {
+        throw new Error('AUTH_SERVICE binding is not configured in the environment');
+      }
+
       // Make request to auth service
       const response = await env.AUTH_SERVICE.fetch(authUrl.toString());
 

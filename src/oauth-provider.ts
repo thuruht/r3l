@@ -25,15 +25,17 @@ class ApiHandler {
     this.router = new Router();
   }
 
-  async fetch(request: Request, env: Env, ctx: ExecutionContext, user: R3LUser) {
-    // The user object is already authenticated
-    // Attach the user to the request for use in downstream handlers
-    (request as any).user = user;
-    (request as any).authenticated = true;
-    (request as any).userId = user.id;
+  // The OAuth provider will attach an authenticated user to the request
+  // We read that user from the request object and forward to our router.
+  async fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    const user = (request as any).user as R3LUser | undefined;
+    if (user) {
+      (request as any).authenticated = true;
+      (request as any).userId = user.id;
+    }
 
-    // Route the request using our existing router
-    return this.router.route(request, env);
+    // Route the request using our existing router (router.handle matches our Router API)
+    return this.router.handle(request, env);
   }
 }
 
@@ -50,7 +52,7 @@ class DefaultHandler {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     // For non-API routes, we still want to use our router
     // to handle static assets and other routes
-    return this.router.route(request, env);
+    return this.router.handle(request, env);
   }
 }
 
@@ -58,18 +60,20 @@ class DefaultHandler {
  * Create and configure the OAuth Provider
  */
 export const createOAuthProvider = () => {
-  return new OAuthProvider<Env, R3LUser>({
+  // Cast to any for the third-party library until types are aligned with our Router signature
+  const OAuthProviderAny = OAuthProvider as any;
+  return new OAuthProviderAny({
     // API routes configuration
     apiRoute: '/api/',
 
     // API handler for authenticated requests
-    apiHandler: new ApiHandler(),
+  apiHandler: (new ApiHandler() as any),
 
     // Default handler for non-API routes
-    defaultHandler: new DefaultHandler(),
+  defaultHandler: (new DefaultHandler() as any),
 
     // User authentication handler
-    authorizeUser: async (request, env, ctx) => {
+  authorizeUser: async (request: any, env: any, ctx: any) => {
       // Extract the auth code or token from the request
       const url = new URL(request.url);
       const code = url.searchParams.get('code');
@@ -96,7 +100,8 @@ export const createOAuthProvider = () => {
         });
 
         // Process the request through our router
-        const response = await router.handleAuthCallbacks(modifiedRequest, env);
+  // Use our router.handle which accepts (request, env)
+  const response = await router.handle(modifiedRequest, env);
 
         // If the auth was successful, extract the user data
         if (response.ok) {
@@ -111,12 +116,10 @@ export const createOAuthProvider = () => {
       }
     },
 
-    // Storage configuration
+    // Storage configuration (use env accessor so the provider can resolve the KV at runtime)
     storage: {
-      // You can use Durable Objects, KV, or D1 for storage
-      // For now, we'll use KV
       type: 'kv',
-      namespace: 'R3L_SESSIONS',
+      namespace: (env: any) => env.R3L_SESSIONS,
     },
 
     // OAuth configuration

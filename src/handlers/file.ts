@@ -1,4 +1,4 @@
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 
 export class FileHandler {
   constructor() {}

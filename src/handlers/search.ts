@@ -9,10 +9,10 @@ import {
   TagWithCount,
   PopularTagsResponse,
 } from '../types/search';
-import { Logger } from '../utils/logger';
-import { ValidationError } from '../types/errors';
-import { Validator } from '../validators';
-import { Sanitizer } from '../utils/sanitizer';
+import { Logger } from '../utils/logger.js';
+import { ValidationError } from '../types/errors.js';
+import { Validator } from '../validators/index.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export class SearchHandler {
   private logger: Logger;

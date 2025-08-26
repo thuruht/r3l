@@ -1,8 +1,8 @@
-import { Env } from './types/env';
-import { Router } from './router';
-import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime';
-import { validateEnvironment } from './utils/env-validator';
-import { AppError } from './types/errors';
+import { Env } from './types/env.js';
+import { Router } from './router.js';
+import { ConnectionsObject, VisualizationObject, CollaborationRoom } from './realtime.js';
+import { validateEnvironment } from './utils/env-validator.js';
+import { AppError } from './types/errors.js';
 
 // Export Durable Object classes
 export { ConnectionsObject, VisualizationObject, CollaborationRoom };

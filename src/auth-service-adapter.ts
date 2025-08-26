@@ -1,7 +1,7 @@
 // Auth service adapter
 // This file provides methods to interact with the OpenAuth service
 
-import { Env } from './types/env';
+import { Env } from './types/env.js';
 
 // Extend Env type to include the AUTH_SERVICE binding
 declare module './types/env' {

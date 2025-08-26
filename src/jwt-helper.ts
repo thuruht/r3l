@@ -5,8 +5,8 @@
  * Uses secure HttpOnly cookies and HMAC-SHA256 signing
  */
 
-import { Env } from './types/env';
-import { isSecureRequest } from './cookie-helper';
+import { Env } from './types/env.js';
+import { isSecureRequest } from './cookie-helper.js';
 
 // JWT token structure
 interface JWTPayload {

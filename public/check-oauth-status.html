@@ -22,7 +22,7 @@
       // Check cookies
       const allCookies = document.cookie;
       const hasAuthState = document.cookie.includes('r3l_auth_state=true');
-      const hasSession = document.cookie.includes('r3l_session=');
+  const hasSession = document.cookie.includes('r3l_jwt=');
       
       cookiesDiv.innerHTML = `
         <h3>Cookie Status</h3>
@@ -101,7 +101,7 @@
           // Reload cookie status
           setTimeout(() => {
             const hasAuthState = document.cookie.includes('r3l_auth_state=true');
-            const hasSession = document.cookie.includes('r3l_session=');
+            const hasSession = document.cookie.includes('r3l_jwt=');
             
             cookiesDiv.innerHTML = `
               <h3>Cookie Status</h3>
@@ -329,7 +329,7 @@
             <li>User clicks login button → Redirected to OAuth provider</li>
             <li>User authorizes → Redirected to callback URL</li>
             <li>Backend exchanges code for token → Creates session</li>
-            <li>Two cookies are set: <code>r3l_session</code> (HttpOnly) and <code>r3l_auth_state</code> (JS accessible)</li>
+            <li>Two cookies are set: <code>r3l_jwt</code> (HttpOnly) and <code>r3l_auth_state</code> (JS accessible)</li>
           </ol>
         </li>
       </ol>

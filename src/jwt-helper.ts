@@ -309,6 +309,11 @@ export async function generateJWTAndSetCookie(
 
   // Create cookie headers
   const headers = createJWTCookie(token, domain, isSecure);
+  // Ensure Access-Control-Allow-Origin echoes the request Origin so browsers accept Set-Cookie with credentials
+  const origin = request.headers.get('Origin') || `${url.protocol}//${url.hostname}`;
+  if (!headers.has('Access-Control-Allow-Origin')) {
+    headers.append('Access-Control-Allow-Origin', origin);
+  }
 
   return { headers, token };
 }

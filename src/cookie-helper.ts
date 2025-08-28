@@ -16,9 +16,9 @@ export function createAuthCookies(token: string, domain: string, isSecure: boole
     `Cookie helper - Creating cookies for domain: ${domain}, isSecure: ${isSecure}, sameSite: ${sameSite}`
   );
 
-  // Build session cookie with all required attributes
-  // SessionCookie must be HttpOnly (not accessible to JavaScript)
-  let sessionCookieStr = `r3l_session=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${sameSite}`;
+  // Build JWT cookie with all required attributes
+  // JWT cookie must be HttpOnly (not accessible to JavaScript)
+  let sessionCookieStr = `r3l_jwt=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=${sameSite}`;
 
   // Add Domain attribute except for localhost
   if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
@@ -43,13 +43,13 @@ export function createAuthCookies(token: string, domain: string, isSecure: boole
     authStateCookieStr += `; Secure`;
   }
 
-  console.log(`Cookie helper - Session cookie: ${sessionCookieStr}`);
+  console.log(`Cookie helper - JWT cookie: ${sessionCookieStr}`);
   console.log(`Cookie helper - Auth state cookie: ${authStateCookieStr}`);
 
   // Create headers with both cookies using append
   const headers = new Headers();
 
-  // CRITICAL: Order matters - session cookie must be set first
+  // CRITICAL: Order matters - jwt (HttpOnly) cookie must be set first
   headers.append('Set-Cookie', sessionCookieStr);
   headers.append('Set-Cookie', authStateCookieStr);
 
@@ -93,8 +93,8 @@ export function createClearAuthCookies(domain: string, isSecure: boolean): Heade
 
   console.log(`Cookie helper - Clearing cookies for domain: ${domain}, isSecure: ${isSecure}`);
 
-  // Build session cookie clear string with all required attributes
-  let clearSessionCookieStr = `r3l_session=; HttpOnly; Path=/; Max-Age=0; SameSite=${sameSite}`;
+  // Build jwt cookie clear string with all required attributes
+  let clearSessionCookieStr = `r3l_jwt=; HttpOnly; Path=/; Max-Age=0; SameSite=${sameSite}`;
 
   // Add Domain attribute except for localhost
   if (domain !== 'localhost' && !domain.startsWith('127.0.0.1')) {
@@ -119,7 +119,7 @@ export function createClearAuthCookies(domain: string, isSecure: boolean): Heade
     clearAuthStateCookieStr += `; Secure`;
   }
 
-  console.log(`Cookie helper - Clearing session cookie: ${clearSessionCookieStr}`);
+  console.log(`Cookie helper - Clearing jwt cookie: ${clearSessionCookieStr}`);
   console.log(`Cookie helper - Clearing auth state cookie: ${clearAuthStateCookieStr}`);
 
   // Create headers with both cleared cookies

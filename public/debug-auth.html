@@ -133,10 +133,10 @@
       <div class="debug-title">Authentication Diagnostics</div>
       <div class="debug-response" id="diagnostics">
 1. Check if you have both cookies:
-   - r3l_session: Contains your authentication token (HttpOnly)
+  - r3l_jwt: Contains your authentication token (HttpOnly)
    - r3l_auth_state: Flag indicating authentication state (accessible to JS)
 
-2. If r3l_auth_state exists but r3l_session doesn't:
+2. If r3l_auth_state exists but r3l_jwt doesn't:
    - Cookie might have been lost/expired
    - Click "Fix Auth Cookie" to attempt repair
    - Try logging in again

@@ -302,7 +302,7 @@
           }
           
           // Check if user is logged in
-          const isLoggedIn = document.cookie.includes('r3l_jwt=');
+          const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
           
           // Send request
           console.log(`Fetching search results from ${endpoint}?${params.toString()}`);
@@ -355,7 +355,7 @@
           console.error('Error fetching search results:', error);
           
           // Check if user is logged in
-          const isLoggedIn = document.cookie.includes('r3l_jwt=');
+          const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
           
           // Try again with less restrictive query if user is logged in
           if (isLoggedIn) {

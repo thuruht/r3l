@@ -879,7 +879,7 @@
           loadingIndicator.style.display = 'block';
           
           // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_jwt=');
+          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
           
           // Prepare API endpoints
           let contentEndpoint = '/api/search?limit=30';

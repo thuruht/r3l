@@ -105,7 +105,7 @@ export const createOAuthProvider = () => {
 
         // If the auth was successful, extract the user data
         if (response.ok) {
-          const data = await response.json();
+          const data: any = await response.json();
           return data.user as R3LUser;
         }
 
@@ -124,15 +124,16 @@ export const createOAuthProvider = () => {
 
     // OAuth configuration
     oauth: {
-      clientId: env => env.GITHUB_CLIENT_ID,
-      clientSecret: env => env.GITHUB_CLIENT_SECRET,
+  clientId: (env: any) => env.GITHUB_CLIENT_ID,
+  clientSecret: (env: any) => env.GITHUB_CLIENT_SECRET,
       authorizationEndpoint: 'https://github.com/login/oauth/authorize',
       tokenEndpoint: 'https://github.com/login/oauth/access_token',
       // Default scope for GitHub
       scope: 'read:user user:email',
       // Callback endpoint for the OAuth flow
-      redirectUri: env =>
-        env.GITHUB_REDIRECT_URI || 'https://r3l.distorted.work/auth/github/callback',
+      redirectUri: (env: any) => env.GITHUB_REDIRECT_URI || 'https://r3l.distorted.work/auth/github/callback',
     },
   });
 };
+
+export default createOAuthProvider as any;

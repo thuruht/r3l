@@ -19,7 +19,9 @@ export class UserConnections {
 
     // Set up a periodic alarm to clean inactive connections
     // This will run even during hibernation
-    this.state.setAlarm(Date.now() + 60 * 1000); // Every minute
+    if (typeof (this.state as any).setAlarm === 'function') {
+      (this.state as any).setAlarm(Date.now() + 60 * 1000); // Every minute
+    }
   }
 
   /**
@@ -218,7 +220,7 @@ export class UserConnections {
     this.cancelHibernation();
 
     // Schedule hibernation after 5 minutes of inactivity
-    this.hibernationTimeout = setTimeout(
+    this.hibernationTimeout = (setTimeout(
       () => {
         // Only hibernate if we still have no WebSockets
         if (this.websockets.length === 0) {
@@ -227,7 +229,7 @@ export class UserConnections {
         this.hibernationTimeout = null;
       },
       5 * 60 * 1000
-    );
+    ) as unknown) as number;
   }
 
   /**
@@ -235,7 +237,7 @@ export class UserConnections {
    */
   private cancelHibernation(): void {
     if (this.hibernationTimeout !== null) {
-      clearTimeout(this.hibernationTimeout);
+      clearTimeout(this.hibernationTimeout as unknown as NodeJS.Timeout);
       this.hibernationTimeout = null;
     }
   }
@@ -263,11 +265,15 @@ export class UserConnections {
       }
 
       // Schedule the next alarm
-      this.state.setAlarm(Date.now() + 60 * 1000);
+      if (typeof (this.state as any).setAlarm === 'function') {
+        (this.state as any).setAlarm(Date.now() + 60 * 1000);
+      }
     } catch (error) {
       console.error('Error in alarm handler:', error);
       // Make sure we set the next alarm even if there's an error
-      this.state.setAlarm(Date.now() + 60 * 1000);
+      if (typeof (this.state as any).setAlarm === 'function') {
+        (this.state as any).setAlarm(Date.now() + 60 * 1000);
+      }
     }
   }
 }

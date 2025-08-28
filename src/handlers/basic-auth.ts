@@ -42,7 +42,7 @@ export class BasicAuthHandler {
     const username = email.split('@')[0] + '_' + Math.floor(Math.random() * 1000);
 
     // Create the user in the database
-    const userId = await env.R3L_DB.prepare(
+    const res = await env.R3L_DB.prepare(
       `
       INSERT INTO users (id, username, display_name, email, password_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -57,15 +57,14 @@ export class BasicAuthHandler {
         Date.now(),
         Date.now()
       )
-      .run()
-      .then(result => {
-        if (!result.success) {
-          throw new Error('Failed to create user');
-        }
-        return result.meta.last_row_id;
-      });
+      .run();
 
-    return userId;
+    if (!res || !(res as any).success) {
+      throw new Error('Failed to create user');
+    }
+
+    const lastId = String((res as any).meta?.last_row_id || '');
+    return lastId;
   }
 
   /**

@@ -28,7 +28,7 @@ function showAuthInfo() {
   container.style.maxWidth = '300px';
   
   const authState = getCookie('r3l_auth_state');
-  const sessionCookie = getCookie('r3l_session');
+  const sessionCookie = getCookie('r3l_jwt');
   
   container.innerHTML = `
     <h3>Auth Debug</h3>
@@ -55,7 +55,7 @@ function showAuthInfo() {
   });
   
   document.getElementById('test-clear-cookie').addEventListener('click', () => {
-    document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  document.cookie = 'r3l_jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     alert('Cookies cleared');
     location.reload();

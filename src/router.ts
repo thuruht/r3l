@@ -111,11 +111,13 @@ export class Router {
    * Handle CORS preflight requests
    */
   private handlePreflight(request: Request): Response {
+    const origin = request.headers.get('Origin') || '*';
     return new Response(null, {
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': origin,
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Max-Age': '86400',
       },
     });
@@ -1830,7 +1832,7 @@ export class Router {
         cookies: cookieObj,
         raw: cookies,
         hasAuthState: cookies.includes('r3l_auth_state'),
-        hasSession: cookies.includes('r3l_session'),
+        hasJWT: cookies.includes('r3l_jwt'),
         userAgent: request.headers.get('User-Agent'),
         isSecure: isSecureRequest(request),
       });

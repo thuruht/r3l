@@ -1,7 +1,7 @@
 import { Env } from '../types/env.js';
 import { ContentLifecycle } from '../handlers/expiration.js';
 import { ValidationError } from '../types/errors.js';
-import { Validator } from '../validators.js';
+import { Validator } from '../validators/index.js';
 import { Sanitizer } from '../utils/sanitizer.js';
 import { Logger } from '../utils/logger.js';
 
@@ -698,8 +698,6 @@ export class ContentHandler {
         lng: number;
         location_name?: string;
       }>();
-
-    return location || null;
 
     return location || null;
   }

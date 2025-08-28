@@ -86,9 +86,9 @@ export class FilenetHandler {
         )
         .run();
 
-      // Schedule expiration
-      const lifecycle = new ContentLifecycle();
-      await lifecycle.scheduleExpiry(fileId, env);
+  // Schedule expiration
+  const lifecycle = new ContentLifecycle();
+  await lifecycle.scheduleExpiry(fileId, expiresAt, userId, env);
 
       return new Response(
         JSON.stringify({

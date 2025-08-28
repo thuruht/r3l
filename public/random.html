@@ -162,7 +162,7 @@
           randomDrawerTitle.textContent = 'Loading...';
           
           // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_jwt=');
+          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
           
           // Decide whether to show demo data or real data
           if (isAuthenticated) {

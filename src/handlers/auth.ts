@@ -33,7 +33,7 @@ export class AuthHandler {
    * @returns URL to redirect user to for GitHub authentication
    */
   initGitHubAuth(redirectUri: string, env: Env): string {
-    const githubClientId = env.GITHUB_CLIENT_ID;
+  const githubClientId = String(env.GITHUB_CLIENT_ID || '');
     const scopes = 'read:user user:email';
 
     const params = new URLSearchParams({
@@ -101,10 +101,18 @@ export class AuthHandler {
       console.log('GitHub auth - token response status:', tokenResponse.status);
 
       // For debugging, log response headers
-      console.log(
-        'GitHub auth - token response headers:',
-        JSON.stringify(Object.fromEntries([...tokenResponse.headers.entries()]))
-      );
+      try {
+        // Build headers object safely for logging
+        const headersObj: Record<string, string> = {};
+        for (const [key, value] of (tokenResponse.headers as any).entries?.() || []) {
+          headersObj[key] = value;
+        }
+        if (Object.keys(headersObj).length > 0) {
+          console.log('GitHub auth - token response headers:', JSON.stringify(headersObj));
+        }
+      } catch (e) {
+        // ignore header logging errors
+      }
 
       if (!tokenResponse.ok) {
         let errorText = '';
@@ -238,7 +246,10 @@ export class AuthHandler {
 
       // Check if user already exists by GitHub ID
       console.log('GitHub auth - checking if user exists with GitHub ID:', userData.id.toString());
-      let user = await this.userHandler.getUserByGitHub(userData.id.toString(), env);
+      let user =
+        typeof (this.userHandler as any).getUserByGitHub === 'function'
+          ? await (this.userHandler as any).getUserByGitHub(userData.id.toString(), env)
+          : null;
       let isNewUser = false;
 
       if (!user) {
@@ -274,14 +285,17 @@ export class AuthHandler {
         }
 
         console.log('GitHub auth - creating user with GitHub ID:', userData.id.toString());
-        const userId = await this.userHandler.createUserWithGitHub(
-          username,
-          displayName,
-          userData.id.toString(),
-          userData.avatar_url,
-          primaryEmail,
-          env
-        );
+        const userId =
+          typeof (this.userHandler as any).createUserWithGitHub === 'function'
+            ? await (this.userHandler as any).createUserWithGitHub(
+                username,
+                displayName,
+                userData.id.toString(),
+                userData.avatar_url,
+                primaryEmail,
+                env
+              )
+            : await this.userHandler.createUser(username, displayName, primaryEmail, env);
 
         console.log('GitHub auth - user created with ID:', userId);
         user = await this.userHandler.getUser(userId, env);
@@ -337,7 +351,7 @@ export class AuthHandler {
    * @returns URL to redirect user to for ORCID authentication
    */
   initOrcidAuth(redirectUri: string, env: Env): string {
-    const orcidClientId = env.ORCID_CLIENT_ID;
+  const orcidClientId = String(env.ORCID_CLIENT_ID || '');
     const scopes = '/authenticate';
 
     const params = new URLSearchParams({
@@ -375,8 +389,8 @@ export class AuthHandler {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: env.ORCID_CLIENT_ID,
-        client_secret: env.ORCID_CLIENT_SECRET,
+        client_id: String(env.ORCID_CLIENT_ID || ''),
+        client_secret: String(env.ORCID_CLIENT_SECRET || ''),
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,

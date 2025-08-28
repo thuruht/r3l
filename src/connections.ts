@@ -26,7 +26,7 @@ export class UserConnections {
     const url = new URL(request.url);
 
     // Extract user ID from DO name
-    this.userId = this.state.id.name;
+    this.userId = (this.state && (this.state.id as any)?.name) ?? '';
 
     // Handle websocket connection
     if (url.pathname === '/connect') {
@@ -89,7 +89,7 @@ export class UserConnections {
       }
 
       try {
-        const data = await request.json();
+        const data: any = await request.json();
 
         // Broadcast to all connections
         for (const connection of this.connections) {
@@ -132,7 +132,7 @@ export class UserConnections {
       }
 
       try {
-        const data = await request.json();
+        const data: any = await request.json();
 
         // Broadcast to all connections
         for (const connection of this.connections) {

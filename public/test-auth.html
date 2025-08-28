@@ -46,12 +46,12 @@
       // Update cookie status
       function updateCookieStatus() {
         const authState = getCookie('r3l_auth_state');
-        const session = getCookie('r3l_session');
+  const session = getCookie('r3l_jwt');
         
         cookieStatusEl.innerHTML = `
           <div class="status-box">
             <p><strong>r3l_auth_state:</strong> ${authState || 'not set'}</p>
-            <p><strong>r3l_session:</strong> ${session ? '(value hidden for security)' : 'not set'}</p>
+            <p><strong>r3l_jwt:</strong> ${session ? '(value hidden for security)' : 'not set'}</p>
             <p><strong>All Cookies:</strong> ${document.cookie || 'none'}</p>
           </div>
         `;
@@ -87,7 +87,7 @@
       
       // Clear cookies
       document.getElementById('test-clear-cookie').addEventListener('click', () => {
-        document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        document.cookie = 'r3l_jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
         alert('Cookies cleared');
         updateCookieStatus();

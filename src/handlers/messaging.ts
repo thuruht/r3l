@@ -1,4 +1,4 @@
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 
 /**
  * Message structure
@@ -126,7 +126,7 @@ export class MessagingHandler {
 
     try {
       // Get notification handler
-      const { NotificationHandler } = await import('./notification');
+  const { NotificationHandler } = await import('./notification.js');
       const notificationHandler = new NotificationHandler();
 
       // Create notification

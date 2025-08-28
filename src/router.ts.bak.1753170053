@@ -5,8 +5,14 @@
 // This file was archived to /archive/legacy-oauth/src/router.ts.bak.1753170053
 // Original content preserved in the archive. Remove this placeholder when ready.
 
-export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/router.ts.bak.1753170053';
+// ARCHIVE NOTICE
+// This file was archived to /archive/legacy-fixed/src/router.ts.bak.1753170053
+// The original implementation has been preserved there. Replace this
+// placeholder only if you intend to restore or refactor the original.
 
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-fixed/src/router.ts.bak.1753170053';
+
+export default ARCHIVE_NOTICE;
 export class Router {
   private authHandler: AuthHandler;
   private userHandler: UserHandler;

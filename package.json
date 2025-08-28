@@ -46,7 +46,9 @@
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.0.5",
     "@openauthjs/openauth": "^0.4.3",
+    "@types/bcryptjs": "^2.4.6",
     "@types/dompurify": "^3.0.5",
+    "bcryptjs": "^3.0.2",
     "d3": "^7.8.5",
     "dompurify": "^3.2.6",
     "fs-extra": "^11.2.0",

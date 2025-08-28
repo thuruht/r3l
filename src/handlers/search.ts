@@ -1,4 +1,4 @@
-import { Env } from '../types/env';
+import { Env } from '../types/env.js';
 import {
   SearchRequest,
   SearchResult,
@@ -8,7 +8,7 @@ import {
   FileType,
   TagWithCount,
   PopularTagsResponse,
-} from '../types/search';
+} from '../types/search.js';
 import { Logger } from '../utils/logger.js';
 import { ValidationError } from '../types/errors.js';
 import { Validator } from '../validators/index.js';

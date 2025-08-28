@@ -1,5 +1,5 @@
-import { Env } from '../types/env';
-import { Sanitizer } from '../utils/sanitizer';
+import { Env } from '../types/env.js';
+import { Sanitizer } from '../utils/sanitizer.js';
 
 export interface UserPreferences {
   theme: 'light' | 'dark' | 'system';

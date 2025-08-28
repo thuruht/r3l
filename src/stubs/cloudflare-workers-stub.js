@@ -4,11 +4,9 @@
 // rely on this. We keep a minimal, well-documented stub to avoid breaking CI
 // until a build-time replacement is implemented.
 
-module.exports = {
-  Request: globalThis.Request,
-  Response: globalThis.Response,
-  URL: globalThis.URL,
-  Headers: globalThis.Headers,
-  FormData: globalThis.FormData,
-  crypto: globalThis.crypto,
-};
+// ARCHIVE NOTICE
+// This stub was archived to /archive/legacy-fixed/src/stubs-cloudflare-workers-stub.js
+// Modern build configurations should not rely on this stub. It was retained
+// only to preserve previous build behavior during migration.
+
+module.exports = { ARCHIVE_NOTICE: 'moved to archive/legacy-fixed/src/stubs-cloudflare-workers-stub.js' };

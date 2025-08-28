@@ -4,8 +4,8 @@
  * Manages database schema changes programmatically
  */
 
-import { Env } from '../types/env';
-import { Logger, LogLevel } from '../utils/logger';
+import { Env } from '../types/env.js';
+import { Logger, LogLevel } from '../utils/logger.js';
 
 /**
  * Migration interface

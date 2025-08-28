@@ -5,12 +5,9 @@
 // auth handlers. Keeping this file around can be confusing and dangerous, so
 // we replace it with a harmless deprecation stub.
 
-class OrcidCookieFixer {
-  constructor() {
-    throw new Error(
-      'OrcidCookieFixer is deprecated. Cookie handling is implemented in src/cookie-helper.ts'
-    );
-  }
-}
+// ARCHIVE NOTICE
+// This file was archived to /archive/legacy-fixed/src/cookie-fixer.js
+// Cookie-fixer was a temporary migration helper and is deprecated. See
+// src/cookie-helper.ts for the production implementation.
 
-module.exports = { OrcidCookieFixer };
+module.exports = { ARCHIVE_NOTICE: 'moved to archive/legacy-fixed/src/cookie-fixer.js' };

@@ -27,6 +27,9 @@ export interface Env {
   R3L_VISUALIZATION: DurableObjectNamespace;
   R3L_COLLABORATION: DurableObjectNamespace;
 
+  // OAuth provider helper binding (optional)
+  OAUTH_PROVIDER?: any;
+
   // Define R2 bucket bindings
   R3L_CONTENT_BUCKET: R2Bucket;
 

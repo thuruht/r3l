@@ -40,7 +40,8 @@ export default {
     // OpenAuth server code
     return issuer({
       storage: CloudflareStorage({
-        namespace: env.AUTH_STORAGE,
+        // Cast to any to avoid type mismatch between differing Cloudflare KV type definitions
+        namespace: env.AUTH_STORAGE as any,
       }),
       subjects,
       providers: {

@@ -506,8 +506,8 @@
         // Tell user to click on the map
         visualizer.setMessage('Click on the map to select a location for your point. Drag the marker to adjust position.');
         
-        // Enable click events on the map
-        visualizer.onMapClick((e) => {
+        // Set custom click handler for the map
+        visualizer.setClickHandler((e) => {
           if (!isAddingPoint) return;
           
           const { lat, lng } = e.latlng;
@@ -547,6 +547,9 @@
         
         // Clear message
         visualizer.clearMessage();
+        
+        // Clear click handler
+        visualizer.setClickHandler(null);
       });
       
       // Submit form to add point
@@ -605,6 +608,9 @@
           
           // Clear message
           visualizer.clearMessage();
+          
+          // Clear click handler
+          visualizer.setClickHandler(null);
           
           // Reload data to show the new point
           const loadingIndicator = document.getElementById('loading-indicator');

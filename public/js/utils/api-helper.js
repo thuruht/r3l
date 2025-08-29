@@ -52,9 +52,9 @@ export const API_ENDPOINTS = {
   // Notification endpoints
   NOTIFICATIONS: {
     LIST: '/api/notifications',
-    UNREAD_COUNT: '/api/notifications/unread/count',
-    MARK_READ: id => `/api/notifications/${id}/read`,
-    MARK_ALL_READ: '/api/notifications/read/all',
+    UNREAD_COUNT: '/api/notifications/unread-count',
+    MARK_READ: '/api/notifications/mark-read',
+    MARK_ALL_READ: '/api/notifications/mark-all-read',
     DELETE: id => `/api/notifications/${id}`,
   },
 

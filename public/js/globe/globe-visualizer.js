@@ -10,6 +10,7 @@ export class GlobeVisualizer {
     this.markers = [];
     this.connections = [];
     this.messageElement = null;
+    this.clickHandler = null; // Store custom click handler
   }
 
   /**
@@ -149,8 +150,20 @@ export class GlobeVisualizer {
    * @param {object} e Click event
    */
   onMapClick(e) {
-    // This is a placeholder - the actual implementation is handled by the parent
-    console.log('Map clicked at:', e.latlng);
+    // Call custom click handler if set, otherwise just log
+    if (this.clickHandler) {
+      this.clickHandler(e);
+    } else {
+      console.log('Map clicked at:', e.latlng);
+    }
+  }
+
+  /**
+   * Set a custom click handler for map clicks
+   * @param {function} handler Function to call when map is clicked
+   */
+  setClickHandler(handler) {
+    this.clickHandler = handler;
   }
 
   /**

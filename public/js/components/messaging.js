@@ -3,6 +3,9 @@
  * Handles direct messaging between users
  */
 
+// Import API helper functions
+import { apiGet, apiPost, apiDelete } from '../utils/api-helper.js';
+
 // Define a simple debug log function
 const debugLog = (component, message, data) => {
   console.log(`[${component}] ${message}`, data || '');
@@ -257,9 +260,7 @@ export class MessagingManager {
     this.isLoading = true;
 
     try {
-      const response = await fetch('/api/messages/conversations', {
-        credentials: 'include',
-      });
+      const response = await apiGet('/api/messages/conversations');
 
       if (!response.ok) {
         throw new Error(`Error fetching conversations: ${response.status}`);
@@ -390,13 +391,7 @@ export class MessagingManager {
 
     try {
       // Mark conversation as read in the API
-      const response = await fetch(
-        `/api/messages/conversations/${this.currentConversation.id}/read`,
-        {
-          method: 'POST',
-          credentials: 'include',
-        }
-      );
+      const response = await apiPost(`/api/messages/conversations/${this.currentConversation.id}/read`, {});
 
       if (!response.ok) {
         throw new Error(`Error marking conversation as read: ${response.status}`);
@@ -433,9 +428,7 @@ export class MessagingManager {
         url += `?before=${beforeId}`;
       }
 
-      const response = await fetch(url, {
-        credentials: 'include',
-      });
+      const response = await apiGet(url);
 
       if (!response.ok) {
         throw new Error(`Error fetching messages: ${response.status}`);
@@ -593,16 +586,9 @@ export class MessagingManager {
       this.messageInput.value = '';
 
       // Send to server
-      const response = await fetch('/api/messages/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          recipientId: otherUserId,
-          content: content,
-        }),
-        credentials: 'include',
+      const response = await apiPost('/api/messages/send', {
+        recipientId: otherUserId,
+        content: content,
       });
 
       if (!response.ok) {
@@ -674,10 +660,7 @@ export class MessagingManager {
    */
   async deleteMessage(messageId) {
     try {
-      const response = await fetch(`/api/messages/${messageId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      const response = await apiDelete(`/api/messages/${messageId}`);
 
       if (!response.ok) {
         throw new Error(`Error deleting message: ${response.status}`);

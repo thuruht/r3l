@@ -692,11 +692,7 @@
       // Load map data points from API
       async function loadMapData() {
         try {
-          const response = await fetch('/api/globe/data-points', {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include'
-          });
+          const response = await apiGet('/api/globe/data-points');
           
           if (response.ok) {
             const data = await response.json();
@@ -746,16 +742,12 @@
 
           // If we have the current user, request their files
           if (currentUserData && currentUserData.id) {
-            const resp = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
-              method: 'GET',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include'
-            });
+            const response = await apiGet(`/api/users/${currentUserData.id}/files?limit=100`);
 
-            if (resp.ok) {
-              data = await resp.json();
+            if (response.ok) {
+              data = await response.json();
             } else {
-              console.error('Error loading user content:', resp.status);
+              console.error('Error loading user content:', response.status);
               contentAssociationGroup.style.display = 'none';
               return;
             }

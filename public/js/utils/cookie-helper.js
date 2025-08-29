@@ -63,16 +63,21 @@ export async function authenticatedFetch(url, options = {}) {
  */
 export async function fixAuthCookies() {
   try {
-    const response = await fetch('/api/auth/fix-cookies', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    // Instead of calling a non-existent endpoint, just clear and refresh cookies
+    console.log('Attempting to fix auth cookies by clearing and refreshing...');
+
+    // Clear existing cookies
+    document.cookie = 'r3l_jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+
+    // Try to refresh the session by calling the profile endpoint
+    const response = await authenticatedFetch('/api/auth/jwt/profile');
 
     if (response.ok) {
-      console.log('Auth cookies fixed successfully');
+      console.log('Auth cookies refreshed successfully');
       return true;
     } else {
-      console.warn('Failed to fix auth cookies:', response.status);
+      console.warn('Failed to refresh auth cookies:', response.status);
       return false;
     }
   } catch (error) {

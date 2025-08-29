@@ -147,7 +147,8 @@ The login page now offers two authentication methods:
 Authentication is implemented using the official Cloudflare Workers OAuth Provider library (`@cloudflare/workers-oauth-provider`). This provides a standardized way to handle multiple OAuth providers and simplifies the authorization flow.
 
 The OAuth implementation includes:
-- Configured callback URLs: 
+
+- Configured callback URLs:
   - GitHub: `https://r3l.distorted.work/auth/github/callback`
   - ORCID: `https://r3l.distorted.work/auth/orcid/callback`
 - OAuth tokens stored securely in the `OAUTH_KV` namespace
@@ -155,6 +156,7 @@ The OAuth implementation includes:
 - Session management for authenticated users
 
 All secrets are managed via `wrangler secret put` and include:
+
 - `GITHUB_CLIENT_ID`: GitHub OAuth application client ID
 - `GITHUB_CLIENT_SECRET`: GitHub OAuth application client secret
 - `ORCID_CLIENT_ID`: ORCID OAuth application client ID
@@ -169,5 +171,4 @@ All secrets are managed via `wrangler secret put` and include:
 5. Deploy to r3l.distorted.work and test in production environment
 
 All files are now properly organized according to the project's structure. All URLs are relative to ensure smooth deployment to any location. The OAuth implementation using the Cloudflare Workers OAuth Provider is complete and ready for testing.
-
 ````

@@ -1,5 +1,4 @@
-// ESLint config as an ES module (package.json has "type": "module")
-export default {
+module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
@@ -9,6 +8,7 @@ export default {
     es6: true,
     worker: true,
   },
+  // Ignore archived and legacy test pages to keep lint focused on current iteration
   ignorePatterns: [
     'archive/**',
     'public/test-*.html',

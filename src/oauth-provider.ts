@@ -67,13 +67,13 @@ export const createOAuthProvider = () => {
     apiRoute: '/api/',
 
     // API handler for authenticated requests
-  apiHandler: (new ApiHandler() as any),
+    apiHandler: new ApiHandler() as any,
 
     // Default handler for non-API routes
-  defaultHandler: (new DefaultHandler() as any),
+    defaultHandler: new DefaultHandler() as any,
 
     // User authentication handler
-  authorizeUser: async (request: any, env: any, ctx: any) => {
+    authorizeUser: async (request: any, env: any, ctx: any) => {
       // Extract the auth code or token from the request
       const url = new URL(request.url);
       const code = url.searchParams.get('code');
@@ -100,8 +100,8 @@ export const createOAuthProvider = () => {
         });
 
         // Process the request through our router
-  // Use our router.handle which accepts (request, env)
-  const response = await router.handle(modifiedRequest, env);
+        // Use our router.handle which accepts (request, env)
+        const response = await router.handle(modifiedRequest, env);
 
         // If the auth was successful, extract the user data
         if (response.ok) {
@@ -124,14 +124,15 @@ export const createOAuthProvider = () => {
 
     // OAuth configuration
     oauth: {
-  clientId: (env: any) => env.GITHUB_CLIENT_ID,
-  clientSecret: (env: any) => env.GITHUB_CLIENT_SECRET,
+      clientId: (env: any) => env.GITHUB_CLIENT_ID,
+      clientSecret: (env: any) => env.GITHUB_CLIENT_SECRET,
       authorizationEndpoint: 'https://github.com/login/oauth/authorize',
       tokenEndpoint: 'https://github.com/login/oauth/access_token',
       // Default scope for GitHub
       scope: 'read:user user:email',
       // Callback endpoint for the OAuth flow
-      redirectUri: (env: any) => env.GITHUB_REDIRECT_URI || 'https://r3l.distorted.work/auth/github/callback',
+      redirectUri: (env: any) =>
+        env.GITHUB_REDIRECT_URI || 'https://r3l.distorted.work/auth/github/callback',
     },
   });
 };

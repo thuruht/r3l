@@ -1,6 +1,6 @@
 /**
  * Test Auth Helper
- * 
+ *
  * This script provides functions to test auth state and cookies.
  * It can be used for debugging authentication issues.
  */
@@ -26,10 +26,10 @@ function showAuthInfo() {
   container.style.borderRadius = '5px';
   container.style.zIndex = '9999';
   container.style.maxWidth = '300px';
-  
+
   const authState = getCookie('r3l_auth_state');
   const sessionCookie = getCookie('r3l_jwt');
-  
+
   container.innerHTML = `
     <h3>Auth Debug</h3>
     <p>Auth State: ${authState ? 'true' : 'null'}</p>
@@ -38,13 +38,13 @@ function showAuthInfo() {
     <button id="test-set-cookie">Set Test Cookie</button>
     <button id="test-clear-cookie">Clear Cookies</button>
   `;
-  
+
   document.body.appendChild(container);
-  
+
   document.getElementById('test-set-cookie').addEventListener('click', async () => {
     try {
       const response = await fetch('/api/auth/test-cookies', {
-        credentials: 'include'
+        credentials: 'include',
       });
       const data = await response.json();
       alert(`Set cookie result: ${JSON.stringify(data)}`);
@@ -53,9 +53,9 @@ function showAuthInfo() {
       alert(`Error setting cookie: ${error.message}`);
     }
   });
-  
+
   document.getElementById('test-clear-cookie').addEventListener('click', () => {
-  document.cookie = 'r3l_jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'r3l_jwt=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     document.cookie = 'r3l_auth_state=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
     alert('Cookies cleared');
     location.reload();

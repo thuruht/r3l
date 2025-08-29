@@ -211,6 +211,7 @@ The project uses a vibrant, dark theme with the following color palette:
 ## Browser Compatibility
 
 The application is designed to work on modern browsers with the following features:
+
 - CSS Variables
 - Flexbox and Grid layout
 - ES6+ JavaScript

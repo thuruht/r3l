@@ -36,19 +36,19 @@ export async function authenticatedFetch(url, options = {}) {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(options.headers || {})
-    }
+      ...(options.headers || {}),
+    },
   };
 
   try {
     const response = await fetch(url, fetchOptions);
-    
+
     // Handle 401 Unauthorized by showing login prompt
     if (response.status === 401) {
       console.warn('Authentication required for API call:', url);
       // You could trigger a login prompt here if needed
     }
-    
+
     return response;
   } catch (error) {
     console.error('API fetch error:', error, { url, options: fetchOptions });
@@ -65,9 +65,9 @@ export async function fixAuthCookies() {
   try {
     const response = await fetch('/api/auth/fix-cookies', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
     });
-    
+
     if (response.ok) {
       console.log('Auth cookies fixed successfully');
       return true;
@@ -89,9 +89,9 @@ export async function clearAuthCookies() {
   try {
     const response = await fetch('/api/auth/jwt/logout', {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
     });
-    
+
     if (response.ok) {
       console.log('Auth cookies cleared successfully');
       return true;

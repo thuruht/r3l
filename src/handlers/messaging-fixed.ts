@@ -132,7 +132,7 @@ export class MessagingHandler {
 
     try {
       // Get notification handler
-  const { NotificationHandler } = await import('./notification.js');
+      const { NotificationHandler } = await import('./notification.js');
       const notificationHandler = new NotificationHandler();
 
       // Create notification
@@ -236,7 +236,7 @@ export class MessagingHandler {
       ORDER BY created_at DESC
       LIMIT ?
     `;
-  params.push(limit);
+    params.push(limit);
 
     // Execute query
     const result = await env.R3L_DB.prepare(query)
@@ -531,7 +531,7 @@ export class MessagingHandler {
       conversation.user_id_a === userId ? conversation.user_id_b : conversation.user_id_a;
 
     // Get messages between the users
-  const messages = await this.getMessagesBetweenUsers(userId, otherUserId, env, limit, before);
+    const messages = await this.getMessagesBetweenUsers(userId, otherUserId, env, limit, before);
 
     // Mark messages as read
     await this.markMessagesAsRead(userId, otherUserId, env);

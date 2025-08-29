@@ -8,77 +8,79 @@
  */
 
 /* Font imports from Bunny Fonts (privacy-respecting alternative to Google Fonts) */
-@import url("https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
-@import url("https://fonts.bunny.net/css2?family=JetBrains+Mono:wght@400;500&display=swap");
-@import url("https://fonts.bunny.net/icon?family=Material+Icons");
+@import url('https://fonts.bunny.net/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.bunny.net/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.bunny.net/icon?family=Material+Icons');
 
 /* CSS Variables for consistent theming across components */
 :root {
   /* Main color palette - Aligned with the Rel-F vision from /realf */
-  --bg-deep: #0e1f1c;             /* Deep dark background (slightly green tinted) */
-  --bg-container: #1a2c2a;        /* Container background (deep green) */
-  --bg-container-alt: #1f2f1f;    /* Alternative container (darker green) */
-  --bg-input: #121e20;            /* Input background */
-  --bg-secondary: #1f3f3366;        /* Secondary background */
-  --bg-overlay: #00000066;        /* Overlay background with transparency */
-  
+  --bg-deep: #0e1f1c; /* Deep dark background (slightly green tinted) */
+  --bg-container: #1a2c2a; /* Container background (deep green) */
+  --bg-container-alt: #1f2f1f; /* Alternative container (darker green) */
+  --bg-input: #121e20; /* Input background */
+  --bg-secondary: #1f3f3366; /* Secondary background */
+  --bg-overlay: #00000066; /* Overlay background with transparency */
+
   /* Accent colors */
-  --accent-lavender: #a278ff;     /* Vibrant electric lavender */
+  --accent-lavender: #a278ff; /* Vibrant electric lavender */
   --accent-lavender-hover: #b68fff; /* Brighter hover state */
   --accent-lavender-muted: #8a5eff; /* Muted variant */
-  --accent-green: #d0efb0;        /* Light accent green for text */
-  --accent-cyan: #7fdcd8;         /* Cyan accents (links) */
-  --accent-purple: #a278ff;       /* Main accent color - vibrant purple */
-  
+  --accent-green: #d0efb0; /* Light accent green for text */
+  --accent-cyan: #7fdcd8; /* Cyan accents (links) */
+  --accent-purple: #a278ff; /* Main accent color - vibrant purple */
+
   /* Text colors */
-  --text-primary: #e0e0e0;        /* Primary text color */
-  --text-secondary: #aaaaaa;      /* Secondary text */
-  --text-muted: #888888;          /* Muted text */
-  --text-inverse: #ffffff;        /* Inverse text (on dark backgrounds) */
-  
+  --text-primary: #e0e0e0; /* Primary text color */
+  --text-secondary: #aaaaaa; /* Secondary text */
+  --text-muted: #888888; /* Muted text */
+  --text-inverse: #ffffff; /* Inverse text (on dark backgrounds) */
+
   /* Border and structure colors */
-  --border-primary: #333333;      /* Primary borders */
-  --border-subtle: #222222;       /* Subtle borders */
-  --border-accent: #a2786633;     /* Accent borders with transparency */
-  
+  --border-primary: #333333; /* Primary borders */
+  --border-subtle: #222222; /* Subtle borders */
+  --border-accent: #a2786633; /* Accent borders with transparency */
+
   /* Functional colors */
-  --success: #4caf50;             /* Success indicators */
-  --warning: #ff9c66;             /* Warning indicators */
-  --error: #f44336;               /* Error indicators */
-  --link: #7fdcd8;                /* Link color (cyan) */
-  
+  --success: #4caf50; /* Success indicators */
+  --warning: #ff9c66; /* Warning indicators */
+  --error: #f44336; /* Error indicators */
+  --link: #7fdcd8; /* Link color (cyan) */
+
   /* Connection colors for association web and map */
-  --color-connection-sym: #a278ffee;    /* Symmetric connections */
-  --color-connection-asym: #20b2aaee;   /* Asymmetric connections */
-  --color-connection-third: #ff6b6bee;  /* Third-space connections */
+  --color-connection-sym: #a278ffee; /* Symmetric connections */
+  --color-connection-asym: #20b2aaee; /* Asymmetric connections */
+  --color-connection-third: #ff6b6bee; /* Third-space connections */
   --color-connection-sym-line: #a278ffaa;
   --color-connection-asym-line: #20b2aaaa;
   --color-connection-third-line: #ff6b6baa;
-  
+
   /* Gradient backgrounds */
   --gradient-lavender: linear-gradient(135deg, #a2f8cf, #8a5e55);
   --gradient-bg: linear-gradient(135deg, #0e1f21, #172a2c);
   --gradient-container: linear-gradient(135deg, #1a2c20, #1f2f2f);
   --gradient-accent: linear-gradient(135deg, #d0efb0, #7fdcd8);
-  
+
   /* Shadow colors */
   --shadow-color: #00000099;
   --shadow-color-light: #00000066;
   --color-primary-shadow: #a278ff66;
   --color-primary-glow: #a278ffaa;
   --color-text-inverse-shadow: #ffffff66;
-  
+
   /* Shadows */
   --shadow-subtle: 0 2px 8px var(--shadow-color-light);
   --shadow-medium: 0 4px 12px var(--shadow-color);
   --shadow-strong: 0 8px 24px var(--shadow-color);
-  
+
   /* Typography */
-  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-primary:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
+    sans-serif;
   --font-display: 'Space Grotesk', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
   --font-quirky: 'Space Grotesk', 'Inter', sans-serif;
-  
+
   /* Font sizes */
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
@@ -88,7 +90,7 @@
   --fs-2xl: 1.8rem;
   --fs-3xl: 2.2rem;
   --fs-4xl: 2.8rem;
-  
+
   /* Spacing */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -97,7 +99,7 @@
   --space-6: 1.5rem;
   --space-8: 2rem;
   --space-12: 3rem;
-  
+
   /* Border radius */
   --radius-sm: 4px;
   --radius-md: 8px;
@@ -105,11 +107,11 @@
   --radius-full: 9999px;
   --border-radius: 8px;
   --border-radius-lg: 12px;
-  
+
   /* Transitions */
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s ease;
-  
+
   /* Z-index layers */
   --z-base: 1;
   --z-dropdown: 10;
@@ -117,7 +119,7 @@
   --z-drawer: 30;
   --z-modal: 40;
   --z-tooltip: 50;
-  
+
   /* Legacy compatibility variables */
   --color-primary: var(--accent-lavender);
   --color-primary-hover: var(--accent-lavender-hover);
@@ -134,7 +136,9 @@
 }
 
 /* Base Reset */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -154,7 +158,12 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   color: var(--accent-green);
   font-family: var(--font-display);
   margin-bottom: var(--space-4);
@@ -168,11 +177,12 @@ h1 {
   padding: var(--space-4);
   background-color: var(--bg-secondary);
   border-radius: var(--radius-md);
-  text-shadow: 1px 1px 6px var(--accent-green),
-               1px 1px 0 var(--bg-deep),
-               1px -1px 0 var(--bg-deep),
-               -1px 1px 0 var(--bg-deep),
-               -1px -1px 0 var(--bg-deep);
+  text-shadow:
+    1px 1px 6px var(--accent-green),
+    1px 1px 0 var(--bg-deep),
+    1px -1px 0 var(--bg-deep),
+    -1px 1px 0 var(--bg-deep),
+    -1px -1px 0 var(--bg-deep);
   -webkit-text-stroke: 1px var(--bg-deep);
 }
 
@@ -356,7 +366,9 @@ a:hover {
 }
 
 /* Form Elements */
-input, textarea, select {
+input,
+textarea,
+select {
   background-color: var(--bg-input);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-sm);
@@ -368,12 +380,15 @@ input, textarea, select {
   width: 100%;
 }
 
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   border-color: var(--accent-lavender);
   outline: none;
 }
 
-input::placeholder, textarea::placeholder {
+input::placeholder,
+textarea::placeholder {
   color: var(--text-muted);
 }
 
@@ -403,7 +418,7 @@ label {
 }
 
 /* Special grid for core concepts - make 3 equal columns */
-section:has(h2:contains("Core Concepts")) .file-grid {
+section:has(h2:contains('Core Concepts')) .file-grid {
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -565,10 +580,11 @@ section:has(h2:contains("Core Concepts")) .file-grid {
   font-size: var(--fs-xs);
   fill: var(--text-primary);
   pointer-events: none;
-  text-shadow: 0 1px 2px var(--bg-deep), 
-              0 -1px 2px var(--bg-deep), 
-              1px 0 2px var(--bg-deep), 
-              -1px 0 2px var(--bg-deep);
+  text-shadow:
+    0 1px 2px var(--bg-deep),
+    0 -1px 2px var(--bg-deep),
+    1px 0 2px var(--bg-deep),
+    -1px 0 2px var(--bg-deep);
 }
 
 /* Zoom controls for association web */
@@ -1288,7 +1304,7 @@ hr {
   font-weight: 500;
 }
 
-.lurker-mode-toggle input[type="checkbox"] {
+.lurker-mode-toggle input[type='checkbox'] {
   width: auto;
   height: auto;
 }
@@ -1399,29 +1415,75 @@ hr {
 }
 
 /* Utility classes */
-.text-center { text-align: center; }
-.text-left { text-align: left; }
-.text-right { text-align: right; }
-.flex { display: flex; }
-.flex-col { flex-direction: column; }
-.items-center { align-items: center; }
-.justify-between { justify-content: space-between; }
-.justify-center { justify-content: center; }
-.gap-1 { gap: var(--space-1); }
-.gap-2 { gap: var(--space-2); }
-.gap-4 { gap: var(--space-4); }
-.mt-2 { margin-top: var(--space-2); }
-.mt-4 { margin-top: var(--space-4); }
-.mb-2 { margin-bottom: var(--space-2); }
-.mb-4 { margin-bottom: var(--space-4); }
-.p-2 { padding: var(--space-2); }
-.p-4 { padding: var(--space-4); }
-.w-full { width: 100%; }
-.hidden { display: none; }
-.block { display: block; }
-.inline-block { display: inline-block; }
-.relative { position: relative; }
-.absolute { position: absolute; }
+.text-center {
+  text-align: center;
+}
+.text-left {
+  text-align: left;
+}
+.text-right {
+  text-align: right;
+}
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.items-center {
+  align-items: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.justify-center {
+  justify-content: center;
+}
+.gap-1 {
+  gap: var(--space-1);
+}
+.gap-2 {
+  gap: var(--space-2);
+}
+.gap-4 {
+  gap: var(--space-4);
+}
+.mt-2 {
+  margin-top: var(--space-2);
+}
+.mt-4 {
+  margin-top: var(--space-4);
+}
+.mb-2 {
+  margin-bottom: var(--space-2);
+}
+.mb-4 {
+  margin-bottom: var(--space-4);
+}
+.p-2 {
+  padding: var(--space-2);
+}
+.p-4 {
+  padding: var(--space-4);
+}
+.w-full {
+  width: 100%;
+}
+.hidden {
+  display: none;
+}
+.block {
+  display: block;
+}
+.inline-block {
+  display: inline-block;
+}
+.relative {
+  position: relative;
+}
+.absolute {
+  position: absolute;
+}
 
 /* Chat styles based on secure-dm.css but adapted to our color scheme */
 .chat-container {
@@ -1536,45 +1598,45 @@ hr {
     --space-6: 1.25rem;
     --space-8: 1.5rem;
   }
-  
+
   body {
     padding: var(--space-2);
   }
-  
+
   h1 {
     font-size: var(--fs-2xl);
     padding: var(--space-3);
   }
-  
+
   h2 {
     font-size: var(--fs-xl);
   }
-  
+
   .unified-overview ul {
     column-count: 1;
   }
-  
+
   .short-version {
     grid-template-columns: 1fr;
   }
-  
+
   .search-filters {
     grid-template-columns: 1fr;
   }
-  
+
   .file-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
-  
+
   .chat-container {
     max-width: 100%;
   }
-  
+
   .navbar {
     flex-direction: column;
     gap: var(--space-3);
   }
-  
+
   .nav-menu {
     flex-wrap: wrap;
     justify-content: center;
@@ -1585,28 +1647,28 @@ hr {
   body {
     padding: var(--space-2);
   }
-  
+
   h1 {
     font-size: var(--fs-xl);
     padding: var(--space-2);
   }
-  
+
   h2 {
     font-size: var(--fs-lg);
   }
-  
+
   h3 {
     font-size: var(--fs-base);
   }
-  
+
   .card {
     padding: var(--space-3);
   }
-  
+
   .btn {
     padding: var(--space-1) var(--space-3);
   }
-  
+
   .navbar {
     padding: var(--space-3);
   }
@@ -1616,23 +1678,23 @@ hr {
   body {
     padding: var(--space-6);
   }
-  
+
   .container {
     max-width: 1400px;
   }
-  
+
   h1 {
     font-size: var(--fs-4xl);
   }
-  
+
   h2 {
     font-size: var(--fs-3xl);
   }
-  
+
   h3 {
     font-size: var(--fs-2xl);
   }
-  
+
   .association-web-container {
     height: 600px;
   }
@@ -1646,23 +1708,31 @@ hr {
     padding: 0;
     margin: 0;
   }
-  
+
   .no-print {
     display: none !important;
   }
-  
+
   a {
     color: #000000;
     text-decoration: underline;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     color: #000000;
     text-shadow: none;
     -webkit-text-stroke: 0;
   }
-  
-  .card, .section, .drawer-container, .search-container {
+
+  .card,
+  .section,
+  .drawer-container,
+  .search-container {
     border: 1px solid #cccccc;
     box-shadow: none;
     break-inside: avoid;

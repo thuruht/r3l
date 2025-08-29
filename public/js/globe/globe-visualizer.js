@@ -19,48 +19,49 @@ export class GlobeVisualizer {
   async init() {
     try {
       if (!this.container) {
-        return { 
-          loaded: false, 
-          error: `Container element #${this.containerId} not found` 
+        return {
+          loaded: false,
+          error: `Container element #${this.containerId} not found`,
         };
       }
 
       // Check if Leaflet is available
       if (!window.L) {
         console.error('Leaflet library not found. Loading from CDN as fallback.');
-        
+
         // Try loading from CDN as fallback
         try {
           await this.loadLeafletFromCDN();
         } catch (err) {
-          return { 
-            loaded: false, 
-            error: 'Could not load Leaflet library. Please check your internet connection.' 
+          return {
+            loaded: false,
+            error: 'Could not load Leaflet library. Please check your internet connection.',
           };
         }
       }
 
       // Initialize map
       this.map = L.map(this.containerId).setView([20, 0], 2);
-      
+
       // Add tile layer
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
         maxZoom: 19,
       }).addTo(this.map);
 
       // Create message container for instructions
       this.createMessageContainer();
-      
+
       // Enable map click handler for adding points
       this.map.on('click', this.onMapClick.bind(this));
-      
+
       return { loaded: true, error: null };
     } catch (err) {
       console.error('Error initializing map:', err);
-      return { 
-        loaded: false, 
-        error: err.message || 'Failed to initialize map' 
+      return {
+        loaded: false,
+        error: err.message || 'Failed to initialize map',
       };
     }
   }
@@ -84,17 +85,17 @@ export class GlobeVisualizer {
       script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
       script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
       script.crossOrigin = '';
-      
+
       script.onload = () => {
         console.log('Leaflet loaded from CDN successfully');
         resolve();
       };
-      
-      script.onerror = (err) => {
+
+      script.onerror = err => {
         console.error('Failed to load Leaflet from CDN:', err);
         reject(new Error('Failed to load Leaflet from CDN'));
       };
-      
+
       document.head.appendChild(script);
     });
   }
@@ -124,11 +125,11 @@ export class GlobeVisualizer {
 
   /**
    * Set a message to display on the map
-   * @param {string} message 
+   * @param {string} message
    */
   setMessage(message) {
     if (!this.messageElement) return;
-    
+
     this.messageElement.textContent = message;
     this.messageElement.style.display = 'block';
   }
@@ -138,7 +139,7 @@ export class GlobeVisualizer {
    */
   clearMessage() {
     if (!this.messageElement) return;
-    
+
     this.messageElement.textContent = '';
     this.messageElement.style.display = 'none';
   }
@@ -168,7 +169,7 @@ export class GlobeVisualizer {
     // Clear markers
     this.markers.forEach(marker => marker.remove());
     this.markers = [];
-    
+
     // Clear connections
     this.connections.forEach(line => line.remove());
     this.connections = [];
@@ -181,27 +182,27 @@ export class GlobeVisualizer {
    */
   addPoint(point) {
     if (!this.map) return null;
-    
+
     const [lng, lat] = point.coordinates;
     const { name, description, icon, color } = point.properties;
-    
+
     // Create custom icon HTML
     const iconHtml = `
       <div class="marker-icon" style="background-color: ${color || 'var(--accent-color)'}">
         <span class="material-icons">${icon || 'place'}</span>
       </div>
     `;
-    
+
     // Create marker with custom icon
     const marker = L.marker([lat, lng], {
       icon: L.divIcon({
         html: iconHtml,
         className: 'custom-div-icon',
         iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      })
+        iconAnchor: [15, 15],
+      }),
     }).addTo(this.map);
-    
+
     // Add popup
     marker.bindPopup(`
       <div class="map-popup">
@@ -209,12 +210,12 @@ export class GlobeVisualizer {
         <p>${description || 'No description'}</p>
       </div>
     `);
-    
+
     this.markers.push(marker);
-    
+
     return marker;
   }
-  
+
   /**
    * Add a temporary marker (used for placing new points)
    * @param {Array} coordinates [lng, lat]
@@ -223,10 +224,10 @@ export class GlobeVisualizer {
    */
   addTempMarker(coordinates, properties = {}) {
     if (!this.map) return null;
-    
+
     const [lng, lat] = coordinates;
     const { name = 'New Point' } = properties;
-    
+
     // Create marker with pulsing icon
     const marker = L.marker([lat, lng], {
       icon: L.divIcon({
@@ -247,26 +248,26 @@ export class GlobeVisualizer {
         `,
         className: 'custom-div-icon',
         iconSize: [30, 30],
-        iconAnchor: [15, 15]
-      })
+        iconAnchor: [15, 15],
+      }),
     }).addTo(this.map);
-    
+
     // Add popup
     marker.bindPopup(`<div class="map-popup"><h4>${name}</h4><p>Click to place point</p></div>`);
     marker.openPopup();
-    
+
     this.markers.push(marker);
-    
+
     return marker;
   }
-  
+
   /**
    * Remove a specific marker
    * @param {object} marker The marker to remove
    */
   removeMarker(marker) {
     if (!marker) return;
-    
+
     marker.remove();
     this.markers = this.markers.filter(m => m !== marker);
   }
@@ -278,21 +279,24 @@ export class GlobeVisualizer {
    */
   addConnection(connection) {
     if (!this.map) return null;
-    
+
     const { source, target, properties } = connection;
     const { color = 'var(--accent-color)', name, description } = properties || {};
-    
+
     // Create polyline
-    const line = L.polyline([
-      [source[1], source[0]], // [lat, lng]
-      [target[1], target[0]]  // [lat, lng]
-    ], {
-      color: color,
-      weight: 2,
-      opacity: 0.7,
-      dashArray: '5, 5'
-    }).addTo(this.map);
-    
+    const line = L.polyline(
+      [
+        [source[1], source[0]], // [lat, lng]
+        [target[1], target[0]], // [lat, lng]
+      ],
+      {
+        color: color,
+        weight: 2,
+        opacity: 0.7,
+        dashArray: '5, 5',
+      }
+    ).addTo(this.map);
+
     // Add popup if name or description exists
     if (name || description) {
       line.bindPopup(`
@@ -302,9 +306,9 @@ export class GlobeVisualizer {
         </div>
       `);
     }
-    
+
     this.connections.push(line);
-    
+
     return line;
   }
 }

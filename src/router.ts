@@ -2908,24 +2908,37 @@ export class Router {
    * Create a JSON response
    */
   private jsonResponse(data: any, status: number = 200, customHeaders?: Headers): Response {
-    const headers =
-      customHeaders ||
-      new Headers({
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-        'Access-Control-Allow-Credentials': 'true',
+    // Base CORS and JSON headers we want on all API responses
+    const baseHeaders = new Headers({
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
+    });
+
+    // If the caller provided custom headers (for example Set-Cookie), merge them
+    // into the base headers. We append Set-Cookie entries to preserve multiple
+    // cookies, and otherwise let custom headers overwrite base values.
+    if (customHeaders) {
+      customHeaders.forEach((value, key) => {
+        if (key.toLowerCase() === 'set-cookie') {
+          // Append cookies rather than replacing
+          baseHeaders.append(key, value);
+        } else {
+          baseHeaders.set(key, value);
+        }
       });
+    }
 
     // Ensure Content-Type is set
-    if (!headers.has('Content-Type')) {
-      headers.set('Content-Type', 'application/json');
+    if (!baseHeaders.has('Content-Type')) {
+      baseHeaders.set('Content-Type', 'application/json');
     }
 
     return new Response(JSON.stringify(data), {
       status,
-      headers,
+      headers: baseHeaders,
     });
   }
 

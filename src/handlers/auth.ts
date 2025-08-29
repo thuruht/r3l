@@ -33,7 +33,7 @@ export class AuthHandler {
    * @returns URL to redirect user to for GitHub authentication
    */
   initGitHubAuth(redirectUri: string, env: Env): string {
-  const githubClientId = String(env.GITHUB_CLIENT_ID || '');
+    const githubClientId = String(env.GITHUB_CLIENT_ID || '');
     const scopes = 'read:user user:email';
 
     const params = new URLSearchParams({
@@ -258,7 +258,7 @@ export class AuthHandler {
         isNewUser = true;
 
         // Extract name from GitHub data
-        let displayName = userData.name || userData.login;
+        const displayName = userData.name || userData.login;
 
         // Generate username from GitHub login
         let username = userData.login;
@@ -351,7 +351,7 @@ export class AuthHandler {
    * @returns URL to redirect user to for ORCID authentication
    */
   initOrcidAuth(redirectUri: string, env: Env): string {
-  const orcidClientId = String(env.ORCID_CLIENT_ID || '');
+    const orcidClientId = String(env.ORCID_CLIENT_ID || '');
     const scopes = '/authenticate';
 
     const params = new URLSearchParams({

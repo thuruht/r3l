@@ -695,7 +695,7 @@
           const response = await fetch('/api/globe/data-points', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin'
+            credentials: 'include'
           });
           
           if (response.ok) {
@@ -749,7 +749,7 @@
             const resp = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' },
-              credentials: 'same-origin'
+              credentials: 'include'
             });
 
             if (resp.ok) {
@@ -793,7 +793,7 @@
           const response = await fetch('/api/globe/points', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
+            credentials: 'include',
             body: JSON.stringify(pointData)
           });
           
@@ -896,22 +896,22 @@
               fetch(contentEndpoint, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               }),
               fetch(usersEndpoint, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               }),
               fetch(tagsEndpoint, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               }),
               isAuthenticated ? fetch(currentUserEndpoint, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               }) : Promise.resolve(null)
             ]);
           } catch (error) {
@@ -980,7 +980,7 @@
                 const myContentResponse = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
                   method: 'GET',
                   headers: { 'Content-Type': 'application/json' },
-                  credentials: 'same-origin'
+                  credentials: 'include'
                 });
 
                 if (myContentResponse && myContentResponse.ok) {
@@ -1099,10 +1099,10 @@
           // Fetch content-tag associations or create random ones if not available
           try {
             for (const file of files) {
-              const fileTagsResponse = await fetch(`/api/content/${file.id}/tags`, {
+                const fileTagsResponse = await fetch(`/api/content/${file.id}/tags`, {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               });
               
               if (fileTagsResponse.ok) {
@@ -1185,7 +1185,7 @@
               const connectionsResponse = await fetch('/api/connections', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               });
               
               if (connectionsResponse.ok) {
@@ -1220,7 +1220,7 @@
               const networkConnectionsResponse = await fetch('/api/connections/network', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin'
+                credentials: 'include'
               });
               
               if (networkConnectionsResponse.ok) {

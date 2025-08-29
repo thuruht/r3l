@@ -83,8 +83,8 @@
       fixButton.addEventListener('click', async () => {
         try {
           const fixResponse = await fetch('/api/auth/fix-cookies', {
-            credentials: 'include'
-          });
+              credentials: 'include'
+            });
           
           const fixStatus = fixResponse.status;
           const fixResponseText = await fixResponse.text();
@@ -123,7 +123,7 @@
       // Test initialization endpoints
       document.getElementById('test-orcid-btn').addEventListener('click', async () => {
         try {
-          const response = await fetch('/api/auth/orcid/init');
+    const response = await fetch('/api/auth/orcid/init', { credentials: 'include' });
           const data = await response.json();
           
           document.getElementById('init-results').innerHTML = `
@@ -144,7 +144,7 @@
       
       document.getElementById('test-github-btn').addEventListener('click', async () => {
         try {
-          const response = await fetch('/api/auth/github/init');
+    const response = await fetch('/api/auth/github/init', { credentials: 'include' });
           const data = await response.json();
           
           document.getElementById('init-results').innerHTML = `
@@ -170,7 +170,7 @@
         
         try {
           // Make a request to a known endpoint that uses the database
-          const response = await fetch('/api/users?limit=1');
+          const response = await fetch('/api/users?limit=1', { credentials: 'include' });
           const data = await response.json();
           
           if (response.ok) {

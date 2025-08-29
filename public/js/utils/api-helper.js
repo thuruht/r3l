@@ -12,57 +12,57 @@ export const API_ENDPOINTS = {
     PROFILE: '/api/auth/jwt/profile',
     LOGIN: '/api/auth/jwt/login',
     LOGOUT: '/api/auth/jwt/logout',
-    FIX_COOKIES: '/api/auth/fix-cookies'
+    FIX_COOKIES: '/api/auth/fix-cookies',
   },
-  
+
   // Content endpoints
   CONTENT: {
     SEARCH: '/api/search',
-    GET: (id) => `/api/content/${id}`,
+    GET: id => `/api/content/${id}`,
     CREATE: '/api/content',
-    UPDATE: (id) => `/api/content/${id}`,
-    DELETE: (id) => `/api/content/${id}`,
-    TAGS: (id) => `/api/content/${id}/tags`
+    UPDATE: id => `/api/content/${id}`,
+    DELETE: id => `/api/content/${id}`,
+    TAGS: id => `/api/content/${id}/tags`,
   },
-  
+
   // User endpoints
   USERS: {
     LIST: '/api/users',
-    GET: (id) => `/api/users/${id}`,
-    UPDATE: (id) => `/api/users/${id}`,
-    FILES: (id) => `/api/users/${id}/files`
+    GET: id => `/api/users/${id}`,
+    UPDATE: id => `/api/users/${id}`,
+    FILES: id => `/api/users/${id}/files`,
   },
-  
+
   // Connection endpoints
   CONNECTIONS: {
     LIST: '/api/connections',
     NETWORK: '/api/connections/network',
     CREATE: '/api/connections',
-    UPDATE: (id) => `/api/connections/${id}`,
-    DELETE: (id) => `/api/connections/${id}`
+    UPDATE: id => `/api/connections/${id}`,
+    DELETE: id => `/api/connections/${id}`,
   },
-  
+
   // Globe/map endpoints
   GLOBE: {
     DATA_POINTS: '/api/globe/data-points',
     POINTS: '/api/globe/points',
-    POINT: (id) => `/api/globe/points/${id}`
+    POINT: id => `/api/globe/points/${id}`,
   },
-  
+
   // Notification endpoints
   NOTIFICATIONS: {
     LIST: '/api/notifications',
     UNREAD_COUNT: '/api/notifications/unread/count',
-    MARK_READ: (id) => `/api/notifications/${id}/read`,
+    MARK_READ: id => `/api/notifications/${id}/read`,
     MARK_ALL_READ: '/api/notifications/read/all',
-    DELETE: (id) => `/api/notifications/${id}`
+    DELETE: id => `/api/notifications/${id}`,
   },
-  
+
   // Debug endpoints
   DEBUG: {
     COOKIE_CHECK: '/api/debug/cookie-check',
-    ENV_CHECK: '/api/debug/env-check'
-  }
+    ENV_CHECK: '/api/debug/env-check',
+  },
 };
 
 /**
@@ -79,22 +79,22 @@ export async function apiGet(endpoint, params = {}) {
       url.searchParams.append(key, params[key]);
     }
   });
-  
+
   try {
     const response = await authenticatedFetch(url.toString());
-    
+
     // Check for authentication error
     if (response.status === 401) {
       console.warn('Authentication required for API call:', endpoint);
       return { error: 'Authentication required', status: 401 };
     }
-    
+
     // Check for other errors
     if (!response.ok) {
       console.error('API error:', response.status, await response.text());
       return { error: `API error: ${response.status}`, status: response.status };
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint, params });
@@ -112,21 +112,21 @@ export async function apiPost(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
-    
+
     // Check for authentication error
     if (response.status === 401) {
       console.warn('Authentication required for API call:', endpoint);
       return { error: 'Authentication required', status: 401 };
     }
-    
+
     // Check for other errors
     if (!response.ok) {
       console.error('API error:', response.status, await response.text());
       return { error: `API error: ${response.status}`, status: response.status };
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint, data });
@@ -144,21 +144,21 @@ export async function apiPut(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
-    
+
     // Check for authentication error
     if (response.status === 401) {
       console.warn('Authentication required for API call:', endpoint);
       return { error: 'Authentication required', status: 401 };
     }
-    
+
     // Check for other errors
     if (!response.ok) {
       console.error('API error:', response.status, await response.text());
       return { error: `API error: ${response.status}`, status: response.status };
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint, data });
@@ -174,21 +174,21 @@ export async function apiPut(endpoint, data = {}) {
 export async function apiDelete(endpoint) {
   try {
     const response = await authenticatedFetch(endpoint, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
-    
+
     // Check for authentication error
     if (response.status === 401) {
       console.warn('Authentication required for API call:', endpoint);
       return { error: 'Authentication required', status: 401 };
     }
-    
+
     // Check for other errors
     if (!response.ok) {
       console.error('API error:', response.status, await response.text());
       return { error: `API error: ${response.status}`, status: response.status };
     }
-    
+
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint });

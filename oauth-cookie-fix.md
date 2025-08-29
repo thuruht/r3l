@@ -1,6 +1,7 @@
 # OAuth Cookie Fix Documentation
 
 ## Problem Summary
+
 The current OAuth implementation has issues with setting and validating cookies correctly, specifically:
 
 1. The session cookie (`r3l_session`) is not being set correctly during GitHub/ORCID OAuth callback
@@ -50,12 +51,14 @@ We've created a script that will apply all these changes:
 ```
 
 This script will:
+
 1. Back up your current files to a timestamped directory
 2. Install the cookie helper module
 3. Replace the router and auth handler with the fixed versions
 4. Clean up temporary files
 
 After running the script, you should:
+
 1. Build the project: `npm run build`
 2. Deploy the changes: `npx wrangler deploy`
 3. Test the OAuth flow with the debug tools at `/check-oauth-status.html` and `/test-auth.html`

@@ -261,15 +261,15 @@
     width: 280px;
     right: -120px;
   }
-  
+
   .notification-item {
     padding: var(--space-2);
   }
-  
+
   .notification-icon {
     margin-right: var(--space-2);
   }
-  
+
   .notification-icon .material-icons {
     font-size: 18px;
   }

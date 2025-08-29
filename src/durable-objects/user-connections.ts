@@ -220,7 +220,7 @@ export class UserConnections {
     this.cancelHibernation();
 
     // Schedule hibernation after 5 minutes of inactivity
-    this.hibernationTimeout = (setTimeout(
+    this.hibernationTimeout = setTimeout(
       () => {
         // Only hibernate if we still have no WebSockets
         if (this.websockets.length === 0) {
@@ -229,7 +229,7 @@ export class UserConnections {
         this.hibernationTimeout = null;
       },
       5 * 60 * 1000
-    ) as unknown) as number;
+    ) as unknown as number;
   }
 
   /**

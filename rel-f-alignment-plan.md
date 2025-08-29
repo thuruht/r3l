@@ -5,7 +5,8 @@ This document outlines the steps needed to bring the codebase in line with the p
 ## Core Features to Implement/Enhance
 
 ### 1. "Lurker in the Mist" Mode
-- **Current State**: 
+
+- **Current State**:
   - Basic preference setting (`lurkerModeRandomness`) exists in UserPreferences
   - SearchHandler has `lurkerSearch` method that implements randomized results
   - Missing UI controls for toggling/adjusting mode
@@ -19,6 +20,7 @@ This document outlines the steps needed to bring the codebase in line with the p
   5. Add missing endpoints in router.ts to handle visibility preferences
 
 ### 2. Association Web (D3.js Visualization)
+
 - **Current State**:
   - AssociationHandler class exists for creating/managing content associations
   - Network visualization HTML template (network.html) exists with D3.js
@@ -38,6 +40,7 @@ This document outlines the steps needed to bring the codebase in line with the p
   5. Implement privacy controls for network visualization
 
 ### 3. Ephemeral Content System
+
 - **Current State**:
   - ContentLifecycle class handles expiration and archiving backend logic
   - Content has expiration tracking
@@ -52,6 +55,7 @@ This document outlines the steps needed to bring the codebase in line with the p
   5. Implement one-click archiving in UI for expiring content
 
 ### 4. Community Archiving
+
 - **Current State**:
   - Basic voting logic exists in ContentHandler
   - Missing frontend integration for community archive voting
@@ -65,6 +69,7 @@ This document outlines the steps needed to bring the codebase in line with the p
   5. Implement notification when user content reaches archive threshold
 
 ### 5. Inbox & Notifications
+
 - **Current State**:
   - NotificationHandler implements basic notification system
   - Missing mutual connection prompts based on activity
@@ -78,6 +83,7 @@ This document outlines the steps needed to bring the codebase in line with the p
   5. Add final hour notification before permanent deletion
 
 ### 6. Contact & Social Features
+
 - **Current State**:
   - Basic user profiles exist
   - Missing contact management system

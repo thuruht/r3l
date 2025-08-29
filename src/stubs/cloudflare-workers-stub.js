@@ -9,4 +9,6 @@
 // Modern build configurations should not rely on this stub. It was retained
 // only to preserve previous build behavior during migration.
 
-module.exports = { ARCHIVE_NOTICE: 'moved to archive/legacy-fixed/src/stubs-cloudflare-workers-stub.js' };
+module.exports = {
+  ARCHIVE_NOTICE: 'moved to archive/legacy-fixed/src/stubs-cloudflare-workers-stub.js',
+};

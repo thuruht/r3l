@@ -346,10 +346,10 @@ export class UserHandler {
       .bind(githubId)
       .first();
 
-  if (!user) return null;
+    if (!user) return null;
 
-  const idStr = String((user as any).id);
-  return this.getUser(idStr, env);
+    const idStr = String((user as any).id);
+    return this.getUser(idStr, env);
   }
 
   /**
@@ -413,10 +413,10 @@ export class UserHandler {
       .bind(orcidId)
       .first();
 
-  if (!user) return null;
+    if (!user) return null;
 
-  const idStr = String((user as any).id);
-  return this.getUser(idStr, env);
+    const idStr = String((user as any).id);
+    return this.getUser(idStr, env);
   }
 
   /**
@@ -449,7 +449,16 @@ export class UserHandler {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `
     )
-      .bind(userId, username, displayName, '', now, now, orcidId, JSON.stringify(defaultPreferences))
+      .bind(
+        userId,
+        username,
+        displayName,
+        '',
+        now,
+        now,
+        orcidId,
+        JSON.stringify(defaultPreferences)
+      )
       .run();
 
     return userId;

@@ -19,7 +19,7 @@ export class NavigationBar {
    */
   static init(currentPage) {
     debugLog('NavigationBar', 'Initializing navigation bar', { currentPage });
-    
+
     // Create the navigation HTML - Organized with dropdown menus for better organization
     const navHtml = `
       <div class="navbar">
@@ -126,17 +126,17 @@ export class NavigationBar {
         </nav>
       </div>
     `;
-    
+
     // Find the header element
     const header = document.querySelector('header');
-    
+
     if (header) {
       // Set content of header
       header.innerHTML = `<div class="container">${navHtml}</div>`;
-      
+
       // Check if user is logged in and update navigation accordingly
       this.updateAuthState();
-      
+
       // Load notification CSS
       this.loadNotificationStyles();
     } else {
@@ -147,7 +147,9 @@ export class NavigationBar {
   /**
    * Show a demo-mode banner with optional diagnostic controls
    */
-  static showDemoBanner(message = 'The application is currently running in demo mode. Some features require a configured backend or an authenticated session.') {
+  static showDemoBanner(
+    message = 'The application is currently running in demo mode. Some features require a configured backend or an authenticated session.'
+  ) {
     // Avoid duplicating banner
     if (document.getElementById('demo-mode-banner')) return;
 
@@ -215,11 +217,11 @@ export class NavigationBar {
         details.style.overflow = 'auto';
         details.style.marginTop = '8px';
         details.textContent = JSON.stringify(data, null, 2);
-        
+
         // Remove any previous details
         const old = document.getElementById('demo-diagnostics-details');
         if (old) old.remove();
-        
+
         details.id = 'demo-diagnostics-details';
         banner.appendChild(details);
       } catch (err) {
@@ -238,7 +240,7 @@ export class NavigationBar {
     const el = document.getElementById('demo-mode-banner');
     if (el) el.remove();
   }
-  
+
   /**
    * Load notification CSS
    */
@@ -251,24 +253,24 @@ export class NavigationBar {
       document.head.appendChild(link);
     }
   }
-  
+
   /**
    * Update navigation based on authentication state
    */
   static updateAuthState() {
     const loginItem = document.getElementById('nav-login-item');
-    
+
     console.log('[NavigationBar] Auth state check:', {
       authCookie: getCookie('r3l_auth_state'),
       isAuth: isAuthenticated(),
       allCookies: document.cookie,
-      loginItemFound: !!loginItem
+      loginItemFound: !!loginItem,
     });
-    
+
     // Directly fetch the profile to check authentication status
     if (loginItem) {
       console.log('[NavigationBar] Checking JWT authentication status...');
-      
+
       // Fetch user data from API
       this.fetchUserProfile()
         .then(user => {
@@ -278,11 +280,12 @@ export class NavigationBar {
               <div class="user-profile-nav">
                 <a href="/profile.html" class="nav-link user-profile-link">
                   <span class="user-avatar">
-                    ${user.avatarUrl ? 
-                      `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />` : 
-                      user.avatar_key ?
-                      `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />` :
-                      `<div class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</div>`
+                    ${
+                      user.avatarUrl
+                        ? `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />`
+                        : user.avatar_key
+                          ? `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />`
+                          : `<div class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</div>`
                     }
                   </span>
                   <span class="user-name">${user.displayName || user.username}</span>
@@ -303,20 +306,21 @@ export class NavigationBar {
                 </div>
               </div>
             `;
-            
+
             // Add event listener for logout
             document.getElementById('logout-link')?.addEventListener('click', e => {
               e.preventDefault();
               this.logout();
             });
-            
+
             // Initialize notification system
             console.log('[NavigationBar] Initializing notification system');
             notificationManager.createNotificationElements();
             notificationManager.startPolling(30000); // Poll every 30 seconds
-            
+
             // Fetch notifications immediately
-            notificationManager.fetchUnreadCount()
+            notificationManager
+              .fetchUnreadCount()
               .then(count => {
                 console.log('[NavigationBar] Initial unread notifications count:', count);
               })
@@ -336,7 +340,7 @@ export class NavigationBar {
         });
     }
   }
-  
+
   /**
    * Fetch user profile data
    * @returns {Promise<Object>} User profile data
@@ -347,27 +351,29 @@ export class NavigationBar {
       console.log('[NavigationBar] Fetching profile - Current cookies:', {
         cookieString: document.cookie,
         cookieLength: document.cookie.length,
-        authState: getCookie('r3l_auth_state')
+        authState: getCookie('r3l_auth_state'),
       });
-      
+
       // Use API helper to fetch profile
       console.log('[NavigationBar] Fetching profile from', API_ENDPOINTS.AUTH.PROFILE);
       const startTime = performance.now();
-      
+
       const data = await apiGet(API_ENDPOINTS.AUTH.PROFILE);
-      
+
       const endTime = performance.now();
-      
+
       console.log('[NavigationBar] Profile response:', {
         data,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
       });
-      
+
       if (data.error) {
         // Show demo banner to indicate non-functional backend or unauthenticated state
-        this.showDemoBanner(data.status === 401 ?
-          'You are not authenticated. Sign in to enable full functionality.' :
-          'Profile fetch failed - backend may be unavailable. Many features are disabled in demo mode.');
+        this.showDemoBanner(
+          data.status === 401
+            ? 'You are not authenticated. Sign in to enable full functionality.'
+            : 'Profile fetch failed - backend may be unavailable. Many features are disabled in demo mode.'
+        );
         throw new Error(`Invalid session: ${data.error}`);
       }
 
@@ -381,7 +387,7 @@ export class NavigationBar {
       return null;
     }
   }
-  
+
   /**
    * Handle authentication errors
    */
@@ -395,24 +401,27 @@ export class NavigationBar {
       </a>`;
     }
   }
-  
+
   /**
    * Log the user out
    */
   static logout() {
     console.log('Logging out...');
-    
+
     // Call logout API using our helper
     apiPost(API_ENDPOINTS.AUTH.LOGOUT)
       .then(response => {
         console.log('Logout response:', response);
         // Reload the page to force a refresh of all components
-        window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out successfully.');
+        window.location.href =
+          '/auth/login.html?message=' +
+          encodeURIComponent('You have been logged out successfully.');
       })
       .catch(error => {
         console.error('Logout error:', error);
         // Reload the page to force a refresh of all components
-        window.location.href = '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
+        window.location.href =
+          '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
       });
   }
 }

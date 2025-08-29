@@ -23,8 +23,8 @@ class PrivacyFontLoader {
 
     document.head.appendChild(link);
     this.loadedFonts.add(family);
-    
-    return new Promise((resolve) => {
+
+    return new Promise(resolve => {
       link.onload = () => resolve();
       link.onerror = () => {
         console.warn(`Failed to load font: ${family}`);
@@ -45,8 +45,8 @@ class PrivacyFontLoader {
 
     document.head.appendChild(link);
     this.loadedFonts.add('Material+Icons');
-    
-    return new Promise((resolve) => {
+
+    return new Promise(resolve => {
       link.onload = () => resolve();
       link.onerror = () => {
         console.warn('Failed to load Material Icons');
@@ -63,9 +63,9 @@ class PrivacyFontLoader {
       this.loadFont('Inter', ['400', '500', '600', '700']),
       this.loadFont('Space+Grotesk', ['400', '500', '600', '700']),
       this.loadFont('JetBrains+Mono', ['400', '500']),
-      this.loadMaterialIcons()
+      this.loadMaterialIcons(),
     ]);
-    
+
     console.log('R3L:F fonts loaded from privacy-respecting Bunny CDN');
     return true;
   }

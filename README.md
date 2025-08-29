@@ -48,20 +48,23 @@ This project is designed to be deployed to Cloudflare Workers. All file paths ar
 2. Install dependencies: `npm install`
 3. Configure your Cloudflare account in wrangler.jsonc
 4. Set up required secrets (DO NOT add these to your code or wrangler.jsonc):
+
    ```
    wrangler secret put R3L_APP_SECRET
    wrangler secret put CLOUDFLARE_ACCOUNT_ID
    ```
 
 5. Deploy with these steps:
-   
+
    a. Deploy the database migrations:
+
    ```
    # Apply migrations to the main database
    ./migrations/apply-migrations.sh
    ```
-   
+
    b. Deploy the main application:
+
    ```
    npm run build
    npm run deploy
@@ -87,6 +90,7 @@ The project follows a modular architecture:
 ## Contributing
 
 Contributions are welcome if they align with the guiding principles:
+
 - No engagement optimization
 - No corporate/capitalist manipulation
 - Minimalist, user-controlled interactions

@@ -24,7 +24,7 @@ module.exports = {
         options: {
           transpileOnly: true,
         },
-      }
+      },
     ],
   },
   plugins: [

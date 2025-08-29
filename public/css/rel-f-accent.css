@@ -5,13 +5,13 @@
 
 /* Enhance the accent color variables */
 :root {
-  --accent-purple: #a278ff;       /* Main accent color - vibrant purple */
+  --accent-purple: #a278ff; /* Main accent color - vibrant purple */
   --accent-purple-hover: #b68fff; /* Brighter hover state */
   --accent-purple-muted: #8a5eff; /* Muted variant */
-  --accent-purple-dark: #7e5edd;  /* Darker variant */
+  --accent-purple-dark: #7e5edd; /* Darker variant */
   --accent-purple-light: #d0b5ff; /* Lighter variant */
   --accent-purple-glow: #a278ff66; /* Glow effect */
-  
+
   /* For backwards compatibility */
   --accent-lavender: var(--accent-purple);
   --accent-lavender-hover: var(--accent-purple-hover);
@@ -111,7 +111,9 @@ a.accent-link:hover {
 }
 
 /* Accent color input focus */
-input:focus, textarea:focus, select:focus {
+input:focus,
+textarea:focus,
+select:focus {
   border-color: var(--accent-purple);
   box-shadow: 0 0 0 2px var(--accent-purple-glow);
 }
@@ -154,7 +156,7 @@ input:focus, textarea:focus, select:focus {
 }
 
 .checkmark:after {
-  content: "";
+  content: '';
   position: absolute;
   display: none;
 }
@@ -280,19 +282,19 @@ input:focus, textarea:focus, select:focus {
   right: 0;
   bottom: 0;
   background-color: var(--bg-input);
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 20px;
 }
 
 .toggle-slider:before {
   position: absolute;
-  content: "";
+  content: '';
   height: 16px;
   width: 16px;
   left: 2px;
   bottom: 2px;
   background-color: white;
-  transition: .4s;
+  transition: 0.4s;
   border-radius: 50%;
 }
 
@@ -309,7 +311,7 @@ input:checked + .toggle-slider:before {
   .btn {
     padding: var(--space-1) var(--space-3);
   }
-  
+
   .feature-card:hover {
     transform: translateY(-3px);
   }

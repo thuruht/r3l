@@ -95,6 +95,7 @@ The project uses `wrangler.jsonc` for configuration with:
 ## Secrets Management
 
 All sensitive information is managed via `wrangler secret put`:
+
 - `ORCID_CLIENT_ID`
 - `ORCID_CLIENT_SECRET`
 - `GITHUB_CLIENT_ID`
@@ -107,13 +108,14 @@ All sensitive information is managed via `wrangler secret put`:
 To properly shut down the R3L:F project:
 
 1. **Backup Data**
+
    ```bash
    # Backup D1 database
    wrangler d1 backup r3l-db ./backup/r3l-db-backup.sql
-   
+
    # Backup R2 bucket content
    wrangler r2 backup r3l-content ./backup/r3l-content-backup
-   
+
    # Export KV namespaces
    wrangler kv:bulk export R3L_USERS ./backup/r3l-users-export.json
    wrangler kv:bulk export R3L_SESSIONS ./backup/r3l-sessions-export.json
@@ -133,29 +135,31 @@ To properly shut down the R3L:F project:
    - Continue allowing content access
 
 4. **Disable Workers**
+
    ```bash
    # Disable the worker deployment
    wrangler deployment tag main --remove
    ```
 
 5. **Delete Cloudflare Resources**
+
    ```bash
    # Delete Worker
    wrangler delete r3l
-   
+
    # Delete D1 database
    wrangler d1 delete r3l-db
-   
+
    # Delete R2 bucket
    wrangler r2 delete r3l-content
-   
+
    # Delete KV namespaces
    wrangler kv:namespace delete R3L_USERS
    wrangler kv:namespace delete R3L_SESSIONS
    wrangler kv:namespace delete R3L_USER_EMBEDDINGS
    wrangler kv:namespace delete R3L_KV
    wrangler kv:namespace delete OAUTH_KV
-   
+
    # Delete Durable Objects
    # Note: These will be deleted when the worker is deleted if they're bound to it
    ```

@@ -126,7 +126,7 @@ export class MessagingHandler {
 
     try {
       // Get notification handler
-  const { NotificationHandler } = await import('./notification.js');
+      const { NotificationHandler } = await import('./notification.js');
       const notificationHandler = new NotificationHandler();
 
       // Create notification

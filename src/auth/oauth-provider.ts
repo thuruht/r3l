@@ -6,8 +6,8 @@ import { Router } from '../router.js';
 const defaultHandler = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     // Create a router instance to handle all non-OAuth routes
-  const router = new Router();
-  return router.handle(request, env);
+    const router = new Router();
+    return router.handle(request, env);
   },
 };
 
@@ -31,8 +31,8 @@ const apiHandler = {
     (authenticatedRequest as any).userId = userId;
 
     // Create a router instance to handle API routes
-  const router = new Router();
-  return router.handle(authenticatedRequest, env);
+    const router = new Router();
+    return router.handle(authenticatedRequest, env);
   },
 };
 
@@ -43,9 +43,9 @@ export function createOAuthProvider(env: Env) {
     apiRoute: ['/api/users/', '/api/content/', '/api/drawers/', '/api/associations/'],
 
     // Handlers
-  // Cast handlers to any to satisfy third-party type expectations for the worker runtime
-  apiHandler: apiHandler as any,
-  defaultHandler: defaultHandler as any,
+    // Cast handlers to any to satisfy third-party type expectations for the worker runtime
+    apiHandler: apiHandler as any,
+    defaultHandler: defaultHandler as any,
 
     // OAuth endpoints
     authorizeEndpoint: '/authorize',

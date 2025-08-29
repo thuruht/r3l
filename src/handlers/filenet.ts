@@ -86,9 +86,9 @@ export class FilenetHandler {
         )
         .run();
 
-  // Schedule expiration
-  const lifecycle = new ContentLifecycle();
-  await lifecycle.scheduleExpiry(fileId, expiresAt, userId, env);
+      // Schedule expiration
+      const lifecycle = new ContentLifecycle();
+      await lifecycle.scheduleExpiry(fileId, expiresAt, userId, env);
 
       return new Response(
         JSON.stringify({
@@ -152,7 +152,7 @@ export class FilenetHandler {
       // If user is authenticated and this is a download, record it
       if (request.authenticated && request.userId && isDownload) {
         // Import ContentHandler to record the download
-  const { ContentHandler } = await import('./content.js');
+        const { ContentHandler } = await import('./content.js');
         const contentHandler = new ContentHandler();
 
         // Record download asynchronously (don't await to speed up response)

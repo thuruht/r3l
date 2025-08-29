@@ -32,28 +32,33 @@ export class NotificationManager {
    */
   init(options = {}) {
     debugLog('NotificationManager', 'Initializing notification manager', options);
-    
+
     this.container = options.container;
     this.badge = options.badge;
     this.bellIcon = options.bellIcon;
     this.onNotificationClick = options.onNotificationClick;
-    
+
     if (this.bellIcon) {
-      this.bellIcon.addEventListener('click', (e) => {
+      this.bellIcon.addEventListener('click', e => {
         e.preventDefault();
         e.stopPropagation();
         this.toggleNotifications();
       });
     }
-    
+
     // Close notifications when clicking outside
-    document.addEventListener('click', (e) => {
-      if (this.isOpen && this.container && !this.container.contains(e.target) && 
-          this.bellIcon && !this.bellIcon.contains(e.target)) {
+    document.addEventListener('click', e => {
+      if (
+        this.isOpen &&
+        this.container &&
+        !this.container.contains(e.target) &&
+        this.bellIcon &&
+        !this.bellIcon.contains(e.target)
+      ) {
         this.closeNotifications();
       }
     });
-    
+
     this.initialized = true;
     this.fetchUnreadCount();
     this.fetchNotifications();
@@ -64,14 +69,14 @@ export class NotificationManager {
    */
   createNotificationElements() {
     debugLog('NotificationManager', 'Creating notification elements');
-    
+
     if (!document.querySelector('.notification-container')) {
       const nav = document.querySelector('nav');
       if (!nav) {
         debugLog('NotificationManager', 'Navigation element not found');
         return;
       }
-      
+
       // Create notification bell icon with badge
       const bellWrapper = document.createElement('div');
       bellWrapper.className = 'notification-bell-wrapper';
@@ -81,7 +86,7 @@ export class NotificationManager {
           <span class="notification-badge" style="display: none;">0</span>
         </button>
       `;
-      
+
       // Create notification container
       const notificationContainer = document.createElement('div');
       notificationContainer.className = 'notification-container';
@@ -97,7 +102,7 @@ export class NotificationManager {
           <p>No notifications</p>
         </div>
       `;
-      
+
       // Insert before the last item (user profile/login)
       const navUl = nav.querySelector('ul.nav-menu');
       if (navUl) {
@@ -105,7 +110,7 @@ export class NotificationManager {
         li.className = 'notification-item';
         li.appendChild(bellWrapper);
         li.appendChild(notificationContainer);
-        
+
         // Insert before the last item
         const items = navUl.querySelectorAll('li');
         if (items.length > 0) {
@@ -119,29 +124,29 @@ export class NotificationManager {
         debugLog('NotificationManager', 'Navigation menu not found');
         return;
       }
-      
+
       // Initialize the notification manager
       this.init({
         container: notificationContainer,
         badge: bellWrapper.querySelector('.notification-badge'),
         bellIcon: bellWrapper.querySelector('.notification-bell'),
-        onNotificationClick: (notification) => {
+        onNotificationClick: notification => {
           if (notification.actionUrl) {
             window.location.href = notification.actionUrl;
           }
-        }
+        },
       });
-      
+
       // Add event listener for mark all as read button
       const markAllReadBtn = notificationContainer.querySelector('.mark-all-read-btn');
       if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', (e) => {
+        markAllReadBtn.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
           this.markAllAsRead();
         });
       }
-      
+
       debugLog('NotificationManager', 'Notification elements created successfully');
     } else {
       debugLog('NotificationManager', 'Notification elements already exist');
@@ -157,26 +162,29 @@ export class NotificationManager {
       debugLog('NotificationManager', 'Not initialized, skipping unread count fetch');
       return 0;
     }
-    
+
     try {
-      debugLog('NotificationManager', `Fetching unread count from ${API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT}`);
+      debugLog(
+        'NotificationManager',
+        `Fetching unread count from ${API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT}`
+      );
       const startTime = performance.now();
-      
+
       const data = await apiGet(API_ENDPOINTS.NOTIFICATIONS.UNREAD_COUNT);
-      
+
       const endTime = performance.now();
       debugLog('NotificationManager', 'Unread count response', {
         data,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
       });
-      
+
       if (data.error) {
         throw new Error(`Error fetching unread count: ${data.error}`);
       }
-      
+
       this.unreadCount = data.count || 0;
       this.updateBadge();
-      
+
       return this.unreadCount;
     } catch (error) {
       debugLog('NotificationManager', 'Error fetching unread count', error);
@@ -193,33 +201,40 @@ export class NotificationManager {
       debugLog('NotificationManager', 'Not initialized, skipping notifications fetch');
       return [];
     }
-    
+
     try {
-      debugLog('NotificationManager', `Fetching notifications from ${API_ENDPOINTS.NOTIFICATIONS.LIST}`);
+      debugLog(
+        'NotificationManager',
+        `Fetching notifications from ${API_ENDPOINTS.NOTIFICATIONS.LIST}`
+      );
       const startTime = performance.now();
-      
+
       const data = await apiGet(API_ENDPOINTS.NOTIFICATIONS.LIST);
-      
+
       const endTime = performance.now();
       debugLog('NotificationManager', 'Notifications response', {
         data,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`
+        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
       });
-      
+
       if (data.error) {
         throw new Error(`Error fetching notifications: ${data.error}`);
       }
-      
+
       // Handle different response formats
-      const notifications = Array.isArray(data) ? data : 
-                          data.notifications ? data.notifications : 
-                          data.results ? data.results : [];
-                          
+      const notifications = Array.isArray(data)
+        ? data
+        : data.notifications
+          ? data.notifications
+          : data.results
+            ? data.results
+            : [];
+
       debugLog('NotificationManager', 'Received notifications', notifications);
-      
+
       this.notifications = notifications;
       this.renderNotifications();
-      
+
       return notifications;
     } catch (error) {
       debugLog('NotificationManager', 'Error fetching notifications', error);
@@ -232,18 +247,18 @@ export class NotificationManager {
    */
   updateBadge() {
     if (!this.badge) return;
-    
+
     if (this.unreadCount > 0) {
       this.badge.textContent = this.unreadCount > 99 ? '99+' : this.unreadCount;
       this.badge.style.display = 'flex';
-      
+
       // Add pulse animation to bell icon
       if (this.bellIcon) {
         this.bellIcon.classList.add('pulse');
       }
     } else {
       this.badge.style.display = 'none';
-      
+
       // Remove pulse animation
       if (this.bellIcon) {
         this.bellIcon.classList.remove('pulse');
@@ -256,30 +271,30 @@ export class NotificationManager {
    */
   renderNotifications() {
     if (!this.container) return;
-    
+
     const listContainer = this.container.querySelector('.notification-list');
     const emptyContainer = this.container.querySelector('.notification-empty');
-    
+
     if (!listContainer || !emptyContainer) return;
-    
+
     // Clear existing notifications
     listContainer.innerHTML = '';
-    
+
     if (this.notifications.length === 0) {
       listContainer.style.display = 'none';
       emptyContainer.style.display = 'block';
       return;
     }
-    
+
     listContainer.style.display = 'block';
     emptyContainer.style.display = 'none';
-    
+
     // Render each notification
     this.notifications.forEach(notification => {
       const notificationEl = document.createElement('div');
       notificationEl.className = `notification-item ${notification.isRead ? 'read' : 'unread'}`;
       notificationEl.dataset.id = notification.id;
-      
+
       // Get icon based on notification type
       let icon = 'notifications';
       switch (notification.type) {
@@ -296,17 +311,18 @@ export class NotificationManager {
           icon = 'mail';
           break;
       }
-      
+
       // Format date - safely handle various date formats
-      const timestamp = notification.createdAt || notification.created_at || notification.timestamp || Date.now();
+      const timestamp =
+        notification.createdAt || notification.created_at || notification.timestamp || Date.now();
       const date = new Date(timestamp);
       const formattedDate = date.toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
-      
+
       notificationEl.innerHTML = `
         <div class="notification-icon">
           <span class="material-icons">${icon}</span>
@@ -327,42 +343,42 @@ export class NotificationManager {
           </button>
         </div>
       `;
-      
+
       // Add event listeners
-      notificationEl.addEventListener('click', (e) => {
+      notificationEl.addEventListener('click', e => {
         // Don't trigger click if clicking on action buttons
         if (e.target.closest('.notification-actions')) return;
-        
+
         // Mark as read and call click handler
         if (!notification.isRead) {
           this.markAsRead([notification.id]);
         }
-        
+
         if (this.onNotificationClick) {
           this.onNotificationClick(notification);
         }
       });
-      
+
       // Mark as read button
       const markReadBtn = notificationEl.querySelector('.mark-read-btn');
       if (markReadBtn) {
-        markReadBtn.addEventListener('click', (e) => {
+        markReadBtn.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
           this.markAsRead([notification.id]);
         });
       }
-      
+
       // Delete button
       const deleteBtn = notificationEl.querySelector('.delete-btn');
       if (deleteBtn) {
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
           this.deleteNotification(notification.id);
         });
       }
-      
+
       listContainer.appendChild(notificationEl);
     });
   }
@@ -375,7 +391,7 @@ export class NotificationManager {
       debugLog('NotificationManager', 'No container found for toggle');
       return;
     }
-    
+
     if (this.isOpen) {
       this.closeNotifications();
     } else {
@@ -388,12 +404,12 @@ export class NotificationManager {
    */
   openNotifications() {
     if (!this.container) return;
-    
+
     debugLog('NotificationManager', 'Opening notifications panel');
     this.container.classList.add('open');
     this.container.style.display = 'flex';
     this.isOpen = true;
-    
+
     // Fetch latest notifications when opening
     this.fetchNotifications();
   }
@@ -403,7 +419,7 @@ export class NotificationManager {
    */
   closeNotifications() {
     if (!this.container) return;
-    
+
     debugLog('NotificationManager', 'Closing notifications panel');
     this.container.classList.remove('open');
     setTimeout(() => {
@@ -421,14 +437,14 @@ export class NotificationManager {
    */
   async markAsRead(ids) {
     if (!ids || ids.length === 0) return false;
-    
+
     try {
       const result = await apiPost(API_ENDPOINTS.NOTIFICATIONS.MARK_READ, { ids });
-      
+
       if (result.error) {
         throw new Error(`Error marking notifications as read: ${result.error}`);
       }
-      
+
       // Update local notifications
       this.notifications = this.notifications.map(notification => {
         if (ids.includes(notification.id)) {
@@ -436,11 +452,11 @@ export class NotificationManager {
         }
         return notification;
       });
-      
+
       // Update UI
       this.renderNotifications();
       this.fetchUnreadCount();
-      
+
       return true;
     } catch (error) {
       debugLog('NotificationManager', 'Error marking notifications as read', error);
@@ -455,21 +471,21 @@ export class NotificationManager {
   async markAllAsRead() {
     try {
       const result = await apiPost(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ);
-      
+
       if (result.error) {
         throw new Error(`Error marking all notifications as read: ${result.error}`);
       }
-      
+
       // Update local notifications
       this.notifications = this.notifications.map(notification => {
         return { ...notification, isRead: true };
       });
-      
+
       // Update UI
       this.renderNotifications();
       this.unreadCount = 0;
       this.updateBadge();
-      
+
       return true;
     } catch (error) {
       debugLog('NotificationManager', 'Error marking all notifications as read', error);
@@ -485,47 +501,47 @@ export class NotificationManager {
   async deleteNotification(id) {
     try {
       const result = await apiDelete(API_ENDPOINTS.NOTIFICATIONS.DELETE(id));
-      
+
       if (result.error) {
         throw new Error(`Error deleting notification: ${result.error}`);
       }
-      
+
       // Remove from local notifications
       const wasUnread = this.notifications.find(n => n.id === id && !n.isRead);
       this.notifications = this.notifications.filter(n => n.id !== id);
-      
+
       // Update UI
       this.renderNotifications();
-      
+
       // Update unread count if needed
       if (wasUnread) {
         this.fetchUnreadCount();
       }
-      
+
       return true;
     } catch (error) {
       debugLog('NotificationManager', 'Error deleting notification', error);
       return false;
     }
   }
-  
+
   /**
    * Poll for new notifications
    * @param {number} interval - Polling interval in milliseconds
    */
   startPolling(interval = 30000) {
     this.stopPolling(); // Stop any existing interval
-    
+
     this.pollingInterval = setInterval(() => {
       this.fetchUnreadCount();
-      
+
       // Also fetch notifications if panel is open
       if (this.isOpen) {
         this.fetchNotifications();
       }
     }, interval);
   }
-  
+
   /**
    * Stop polling for notifications
    */

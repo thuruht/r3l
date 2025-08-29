@@ -6,7 +6,7 @@
  */
 
 import { Env } from './types/env.js';
-import { isSecureRequest } from './cookie-helper.js';
+import { isSecureRequest, createAuthCookies } from './cookie-helper.js';
 
 // JWT token structure
 interface JWTPayload {
@@ -307,8 +307,10 @@ export async function generateJWTAndSetCookie(
   const domain = url.hostname;
   const isSecure = isSecureRequest(request);
 
-  // Create cookie headers
-  const headers = createJWTCookie(token, domain, isSecure);
+  // Create cookie headers including a JS-visible auth state cookie so client-side code can detect session
+  // createAuthCookies will append both the HttpOnly JWT cookie and the r3l_auth_state cookie
+  const headers = createAuthCookies(token, domain, isSecure);
+
   // Ensure Access-Control-Allow-Origin echoes the request Origin so browsers accept Set-Cookie with credentials
   const origin = request.headers.get('Origin') || `${url.protocol}//${url.hostname}`;
   if (!headers.has('Access-Control-Allow-Origin')) {

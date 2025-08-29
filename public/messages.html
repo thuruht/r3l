@@ -668,8 +668,8 @@
       async function fetchCurrentUser() {
         try {
           const response = await fetch('/api/auth/jwt/profile', {
-            credentials: 'include'
-          });
+              credentials: 'include'
+            });
           
           if (!response.ok) {
             return null;
@@ -686,8 +686,8 @@
       async function loadConversations() {
         try {
           const response = await fetch('/api/messages/conversations', {
-            credentials: 'include'
-          });
+              credentials: 'include'
+            });
           
           if (!response.ok) {
             throw new Error('Failed to load conversations');
@@ -775,8 +775,8 @@
       async function loadMessages(conversationId) {
         try {
           const response = await fetch(`/api/messages/conversations/${conversationId}`, {
-            credentials: 'include'
-          });
+              credentials: 'include'
+            });
           
           if (!response.ok) {
             throw new Error('Failed to load messages');
@@ -929,16 +929,16 @@
           
           // Send message to server
           const response = await fetch('/api/messages/send', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              recipientId,
-              content
-            })
-          });
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              credentials: 'include',
+              body: JSON.stringify({
+                recipientId,
+                content
+              })
+            });
           
           if (!response.ok) {
             throw new Error('Failed to send message');

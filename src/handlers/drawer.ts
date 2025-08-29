@@ -136,8 +136,8 @@ export class DrawerHandler {
       const connectionsResult = await env.R3L_DB.prepare(
         `
         SELECT COUNT(*) as count
-        FROM user_connections
-        WHERE (user_id_a = ? OR user_id_b = ?) AND status = 'accepted'
+        FROM connections
+        WHERE (user_a_orcid = ? OR user_b_orcid = ?) AND status = 'accepted'
       `
       )
         .bind(userId, userId)
@@ -227,8 +227,8 @@ export class DrawerHandler {
       const connectionsResult = await env.R3L_DB.prepare(
         `
         SELECT COUNT(*) as count
-        FROM user_connections
-        WHERE (user_id_a = ? OR user_id_b = ?) AND status = 'accepted'
+        FROM connections
+        WHERE (user_a_orcid = ? OR user_b_orcid = ?) AND status = 'accepted'
       `
       )
         .bind(userResult.id, userResult.id)

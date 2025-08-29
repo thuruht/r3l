@@ -589,7 +589,7 @@ export class UserHandler {
       await env.R3L_DB.prepare(
         `
         UPDATE notifications
-        SET read = 1
+        SET is_read = 1
         WHERE id IN (${placeholders})
         AND user_id = ?
       `

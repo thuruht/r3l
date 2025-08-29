@@ -1,46 +1,6 @@
-const path = require('path');
-const webpack = require('webpack');
+// ESM bridge: load the CommonJS webpack.config.cjs when package.json uses "type": "module"
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const config = require('./webpack.config.cjs');
 
-module.exports = {
-  entry: './src/worker.ts',
-  output: {
-    filename: 'worker.js',
-    path: path.join(__dirname, 'dist'),
-  },
-  mode: 'production',
-  resolve: {
-    extensions: ['.ts', '.tsx', '.js'],
-    fallback: {
-      fs: false,
-      path: false,
-      os: false,
-    },
-  },
-  module: {
-    rules: [
-      {
-        test: /\.tsx?$/,
-        loader: 'ts-loader',
-        options: {
-          transpileOnly: true,
-        },
-      },
-    ],
-  },
-  plugins: [
-    // This is necessary for Cloudflare Workers
-    new webpack.ProvidePlugin({
-      // Make these modules available as globals
-      process: 'process/browser',
-    }),
-    new webpack.DefinePlugin({
-      // Define any environment variables needed
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
-    }),
-    // Note: removed the NormalModuleReplacementPlugin that pointed at a build-time stub.
-    // If you need to replace cloudflare:workers imports during build, add a replacement here.
-  ],
-  optimization: {
-    minimize: true,
-  },
-};
+export default config;

@@ -15,10 +15,8 @@
   // Configure TypeScript compilation
   "tsconfig": "./tsconfig.json",
   
-  // Configure build settings
-  "build": {
-    "command": "npx webpack"
-  },
+  // Configure build settings - using native TypeScript compilation
+  // No webpack needed for modern Cloudflare Workers
   
   
   // Configure observability for tracing and monitoring

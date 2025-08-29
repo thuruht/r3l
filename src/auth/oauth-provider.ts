@@ -1,3 +1,11 @@
+// ARCHIVE NOTICE
+// This file was archived to /archive/legacy-oauth/src/auth/oauth-provider.ts
+// The original implementation has been preserved there. Replace this
+// placeholder only if you intend to restore or refactor the original.
+
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/auth/oauth-provider.ts';
+
+export default ARCHIVE_NOTICE;
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider';
 import { Env } from '../types/env.js';
 import { Router } from '../router.js';

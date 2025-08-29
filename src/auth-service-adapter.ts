@@ -1,3 +1,11 @@
+// ARCHIVE NOTICE
+// This file was archived to /archive/legacy-oauth/src/auth-service-adapter.ts
+// The original implementation has been preserved there. Replace this
+// placeholder only if you intend to restore or refactor the original.
+
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/auth-service-adapter.ts';
+
+export default ARCHIVE_NOTICE;
 // Auth service adapter
 // This file provides methods to interact with the OpenAuth service
 

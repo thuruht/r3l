@@ -235,3 +235,8 @@ The application is designed to work on modern browsers with the following featur
 - All routing and linking must be relative for deployment to r3l.distorted.work
 - The project emphasizes privacy, ephemerality, and user control
 - The absence of algorithmic recommendations is a feature, not a limitation
+
+## Related Documentation
+
+- Developer Runbook: `docs/dev-runbook.md`
+- Authentication Guide: `docs/authentication-guide.md`

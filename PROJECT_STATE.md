@@ -8,82 +8,79 @@ R3L:F (Relational Ephemeral Filenet) is a decentralized, ephemeral, anti-algorit
 - **Ephemeral**: Content expires after a set period unless community-archived
 - **Filenet**: A social file-sharing system where documents are the foundation of interaction
 
-## Current State (January 2025)
+## Current State (August 2025)
 
 The project has undergone significant refactoring and cleanup:
 
 ### Authentication Status
-- **Primary Authentication**: JWT-based secure cookie authentication
-- **Legacy OAuth**: GitHub/ORCID OAuth code has been archived to `/archive/legacy-oauth/`
-- **Test Pages**: All OAuth test and debug pages archived to `/archive/debug-pages/`
+- Primary: JWT-based secure cookie authentication
+- Legacy OAuth: Archived to `/archive/legacy-oauth/`
+- Test/Debug OAuth pages: Archived to `/archive/debug-pages/`
 
 ### AI Status
-- **AI Binding**: Present in config but disabled with explicit annotation
-- **Policy**: Anti-algorithmic policy documented in `/docs/anti_algorithmic_policy.md`
-- **Archive Threshold**: Now pure vote-based, removed algorithmic view_count influence
+- AI binding: Present in config but disabled pending policy
+- Policy: Anti-algorithmic policy documented in `/docs/anti_algorithmic_policy.md`
+- Archiving: Pure vote-based; no engagement metrics
 
 ### Known Issues Requiring Attention
-- **Connections Schema Drift**: Backend expects `user_id`/`connected_user_id` columns but D1 table uses `user_a_orcid`/`user_b_orcid`
-- **Migration Needed**: Created `migrations/017_connections_table.sql` to normalize schema
-- **ESM Migration**: In progress - package.json set to "type":"module" but import extensions need updating
+- Connections schema drift: backend expects `user_id`/`connected_user_id`; D1 uses `user_a_orcid`/`user_b_orcid`
+- Migration: `migrations/017_connections_table.sql` created; run in staging then prod
+- ESM: Migration complete; all imports use `.js` in source. Frontend JS excluded from tsc; lint with `npm run lint:fe`.
 
 ### Backend (Cloudflare Workers)
 
-- **Authentication**: JWT-based authentication with secure HttpOnly cookies
-- **User Management**: User creation, profile management, preferences
-- **Content Management**: File uploads, content expiration, community archiving
-- **Drawer System**: Personal content organization system
-- **Search**: Basic, location-based, and randomized "lurker" search
-- **Tagging**: Content tagging and tag management
-- **Anti-Algorithmic**: Content archiving is now purely vote-based
+- Authentication: JWT-based with secure HttpOnly cookies
+- User Management: User creation, profile, preferences
+- Content: Uploads, expiration, community archiving (vote-based)
+- Drawer: Personal organization system
+- Search: Basic/location/random; privacy-respecting
+- Tags: Content tagging and management
+- Feed: Strictly chronological `/api/feed`
 
 ### Frontend
 
-- **UI**: Modern UI with accent color system and consistent navigation
-- **Visualizations**: D3.js-based network visualization and map views
-- **OAuth Flow**: Complete OAuth flow for ORCID and GitHub
-- **Responsive Design**: Mobile-friendly layout with compact navigation
-- **Real API Integration**: All pages utilize real API endpoints with fallback to demo data
+- UI: Global nav w/ diagnostics + feed link; modern dark theme
+- Visualizations: D3.js network; map page
+- Auth: JWT-only; OAuth pages archived
+- Linting: `npm run lint:fe` for browser JS; static import check `npm run qa:fe`
+- Pages: `feed.html`, `content.html`, `profile.html`, etc.
 
 ### Infrastructure
 
-- **Cloudflare Workers**: Main serverless backend
-- **Durable Objects**: For real-time connections and visualization state
-- **D1 Database**: SQL database for structured data storage
-- **R2 Storage**: For file content and user avatars
-- **KV Namespaces**: For session management and caching
-- **Workers AI**: Binding present but disabled (see `/docs/anti_algorithmic_policy.md`)
+- Workers: Main serverless backend
+- Durable Objects: Connections, Visualization, Collaboration (hibernation configured)
+- D1: Structured data
+- R2: Files/avatars
+- KV: Sessions/cache/notifications
+- Workers AI: Disabled per policy
 
 ## Key Files and Components
 
 ### Backend
 
-- `src/worker.ts`: Main worker entry point, exports Durable Objects and handles OAuth
-- `src/router.ts`: API routing logic for all endpoints
-- `src/handlers/`: Individual handler modules for different resource types
-  - `auth.ts`: Legacy OAuth handlers (deprecated)
-  - `jwt-auth.ts`: Active JWT-based authentication
-  - `user.ts`: User account management
-  - `content.ts`: Content/file management (now pure vote-based archiving)
-  - `drawer.ts`: Drawer/collection management (needs connection schema migration)
-  - `search.ts`: Search functionality
-  - `tag.ts`: Tag management
-  - `ai.ts`: AI handler stub (no active AI code)
-- `src/auth-service-adapter.ts`: JWT authentication service
+- `src/worker.ts`: Main entry; exports Durable Objects; routes to `Router`
+- `src/router.ts`: API routing (auth, content, users, connections, feed)
+- `src/handlers/`: Request handlers
+   - `jwt-auth.ts`: Active JWT auth
+   - `user.ts`: User account management
+   - `content.ts`: Content/file management (vote-based archiving)
+   - `drawer.ts`: Drawer/collection management
+   - `search.ts`: Search
+   - `tag.ts`: Tags
+   - `notification.ts`, `messaging.ts`, `globe.ts`, `collaboration.ts`
+- `src/realtime.ts`: Durable Objects (ConnectionsObject, VisualizationObject, CollaborationRoom)
 
 ### Frontend
 
-- `public/*.html`: Main HTML pages
-  - `index.html`: Homepage with network visualization
-  - `login.html`: JWT-based authentication page
-  - `drawer.html`: Personal content drawers
-  - `network.html`: Association web visualization
-  - `map.html`: Geographic content visualization
-  - `search.html`: Content search interface
-- `public/js/components/navigation.js`: Shared navigation component
-- `public/css/rel-f-global.css`: Global styling
-- `public/css/rel-f-accent.css`: Accent color system
-- `archive/debug-pages/`: Legacy OAuth and test pages (archived)
+- `public/*.html`: Main pages
+   - `feed.html`: Chronological feed
+   - `content.html`: Minimal content detail to avoid dead links
+   - `profile.html`, `drawer.html`, `network.html`, `map.html`, `search.html`
+- `public/js/components/navigation.js`: Nav + diagnostics + feed link
+- `public/js/utils/api-helper.js`: Centralized API endpoints + fetch
+- `public/js/utils/cookie-helper.js`: Cookies + authenticatedFetch
+- `public/css/`: Global styling
+- `archive/debug-pages/`: Legacy OAuth/test pages
 
 ### Database Schema
 
@@ -194,20 +191,16 @@ To properly shut down the R3L:F project:
 
 ## Development Notes
 
-- The project uses TypeScript for all backend code
-- Webpack is used for bundling
-- All HTML pages use the same NavigationBar component for consistency
-- Authentication is handled via ORCID and GitHub OAuth
-- The database schema is managed through SQL migrations
-- The frontend uses a consistent design system with accent colors
+- Backend: TypeScript, ESM (`"type":"module"`), no webpack; native tsc + Wrangler
+- Frontend: ESM modules; linted separately (`npm run lint:fe`); static import checker (`npm run qa:fe`)
+- Auth: JWT-only (legacy OAuth archived)
+- Migrations: SQL under `/migrations`; scripts provided
 
 ## Known Issues
 
-1. **Schema Migration Needed**: Connections table uses legacy `user_a_orcid`/`user_b_orcid` columns but code expects `user_id`/`connected_user_id` - run `migrations/017_connections_table.sql`
-2. **ESM Migration**: Import paths need `.js` extensions added for full ESM compliance
-3. Network visualization needs consistent node shapes across all pages
-4. Some pages may still fall back to demo data when API calls fail unexpectedly
-5. Connection features are currently broken due to schema drift (awaiting migration)
+1. Connections migration must be applied to enable full connections feature
+2. Network visualization polish needed (node shape consistency)
+3. Some legacy pages may reference archived OAuth flows (verify links)
 
 ## Recent Changes (January 2025)
 
@@ -220,13 +213,7 @@ To properly shut down the R3L:F project:
 
 ## Future Recommendations
 
-If the project were to continue:
-
-1. Implement the complete onboarding flow for new users
-2. Add more OAuth providers (Google, Apple, etc.)
-3. Enhance the network visualization with more interaction options
-4. Improve mobile responsiveness
-5. Add real-time updates using Durable Objects and WebSockets
-6. Implement more comprehensive error handling and user feedback
-7. Add comprehensive analytics and usage metrics
-8. Enhance the content tagging and search capabilities
+1. Run connections migration and validate endpoints end-to-end
+2. Add minimal integration tests for auth, feed, and connections
+3. Expand collaboration UI progressively (stable DOs already available)
+4. Continue privacy checks for discovery and search

@@ -25,6 +25,7 @@
     "node_modules",
     "dist",
     "archive",
+    "public/js/**",
     "src/router.ts.bak*",
     "src/router.ts.backup",
     "src/router.ts.error",

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>R3L:F — Content</title>
+  <link rel="stylesheet" href="./css/rel-f-global.css" />
+  <link rel="stylesheet" href="./css/rel-f-accent.css" />
+</head>
+<body>
+  <header class="container"></header>
+  <main class="container">
+    <div id="content-root" class="card card-accent" style="margin-top:1rem;"></div>
+  </main>
+  <footer class="footer"></footer>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
+
+    NavigationBar.init('content');
+
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const root = document.getElementById('content-root');
+
+    function escapeHtml(str){
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    async function load(){
+      if(!id){
+        root.innerHTML = '<p class="text-muted">No content id provided.</p>';
+        return;
+      }
+      const data = await apiGet(API_ENDPOINTS.CONTENT.GET(id));
+      if(data && !data.error){
+        root.innerHTML = `
+          <div class="card-header" style="display:flex;align-items:center;gap:.75rem;">
+            <img src="${data.avatar_url || '/icons/avatar.svg'}" alt="avatar" width="40" height="40" style="border-radius:50%"/>
+            <div>
+              <div class="text-accent">${escapeHtml(data.display_name || data.username || '')}</div>
+              <div class="text-muted" style="font-size:.85em;">${new Date(data.created_at).toLocaleString()}</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <h2>${escapeHtml(data.title || '(untitled)')}</h2>
+            ${data.description ? `<p>${escapeHtml(data.description)}</p>` : ''}
+            ${data.tags ? `<div class="text-muted">Tags: ${escapeHtml(data.tags)}</div>` : ''}
+            ${data.file_key ? `<div style="margin-top:1rem;"><a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a></div>` : ''}
+          </div>`;
+      } else {
+        root.innerHTML = `<p class="text-error">Failed to load content${data?.status===403?': unauthorized':''}.</p>`;
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>

@@ -96,10 +96,10 @@
     }
   ],
   
-  // Configure Workers AI
-  "ai": {
-    "binding": "R3L_AI"
-  },
+  // Configure Workers AI - DISABLED until anti-algorithmic policy is defined
+  // "ai": {
+  //   "binding": "R3L_AI"
+  // },
   
   // Configure D1 Database
   "d1_databases": [

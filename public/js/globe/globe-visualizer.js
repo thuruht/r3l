@@ -2,6 +2,7 @@
  * GlobeVisualizer - A wrapper for Leaflet map visualization
  * Handles map initialization, points, connections, and markers
  */
+/* global L */
 export class GlobeVisualizer {
   constructor(containerId) {
     this.containerId = containerId;

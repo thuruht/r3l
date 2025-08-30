@@ -544,16 +544,14 @@ export class ContentHandler {
 
     const votes = voteResult?.vote_count || 0;
     const ageInDays = (Date.now() - content.created_at) / (24 * 60 * 60 * 1000);
-    // Dynamic threshold based on views, time, and community engagement
-    const viewCount = content.view_count || 0;
-
-    // Base threshold: 5 votes
-    // Add 1 vote per 10 views (max +10)
-    // Subtract 1 vote per 3 days of age (min -5)
+    
+    // Pure vote-based threshold to prevent algorithmic bias from engagement metrics
+    // Base threshold: 5 votes, reduced by age to encourage preservation of older content
     let threshold = 5;
-    threshold += Math.min(10, Math.floor(viewCount / 10));
-    threshold -= Math.min(5, Math.floor(ageInDays / 3));
-
+    
+    // Reduce threshold for older content (encourage preservation)
+    threshold -= Math.min(2, Math.floor(ageInDays / 7)); // -1 vote per week, max -2
+    
     // Ensure minimum threshold of 3 votes
     threshold = Math.max(3, threshold);
 

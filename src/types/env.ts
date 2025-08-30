@@ -36,8 +36,8 @@ export interface Env {
   // Define D1 database binding
   R3L_DB: D1Database;
 
-  // Define Workers AI binding
-  R3L_AI: AI;
+  // Define Workers AI binding - DISABLED until anti-algorithmic policy
+  // R3L_AI?: AI;
 
   // Define static asset binding
   ASSETS: Fetcher;

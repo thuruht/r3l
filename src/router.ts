@@ -127,6 +127,25 @@ export class Router {
    * Handle API routes
    */
   private async handleApiRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Anti-algorithmic chronological feed (connections + self)
+    if (path === '/api/feed' && request.method === 'GET') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+
+      try {
+        const url = new URL(request.url);
+        const limit = parseInt(url.searchParams.get('limit') || '20');
+        const offset = parseInt(url.searchParams.get('offset') || '0');
+
+        const feed = await this.contentHandler.getFeed(authenticatedUserId, limit, offset, env);
+        return this.jsonResponse(feed);
+      } catch (error) {
+        console.error('Error fetching feed:', error);
+        return this.errorResponse('Failed to fetch feed');
+      }
+    }
     // Handle different API route groups
     if (path.startsWith('/api/auth/')) {
       return this.handleAuthRoutes(request, env, path);
@@ -176,6 +195,11 @@ export class Router {
       return this.handleMessagingRoutes(request, env, path);
     }
 
+    // Associations: connections and related
+    if (path.startsWith('/api/connections/')) {
+      return this.handleAssociationRoutes(request, env, path);
+    }
+
     if (path.startsWith('/api/debug/')) {
       return this.handleDebugRoutes(request, env, path);
     }
@@ -195,65 +219,52 @@ export class Router {
       const offset = (page - 1) * limit;
 
       try {
-        // Get total count of users (excluding the current user)
         const countQuery = `
           SELECT COUNT(*) as total
           FROM users
           WHERE id != ?
+            AND (
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+            )
         `;
 
-        const countResult = await env.R3L_DB.prepare(countQuery).bind(authenticatedUserId).first();
+        const countResult = await env.R3L_DB.prepare(countQuery)
+          .bind(authenticatedUserId)
+          .first<{ total: number }>();
 
-        const total = countResult ? (countResult.total as number) : 0;
-        const totalPages = Math.ceil(total / limit);
+        const total = countResult ? Number(countResult.total) : 0;
+        const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        // Query users with pagination
-        const query = `
+        const usersQuery = `
           SELECT 
-            id, 
-            username, 
-            display_name, 
-            bio, 
+            id,
+            username,
+            display_name,
+            bio,
             avatar_url,
             created_at,
-            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
-            (SELECT COUNT(*) FROM connections WHERE 
-              (user_id = users.id OR connected_user_id = users.id) 
-              AND status = 'accepted' AND type = 'mutual'
-            ) AS connection_count
+            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
           FROM users
           WHERE id != ?
+            AND (
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+            )
           ORDER BY username ASC
           LIMIT ? OFFSET ?
         `;
 
-        const result = await env.R3L_DB.prepare(query)
+        const result = await env.R3L_DB.prepare(usersQuery)
           .bind(authenticatedUserId, limit, offset)
           .all();
 
-        const users = result.results || [];
+        const users = (result.results || []).map((u: any) => ({
+          ...u,
+          connectionStatus: 'none',
+        }));
 
-        // For each user, determine the connection status with the current user
-        const usersWithConnectionStatus = await Promise.all(
-          users.map(async (user: any) => {
-            const connectionStatus = await this.getUserConnectionStatus(
-              authenticatedUserId,
-              user.id,
-              env
-            );
-            return {
-              ...user,
-              connectionStatus,
-            };
-          })
-        );
-
-        return this.jsonResponse({
-          users: usersWithConnectionStatus,
-          page,
-          totalPages,
-          total,
-        });
+        return this.jsonResponse({ users, page, totalPages, total });
       } catch (error) {
         console.error('Error fetching users:', error);
         return this.errorResponse('Failed to fetch users');
@@ -268,278 +279,61 @@ export class Router {
         return this.errorResponse('Authentication required', 401);
       }
 
-      // Parse query parameters
-      const url = new URL(request.url);
-      const query = url.searchParams.get('query') || '';
-      const filter = url.searchParams.get('filter') || 'all';
+  const url = new URL(request.url);
+  const query = url.searchParams.get('query') || '';
       const limit = parseInt(url.searchParams.get('limit') || '12');
       const page = parseInt(url.searchParams.get('page') || '1');
       const offset = (page - 1) * limit;
 
       try {
-        let sqlQuery = '';
-        let countQuery = '';
-        let params: any[] = [];
-
-        // Base query to search users
-        if (query) {
-          // Search by username or display name
-          sqlQuery = `
-            SELECT 
-              id, 
-              username, 
-              display_name, 
-              bio, 
-              avatar_url,
-              created_at,
-              (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
-              (SELECT COUNT(*) FROM connections WHERE 
-                (user_id = users.id OR connected_user_id = users.id) 
-                AND status = 'accepted' AND type = 'mutual'
-              ) AS connection_count
-            FROM users
-            WHERE id != ? AND (
-              username LIKE ? OR
-              display_name LIKE ?
+        const like = `%${query}%`;
+        const countQuery = `
+          SELECT COUNT(*) as total
+          FROM users
+          WHERE id != ?
+            AND (username LIKE ? OR display_name LIKE ?)
+            AND (
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
             )
-          `;
-
-          countQuery = `
-            SELECT COUNT(*) as total
-            FROM users
-            WHERE id != ? AND (
-              username LIKE ? OR
-              display_name LIKE ?
-            )
-          `;
-
-          params = [authenticatedUserId, `%${query}%`, `%${query}%`];
-        } else {
-          // Filter based on connection status
-          switch (filter) {
-            case 'connected':
-              // Users the current user is connected to
-              sqlQuery = `
-                SELECT 
-                  u.id, 
-                  u.username, 
-                  u.display_name, 
-                  u.bio, 
-                  u.avatar_url,
-                  u.created_at,
-                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
-                  (SELECT COUNT(*) FROM connections WHERE 
-                    (user_id = u.id OR connected_user_id = u.id) 
-                    AND status = 'accepted' AND type = 'mutual'
-                  ) AS connection_count
-                FROM users u
-                INNER JOIN connections c ON 
-                  (c.user_id = ? AND c.connected_user_id = u.id) OR
-                  (c.connected_user_id = ? AND c.user_id = u.id)
-                WHERE c.status = 'accepted'
-              `;
-
-              countQuery = `
-                SELECT COUNT(DISTINCT u.id) as total
-                FROM users u
-                INNER JOIN connections c ON 
-                  (c.user_id = ? AND c.connected_user_id = u.id) OR
-                  (c.connected_user_id = ? AND c.user_id = u.id)
-                WHERE c.status = 'accepted'
-              `;
-
-              params = [authenticatedUserId, authenticatedUserId];
-              break;
-
-            case 'mutual':
-              // Users with mutual connections
-              sqlQuery = `
-                SELECT 
-                  u.id, 
-                  u.username, 
-                  u.display_name, 
-                  u.bio, 
-                  u.avatar_url,
-                  u.created_at,
-                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
-                  (SELECT COUNT(*) FROM connections WHERE 
-                    (user_id = u.id OR connected_user_id = u.id) 
-                    AND status = 'accepted' AND type = 'mutual'
-                  ) AS connection_count
-                FROM users u
-                WHERE u.id != ? AND EXISTS (
-                  SELECT 1 FROM connections c1
-                  INNER JOIN connections c2 ON 
-                    (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id)
-                  WHERE 
-                    c1.user_id = ? AND 
-                    c2.user_id = u.id AND
-                    c1.status = 'accepted' AND
-                    c2.status = 'accepted'
-                )
-              `;
-
-              countQuery = `
-                SELECT COUNT(*) as total
-                FROM users u
-                WHERE u.id != ? AND EXISTS (
-                  SELECT 1 FROM connections c1
-                  INNER JOIN connections c2 ON 
-                    (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id)
-                  WHERE 
-                    c1.user_id = ? AND 
-                    c2.user_id = u.id AND
-                    c1.status = 'accepted' AND
-                    c2.status = 'accepted'
-                )
-              `;
-
-              params = [authenticatedUserId, authenticatedUserId];
-              break;
-
-            case 'pending':
-              // Users with pending connection requests
-              sqlQuery = `
-                SELECT 
-                  u.id, 
-                  u.username, 
-                  u.display_name, 
-                  u.bio, 
-                  u.avatar_url,
-                  u.created_at,
-                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
-                  (SELECT COUNT(*) FROM connections WHERE 
-                    (user_id = u.id OR connected_user_id = u.id) 
-                    AND status = 'accepted' AND type = 'mutual'
-                  ) AS connection_count
-                FROM users u
-                INNER JOIN connections c ON 
-                  (c.user_id = ? AND c.connected_user_id = u.id) OR
-                  (c.connected_user_id = ? AND c.user_id = u.id)
-                WHERE c.status = 'pending'
-              `;
-
-              countQuery = `
-                SELECT COUNT(DISTINCT u.id) as total
-                FROM users u
-                INNER JOIN connections c ON 
-                  (c.user_id = ? AND c.connected_user_id = u.id) OR
-                  (c.connected_user_id = ? AND c.user_id = u.id)
-                WHERE c.status = 'pending'
-              `;
-
-              params = [authenticatedUserId, authenticatedUserId];
-              break;
-
-            case 'nearby':
-              // Users with content near the current user's location
-              sqlQuery = `
-                SELECT 
-                  u.id, 
-                  u.username, 
-                  u.display_name, 
-                  u.bio, 
-                  u.avatar_url,
-                  u.created_at,
-                  (SELECT COUNT(*) FROM content WHERE user_id = u.id) AS content_count,
-                  (SELECT COUNT(*) FROM connections WHERE 
-                    (user_id = u.id OR connected_user_id = u.id) 
-                    AND status = 'accepted' AND type = 'mutual'
-                  ) AS connection_count
-                FROM users u
-                INNER JOIN (
-                  SELECT DISTINCT user_id FROM geo_points
-                  WHERE user_id != ?
-                  LIMIT 100
-                ) g ON u.id = g.user_id
-                WHERE u.id != ?
-              `;
-
-              countQuery = `
-                SELECT COUNT(DISTINCT u.id) as total
-                FROM users u
-                INNER JOIN (
-                  SELECT DISTINCT user_id FROM geo_points
-                  WHERE user_id != ?
-                  LIMIT 100
-                ) g ON u.id = g.user_id
-                WHERE u.id != ?
-              `;
-
-              params = [authenticatedUserId, authenticatedUserId];
-              break;
-
-            default:
-              // All users
-              sqlQuery = `
-                SELECT 
-                  id, 
-                  username, 
-                  display_name, 
-                  bio, 
-                  avatar_url,
-                  created_at,
-                  (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count,
-                  (SELECT COUNT(*) FROM connections WHERE 
-                    (user_id = users.id OR connected_user_id = users.id) 
-                    AND status = 'accepted' AND type = 'mutual'
-                  ) AS connection_count
-                FROM users
-                WHERE id != ?
-              `;
-
-              countQuery = `
-                SELECT COUNT(*) as total
-                FROM users
-                WHERE id != ?
-              `;
-
-              params = [authenticatedUserId];
-          }
-        }
-
-        // Add pagination
-        sqlQuery += ' ORDER BY username ASC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
-
-        // Get total count
+        `;
         const countResult = await env.R3L_DB.prepare(countQuery)
-          .bind(...params.slice(0, -2))
-          .first();
+          .bind(authenticatedUserId, like, like)
+          .first<{ total: number }>();
 
-        const total = countResult ? (countResult.total as number) : 0;
-        const totalPages = Math.ceil(total / limit);
+        const total = countResult ? Number(countResult.total) : 0;
+        const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        // Get users
-        const result = await env.R3L_DB.prepare(sqlQuery)
-          .bind(...params)
+        const usersQuery = `
+          SELECT 
+            id,
+            username,
+            display_name,
+            bio,
+            avatar_url,
+            created_at,
+            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
+          FROM users
+          WHERE id != ?
+            AND (username LIKE ? OR display_name LIKE ?)
+            AND (
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+            )
+          ORDER BY username ASC
+          LIMIT ? OFFSET ?
+        `;
+
+        const result = await env.R3L_DB.prepare(usersQuery)
+          .bind(authenticatedUserId, like, like, limit, offset)
           .all();
 
-        const users = result.results || [];
+        const users = (result.results || []).map((u: any) => ({
+          ...u,
+          connectionStatus: 'none',
+        }));
 
-        // For each user, determine the connection status with the current user
-        const usersWithConnectionStatus = await Promise.all(
-          users.map(async (user: any) => {
-            const connectionStatus = await this.getUserConnectionStatus(
-              authenticatedUserId,
-              user.id,
-              env
-            );
-            return {
-              ...user,
-              connectionStatus,
-            };
-          })
-        );
-
-        return this.jsonResponse({
-          users: usersWithConnectionStatus,
-          query,
-          filter,
-          page,
-          totalPages,
-          total,
-        });
+        return this.jsonResponse({ users, query, page, totalPages, total });
       } catch (error) {
         console.error('Error searching users:', error);
         return this.errorResponse('Failed to search users');
@@ -553,31 +347,6 @@ export class Router {
    * Handle authentication routes
    */
   private async handleAuthRoutes(request: Request, env: Env, path: string): Promise<Response> {
-    if (ROUTE_DEBUG) console.log(`[Router] Processing auth route: ${path}`);
-
-    // Validate token (now only uses JWT auth)
-    if (path === '/api/auth/validate' && request.method === 'GET') {
-      // Check for token in auth header or cookies
-      const userId = await this.jwtAuthHandler.validateToken(request, env);
-
-      if (!userId) {
-        console.log('Validate endpoint - invalid or missing token');
-        return this.errorResponse('Invalid or expired token', 401);
-      }
-
-      console.log('Validate endpoint - valid token for user:', userId);
-      const user = await this.userHandler.getUser(userId, env);
-
-      // Set CORS headers for credentials
-      const headers = new Headers({
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Credentials': 'true',
-      });
-
-      return this.jsonResponse({ valid: true, user }, 200, headers);
-    }
-
     // Logout (now only uses JWT auth)
     if (path === '/api/auth/logout' && request.method === 'POST') {
       const result = await this.jwtAuthHandler.logout(request, env);
@@ -585,8 +354,6 @@ export class Router {
     }
 
     // JWT Authentication routes
-
-    // Login with username/password
     if (path === '/api/auth/jwt/login' && request.method === 'POST') {
       try {
         const { username, password } = (await request.json()) as {
@@ -618,7 +385,6 @@ export class Router {
       }
     }
 
-    // Register new user
     if (path === '/api/auth/jwt/register' && request.method === 'POST') {
       try {
         const { username, password, displayName, email } = (await request.json()) as {
@@ -660,58 +426,46 @@ export class Router {
       }
     }
 
-    // Logout
     if (path === '/api/auth/jwt/logout' && request.method === 'POST') {
       const result = await this.jwtAuthHandler.logout(request, env);
       return this.jsonResponse({ success: true }, 200, result.headers);
     }
 
-    // Validate JWT token
     if (path === '/api/auth/jwt/validate' && request.method === 'GET') {
       const userId = await this.jwtAuthHandler.validateToken(request, env);
-
       if (!userId) {
         return this.errorResponse('Invalid or expired token', 401);
       }
 
       const user = await this.userHandler.getUser(userId, env);
-
-      // Set CORS headers for credentials
       const headers = new Headers({
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Credentials': 'true',
       });
-
       return this.jsonResponse({ valid: true, user }, 200, headers);
     }
 
-    // Test JWT endpoint
     if (path === '/api/auth/jwt/test' && request.method === 'GET') {
       return this.jwtAuthHandler.handleTestJWT(request, env);
     }
 
-    // Get user profile with JWT token
     if (path === '/api/auth/jwt/profile' && request.method === 'GET') {
       return this.jwtAuthHandler.getProfile(request, env);
     }
 
-    // Check if a username exists
     if (path === '/api/auth/jwt/check-username' && request.method === 'POST') {
       return this.jwtAuthHandler.checkUsername(request, env);
     }
 
-    // Verify recovery key
     if (path === '/api/auth/jwt/verify-recovery-key' && request.method === 'POST') {
       return this.jwtAuthHandler.verifyRecoveryKey(request, env);
     }
 
-    // Reset password with recovery key
     if (path === '/api/auth/jwt/reset-password' && request.method === 'POST') {
       return this.jwtAuthHandler.resetPassword(request, env);
     }
 
-    // Generate new recovery key for authenticated user
     if (path === '/api/auth/jwt/generate-recovery-key' && request.method === 'POST') {
       return this.jwtAuthHandler.generateNewRecoveryKey(request, env);
     }
@@ -2195,6 +1949,104 @@ export class Router {
     path: string,
     userId: string
   ): Promise<Response> {
+    // Connection status with a specific user
+    if (path.match(/^\/api\/connections\/status\/[^/]+$/) && request.method === 'GET') {
+      try {
+        const otherUserId = path.split('/').pop() as string;
+        const status = await this.getUserConnectionStatus(userId, otherUserId, env);
+        return this.jsonResponse({ status });
+      } catch (error) {
+        console.error('Error getting connection status:', error);
+        return this.errorResponse('Failed to get connection status');
+      }
+    }
+
+    // List pending connection requests (incoming/outgoing)
+    if (path === '/api/connections/requests' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const direction = (url.searchParams.get('direction') || 'incoming') as
+          | 'incoming'
+          | 'outgoing'
+          | 'both';
+
+        const baseQuery = `
+          SELECT 
+            c.id,
+            c.user_id,
+            c.connected_user_id,
+            c.type,
+            c.status,
+            c.message,
+            c.created_at,
+            c.updated_at,
+            CASE WHEN c.user_id = ? THEN u2.username ELSE u1.username END AS other_username,
+            CASE WHEN c.user_id = ? THEN u2.display_name ELSE u1.display_name END AS other_display_name,
+            CASE WHEN c.user_id = ? THEN u2.avatar_url ELSE u1.avatar_url END AS other_avatar_url,
+            CASE WHEN c.user_id = ? THEN c.connected_user_id ELSE c.user_id END AS other_user_id
+          FROM connections c
+          JOIN users u1 ON u1.id = c.user_id
+          JOIN users u2 ON u2.id = c.connected_user_id
+          WHERE c.status = 'pending'
+        `;
+
+        const params: any[] = [userId, userId, userId, userId];
+        const where: string[] = [];
+        if (direction === 'incoming') {
+          where.push('c.connected_user_id = ?');
+          params.push(userId);
+        } else if (direction === 'outgoing') {
+          where.push('c.user_id = ?');
+          params.push(userId);
+        } else {
+          // both
+          where.push('(c.user_id = ? OR c.connected_user_id = ?)');
+          params.push(userId, userId);
+        }
+
+        const query = `${baseQuery} AND ${where.join(' AND ')} ORDER BY c.created_at DESC`;
+
+        const result = await env.R3L_DB.prepare(query).bind(...params).all();
+        const requests = (result.results || []).map((r: any) => ({
+          id: r.id,
+          type: r.type,
+          status: r.status,
+          message: r.message,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+          direction: r.user_id === userId ? 'outgoing' : 'incoming',
+          otherUser: {
+            id: r.other_user_id,
+            username: r.other_username,
+            displayName: r.other_display_name,
+            avatarUrl: r.other_avatar_url,
+          },
+        }));
+
+        return this.jsonResponse({ requests });
+      } catch (error) {
+        console.error('Error listing connection requests:', error);
+        return this.errorResponse('Failed to list connection requests');
+      }
+    }
+
+    // Cancel an outgoing pending request
+    if (path.match(/^\/api\/connections\/request\/[^/]+\/cancel$/) && request.method === 'POST') {
+      try {
+        const otherUserId = path.split('/')[3];
+
+        const del = `
+          DELETE FROM connections
+          WHERE user_id = ? AND connected_user_id = ? AND status = 'pending'
+        `;
+  const res = await env.R3L_DB.prepare(del).bind(userId, otherUserId).run();
+  // D1 run() returns an object; treat absence of throw as success
+  return this.jsonResponse({ success: !!res });
+      } catch (error) {
+        console.error('Error cancelling connection request:', error);
+        return this.errorResponse('Failed to cancel connection request');
+      }
+    }
     // Create connection request
     if (path === '/api/connections/request' && request.method === 'POST') {
       try {
@@ -2279,7 +2131,7 @@ export class Router {
       }
     }
 
-    // Accept connection request
+    // Get connection with specific user (by other user's ID)
     if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'GET') {
       try {
         const otherUserId = path.split('/').pop() as string;
@@ -2365,20 +2217,67 @@ export class Router {
       }
     }
 
+    // Create connection request
+    if (path === '/api/connections' && request.method === 'POST') {
+      try {
+        const body = (await request.json()) as Partial<{
+          targetUserId: string;
+          type: string;
+          message: string;
+        }> | null;
+        const { targetUserId, type = 'mutual', message = '' } = body ?? {};
+
+        if (!targetUserId) {
+          return this.errorResponse('targetUserId is required', 400);
+        }
+
+        const id = crypto.randomUUID();
+        const now = Date.now();
+
+        const insert = `
+          INSERT INTO connections (id, user_id, connected_user_id, type, status, message, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 'pending', ?, ?, ?)
+        `;
+
+        await env.R3L_DB.prepare(insert)
+          .bind(id, userId, targetUserId, type, message, now, now)
+          .run();
+
+        return this.jsonResponse({ success: true, id });
+      } catch (error) {
+        console.error('Error creating connection:', error);
+        return this.errorResponse('Failed to create connection');
+      }
+    }
+
     // Remove connection
     if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
       try {
         const otherUserId = path.split('/').pop() as string;
 
         // Delete the connection
-        const query = `
-          DELETE FROM connections
-          WHERE 
-            (user_id = ? AND connected_user_id = ?) OR
-            (user_id = ? AND connected_user_id = ?)
-        `;
-
-        await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
+        try {
+          const query = `
+            DELETE FROM connections
+            WHERE 
+              (user_id = ? AND connected_user_id = ?) OR
+              (user_id = ? AND connected_user_id = ?)
+          `;
+          await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
+        } catch (e) {
+          // Legacy fallback: use ORCID columns if new columns don't exist
+          const legacyQuery = `
+            DELETE FROM connections
+            WHERE id IN (
+              SELECT c.id FROM connections c
+              JOIN users ua ON ua.id = ?
+              JOIN users ub ON ub.id = ?
+              WHERE (c.user_a_orcid = ua.orcid_id AND c.user_b_orcid = ub.orcid_id)
+                 OR (c.user_a_orcid = ub.orcid_id AND c.user_b_orcid = ua.orcid_id)
+            )
+          `;
+          await env.R3L_DB.prepare(legacyQuery).bind(userId, otherUserId).run();
+        }
 
         return this.jsonResponse({ success: true });
       } catch (error) {
@@ -2523,26 +2422,7 @@ export class Router {
       }
     }
 
-    // Get connection with specific user
-    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'GET') {
-      try {
-        const otherUserId = path.split('/').pop() as string;
-
-        const connection = await this.getConnection(userId, otherUserId, env);
-
-        if (!connection) {
-          return this.jsonResponse({ exists: false });
-        }
-
-        return this.jsonResponse({
-          exists: true,
-          connection,
-        });
-      } catch (error) {
-        console.error('Error fetching connection:', error);
-        return this.errorResponse('Failed to fetch connection');
-      }
-    }
+    // (duplicate GET by other user handled above)
 
     // Remove connection
     if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
@@ -2573,36 +2453,66 @@ export class Router {
    * Get connection between two users
    */
   private async getConnection(userId: string, otherUserId: string, env: Env): Promise<any | null> {
+    // First try the normalized schema (user_id, connected_user_id)
     try {
       const query = `
         SELECT * FROM connections
         WHERE 
           (user_id = ? AND connected_user_id = ?) OR
           (user_id = ? AND connected_user_id = ?)
+        LIMIT 1
       `;
 
       const result = await env.R3L_DB.prepare(query)
         .bind(userId, otherUserId, otherUserId, userId)
         .first();
 
-      if (!result) {
-        return null;
+      if (result) {
+        const c = result as any;
+        return {
+          id: c.id,
+          type: c.type || 'mutual',
+          status: c.status || 'accepted',
+          message: c.message || '',
+          createdAt: c.created_at,
+          updatedAt: c.updated_at ?? c.created_at,
+          isOutgoing: c.user_id === userId,
+        };
       }
+    } catch (err) {
+      // proceed to legacy fallback
+    }
 
-      const connection = result as any;
-      const isOutgoing = connection.user_id === userId;
+    // Legacy fallback: connections stored with ORCID columns; map via users.orcid_id
+    try {
+      const legacyQuery = `
+        SELECT c.* FROM connections c
+        JOIN users ua ON ua.id = ?
+        JOIN users ub ON ub.id = ?
+        WHERE (c.user_a_orcid = ua.orcid_id AND c.user_b_orcid = ub.orcid_id)
+           OR (c.user_a_orcid = ub.orcid_id AND c.user_b_orcid = ua.orcid_id)
+        LIMIT 1
+      `;
+
+      const result = await env.R3L_DB.prepare(legacyQuery).bind(userId, otherUserId).first();
+      if (!result) return null;
+      const c = result as any;
+      // Determine direction by matching which side matched ua
+      const directionQuery = `SELECT ua.orcid_id as a, ub.orcid_id as b FROM users ua, users ub WHERE ua.id = ? AND ub.id = ?`;
+      const pair = await env.R3L_DB.prepare(directionQuery).bind(userId, otherUserId).first<{ a: string; b: string }>();
+      const isOutgoing = pair ? (c.user_a_orcid === pair.a && c.user_b_orcid === pair.b) : false;
 
       return {
-        id: connection.id,
-        type: connection.type,
-        status: connection.status,
-        message: connection.message,
-        createdAt: connection.created_at,
-        updatedAt: connection.updated_at,
+        id: c.id,
+        type: c.type || 'mutual',
+        status: c.status || 'accepted',
+        message: c.message || '',
+        createdAt: c.created_at,
+        updatedAt: c.updated_at ?? c.created_at,
         isOutgoing,
       };
     } catch (error) {
-      console.error('Error getting connection:', error);
+      console.error('Error getting connection (legacy):', error);
       return null;
     }
   }

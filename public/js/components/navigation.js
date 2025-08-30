@@ -60,6 +60,10 @@ export class NavigationBar {
                 <span class="nav-label">Connect</span>
               </a>
               <div class="nav-dropdown">
+                <a href="/feed.html" class="dropdown-item ${currentPage === 'feed' ? 'active' : ''}">
+                  <span class="material-icons">dynamic_feed</span>
+                  Feed
+                </a>
                 <a href="/connect.html" class="dropdown-item ${currentPage === 'connect' ? 'active' : ''}">
                   <span class="material-icons">person_add</span>
                   Find People

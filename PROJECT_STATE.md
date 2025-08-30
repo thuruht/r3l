@@ -8,18 +8,34 @@ R3L:F (Relational Ephemeral Filenet) is a decentralized, ephemeral, anti-algorit
 - **Ephemeral**: Content expires after a set period unless community-archived
 - **Filenet**: A social file-sharing system where documents are the foundation of interaction
 
-## Current State (July 21, 2025)
+## Current State (January 2025)
 
-The project is currently in a functional state with the following key components implemented:
+The project has undergone significant refactoring and cleanup:
+
+### Authentication Status
+- **Primary Authentication**: JWT-based secure cookie authentication
+- **Legacy OAuth**: GitHub/ORCID OAuth code has been archived to `/archive/legacy-oauth/`
+- **Test Pages**: All OAuth test and debug pages archived to `/archive/debug-pages/`
+
+### AI Status
+- **AI Binding**: Present in config but disabled with explicit annotation
+- **Policy**: Anti-algorithmic policy documented in `/docs/anti_algorithmic_policy.md`
+- **Archive Threshold**: Now pure vote-based, removed algorithmic view_count influence
+
+### Known Issues Requiring Attention
+- **Connections Schema Drift**: Backend expects `user_id`/`connected_user_id` columns but D1 table uses `user_a_orcid`/`user_b_orcid`
+- **Migration Needed**: Created `migrations/017_connections_table.sql` to normalize schema
+- **ESM Migration**: In progress - package.json set to "type":"module" but import extensions need updating
 
 ### Backend (Cloudflare Workers)
 
-- **Authentication**: OAuth-based authentication via ORCID and GitHub
+- **Authentication**: JWT-based authentication with secure HttpOnly cookies
 - **User Management**: User creation, profile management, preferences
-- **Content Management**: File uploads, content expiration, archiving
+- **Content Management**: File uploads, content expiration, community archiving
 - **Drawer System**: Personal content organization system
 - **Search**: Basic, location-based, and randomized "lurker" search
 - **Tagging**: Content tagging and tag management
+- **Anti-Algorithmic**: Content archiving is now purely vote-based
 
 ### Frontend
 
@@ -35,8 +51,8 @@ The project is currently in a functional state with the following key components
 - **Durable Objects**: For real-time connections and visualization state
 - **D1 Database**: SQL database for structured data storage
 - **R2 Storage**: For file content and user avatars
-- **KV Namespaces**: For session management and OAuth tokens
-- **Workers AI**: For content analysis and recommendations
+- **KV Namespaces**: For session management and caching
+- **Workers AI**: Binding present but disabled (see `/docs/anti_algorithmic_policy.md`)
 
 ## Key Files and Components
 
@@ -45,19 +61,21 @@ The project is currently in a functional state with the following key components
 - `src/worker.ts`: Main worker entry point, exports Durable Objects and handles OAuth
 - `src/router.ts`: API routing logic for all endpoints
 - `src/handlers/`: Individual handler modules for different resource types
-  - `auth.ts`: Authentication and session management
+  - `auth.ts`: Legacy OAuth handlers (deprecated)
+  - `jwt-auth.ts`: Active JWT-based authentication
   - `user.ts`: User account management
-  - `content.ts`: Content/file management
-  - `drawer.ts`: Drawer/collection management
+  - `content.ts`: Content/file management (now pure vote-based archiving)
+  - `drawer.ts`: Drawer/collection management (needs connection schema migration)
   - `search.ts`: Search functionality
   - `tag.ts`: Tag management
-- `src/auth/oauth-provider.ts`: OAuth provider integration
+  - `ai.ts`: AI handler stub (no active AI code)
+- `src/auth-service-adapter.ts`: JWT authentication service
 
 ### Frontend
 
 - `public/*.html`: Main HTML pages
   - `index.html`: Homepage with network visualization
-  - `login.html`: Authentication page with OAuth options
+  - `login.html`: JWT-based authentication page
   - `drawer.html`: Personal content drawers
   - `network.html`: Association web visualization
   - `map.html`: Geographic content visualization
@@ -65,6 +83,7 @@ The project is currently in a functional state with the following key components
 - `public/js/components/navigation.js`: Shared navigation component
 - `public/css/rel-f-global.css`: Global styling
 - `public/css/rel-f-accent.css`: Accent color system
+- `archive/debug-pages/`: Legacy OAuth and test pages (archived)
 
 ### Database Schema
 
@@ -88,7 +107,7 @@ The project uses `wrangler.jsonc` for configuration with:
 - R2 bucket binding
 - KV namespace bindings
 - Durable Object bindings
-- Workers AI binding
+- Workers AI binding (disabled - see annotation in file)
 - Scheduled tasks
 - Routes configuration
 
@@ -96,12 +115,12 @@ The project uses `wrangler.jsonc` for configuration with:
 
 All sensitive information is managed via `wrangler secret put`:
 
-- `ORCID_CLIENT_ID`
-- `ORCID_CLIENT_SECRET`
-- `GITHUB_CLIENT_ID`
-- `GITHUB_CLIENT_SECRET`
-- `R3L_APP_SECRET`
-- `R3L_ADMIN_ORCID_ID`
+- `R3L_APP_SECRET`: Main application secret for JWT signing
+- `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account identifier
+- Legacy OAuth secrets (not used in current build):
+  - `ORCID_CLIENT_ID` / `ORCID_CLIENT_SECRET`
+  - `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET`
+  - `R3L_ADMIN_ORCID_ID`
 
 ## Shutdown Instructions
 
@@ -184,11 +203,20 @@ To properly shut down the R3L:F project:
 
 ## Known Issues
 
-1. New user onboarding flow is implemented in the backend but needs frontend updates
-2. Some pages still fall back to demo data when API calls fail
+1. **Schema Migration Needed**: Connections table uses legacy `user_a_orcid`/`user_b_orcid` columns but code expects `user_id`/`connected_user_id` - run `migrations/017_connections_table.sql`
+2. **ESM Migration**: Import paths need `.js` extensions added for full ESM compliance
 3. Network visualization needs consistent node shapes across all pages
-4. Login state visibility in the UI is sometimes inconsistent
-5. Auth callback pages need absolute path links to avoid navigation issues
+4. Some pages may still fall back to demo data when API calls fail unexpectedly
+5. Connection features are currently broken due to schema drift (awaiting migration)
+
+## Recent Changes (January 2025)
+
+- All OAuth/GitHub authentication code moved to `/archive/legacy-oauth/`
+- Test and debug pages moved to `/archive/debug-pages/`
+- AI binding disabled with policy documentation
+- Archive threshold made purely vote-based (removed algorithmic influence)
+- Created connections schema migration file
+- Updated authentication to use JWT cookies exclusively
 
 ## Future Recommendations
 

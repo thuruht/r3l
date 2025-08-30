@@ -20,6 +20,7 @@ R3L:F is a decentralized, ephemeral, anti-algorithmic social file-sharing platfo
 - **Lurker in the Mist Mode**: Low-visibility status for privacy-conscious browsing
 - **Inbox & Notifications**: Centralized system for messages, alerts, and connection prompts
 - **Search & Discovery**: Non-algorithmic content discovery through multiple criteria
+- **Chronological Feed**: A strictly latest-first feed from the people you connect with (no ranking)
 - **Real-time Messaging**: Secure direct messaging with end-to-end encryption
 - **Community Archiving**: Democratic content preservation through voting
 - **HTML/CSS Customization**: Safe content embedding and styling in communiques
@@ -30,7 +31,7 @@ R3L:F is a decentralized, ephemeral, anti-algorithmic social file-sharing platfo
 - **Frontend**: HTML, CSS, JavaScript with consolidated global styling
 - **Fonts**: Bunny Fonts (privacy-respecting alternative to Google Fonts)
 - **Visualization**: D3.js for Association Web and geographic mapping
-- **Authentication**: JWT-based secure authentication with recovery keys
+- **Authentication**: JWT-based secure authentication (legacy OAuth pages archived)
 
 ## Deployment
 
@@ -84,6 +85,7 @@ The project follows a modular architecture:
 ## Documentation
 
 - [Project Documentation](./project-documentation.md): Detailed technical documentation
+- [Connections & Feed](./public/feed.html): Minimal feed UI powered by `/api/feed`
 - [Help & FAQ](./public/help.html): Comprehensive user guide and frequently asked questions
 - [Philosophy & Motivation](./public/reMDE.md): In-depth explanation of project principles
 

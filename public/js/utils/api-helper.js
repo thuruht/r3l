@@ -23,6 +23,7 @@ export const API_ENDPOINTS = {
     UPDATE: id => `/api/content/${id}`,
     DELETE: id => `/api/content/${id}`,
     TAGS: id => `/api/content/${id}/tags`,
+    FEED: '/api/feed',
   },
 
   // User endpoints
@@ -40,6 +41,11 @@ export const API_ENDPOINTS = {
     CREATE: '/api/connections',
     UPDATE: id => `/api/connections/${id}`,
     DELETE: id => `/api/connections/${id}`,
+    STATUS: userId => `/api/connections/status/${userId}`,
+    REQUESTS: '/api/connections/requests',
+    ACCEPT: userId => `/api/connections/request/${userId}/accept`,
+    DECLINE: userId => `/api/connections/request/${userId}/decline`,
+    CANCEL: userId => `/api/connections/request/${userId}/cancel`,
   },
 
   // Globe/map endpoints

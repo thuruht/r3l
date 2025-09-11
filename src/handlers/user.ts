@@ -334,6 +334,135 @@ export class UserHandler {
       .run();
   }
 
+  /**
+   * Get a user by GitHub ID
+   */
+  async getUserByGitHub(githubId: string, env: Env): Promise<UserProfile | null> {
+    const user = await env.R3L_DB.prepare(
+      `
+      SELECT * FROM users WHERE github_id = ?
+    `
+    )
+      .bind(githubId)
+      .first();
+
+    if (!user) return null;
+
+    const idStr = String((user as any).id);
+    return this.getUser(idStr, env);
+  }
+
+  /**
+   * Create a user using GitHub identifiers
+   */
+  async createUserWithGitHub(
+    username: string,
+    displayName: string,
+    githubId: string,
+    avatarUrl: string | null,
+    email: string | null,
+    env: Env
+  ): Promise<string> {
+    const userId = crypto.randomUUID();
+    const now = Date.now();
+
+    const defaultPreferences = {
+      theme: 'system',
+      lurkerModeRandomness: 50,
+      lurkerModeEnabled: false,
+      defaultContentVisibility: 'public',
+      emailNotifications: true,
+      showLocationByDefault: false,
+      communique: '',
+    };
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT INTO users (
+        id, username, display_name, bio, created_at, updated_at,
+        github_id, avatar_url, email, preferences
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+      .bind(
+        userId,
+        username,
+        displayName,
+        '',
+        now,
+        now,
+        githubId,
+        avatarUrl,
+        email,
+        JSON.stringify(defaultPreferences)
+      )
+      .run();
+
+    return userId;
+  }
+
+  /**
+   * Get a user by ORCID ID
+   */
+  async getUserByOrcid(orcidId: string, env: Env): Promise<UserProfile | null> {
+    const user = await env.R3L_DB.prepare(
+      `
+      SELECT * FROM users WHERE orcid_id = ?
+    `
+    )
+      .bind(orcidId)
+      .first();
+
+    if (!user) return null;
+
+    const idStr = String((user as any).id);
+    return this.getUser(idStr, env);
+  }
+
+  /**
+   * Create a user using ORCID identifier
+   */
+  async createUserWithOrcid(
+    username: string,
+    displayName: string,
+    orcidId: string,
+    env: Env
+  ): Promise<string> {
+    const userId = crypto.randomUUID();
+    const now = Date.now();
+
+    const defaultPreferences = {
+      theme: 'system',
+      lurkerModeRandomness: 50,
+      lurkerModeEnabled: false,
+      defaultContentVisibility: 'public',
+      emailNotifications: true,
+      showLocationByDefault: false,
+      communique: '',
+    };
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT INTO users (
+        id, username, display_name, bio, created_at, updated_at,
+        orcid_id, preferences
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+      .bind(
+        userId,
+        username,
+        displayName,
+        '',
+        now,
+        now,
+        orcidId,
+        JSON.stringify(defaultPreferences)
+      )
+      .run();
+
+    return userId;
+  }
 
   /**
    * Get user content statistics
@@ -468,83 +597,5 @@ export class UserHandler {
         .bind(...batch, userId)
         .run();
     }
-  }
-
-  /**
-   * Get a list of users, with optional search query
-   * @param currentUserId The ID of the user making the request (to exclude from results)
-   * @param query Optional search query
-   * @param limit Pagination limit
-   * @param offset Pagination offset
-   * @param env Environment bindings
-   * @returns Paginated list of users
-   */
-  async getUsers(
-    currentUserId: string,
-    query: string,
-    limit: number,
-    offset: number,
-    env: Env
-  ): Promise<{ users: any[]; total: number; totalPages: number }> {
-    let countQuery;
-    let usersQuery;
-    const params: any[] = [currentUserId];
-
-    const baseWhere = `
-      id != ? AND (
-        JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-        JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-      )
-    `;
-
-    if (query) {
-      const like = `%${query}%`;
-      countQuery = `
-        SELECT COUNT(*) as total
-        FROM users
-        WHERE ${baseWhere} AND (username LIKE ? OR display_name LIKE ?)
-      `;
-      usersQuery = `
-        SELECT id, username, display_name, bio, avatar_url, created_at,
-               (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
-        FROM users
-        WHERE ${baseWhere} AND (username LIKE ? OR display_name LIKE ?)
-        ORDER BY username ASC
-        LIMIT ? OFFSET ?
-      `;
-      params.push(like, like);
-    } else {
-      countQuery = `
-        SELECT COUNT(*) as total
-        FROM users
-        WHERE ${baseWhere}
-      `;
-      usersQuery = `
-        SELECT id, username, display_name, bio, avatar_url, created_at,
-               (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
-        FROM users
-        WHERE ${baseWhere}
-        ORDER BY username ASC
-        LIMIT ? OFFSET ?
-      `;
-    }
-
-    const countResult = await env.R3L_DB.prepare(countQuery)
-      .bind(...params)
-      .first<{ total: number }>();
-
-    const total = countResult ? Number(countResult.total) : 0;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-
-    const result = await env.R3L_DB.prepare(usersQuery)
-      .bind(...params, limit, offset)
-      .all();
-
-    const users = (result.results || []).map((u: any) => ({
-      ...u,
-      connectionStatus: 'none', // Placeholder, to be populated later if needed
-    }));
-
-    return { users, total, totalPages };
   }
 }

@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const statContributionsEl = document.getElementById('stat-contributions');
   const statDrawersEl = document.getElementById('stat-drawers');
   const statConnectionsEl = document.getElementById('stat-connections');
+  const statsListEl = document.querySelector('.profile-stats');
 
   const authProvidersEl = document.getElementById('auth-providers');
   const editProfileBtn = document.getElementById('edit-profile-btn');
@@ -160,12 +161,16 @@ document.addEventListener('DOMContentLoaded', function() {
       profileUsernameEl.textContent = `@${user.username}`;
 
       // Format joined date
-      const joinedDate = user.createdAt ? new Date(user.createdAt) : new Date();
-      profileJoinedEl.textContent = `Joined on ${joinedDate.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      })}`;
+      if (user.createdAt) {
+        const joinedDate = new Date(user.createdAt);
+        profileJoinedEl.textContent = `Joined on ${joinedDate.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}`;
+      } else {
+        profileJoinedEl.textContent = 'Join date unknown';
+      }
 
       // Set avatar if available
       if (user.avatarUrl) {
@@ -226,102 +231,199 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
           const refCode = generateRefCode('STATS-LOAD-ERR');
           console.error(`Stats fetch failed with status: ${statsResponse.status}. Ref: ${refCode}`);
-          statContributionsEl.textContent = '-';
-          statDrawersEl.textContent = '-';
-          statConnectionsEl.textContent = '-';
+          displayEmptyState(statsListEl, 'Could not load stats.', refCode);
         }
       } catch (statsError) {
         const refCode = generateRefCode('STATS-LOAD-ERR');
         console.error('Could not load stats:', statsError, `Ref: ${refCode}`);
-        statContributionsEl.textContent = '-';
-        statDrawersEl.textContent = '-';
-        statConnectionsEl.textContent = '-';
+        displayEmptyState(statsListEl, 'Could not load stats.', refCode);
       }
 
       // Load user's map points
-      const mapPointsContainer = document.getElementById('map-points-container');
       try {
         console.log(`Fetching map points for user ${user.id}`);
+
+        // Set up avatar upload
+        const avatarUploadOverlay = document.getElementById('avatar-upload-overlay');
+        const avatarUploadInput = document.getElementById('avatar-upload');
+
+        // Show overlay when hovering over avatar
+        avatarUploadOverlay.classList.remove('hidden');
+
+        // Handle avatar file selection
+        avatarUploadInput.addEventListener('change', async (event) => {
+          const file = event.target.files[0];
+          if (!file) return;
+
+          // Validate file type
+          if (!file.type.startsWith('image/')) {
+            alert('Please select an image file (PNG, JPG, GIF, etc.)');
+            return;
+          }
+
+          // Show loading state
+          profileAvatarEl.src = '/icons/loading-spinner.svg';
+
+          try {
+            // Create form data
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Upload avatar
+            const response = await fetch('/api/files/avatar', {
+              method: 'POST',
+              credentials: 'include',
+              body: formData
+            });
+
+            if (!response.ok) {
+              throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            if (result.success && result.avatarUrl) {
+              // Update avatar with the new URL
+              profileAvatarEl.src = result.avatarUrl;
+              // Reset any custom styling
+              profileAvatarEl.style = '';
+              profileAvatarEl.innerHTML = '';
+            } else {
+              throw new Error('Invalid response from server');
+            }
+          } catch (error) {
+            console.error('Avatar upload error:', error);
+            alert('Failed to upload avatar. Please try again.');
+            // Reset to previous avatar or default
+            if (user.avatarUrl) {
+              profileAvatarEl.src = user.avatarUrl;
+              profileAvatarEl.style = '';
+              profileAvatarEl.innerHTML = '';
+            } else if (user.avatar_key) {
+              profileAvatarEl.src = `/api/files/${user.avatar_key}`;
+              profileAvatarEl.style = '';
+              profileAvatarEl.innerHTML = '';
+            } else {
+              profileAvatarEl.src = '/icons/user-default.svg';
+              profileAvatarEl.style = '';
+              profileAvatarEl.innerHTML = '';
+            }
+          }
+        });
 
         const mapPointsResponse = await fetch(`/api/globe/data-points?userId=${user.id}`, {
           credentials: 'include'
         });
 
+        console.log('Map points response:', mapPointsResponse.status, mapPointsResponse.statusText);
+
         if (mapPointsResponse.ok) {
           const mapPoints = await mapPointsResponse.json();
-          const userMapPointsGrid = document.getElementById('user-map-points');
+          console.log('Map points data:', mapPoints);
+
+          const mapPointsContainer = document.getElementById('user-map-points');
+          const emptyState = document.querySelector('.empty-state');
 
           if (mapPoints && mapPoints.length > 0) {
-            mapPointsContainer.querySelector('.empty-state').classList.add('hidden');
-            userMapPointsGrid.innerHTML = '';
+            // Hide empty state if we have points
+            emptyState.classList.add('hidden');
+
+            // Populate the map points grid
+            mapPointsContainer.innerHTML = '';
 
             mapPoints.forEach(point => {
               const pointCard = document.createElement('div');
               pointCard.className = 'map-point-card';
+
+              // Format coordinates to 4 decimal places
               const latitude = parseFloat(point.latitude).toFixed(4);
               const longitude = parseFloat(point.longitude).toFixed(4);
+
               pointCard.innerHTML = `
                 <h4 class="map-point-title">${point.title}</h4>
                 <p class="map-point-coords">${latitude}, ${longitude}</p>
                 ${point.description ? `<p class="map-point-desc">${point.description}</p>` : ''}
                 <div class="map-point-actions">
-                  <button class="view-on-map" data-id="${point.id}" aria-label="View on map"><span class="material-icons">map</span></button>
-                  ${point.contentId ? `<button class="view-content" data-id="${point.contentId}" aria-label="View linked content"><span class="material-icons">description</span></button>` : ''}
-                  <button class="edit-point" data-id="${point.id}" aria-label="Edit point"><span class="material-icons">edit</span></button>
-                  <button class="delete-point" data-id="${point.id}" aria-label="Delete point"><span class="material-icons">delete</span></button>
+                  <button class="view-on-map" data-id="${point.id}" aria-label="View on map">
+                    <span class="material-icons">map</span>
+                  </button>
+                  ${point.contentId ? `
+                  <button class="view-content" data-id="${point.contentId}" aria-label="View linked content">
+                    <span class="material-icons">description</span>
+                  </button>
+                  ` : ''}
+                  <button class="edit-point" data-id="${point.id}" aria-label="Edit point">
+                    <span class="material-icons">edit</span>
+                  </button>
+                  <button class="delete-point" data-id="${point.id}" aria-label="Delete point">
+                    <span class="material-icons">delete</span>
+                  </button>
                 </div>
               `;
-              userMapPointsGrid.appendChild(pointCard);
+
+              mapPointsContainer.appendChild(pointCard);
             });
 
             // Add event listeners for the action buttons
-            userMapPointsGrid.addEventListener('click', async (event) => {
-                const button = event.target.closest('button');
-                if (!button) return;
-
-                const pointId = button.dataset.id;
-                const pointCard = button.closest('.map-point-card');
-
-                if (button.classList.contains('view-on-map')) {
-                    window.location.href = `/map.html?point=${pointId}`;
-                } else if (button.classList.contains('view-content')) {
-                    const contentId = button.dataset.id;
-                    window.location.href = `/drawer.html?content=${contentId}`;
-                } else if (button.classList.contains('edit-point')) {
-                    window.location.href = `/map.html?edit=${pointId}`;
-                } else if (button.classList.contains('delete-point')) {
-                    if (confirm('Are you sure you want to delete this map point?')) {
-                        try {
-                            const response = await fetch(`/api/globe/points/${pointId}`, { method: 'DELETE', credentials: 'include' });
-                            if (response.ok) {
-                                pointCard.remove();
-                                if (userMapPointsGrid.children.length === 0) {
-                                    const refCode = generateRefCode('MAP-POINTS-EMPTY');
-                                    displayEmptyState(mapPointsContainer, "You haven't added any map points yet.", refCode);
-                                }
-                            } else {
-                                alert('Failed to delete map point.');
-                            }
-                        } catch (error) {
-                            console.error('Error deleting map point:', error);
-                            alert('Failed to delete map point.');
-                        }
-                    }
-                }
+            mapPointsContainer.querySelectorAll('.view-on-map').forEach(button => {
+              button.addEventListener('click', () => {
+                const pointId = button.getAttribute('data-id');
+                window.location.href = `/map.html?point=${pointId}`;
+              });
             });
 
+            mapPointsContainer.querySelectorAll('.view-content').forEach(button => {
+              button.addEventListener('click', () => {
+                const contentId = button.getAttribute('data-id');
+                window.location.href = `/drawer.html?content=${contentId}`;
+              });
+            });
+
+            mapPointsContainer.querySelectorAll('.edit-point').forEach(button => {
+              button.addEventListener('click', () => {
+                const pointId = button.getAttribute('data-id');
+                window.location.href = `/map.html?edit=${pointId}`;
+              });
+            });
+
+            mapPointsContainer.querySelectorAll('.delete-point').forEach(button => {
+              button.addEventListener('click', async () => {
+                const pointId = button.getAttribute('data-id');
+
+                if (confirm('Are you sure you want to delete this map point?')) {
+                  try {
+                    const response = await fetch(`/api/globe/points/${pointId}`, {
+                      method: 'DELETE',
+                      credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                      // Remove the point card from the DOM
+                      button.closest('.map-point-card').remove();
+
+                      // If no more points, show empty state
+                      if (mapPointsContainer.children.length === 0) {
+                        emptyState.classList.remove('hidden');
+                      }
+                    } else {
+                      alert('Failed to delete map point. Please try again.');
+                    }
+                  } catch (error) {
+                    console.error('Error deleting map point:', error);
+                    alert('Failed to delete map point. Please try again.');
+                  }
+                }
+              });
+            });
           } else {
-            const refCode = generateRefCode('MAP-POINTS-EMPTY');
-            displayEmptyState(mapPointsContainer, "You haven't added any map points yet.", refCode);
+            // If no points, ensure empty state is visible
+            emptyState.classList.remove('hidden');
           }
         } else {
-          const refCode = generateRefCode('MAP-POINTS-ERR');
-          displayEmptyState(mapPointsContainer, "Could not load your map points.", refCode);
+          console.warn(`Map points fetch failed with status: ${mapPointsResponse.status}`);
         }
       } catch (mapPointsError) {
-        const refCode = generateRefCode('MAP-POINTS-ERR');
-        displayEmptyState(mapPointsContainer, "Could not load your map points.", refCode);
-        console.error('Could not load map points:', mapPointsError);
+        console.warn('Could not load map points:', mapPointsError);
       }
 
       // Populate user preferences
@@ -414,22 +516,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
 
-      // Add Preview Drawer button
-      const previewDrawerBtn = document.createElement('button');
-      previewDrawerBtn.textContent = 'Preview Drawer';
-      previewDrawerBtn.className = 'btn btn-secondary';
-      document.querySelector('.action-buttons').appendChild(previewDrawerBtn);
-
-      previewDrawerBtn.addEventListener('click', () => {
-        window.location.href = `/drawer.html?id=${user.id}&preview=true`;
-      });
-
     } catch (error) {
       console.error('Profile loading error:', error);
 
       // Show not authenticated state
       loadingEl.classList.add('hidden');
-      notAuthenticatedEl.classList.remove('hidden');
+      notAuthenticatedEl.classList.add('hidden');
       profileDataEl.classList.add('hidden');
     }
   };

@@ -1,0 +1,4 @@
+// This file was archived to /archive/legacy-oauth/src/router.ts.error
+// Original content preserved in the archive. Remove this placeholder when ready.
+
+export const ARCHIVE_NOTICE = 'moved to archive/legacy-oauth/src/router.ts.error';

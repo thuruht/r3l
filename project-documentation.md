@@ -85,7 +85,7 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 ## Project Structure
 
 ```
-.
+r3l-realigned/
 ├── public/             # Public-facing web assets
 │   ├── css/            # CSS styles
 │   │   ├── rel-f-global.css  # Global stylesheet
@@ -122,26 +122,26 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 │   │   └── filenet.ts  # File network
 │   └── types/          # TypeScript type definitions
 │       └── env.ts      # Environment interface
-├── migrations/         # Database migrations
-│   ├── 001_content.sql
-│   ├── 002_users.sql
-│   ├── 003_auth_sessions.sql
-│   ├── 004_content_associations.sql
-│   ├── 005_drawers.sql
-│   ├── 006_content_sharing.sql
-│   ├── 007_ephemeral_content.sql
-│   ├── 008_archive_voting.sql
-│   ├── 009_tag_management.sql
-│   ├── 010_add_foreign_keys.sql
-│   ├── 011_direct_messaging.sql
-│   ├── 012_jwt_auth.sql
-│   ├── 013_notifications_update.sql
-│   ├── 014_messaging_attachments.sql
-│   ├── 015_fix_notifications_schema.sql
-│   ├── 016_geo_points_table.sql
-│   ├── 017_add_performance_indexes.sql
-│   ├── 018_add_missing_columns.sql
-│   └── 019_connections_table.sql
+├── migrations/         # Database migrations (Cleaned and renumbered)
+│   ├── 0001_users.sql
+│   ├── 0002_content.sql
+│   ├── 0003_auth_sessions.sql
+│   ├── 0004_content_associations.sql
+│   ├── 0005_drawers.sql
+│   ├── 0006_content_sharing.sql
+│   ├── 0007_ephemeral_content.sql
+│   ├── 0008_archive_voting.sql
+│   ├── 0009_tag_management.sql
+│   ├── 0010_add_foreign_keys.sql
+│   ├── 0011_direct_messaging.sql
+│   ├── 0012_jwt_auth.sql
+│   ├── 0013_notifications_update.sql
+│   ├── 0014_messaging_attachments.sql
+│   ├── 0015_fix_notifications_schema.sql
+│   ├── 0016_geo_points_table.sql
+│   ├── 0017_add_performance_indexes.sql
+│   ├── 0018_add_missing_columns.sql
+│   └── 0019_connections_table.sql
 └── scripts/           # Utility scripts
     └── check-relative-urls.sh  # Verify all URLs are relative
 ```
@@ -154,48 +154,28 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 - ✅ Configuration files
 - ✅ Philosophy definition
 - ✅ Database migrations
-  - ✅ All migrations applied locally and remotely (001-019)
-  - ✅ Latest migration: 019_connections_table.sql
+  - ✅ All legacy migration scripts and duplicates have been removed.
+  - ✅ Migrations have been renumbered sequentially from 0001 to 0019.
 - ✅ Core backend handlers
 - ✅ Global CSS consolidation
 - ✅ Font loading utility
-- ✅ Random content discovery
-- ✅ Archive voting system
-- ✅ Daily vote tracking
-- ✅ Tag management system
 - ✅ Relative path configuration (for deployment)
-- ✅ Notification system schema fix
-- ✅ Direct messaging with attachments support
-- ✅ Notification UI integration
-- ✅ Globe/Map data API implementation
-- ✅ API endpoints implementation (content, drawer, search)
 - ✅ Standardized authentication detection
 - ✅ Fixed duplicate Durable Object classes
 - ✅ Implemented Durable Object hibernation support
 - ✅ Enhanced error handling in Durable Objects
+- ✅ Removal of GitHub/ORCID authentication
+- ✅ JWT-based authentication with recovery keys
 
 ### In Progress
 
-- 🔄 Frontend polish (SVG height, card layout)
-- 🔄 CSS updates and layout fixes
-- 🔄 File copying implementation
-- 🔄 Drawer customization
-- 🔄 Messaging UI integration
-- 🔄 User settings for location and visibility preferences
-- 🔄 Association web enhancements
-- 🔄 "Lurker in the Mist" mode implementation
-
-### Completed
-
-- ✅ Project documentation update
-- ✅ Help and FAQ page creation
-- ✅ Removal of GitHub/ORCID authentication
-- ✅ Drawer/Communique distinction clarification
-- ✅ HTML sanitization for user-generated content
-- ✅ File embedding in communiques
-- ✅ JWT-based authentication with recovery keys
-- ✅ Avatar upload and management system
-- ✅ User profile image integration in UI
+- 🔄 Refactoring frontend to move inline JS to external modules.
+- 🔄 Implementing and verifying all key features (Search, Upload, Messaging, Feeds).
+- 🔄 Drawer customization and preview feature.
+- 🔄 Messaging UI integration.
+- 🔄 User settings for location and visibility preferences.
+- 🔄 Association web enhancements.
+- 🔄 "Lurker in the Mist" mode implementation.
 
 ## Color Scheme
 

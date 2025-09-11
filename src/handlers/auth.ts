@@ -46,6 +46,448 @@ export class AuthHandler {
     return `https://github.com/login/oauth/authorize?${params.toString()}`;
   }
 
+  /**
+   * Complete GitHub authentication flow
+   * @param code Authorization code from GitHub
+   * @param redirectUri Redirect URI (must match the one used in initGitHubAuth)
+   * @param userAgent User agent string
+   * @param ipAddress IP address
+   * @param env Environment bindings
+   * @returns Authentication session details
+   */
+  async completeGitHubAuth(
+    code: string,
+    redirectUri: string,
+    userAgent: string,
+    ipAddress: string,
+    env: Env
+  ): Promise<{ sessionId: string; token: string; userId: string; isNewUser: boolean }> {
+    console.log('GitHub auth - starting auth flow with code:', code?.substring(0, 5) + '...');
+    console.log('GitHub auth - using client ID:', env.GITHUB_CLIENT_ID);
+    console.log('GitHub auth - using redirect URI:', redirectUri);
+
+    // Exchange code for token
+    try {
+      console.log(
+        'GitHub auth - attempting token exchange at https://github.com/login/oauth/access_token'
+      );
+
+      // Log the token exchange request details (without secrets)
+      console.log(
+        'GitHub auth - token request body:',
+        JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: 'REDACTED',
+          code: code?.substring(0, 5) + '...',
+          redirect_uri: redirectUri,
+        })
+      );
+
+      const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'R3L:F Application/1.0',
+        },
+        body: JSON.stringify({
+          client_id: env.GITHUB_CLIENT_ID,
+          client_secret: env.GITHUB_CLIENT_SECRET,
+          code,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      console.log('GitHub auth - token response status:', tokenResponse.status);
+
+      // For debugging, log response headers
+      try {
+        // Build headers object safely for logging
+        const headersObj: Record<string, string> = {};
+        for (const [key, value] of (tokenResponse.headers as any).entries?.() || []) {
+          headersObj[key] = value;
+        }
+        if (Object.keys(headersObj).length > 0) {
+          console.log('GitHub auth - token response headers:', JSON.stringify(headersObj));
+        }
+      } catch (e) {
+        // ignore header logging errors
+      }
+
+      if (!tokenResponse.ok) {
+        let errorText = '';
+        try {
+          errorText = await tokenResponse.text();
+        } catch (e) {
+          errorText = 'Unable to read error response';
+        }
+
+        console.error('GitHub auth - token exchange failed:', errorText);
+        throw new Error(`Failed to exchange code for token: ${tokenResponse.status} ${errorText}`);
+      }
+
+      let tokenData;
+      try {
+        tokenData = (await tokenResponse.json()) as {
+          access_token?: string;
+          scope?: string;
+          token_type?: string;
+          error?: string;
+          error_description?: string;
+        };
+
+        console.log(
+          'GitHub auth - token data received:',
+          JSON.stringify({
+            ...tokenData,
+            access_token: tokenData.access_token ? 'REDACTED' : 'MISSING',
+            has_error: !!tokenData.error,
+          })
+        );
+      } catch (error) {
+        console.error('GitHub auth - failed to parse token response as JSON:', error);
+        throw new Error('Invalid response from GitHub: not valid JSON');
+      }
+
+      if (tokenData.error) {
+        console.error(
+          'GitHub auth - error in token response:',
+          tokenData.error,
+          tokenData.error_description
+        );
+        throw new Error(`GitHub error: ${tokenData.error_description || tokenData.error}`);
+      }
+
+      const accessToken = tokenData.access_token;
+
+      if (!accessToken) {
+        console.error('GitHub auth - missing access token in response');
+        throw new Error('Invalid GitHub response: missing access_token');
+      }
+
+      // Get user info from GitHub
+      console.log('GitHub auth - fetching user profile with token');
+      const userResponse = await fetch('https://api.github.com/user', {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `token ${accessToken}`,
+          'User-Agent': 'R3L:F Application/1.0',
+        },
+      });
+
+      console.log('GitHub auth - user profile response status:', userResponse.status);
+
+      if (!userResponse.ok) {
+        let errorText = '';
+        try {
+          errorText = await userResponse.text();
+        } catch (e) {
+          errorText = 'Unable to read error response';
+        }
+
+        console.error('GitHub auth - user profile fetch failed:', errorText);
+        throw new Error(`Failed to fetch GitHub profile: ${userResponse.status} ${errorText}`);
+      }
+
+      let userData;
+      try {
+        userData = (await userResponse.json()) as GitHubUser;
+        console.log(
+          'GitHub auth - user data received:',
+          JSON.stringify({
+            login: userData.login,
+            id: userData.id,
+            name: userData.name,
+            has_email: !!userData.email,
+          })
+        );
+      } catch (error) {
+        console.error('GitHub auth - failed to parse user response as JSON:', error);
+        throw new Error('Invalid response from GitHub user endpoint: not valid JSON');
+      }
+
+      // Get user email (may be private, so separate request)
+      console.log('GitHub auth - fetching user emails');
+      const emailResponse = await fetch('https://api.github.com/user/emails', {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `token ${accessToken}`,
+          'User-Agent': 'R3L:F Application/1.0',
+        },
+      });
+
+      console.log('GitHub auth - email response status:', emailResponse.status);
+
+      let primaryEmail = null;
+      if (emailResponse.ok) {
+        try {
+          const emails = (await emailResponse.json()) as Array<{
+            email: string;
+            primary: boolean;
+            verified: boolean;
+          }>;
+
+          console.log('GitHub auth - email count:', emails.length);
+          // Find primary and verified email
+          const primaryVerifiedEmail = emails.find(e => e.primary && e.verified);
+          if (primaryVerifiedEmail) {
+            primaryEmail = primaryVerifiedEmail.email;
+            console.log('GitHub auth - found primary verified email');
+          } else {
+            console.log('GitHub auth - no primary verified email found');
+          }
+        } catch (error) {
+          console.error('GitHub auth - failed to parse email response as JSON:', error);
+          // Non-critical error, continue without email
+        }
+      } else {
+        console.log("GitHub auth - couldn't fetch user emails, status:", emailResponse.status);
+      }
+
+      // Check if user already exists by GitHub ID
+      console.log('GitHub auth - checking if user exists with GitHub ID:', userData.id.toString());
+      let user =
+        typeof (this.userHandler as any).getUserByGitHub === 'function'
+          ? await (this.userHandler as any).getUserByGitHub(userData.id.toString(), env)
+          : null;
+      let isNewUser = false;
+
+      if (!user) {
+        // Create new user
+        console.log('GitHub auth - user not found, creating new user');
+        isNewUser = true;
+
+        // Extract name from GitHub data
+        const displayName = userData.name || userData.login;
+
+        // Generate username from GitHub login
+        let username = userData.login;
+        // Check if username is available, if not append numbers
+        let usernameAvailable = false;
+        let count = 1;
+
+        console.log('GitHub auth - checking username availability:', username);
+        while (!usernameAvailable) {
+          try {
+            const existingUser = await this.userHandler.getUserByUsername(username, env);
+            if (!existingUser) {
+              usernameAvailable = true;
+              console.log('GitHub auth - username is available:', username);
+            } else {
+              username = `${userData.login}${count}`;
+              console.log('GitHub auth - username taken, trying:', username);
+              count++;
+            }
+          } catch (error) {
+            console.error('GitHub auth - error checking username:', error);
+            throw new Error('Failed to check username availability');
+          }
+        }
+
+        console.log('GitHub auth - creating user with GitHub ID:', userData.id.toString());
+        const userId =
+          typeof (this.userHandler as any).createUserWithGitHub === 'function'
+            ? await (this.userHandler as any).createUserWithGitHub(
+                username,
+                displayName,
+                userData.id.toString(),
+                userData.avatar_url,
+                primaryEmail,
+                env
+              )
+            : await this.userHandler.createUser(username, displayName, primaryEmail, env);
+
+        console.log('GitHub auth - user created with ID:', userId);
+        user = await this.userHandler.getUser(userId, env);
+
+        if (!user) {
+          console.error('GitHub auth - failed to retrieve created user');
+          throw new Error('Failed to create user');
+        }
+      } else {
+        console.log('GitHub auth - user found with ID:', user.id);
+      }
+
+      // Create auth session
+      const sessionId = crypto.randomUUID();
+      const token = crypto.randomUUID();
+      const now = Date.now();
+      const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // 30 days
+
+      console.log('GitHub auth - creating auth session for user:', user.id);
+      try {
+        await env.R3L_DB.prepare(
+          `
+          INSERT INTO auth_sessions (id, user_id, token, created_at, expires_at, user_agent, ip_address)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `
+        )
+          .bind(sessionId, user.id, token, now, expiresAt, userAgent || null, ipAddress || null)
+          .run();
+
+        console.log('GitHub auth - auth session created successfully');
+      } catch (error) {
+        console.error('GitHub auth - failed to create auth session:', error);
+        throw new Error('Failed to create authentication session');
+      }
+
+      console.log('GitHub auth - flow completed successfully');
+      return {
+        sessionId,
+        token,
+        userId: user.id,
+        isNewUser,
+      };
+    } catch (error) {
+      console.error('GitHub auth - unexpected error:', error);
+      throw error; // Re-throw to be handled by the router
+    }
+  }
+
+  /**
+   * Initialize ORCID authentication
+   * @param redirectUri Redirect URI for OAuth flow
+   * @param env Environment bindings
+   * @returns URL to redirect user to for ORCID authentication
+   */
+  initOrcidAuth(redirectUri: string, env: Env): string {
+    const orcidClientId = String(env.ORCID_CLIENT_ID || '');
+    const scopes = '/authenticate';
+
+    const params = new URLSearchParams({
+      client_id: orcidClientId,
+      response_type: 'code',
+      scope: scopes,
+      redirect_uri: redirectUri,
+    });
+
+    return `https://orcid.org/oauth/authorize?${params.toString()}`;
+  }
+
+  /**
+   * Complete ORCID authentication flow
+   * @param code Authorization code from ORCID
+   * @param redirectUri Redirect URI (must match the one used in initOrcidAuth)
+   * @param userAgent User agent string
+   * @param ipAddress IP address
+   * @param env Environment bindings
+   * @returns Authentication session details
+   */
+  async completeOrcidAuth(
+    code: string,
+    redirectUri: string,
+    userAgent: string,
+    ipAddress: string,
+    env: Env
+  ): Promise<{ sessionId: string; token: string; userId: string; isNewUser: boolean }> {
+    // Exchange code for token
+    console.log('ORCID auth - starting token exchange', { code, redirectUri });
+    const tokenResponse = await fetch('https://orcid.org/oauth/token', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: String(env.ORCID_CLIENT_ID || ''),
+        client_secret: String(env.ORCID_CLIENT_SECRET || ''),
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    console.log('ORCID auth - token response status:', tokenResponse.status);
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      console.error('ORCID auth - token exchange failed:', errorText);
+      throw new Error('Failed to exchange code for token');
+    }
+
+    const tokenData = (await tokenResponse.json()) as {
+      orcid: string;
+      access_token: string;
+    };
+    const orcidId = tokenData.orcid;
+    const accessToken = tokenData.access_token;
+
+    if (!orcidId || !accessToken) {
+      throw new Error('Invalid ORCID response');
+    }
+
+    // Get user info from ORCID
+    const userResponse = await fetch(`https://pub.orcid.org/v3.0/${orcidId}/person`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!userResponse.ok) {
+      throw new Error('Failed to fetch ORCID profile');
+    }
+
+    const userData = (await userResponse.json()) as {
+      name?: {
+        'given-names'?: { value: string };
+        'family-name'?: { value: string };
+      };
+    };
+
+    // Check if user already exists
+    let user = await this.userHandler.getUserByOrcid(orcidId, env);
+    let isNewUser = false;
+
+    if (!user) {
+      // Create new user
+      isNewUser = true;
+
+      // Extract name from ORCID data
+      let displayName = 'R3L User';
+      if (
+        userData.name &&
+        userData.name['given-names'] &&
+        userData.name['family-name'] &&
+        userData.name['given-names'].value &&
+        userData.name['family-name'].value
+      ) {
+        displayName = `${userData.name['given-names'].value} ${userData.name['family-name'].value}`;
+      }
+
+      // Generate username from ORCID ID (fallback)
+      const username = `user_${orcidId.replace(/-/g, '').slice(-8)}`;
+
+      const userId = await this.userHandler.createUser(username, displayName, orcidId, env);
+      user = await this.userHandler.getUser(userId, env);
+
+      if (!user) {
+        throw new Error('Failed to create user');
+      }
+    }
+
+    // Create auth session
+    const sessionId = crypto.randomUUID();
+    const token = crypto.randomUUID();
+    const now = Date.now();
+    const expiresAt = now + 30 * 24 * 60 * 60 * 1000; // 30 days
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT INTO auth_sessions (id, user_id, token, created_at, expires_at, user_agent, ip_address)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `
+    )
+      .bind(sessionId, user.id, token, now, expiresAt, userAgent || null, ipAddress || null)
+      .run();
+
+    return {
+      sessionId,
+      token,
+      userId: user.id,
+      isNewUser,
+    };
+  }
 
   /**
    * Validate an authentication token

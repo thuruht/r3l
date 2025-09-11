@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenAuth Test</title>
+    <link rel="stylesheet" href="/css/rel-f-global.css">
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 10px 5px;
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn:hover {
+            opacity: 0.9;
+        }
+        .github-btn {
+            background-color: #333;
+        }
+        .orcid-btn {
+            background-color: #A6CE39;
+            color: #333;
+        }
+        .response-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #status {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OpenAuth Integration Test</h1>
+
+        <div id="login-section">
+            <h2>Test Authentication</h2>
+            <p>Click one of the buttons below to test authentication with a provider:</p>
+
+            <a href="/api/auth/github/init" class="btn github-btn">Login with GitHub</a>
+            <a href="/api/auth/orcid/init" class="btn orcid-btn">Login with ORCID</a>
+        </div>
+
+        <div id="logged-in-section" class="hidden">
+            <h2>Logged In</h2>
+            <p>You are logged in! Here's your profile information:</p>
+
+            <div class="response-container">
+                <pre id="profile-info">Loading...</pre>
+            </div>
+
+            <button id="logout-btn" class="btn">Logout</button>
+        </div>
+
+        <div id="debug-section">
+            <h2>Debug Information</h2>
+            <div id="status">Not authenticated</div>
+
+            <h3>API Responses</h3>
+            <div class="response-container">
+                <pre id="api-response">No API calls made yet</pre>
+            </div>
+
+            <h3>Cookie Information</h3>
+            <div class="response-container">
+                <pre id="cookie-info">Loading cookie info...</pre>
+            </div>
+
+            <button id="check-auth-btn" class="btn">Check Auth Status</button>
+            <button id="fix-cookies-btn" class="btn">Fix Cookies</button>
+        </div>
+    </div>
+
+    <script>
+        // Helper function to update the API response display
+        function updateApiResponse(data) {
+            document.getElementById('api-response').textContent =
+                typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        }
+
+        // Helper function to update cookie info
+        function updateCookieInfo() {
+            const cookieInfo = {
+                raw: document.cookie,
+                parsed: {}
+            };
+
+            // Parse cookies
+            document.cookie.split(';').forEach(cookie => {
+                const parts = cookie.trim().split('=');
+                if (parts.length === 2) {
+                    cookieInfo.parsed[parts[0]] = parts[1];
+                }
+            });
+
+            // Display cookie info
+            document.getElementById('cookie-info').textContent =
+                JSON.stringify(cookieInfo, null, 2);
+
+            return cookieInfo;
+        }
+
+        // Check authentication status
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch('/api/auth/validate', {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                updateApiResponse(data);
+
+                if (response.ok && data.valid) {
+                    // User is authenticated
+                    document.getElementById('status').textContent = 'Authenticated';
+                    document.getElementById('status').style.color = 'green';
+
+                    document.getElementById('login-section').classList.add('hidden');
+                    document.getElementById('logged-in-section').classList.remove('hidden');
+
+                    // Display profile info
+                    document.getElementById('profile-info').textContent =
+                        JSON.stringify(data.user, null, 2);
+                } else {
+                    // User is not authenticated
+                    document.getElementById('status').textContent = 'Not authenticated';
+                    document.getElementById('status').style.color = 'red';
+
+                    document.getElementById('login-section').classList.remove('hidden');
+                    document.getElementById('logged-in-section').classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking auth status:', error);
+                document.getElementById('status').textContent = 'Error checking auth status';
+                document.getElementById('status').style.color = 'red';
+                updateApiResponse(`Error: ${error.message}`);
+            }
+
+            // Update cookie info
+            updateCookieInfo();
+        }
+
+        // Fix cookies
+        async function fixCookies() {
+            try {
+                // Use the correct endpoint from fixed-router.ts
+                const response = await fetch('/api/auth/fix-cookies', {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                updateApiResponse(data);
+
+                // Update cookie info
+                updateCookieInfo();
+
+                // Check auth status again
+                setTimeout(checkAuthStatus, 500);
+            } catch (error) {
+                console.error('Error fixing cookies:', error);
+                updateApiResponse(`Error: ${error.message}`);
+            }
+        }
+
+        // Logout
+        async function logout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                updateApiResponse(data);
+
+                // Check auth status again
+                setTimeout(checkAuthStatus, 500);
+            } catch (error) {
+                console.error('Error logging out:', error);
+                updateApiResponse(`Error: ${error.message}`);
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update cookie info on load
+            updateCookieInfo();
+
+            // Check auth status on load
+            checkAuthStatus();
+
+            // Set up event listeners
+            document.getElementById('check-auth-btn').addEventListener('click', checkAuthStatus);
+            document.getElementById('fix-cookies-btn').addEventListener('click', fixCookies);
+            document.getElementById('logout-btn').addEventListener('click', logout);
+
+            // Check for error in URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+
+            if (error) {
+                document.getElementById('status').textContent = `Error: ${error}`;
+                document.getElementById('status').style.color = 'red';
+                updateApiResponse(`Authentication error: ${error}`);
+            }
+
+            // Check for code in URL (OAuth callback)
+            const code = urlParams.get('code');
+
+            if (code) {
+                document.getElementById('status').textContent = 'Processing OAuth callback...';
+                document.getElementById('status').style.color = 'blue';
+                updateApiResponse(`OAuth code received: ${code.slice(0, 10)}...`);
+
+                // Check auth status after a short delay
+                setTimeout(checkAuthStatus, 1000);
+            }
+        });
+    </script>
+</body>
+</html>

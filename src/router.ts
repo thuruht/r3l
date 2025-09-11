@@ -204,141 +204,6 @@ export class Router {
       return this.handleDebugRoutes(request, env, path);
     }
 
-    // List users
-    if (path === '/api/users' && request.method === 'GET') {
-      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
-
-      if (!authenticatedUserId) {
-        return this.errorResponse('Authentication required', 401);
-      }
-
-      // Parse query parameters
-      const url = new URL(request.url);
-      const limit = parseInt(url.searchParams.get('limit') || '12');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const offset = (page - 1) * limit;
-
-      try {
-        const countQuery = `
-          SELECT COUNT(*) as total
-          FROM users
-          WHERE id != ?
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
-        `;
-
-        const countResult = await env.R3L_DB.prepare(countQuery)
-          .bind(authenticatedUserId)
-          .first<{ total: number }>();
-
-        const total = countResult ? Number(countResult.total) : 0;
-        const totalPages = Math.max(1, Math.ceil(total / limit));
-
-        const usersQuery = `
-          SELECT 
-            id,
-            username,
-            display_name,
-            bio,
-            avatar_url,
-            created_at,
-            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
-          FROM users
-          WHERE id != ?
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
-          ORDER BY username ASC
-          LIMIT ? OFFSET ?
-        `;
-
-        const result = await env.R3L_DB.prepare(usersQuery)
-          .bind(authenticatedUserId, limit, offset)
-          .all();
-
-        const users = (result.results || []).map((u: any) => ({
-          ...u,
-          connectionStatus: 'none',
-        }));
-
-        return this.jsonResponse({ users, page, totalPages, total });
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        return this.errorResponse('Failed to fetch users');
-      }
-    }
-
-    // Search users
-    if (path === '/api/users/search' && request.method === 'GET') {
-      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
-
-      if (!authenticatedUserId) {
-        return this.errorResponse('Authentication required', 401);
-      }
-
-  const url = new URL(request.url);
-  const query = url.searchParams.get('query') || '';
-      const limit = parseInt(url.searchParams.get('limit') || '12');
-      const page = parseInt(url.searchParams.get('page') || '1');
-      const offset = (page - 1) * limit;
-
-      try {
-        const like = `%${query}%`;
-        const countQuery = `
-          SELECT COUNT(*) as total
-          FROM users
-          WHERE id != ?
-            AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
-        `;
-        const countResult = await env.R3L_DB.prepare(countQuery)
-          .bind(authenticatedUserId, like, like)
-          .first<{ total: number }>();
-
-        const total = countResult ? Number(countResult.total) : 0;
-        const totalPages = Math.max(1, Math.ceil(total / limit));
-
-        const usersQuery = `
-          SELECT 
-            id,
-            username,
-            display_name,
-            bio,
-            avatar_url,
-            created_at,
-            (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
-          FROM users
-          WHERE id != ?
-            AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
-          ORDER BY username ASC
-          LIMIT ? OFFSET ?
-        `;
-
-        const result = await env.R3L_DB.prepare(usersQuery)
-          .bind(authenticatedUserId, like, like, limit, offset)
-          .all();
-
-        const users = (result.results || []).map((u: any) => ({
-          ...u,
-          connectionStatus: 'none',
-        }));
-
-        return this.jsonResponse({ users, query, page, totalPages, total });
-      } catch (error) {
-        console.error('Error searching users:', error);
-        return this.errorResponse('Failed to search users');
-      }
-    }
 
     return this.notFoundResponse();
   }
@@ -480,6 +345,33 @@ export class Router {
     // Get authenticated user first
     const authenticatedUserId = await this.getAuthenticatedUser(request, env);
 
+    // List/Search users
+    if (path === '/api/users' && request.method === 'GET') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+
+      const url = new URL(request.url);
+      const query = url.searchParams.get('query') || '';
+      const limit = parseInt(url.searchParams.get('limit') || '12');
+      const page = parseInt(url.searchParams.get('page') || '1');
+      const offset = (page - 1) * limit;
+
+      try {
+        const { users, total, totalPages } = await this.userHandler.getUsers(
+          authenticatedUserId,
+          query,
+          limit,
+          offset,
+          env
+        );
+        return this.jsonResponse({ users, query, page, totalPages, total });
+      } catch (error) {
+        console.error('Error fetching/searching users:', error);
+        return this.errorResponse('Failed to fetch/search users');
+      }
+    }
+
     // Get current user profile
     if (path === '/api/users/me' && request.method === 'GET') {
       if (!authenticatedUserId) {
@@ -495,9 +387,13 @@ export class Router {
       return this.jsonResponse(user);
     }
 
-    // Get user profile
+    // Get user profile by ID - must be after /api/users and /api/users/me
     if (path.match(/^\/api\/users\/[^/]+$/) && request.method === 'GET') {
       const userId = path.split('/').pop() as string;
+      // Avoid matching 'me' or other special keywords if they exist
+      if (userId === 'me') {
+        return this.notFoundResponse();
+      }
       const user = await this.userHandler.getUser(userId, env);
 
       if (!user) {
@@ -706,24 +602,9 @@ export class Router {
     // Get content tags
     if (path.match(/^\/api\/content\/[^/]+\/tags$/) && request.method === 'GET') {
       const contentId = path.split('/')[3];
-
       try {
-        const query = `
-          SELECT t.id, t.name
-          FROM tags t
-          JOIN content_tags ct ON t.id = ct.tag_id
-          WHERE ct.content_id = ?
-          ORDER BY t.name ASC
-        `;
-
-        const result = await env.R3L_DB.prepare(query).bind(contentId).all();
-
-        const tags = result.results || [];
-
-        return this.jsonResponse({
-          contentId,
-          tags,
-        });
+        const tags = await this.contentHandler.getContentTags(contentId, env);
+        return this.jsonResponse({ contentId, tags });
       } catch (error) {
         console.error('Error fetching content tags:', error);
         return this.errorResponse('Failed to fetch content tags');
@@ -1073,7 +954,27 @@ export class Router {
   /**
    * Handle tag routes
    */
-  private async handleTagRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+  private async handleTagRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Search for tags
+    if (path === '/api/tags' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit') || '25');
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+
+        const tags = await this.tagHandler.searchTags(query, limit, authenticatedUserId, env);
+
+        return this.jsonResponse({
+          query,
+          tags,
+          total: tags.length,
+        });
+      } catch (error) {
+        console.error('Error performing tag search:', error);
+        return this.errorResponse('Failed to perform tag search');
+      }
+    }
     return this.notFoundResponse();
   }
 
@@ -1603,10 +1504,7 @@ export class Router {
     const authenticatedUserId = await this.getAuthenticatedUser(request, env);
 
     // Random drawer (public or for authenticated users)
-    if (
-      (path === '/api/drawer/random' || path === '/api/random-drawer') &&
-      request.method === 'GET'
-    ) {
+    if (path === '/api/drawer/random' && request.method === 'GET') {
       try {
         if (!authenticatedUserId) {
           // For non-authenticated users, return a 401 so frontend can show demo data
@@ -2256,28 +2154,13 @@ export class Router {
         const otherUserId = path.split('/').pop() as string;
 
         // Delete the connection
-        try {
-          const query = `
-            DELETE FROM connections
-            WHERE 
-              (user_id = ? AND connected_user_id = ?) OR
-              (user_id = ? AND connected_user_id = ?)
-          `;
-          await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
-        } catch (e) {
-          // Legacy fallback: use ORCID columns if new columns don't exist
-          const legacyQuery = `
-            DELETE FROM connections
-            WHERE id IN (
-              SELECT c.id FROM connections c
-              JOIN users ua ON ua.id = ?
-              JOIN users ub ON ub.id = ?
-              WHERE (c.user_a_orcid = ua.orcid_id AND c.user_b_orcid = ub.orcid_id)
-                 OR (c.user_a_orcid = ub.orcid_id AND c.user_b_orcid = ua.orcid_id)
-            )
-          `;
-          await env.R3L_DB.prepare(legacyQuery).bind(userId, otherUserId).run();
-        }
+        const query = `
+          DELETE FROM connections
+          WHERE
+            (user_id = ? AND connected_user_id = ?) OR
+            (user_id = ? AND connected_user_id = ?)
+        `;
+        await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
 
         return this.jsonResponse({ success: true });
       } catch (error) {
@@ -2424,28 +2307,6 @@ export class Router {
 
     // (duplicate GET by other user handled above)
 
-    // Remove connection
-    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
-      try {
-        const otherUserId = path.split('/').pop() as string;
-
-        // Delete the connection
-        const query = `
-          DELETE FROM connections
-          WHERE 
-            (user_id = ? AND connected_user_id = ?) OR
-            (user_id = ? AND connected_user_id = ?)
-        `;
-
-        await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
-
-        return this.jsonResponse({ success: true });
-      } catch (error) {
-        console.error('Error removing connection:', error);
-        return this.errorResponse('Failed to remove connection');
-      }
-    }
-
     return this.notFoundResponse();
   }
 
@@ -2453,68 +2314,32 @@ export class Router {
    * Get connection between two users
    */
   private async getConnection(userId: string, otherUserId: string, env: Env): Promise<any | null> {
-    // First try the normalized schema (user_id, connected_user_id)
-    try {
-      const query = `
-        SELECT * FROM connections
-        WHERE 
-          (user_id = ? AND connected_user_id = ?) OR
-          (user_id = ? AND connected_user_id = ?)
-        LIMIT 1
-      `;
+    const query = `
+      SELECT * FROM connections
+      WHERE
+        (user_id = ? AND connected_user_id = ?) OR
+        (user_id = ? AND connected_user_id = ?)
+      LIMIT 1
+    `;
 
-      const result = await env.R3L_DB.prepare(query)
-        .bind(userId, otherUserId, otherUserId, userId)
-        .first();
+    const result = await env.R3L_DB.prepare(query)
+      .bind(userId, otherUserId, otherUserId, userId)
+      .first();
 
-      if (result) {
-        const c = result as any;
-        return {
-          id: c.id,
-          type: c.type || 'mutual',
-          status: c.status || 'accepted',
-          message: c.message || '',
-          createdAt: c.created_at,
-          updatedAt: c.updated_at ?? c.created_at,
-          isOutgoing: c.user_id === userId,
-        };
-      }
-    } catch (err) {
-      // proceed to legacy fallback
-    }
-
-    // Legacy fallback: connections stored with ORCID columns; map via users.orcid_id
-    try {
-      const legacyQuery = `
-        SELECT c.* FROM connections c
-        JOIN users ua ON ua.id = ?
-        JOIN users ub ON ub.id = ?
-        WHERE (c.user_a_orcid = ua.orcid_id AND c.user_b_orcid = ub.orcid_id)
-           OR (c.user_a_orcid = ub.orcid_id AND c.user_b_orcid = ua.orcid_id)
-        LIMIT 1
-      `;
-
-      const result = await env.R3L_DB.prepare(legacyQuery).bind(userId, otherUserId).first();
-      if (!result) return null;
-      const c = result as any;
-      // Determine direction by matching which side matched ua
-      const directionQuery = `SELECT ua.orcid_id as a, ub.orcid_id as b FROM users ua, users ub WHERE ua.id = ? AND ub.id = ?`;
-      const pair = await env.R3L_DB.prepare(directionQuery).bind(userId, otherUserId).first<{ a: string; b: string }>();
-      const isOutgoing = pair ? (c.user_a_orcid === pair.a && c.user_b_orcid === pair.b) : false;
-
-      return {
-        id: c.id,
-        type: c.type || 'mutual',
-        status: c.status || 'accepted',
-        message: c.message || '',
-        createdAt: c.created_at,
-        updatedAt: c.updated_at ?? c.created_at,
-        isOutgoing,
-      };
-    } catch (error) {
-      console.error('Error getting connection (legacy):', error);
+    if (!result) {
       return null;
     }
+
+    const c = result as any;
+    return {
+      id: c.id,
+      type: c.type || 'mutual',
+      status: c.status || 'accepted',
+      message: c.message || '',
+      createdAt: c.created_at,
+      updatedAt: c.updated_at ?? c.created_at,
+      isOutgoing: c.user_id === userId,
+    };
   }
 
   /**
@@ -2700,69 +2525,6 @@ export class Router {
       } catch (error) {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
-      }
-    }
-
-    // Tag search
-    if (path === '/api/search/tags' && request.method === 'GET') {
-      try {
-        const url = new URL(request.url);
-        const query = url.searchParams.get('q') || '';
-        const limit = parseInt(url.searchParams.get('limit') || '15');
-
-        // Get authenticated user for permissions
-        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
-
-        let sql = `
-          SELECT 
-            t.id,
-            t.name,
-            COUNT(ct.content_id) as count
-          FROM tags t
-          LEFT JOIN content_tags ct ON t.id = ct.tag_id
-        `;
-
-        const params = [];
-
-        // If there's a search query
-        if (query) {
-          sql += ` WHERE t.name LIKE ? `;
-          params.push(`%${query}%`);
-        }
-
-        // If not authenticated, only include public content
-        if (!authenticatedUserId) {
-          sql += params.length > 0 ? ' AND ' : ' WHERE ';
-          sql += `
-            (ct.content_id IS NULL OR EXISTS (
-              SELECT 1 FROM content c 
-              WHERE c.id = ct.content_id AND c.visibility = 'public'
-            ))
-          `;
-        }
-
-        // Group by tag and sort by usage count
-        sql += `
-          GROUP BY t.id, t.name
-          ORDER BY count DESC, t.name ASC
-          LIMIT ?
-        `;
-
-        params.push(limit);
-
-        const result = await env.R3L_DB.prepare(sql)
-          .bind(...params)
-          .all();
-        const tags = result.results || [];
-
-        return this.jsonResponse({
-          query,
-          tags,
-          total: tags.length,
-        });
-      } catch (error) {
-        console.error('Error performing tag search:', error);
-        return this.errorResponse('Failed to perform tag search');
       }
     }
 

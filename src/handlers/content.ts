@@ -855,4 +855,23 @@ export class ContentHandler {
 
     return copyId;
   }
+
+  /**
+   * Get tags for a specific content item
+   * @param contentId The ID of the content
+   * @param env Environment bindings
+   * @returns An array of tag objects
+   */
+  async getContentTags(contentId: string, env: Env): Promise<{ id: string; name: string }[]> {
+    const query = `
+      SELECT t.id, t.name
+      FROM tags t
+      JOIN content_tags ct ON t.id = ct.tag_id
+      WHERE ct.content_id = ?
+      ORDER BY t.name ASC
+    `;
+
+    const result = await env.R3L_DB.prepare(query).bind(contentId).all();
+    return (result.results as { id: string; name: string }[]) || [];
+  }
 }

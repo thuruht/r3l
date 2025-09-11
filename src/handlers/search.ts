@@ -510,4 +510,60 @@ export class SearchHandler {
       throw error;
     }
   }
+
+  /**
+   * Search for tags by name
+   * @param query The search query for tag names
+   * @param limit The maximum number of tags to return
+   * @param authenticatedUserId The ID of the user performing the search, to determine visibility
+   * @param env Environment bindings
+   * @returns A list of tags with their usage counts
+   */
+  async searchTags(
+    query: string,
+    limit: number,
+    authenticatedUserId: string | null,
+    env: Env
+  ): Promise<{ id: string; name: string; count: number }[]> {
+    let sql = `
+      SELECT
+        t.id,
+        t.name,
+        COUNT(ct.content_id) as count
+      FROM tags t
+      LEFT JOIN content_tags ct ON t.id = ct.tag_id
+    `;
+    const params: any[] = [];
+
+    // If there's a search query
+    if (query) {
+      sql += ` WHERE t.name LIKE ? `;
+      params.push(`%${query}%`);
+    }
+
+    // If not authenticated, only include public content
+    if (!authenticatedUserId) {
+      sql += params.length > 0 ? ' AND ' : ' WHERE ';
+      sql += `
+        (ct.content_id IS NULL OR EXISTS (
+          SELECT 1 FROM content c
+          WHERE c.id = ct.content_id AND c.is_public = 1
+        ))
+      `;
+    }
+
+    // Group by tag and sort by usage count
+    sql += `
+      GROUP BY t.id, t.name
+      ORDER BY count DESC, t.name ASC
+      LIMIT ?
+    `;
+    params.push(limit);
+
+    const result = await env.R3L_DB.prepare(sql)
+      .bind(...params)
+      .all();
+
+    return (result.results as { id: string; name: string; count: number }[]) || [];
+  }
 }

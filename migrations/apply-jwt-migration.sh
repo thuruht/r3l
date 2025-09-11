@@ -14,7 +14,7 @@ echo "🔑 Applying JWT auth migration..."
 echo "Using D1 binding: $D1_BINDING"
 
 # Apply the migration
-$WRANGLER d1 execute $D1_BINDING --file="./migrations/010_jwt_auth.sql"
+$WRANGLER d1 execute $D1_BINDING --file="./migrations/012_jwt_auth.sql"
 
 # Check if the migration was successful
 if [ $? -eq 0 ]; then

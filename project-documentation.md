@@ -85,7 +85,7 @@ R3L:F (Relational Ephemeral Filenet) is a reimagined version of the original R3L
 ## Project Structure
 
 ```
-r3l-realigned/
+.
 ├── public/             # Public-facing web assets
 │   ├── css/            # CSS styles
 │   │   ├── rel-f-global.css  # Global stylesheet
@@ -123,20 +123,25 @@ r3l-realigned/
 │   └── types/          # TypeScript type definitions
 │       └── env.ts      # Environment interface
 ├── migrations/         # Database migrations
-│   ├── 001_ephemeral_content.sql
-│   ├── 002_content_associations.sql
-│   ├── 003_drawers.sql
-│   ├── 004_content.sql
-│   ├── 005_users.sql
-│   ├── 006_auth_sessions.sql
-│   ├── 007_content_sharing.sql
+│   ├── 001_content.sql
+│   ├── 002_users.sql
+│   ├── 003_auth_sessions.sql
+│   ├── 004_content_associations.sql
+│   ├── 005_drawers.sql
+│   ├── 006_content_sharing.sql
+│   ├── 007_ephemeral_content.sql
 │   ├── 008_archive_voting.sql
 │   ├── 009_tag_management.sql
-│   ├── 010_direct_messaging.sql
-│   ├── 011_notifications_update.sql
-│   ├── 012_messaging_attachments.sql
-│   ├── 013_fix_notifications_schema.sql
-│   └── 014_geo_points_table.sql
+│   ├── 010_add_foreign_keys.sql
+│   ├── 011_direct_messaging.sql
+│   ├── 012_jwt_auth.sql
+│   ├── 013_notifications_update.sql
+│   ├── 014_messaging_attachments.sql
+│   ├── 015_fix_notifications_schema.sql
+│   ├── 016_geo_points_table.sql
+│   ├── 017_add_performance_indexes.sql
+│   ├── 018_add_missing_columns.sql
+│   └── 019_connections_table.sql
 └── scripts/           # Utility scripts
     └── check-relative-urls.sh  # Verify all URLs are relative
 ```
@@ -149,8 +154,8 @@ r3l-realigned/
 - ✅ Configuration files
 - ✅ Philosophy definition
 - ✅ Database migrations
-  - ✅ All migrations applied locally and remotely (001-014)
-  - ✅ Latest migration: 014_geo_points_table.sql for map feature
+  - ✅ All migrations applied locally and remotely (001-019)
+  - ✅ Latest migration: 019_connections_table.sql
 - ✅ Core backend handlers
 - ✅ Global CSS consolidation
 - ✅ Font loading utility

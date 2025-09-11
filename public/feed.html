@@ -28,6 +28,7 @@
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
     import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
+    import { generateRefCode, displayEmptyState } from './js/utils/ui-helpers.js';
 
     NavigationBar.init('feed');
 
@@ -72,17 +73,28 @@
 
     async function load() {
       btn.disabled = true;
-      const data = await apiGet(API_ENDPOINTS.CONTENT.FEED, { limit, offset });
-      if (data && data.items) {
-        await render(data.items);
-        offset += data.items.length;
-        if (!data.pagination || data.items.length < limit) {
-          btn.style.display = 'none';
+      try {
+        const data = await apiGet(API_ENDPOINTS.CONTENT.FEED, { limit, offset });
+        if (data && data.items && data.items.length > 0) {
+          await render(data.items);
+          offset += data.items.length;
+          if (!data.pagination || data.items.length < limit) {
+            btn.style.display = 'none';
+          } else {
+            btn.disabled = false;
+          }
         } else {
-          btn.disabled = false;
+          btn.style.display = 'none';
+          if (offset === 0) {
+            const refCode = generateRefCode('FEED-EMPTY');
+            displayEmptyState(feedEl, "Your feed is empty. Connect with other users or upload your own content to see it here.", refCode);
+          }
         }
-      } else {
+      } catch (error) {
+        console.error('Failed to load feed:', error);
         btn.style.display = 'none';
+        const refCode = generateRefCode('FEED-LOAD-ERR');
+        displayEmptyState(feedEl, "Could not load your feed at this time. Please try again later.", refCode);
       }
     }
 

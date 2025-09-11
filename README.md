@@ -10,7 +10,7 @@ Use these steps to get a running, testable build fast:
    - `npm install`
 2. Configure Cloudflare (wrangler.jsonc already wired)
    - `wrangler login`
-   - `wrangler d1 execute r3l-db --file=./migrations/001_content.sql` (or run `./migrations/apply-migrations.sh`)
+   - Run the database migrations: `./migrations/apply-migrations.sh`
    - `wrangler secret put JWT_SECRET`
 3. Dev server
    - `npm run dev`

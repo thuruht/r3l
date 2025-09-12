@@ -237,7 +237,7 @@ export class Router {
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
         const usersQuery = `
-          SELECT 
+          SELECT
             id,
             username,
             display_name,
@@ -305,7 +305,7 @@ export class Router {
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
         const usersQuery = `
-          SELECT 
+          SELECT
             id,
             username,
             display_name,
@@ -675,28 +675,49 @@ export class Router {
       }
 
       try {
-        const data = (await request.json()) as {
-          title: string;
-          description: string;
-          type: string;
-          category: string;
-          tags: string[];
-          isPublic: boolean;
-          fileKey?: string;
-          location?: {
-            lat: number;
-            lng: number;
-            name?: string;
-          };
-        };
+        const formData = await request.formData();
+        const file = formData.get('file') as FileUpload | null;
+        const title = formData.get('title') as string;
+        const description = formData.get('description') as string;
+        const tags = formData.get('tags') as string;
+        const isPublic = formData.get('isPublic') === 'true';
+        const expiresIn = parseInt(formData.get('expiresIn') as string, 10);
 
-        if (!data.title || !data.type) {
-          return this.errorResponse('Title and type are required');
+        if (!title) {
+          return this.errorResponse('Title is required');
         }
+
+        if (!file) {
+            return this.errorResponse('File is required');
+        }
+
+        // Upload the file to R2
+        const fileData = await file.arrayBuffer();
+        const { key: fileKey } = await this.fileHandler.uploadFile(
+          fileData,
+          file.name,
+          file.type,
+          { userId: authenticatedUserId },
+          env
+        );
+
+        const data = {
+          title,
+          description,
+          tags,
+          isPublic,
+          expiresIn,
+          fileKey,
+          type: file.type || 'application/octet-stream',
+          category: 'general', // Or determine from file type
+        };
 
         const contentId = await this.contentHandler.createContent(authenticatedUserId, data, env);
 
-        return this.jsonResponse({ id: contentId, success: true });
+        // Fetch the content to get the expiresAt timestamp
+        const newContent = await this.contentHandler.getContent(contentId, env);
+
+        return this.jsonResponse({ id: contentId, success: true, expiresAt: newContent?.expires_at });
       } catch (error) {
         console.error('Error creating content:', error);
         return this.errorResponse('Failed to create content');
@@ -1073,7 +1094,27 @@ export class Router {
   /**
    * Handle tag routes
    */
-  private async handleTagRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+  private async handleTagRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Search for tags
+    if (path === '/api/tags' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit') || '25');
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+
+        const tags = await this.tagHandler.searchTags(query, limit, authenticatedUserId, env);
+
+        return this.jsonResponse({
+          query,
+          tags,
+          total: tags.length,
+        });
+      } catch (error) {
+        console.error('Error performing tag search:', error);
+        return this.errorResponse('Failed to perform tag search');
+      }
+    }
     return this.notFoundResponse();
   }
 
@@ -2259,7 +2300,7 @@ export class Router {
         try {
           const query = `
             DELETE FROM connections
-            WHERE 
+            WHERE
               (user_id = ? AND connected_user_id = ?) OR
               (user_id = ? AND connected_user_id = ?)
           `;
@@ -2432,7 +2473,7 @@ export class Router {
         // Delete the connection
         const query = `
           DELETE FROM connections
-          WHERE 
+          WHERE
             (user_id = ? AND connected_user_id = ?) OR
             (user_id = ? AND connected_user_id = ?)
         `;
@@ -2457,7 +2498,7 @@ export class Router {
     try {
       const query = `
         SELECT * FROM connections
-        WHERE 
+        WHERE
           (user_id = ? AND connected_user_id = ?) OR
           (user_id = ? AND connected_user_id = ?)
         LIMIT 1
@@ -2700,69 +2741,6 @@ export class Router {
       } catch (error) {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
-      }
-    }
-
-    // Tag search
-    if (path === '/api/search/tags' && request.method === 'GET') {
-      try {
-        const url = new URL(request.url);
-        const query = url.searchParams.get('q') || '';
-        const limit = parseInt(url.searchParams.get('limit') || '15');
-
-        // Get authenticated user for permissions
-        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
-
-        let sql = `
-          SELECT 
-            t.id,
-            t.name,
-            COUNT(ct.content_id) as count
-          FROM tags t
-          LEFT JOIN content_tags ct ON t.id = ct.tag_id
-        `;
-
-        const params = [];
-
-        // If there's a search query
-        if (query) {
-          sql += ` WHERE t.name LIKE ? `;
-          params.push(`%${query}%`);
-        }
-
-        // If not authenticated, only include public content
-        if (!authenticatedUserId) {
-          sql += params.length > 0 ? ' AND ' : ' WHERE ';
-          sql += `
-            (ct.content_id IS NULL OR EXISTS (
-              SELECT 1 FROM content c 
-              WHERE c.id = ct.content_id AND c.visibility = 'public'
-            ))
-          `;
-        }
-
-        // Group by tag and sort by usage count
-        sql += `
-          GROUP BY t.id, t.name
-          ORDER BY count DESC, t.name ASC
-          LIMIT ?
-        `;
-
-        params.push(limit);
-
-        const result = await env.R3L_DB.prepare(sql)
-          .bind(...params)
-          .all();
-        const tags = result.results || [];
-
-        return this.jsonResponse({
-          query,
-          tags,
-          total: tags.length,
-        });
-      } catch (error) {
-        console.error('Error performing tag search:', error);
-        return this.errorResponse('Failed to perform tag search');
       }
     }
 

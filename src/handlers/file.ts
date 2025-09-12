@@ -1,7 +1,64 @@
 import { Env } from '../types/env.js';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export class FileHandler {
   constructor() {}
+
+  /**
+   * Create a presigned URL for direct file upload from the client to R2
+   * @param userId The ID of the user uploading the file
+   * @param fileName The name of the file
+   * @param contentType The MIME type of the file
+   * @param env Environment variables
+   * @returns A JSON response with the presigned URL and the generated file key
+   */
+  async createPresignedUploadUrl(
+    userId: string,
+    fileName: string,
+    contentType: string,
+    env: Env
+  ): Promise<Response> {
+    try {
+      const sanitizedFileName = this.sanitizeFileName(fileName);
+      const fileExtension = sanitizedFileName.split('.').pop() || 'bin';
+      const randomStr = Math.random().toString(36).substring(2, 12);
+      const fileKey = `uploads/${userId}/${Date.now()}-${randomStr}.${fileExtension}`;
+
+      const s3 = new S3Client({
+        region: 'auto',
+        endpoint: env.R2_ENDPOINT,
+        credentials: {
+          accessKeyId: env.R2_ACCESS_KEY_ID,
+          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+        },
+      });
+
+      const presignedUrl = await getSignedUrl(
+        s3,
+        new PutObjectCommand({
+          Bucket: env.R2_BUCKET_NAME,
+          Key: fileKey,
+          ContentType: contentType,
+          Metadata: {
+            userId,
+            originalName: sanitizedFileName,
+          },
+        }),
+        { expiresIn: 3600 } // URL expires in 1 hour
+      );
+
+      return new Response(JSON.stringify({ url: presignedUrl, key: fileKey }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (error) {
+      console.error('Error creating presigned URL:', error);
+      return new Response(JSON.stringify({ error: 'Could not create upload URL' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
 
   /**
    * Sanitize a filename to prevent security issues

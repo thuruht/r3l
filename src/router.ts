@@ -675,28 +675,49 @@ export class Router {
       }
 
       try {
-        const data = (await request.json()) as {
-          title: string;
-          description: string;
-          type: string;
-          category: string;
-          tags: string[];
-          isPublic: boolean;
-          fileKey?: string;
-          location?: {
-            lat: number;
-            lng: number;
-            name?: string;
-          };
-        };
+        const formData = await request.formData();
+        const file = formData.get('file') as FileUpload | null;
+        const title = formData.get('title') as string;
+        const description = formData.get('description') as string;
+        const tags = formData.get('tags') as string;
+        const isPublic = formData.get('isPublic') === 'true';
+        const expiresIn = parseInt(formData.get('expiresIn') as string, 10);
 
-        if (!data.title || !data.type) {
-          return this.errorResponse('Title and type are required');
+        if (!title) {
+          return this.errorResponse('Title is required');
         }
+
+        if (!file) {
+            return this.errorResponse('File is required');
+        }
+
+        // Upload the file to R2
+        const fileData = await file.arrayBuffer();
+        const { key: fileKey } = await this.fileHandler.uploadFile(
+          fileData,
+          file.name,
+          file.type,
+          { userId: authenticatedUserId },
+          env
+        );
+
+        const data = {
+          title,
+          description,
+          tags,
+          isPublic,
+          expiresIn,
+          fileKey,
+          type: file.type || 'application/octet-stream',
+          category: 'general', // Or determine from file type
+        };
 
         const contentId = await this.contentHandler.createContent(authenticatedUserId, data, env);
 
-        return this.jsonResponse({ id: contentId, success: true });
+        // Fetch the content to get the expiresAt timestamp
+        const newContent = await this.contentHandler.getContent(contentId, env);
+
+        return this.jsonResponse({ id: contentId, success: true, expiresAt: newContent?.expires_at });
       } catch (error) {
         console.error('Error creating content:', error);
         return this.errorResponse('Failed to create content');
@@ -1073,7 +1094,27 @@ export class Router {
   /**
    * Handle tag routes
    */
-  private async handleTagRoutes(_request: Request, _env: Env, _path: string): Promise<Response> {
+  private async handleTagRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Search for tags
+    if (path === '/api/tags' && request.method === 'GET') {
+      try {
+        const url = new URL(request.url);
+        const query = url.searchParams.get('q') || '';
+        const limit = parseInt(url.searchParams.get('limit') || '25');
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+
+        const tags = await this.tagHandler.searchTags(query, limit, authenticatedUserId, env);
+
+        return this.jsonResponse({
+          query,
+          tags,
+          total: tags.length,
+        });
+      } catch (error) {
+        console.error('Error performing tag search:', error);
+        return this.errorResponse('Failed to perform tag search');
+      }
+    }
     return this.notFoundResponse();
   }
 
@@ -1215,6 +1256,24 @@ export class Router {
       return this.fileHandler.getFile(fileKey, env);
     }
 
+    // Create a presigned URL for direct-to-R2 uploads
+    if (path === '/api/files/upload-url' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      try {
+        const { fileName, contentType } = await request.json();
+        if (!fileName || !contentType) {
+          return this.errorResponse('fileName and contentType are required', 400);
+        }
+        return this.fileHandler.createPresignedUploadUrl(authenticatedUserId, fileName, contentType, env);
+      } catch (error) {
+        console.error('Error creating presigned URL:', error);
+        return this.errorResponse('Could not create upload URL', 500);
+      }
+    }
+
     // Upload avatar image - requires authentication
     if (path === '/api/files/avatar' && request.method === 'POST') {
       const authenticatedUserId = await this.getAuthenticatedUser(request, env);
@@ -1273,6 +1332,23 @@ export class Router {
 
         const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
         return this.errorResponse(errorMessage, 500);
+      }
+    }
+
+    // Register a file that has been successfully uploaded to R2
+    if (path === '/api/files/register' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      try {
+        const data = await request.json();
+        const contentId = await this.contentHandler.createContentFromUpload(authenticatedUserId, data, env);
+        const newContent = await this.contentHandler.getContent(contentId, env);
+        return this.jsonResponse({ id: contentId, success: true, expiresAt: newContent?.expires_at });
+      } catch (error) {
+        console.error('Error registering file:', error);
+        return this.errorResponse('Could not register file', 500);
       }
     }
 
@@ -2700,69 +2776,6 @@ export class Router {
       } catch (error) {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
-      }
-    }
-
-    // Tag search
-    if (path === '/api/search/tags' && request.method === 'GET') {
-      try {
-        const url = new URL(request.url);
-        const query = url.searchParams.get('q') || '';
-        const limit = parseInt(url.searchParams.get('limit') || '15');
-
-        // Get authenticated user for permissions
-        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
-
-        let sql = `
-          SELECT 
-            t.id,
-            t.name,
-            COUNT(ct.content_id) as count
-          FROM tags t
-          LEFT JOIN content_tags ct ON t.id = ct.tag_id
-        `;
-
-        const params = [];
-
-        // If there's a search query
-        if (query) {
-          sql += ` WHERE t.name LIKE ? `;
-          params.push(`%${query}%`);
-        }
-
-        // If not authenticated, only include public content
-        if (!authenticatedUserId) {
-          sql += params.length > 0 ? ' AND ' : ' WHERE ';
-          sql += `
-            (ct.content_id IS NULL OR EXISTS (
-              SELECT 1 FROM content c 
-              WHERE c.id = ct.content_id AND c.visibility = 'public'
-            ))
-          `;
-        }
-
-        // Group by tag and sort by usage count
-        sql += `
-          GROUP BY t.id, t.name
-          ORDER BY count DESC, t.name ASC
-          LIMIT ?
-        `;
-
-        params.push(limit);
-
-        const result = await env.R3L_DB.prepare(sql)
-          .bind(...params)
-          .all();
-        const tags = result.results || [];
-
-        return this.jsonResponse({
-          query,
-          tags,
-          total: tags.length,
-        });
-      } catch (error) {
-        console.error('Error performing tag search:', error);
-        return this.errorResponse('Failed to perform tag search');
       }
     }
 

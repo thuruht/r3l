@@ -160,6 +160,35 @@ export class ContentHandler {
   }
 
   /**
+   * Create a new content item from a successful R2 upload
+   * @param userId User ID of the content creator
+   * @param data Content parameters from the client
+   * @param env Environment bindings
+   * @returns Created content ID
+   */
+  async createContentFromUpload(userId: string, data: any, env: Env): Promise<string> {
+    const { fileKey, fileName, contentType, title, description, tags, isPublic } = data;
+
+    if (!fileKey || !fileName || !contentType || !title) {
+      throw new ValidationError('Missing required fields for content registration');
+    }
+
+    const contentData: ContentCreateData = {
+      title,
+      description: description || '',
+      type: contentType,
+      category: 'general', // You might want to determine this more intelligently
+      tags: tags || '',
+      isPublic: isPublic !== undefined ? isPublic : true,
+      fileKey: fileKey,
+      isEphemeral: true, // All new uploads are ephemeral by default
+    };
+
+    // This re-uses the existing, robust createContent method.
+    return this.createContent(userId, contentData, env);
+  }
+
+  /**
    * Get a content item by ID
    * @param contentId Content ID
    * @param env Environment bindings

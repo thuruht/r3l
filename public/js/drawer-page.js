@@ -631,8 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
       } catch (error) {
-        console.error('Error embedding file:', error);
-        alert('Failed to load files for embedding. Please try again.');
+        displayError(errorContainer, 'Failed to load files for embedding.', generateRefCode('FE-DRWR-006'));
       }
     });
 

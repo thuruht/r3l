@@ -1,6 +1,4 @@
 import { Env } from '../types/env.js';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export class FileHandler {
   constructor() {}
@@ -25,30 +23,19 @@ export class FileHandler {
       const randomStr = Math.random().toString(36).substring(2, 12);
       const fileKey = `uploads/${userId}/${Date.now()}-${randomStr}.${fileExtension}`;
 
-      const s3 = new S3Client({
-        region: 'auto',
-        endpoint: env.R2_ENDPOINT,
-        credentials: {
-          accessKeyId: env.R2_ACCESS_KEY_ID,
-          secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+      const signedUrl = await env.R3L_CONTENT_BUCKET.createSignedUrl(fileKey, {
+        method: 'PUT',
+        expires: 3600, // URL expires in 1 hour
+        httpMetadata: {
+          contentType: contentType,
+        },
+        customMetadata: {
+          userId,
+          originalName: sanitizedFileName,
         },
       });
 
-      const presignedUrl = await getSignedUrl(
-        s3,
-        new PutObjectCommand({
-          Bucket: env.R2_BUCKET_NAME,
-          Key: fileKey,
-          ContentType: contentType,
-          Metadata: {
-            userId,
-            originalName: sanitizedFileName,
-          },
-        }),
-        { expiresIn: 3600 } // URL expires in 1 hour
-      );
-
-      return new Response(JSON.stringify({ url: presignedUrl, key: fileKey }), {
+      return new Response(JSON.stringify({ url: signedUrl, key: fileKey }), {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {

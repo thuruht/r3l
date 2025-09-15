@@ -57,11 +57,11 @@ export class ConnectionsObject {
           try {
             const message = JSON.parse(event.data as string);
 
-            if (message.type === 'presence') {
+            if (message.type === 'presence' && message.userData) {
               this.broadcastUserStatus(connectionId, 'connected', message.userData);
             }
 
-            if (message.type === 'activity') {
+            if (message.type === 'activity' && message.activityData) {
               this.broadcastActivity(connectionId, message.activityData);
             }
           } catch (error) {
@@ -153,21 +153,11 @@ export class ConnectionsObject {
       }
 
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
-      // Handle errors according to Cloudflare best practices
+    } catch (error) {
       console.error('Error in ConnectionsObject fetch:', error);
-
-      // Mark error as retryable if appropriate
-      const retryable = !(error.stack && error.stack.includes('overloaded'));
-
-      // Create custom error with retryable flag
-      const customError = new Error(
-        `ConnectionsObject fetch error: ${error.message || 'Unknown error'}`
-      );
-      // @ts-ignore
-      customError.retryable = retryable;
-
-      throw customError;
+      // Re-throw the original error to let the runtime handle it.
+      // This is generally safer than trying to inspect error messages.
+      throw error;
     }
   }
 
@@ -323,21 +313,11 @@ export class VisualizationObject {
       }
 
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
-      // Handle errors according to Cloudflare best practices
+    } catch (error) {
       console.error('Error in VisualizationObject fetch:', error);
-
-      // Mark error as retryable if appropriate
-      const retryable = !(error.stack && error.stack.includes('overloaded'));
-
-      // Create custom error with retryable flag
-      const customError = new Error(
-        `VisualizationObject fetch error: ${error.message || 'Unknown error'}`
-      );
-      // @ts-ignore
-      customError.retryable = retryable;
-
-      throw customError;
+      // Re-throw the original error to let the runtime handle it.
+      // This is generally safer than trying to inspect error messages.
+      throw error;
     }
   }
 
@@ -579,21 +559,11 @@ export class CollaborationRoom {
       }
 
       return new Response('Not found', { status: 404 });
-    } catch (error: any) {
-      // Handle errors according to Cloudflare best practices
+    } catch (error) {
       console.error('Error in CollaborationRoom fetch:', error);
-
-      // Mark error as retryable if appropriate
-      const retryable = !(error.stack && error.stack.includes('overloaded'));
-
-      // Create custom error with retryable flag
-      const customError = new Error(
-        `CollaborationRoom fetch error: ${error.message || 'Unknown error'}`
-      );
-      // @ts-ignore
-      customError.retryable = retryable;
-
-      throw customError;
+      // Re-throw the original error to let the runtime handle it.
+      // This is generally safer than trying to inspect error messages.
+      throw error;
     }
   }
 

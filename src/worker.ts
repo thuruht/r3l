@@ -63,6 +63,12 @@ export default {
    * @param ctx Execution context
    */
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+    // Guard clause to ensure the event is a valid scheduled event
+    if (!event || !event.cron) {
+      console.log('Scheduled task called without a valid cron event.');
+      return;
+    }
+
     try {
       // Validate environment variables
       const validatedEnv = validateEnvironment(env);
@@ -83,10 +89,3 @@ export default {
     }
   },
 };
-
-// Define the scheduled event interface
-interface ScheduledEvent {
-  cron: string;
-  scheduled: boolean;
-  type: string;
-}

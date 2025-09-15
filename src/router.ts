@@ -1284,11 +1284,19 @@ export class Router {
         return this.errorResponse('Authentication required', 401);
       }
       try {
-        const { fileName, contentType } = await request.json();
+        const { fileName, contentType } = (await request.json()) as {
+          fileName: string;
+          contentType: string;
+        };
         if (!fileName || !contentType) {
           return this.errorResponse('fileName and contentType are required', 400);
         }
-        return this.fileHandler.createPresignedUploadUrl(authenticatedUserId, fileName, contentType, env);
+        return this.fileHandler.createPresignedUploadUrl(
+          authenticatedUserId,
+          fileName,
+          contentType,
+          env
+        );
       } catch (error) {
         console.error('Error creating presigned URL:', error);
         return this.errorResponse('Could not create upload URL', 500);
@@ -2353,28 +2361,13 @@ export class Router {
         const otherUserId = path.split('/').pop() as string;
 
         // Delete the connection
-        try {
-          const query = `
-            DELETE FROM connections
-            WHERE
-              (user_id = ? AND connected_user_id = ?) OR
-              (user_id = ? AND connected_user_id = ?)
-          `;
-          await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
-        } catch (e) {
-          // Legacy fallback: use ORCID columns if new columns don't exist
-          const legacyQuery = `
-            DELETE FROM connections
-            WHERE id IN (
-              SELECT c.id FROM connections c
-              JOIN users ua ON ua.id = ?
-              JOIN users ub ON ub.id = ?
-              WHERE (c.user_a_orcid = ua.orcid_id AND c.user_b_orcid = ub.orcid_id)
-                 OR (c.user_a_orcid = ub.orcid_id AND c.user_b_orcid = ua.orcid_id)
-            )
-          `;
-          await env.R3L_DB.prepare(legacyQuery).bind(userId, otherUserId).run();
-        }
+        const query = `
+          DELETE FROM connections
+          WHERE
+            (user_id = ? AND connected_user_id = ?) OR
+            (user_id = ? AND connected_user_id = ?)
+        `;
+        await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
 
         return this.jsonResponse({ success: true });
       } catch (error) {
@@ -2520,28 +2513,6 @@ export class Router {
     }
 
     // (duplicate GET by other user handled above)
-
-    // Remove connection
-    if (path.match(/^\/api\/connections\/[^/]+$/) && request.method === 'DELETE') {
-      try {
-        const otherUserId = path.split('/').pop() as string;
-
-        // Delete the connection
-        const query = `
-          DELETE FROM connections
-          WHERE
-            (user_id = ? AND connected_user_id = ?) OR
-            (user_id = ? AND connected_user_id = ?)
-        `;
-
-        await env.R3L_DB.prepare(query).bind(userId, otherUserId, otherUserId, userId).run();
-
-        return this.jsonResponse({ success: true });
-      } catch (error) {
-        console.error('Error removing connection:', error);
-        return this.errorResponse('Failed to remove connection');
-      }
-    }
 
     return this.notFoundResponse();
   }

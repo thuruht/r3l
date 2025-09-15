@@ -24,19 +24,38 @@ export class FileHandler {
       const randomStr = Math.random().toString(36).substring(2, 12);
       const fileKey = `uploads/${userId}/${Date.now()}-${randomStr}.${fileExtension}`;
 
-      const signedUrl = await env.R3L_CONTENT_BUCKET.createSignedUrl(fileKey, {
-        method: 'PUT',
-        expires: 3600, // URL expires in 1 hour
-        httpMetadata: {
-          contentType: contentType,
-        },
-        customMetadata: {
-          userId,
-          originalName: sanitizedFileName,
-        },
+      if (
+        !env.R2_ACCESS_KEY_ID ||
+        !env.R2_SECRET_ACCESS_KEY ||
+        !env.R2_BUCKET_NAME ||
+        !env.R2_ACCOUNT_ID
+      ) {
+        throw new Error('R2 credentials for signed URLs are not configured.');
+      }
+
+      const client = new AwsClient({
+        accessKeyId: env.R2_ACCESS_KEY_ID,
+        secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+        service: 's3',
       });
 
-      return new Response(JSON.stringify({ url: signedUrl, key: fileKey }), {
+      const url = new URL(
+        `https://${env.R2_BUCKET_NAME}.${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileKey}`
+      );
+
+      const signedRequest = await client.sign(
+        new Request(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': contentType,
+          },
+        }),
+        {
+          aws: { signQuery: true, allHeaders: true },
+        }
+      );
+
+      return new Response(JSON.stringify({ url: signedRequest.url, key: fileKey }), {
         headers: { 'Content-Type': 'application/json' },
       });
     } catch (error) {

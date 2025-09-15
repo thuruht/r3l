@@ -233,7 +233,7 @@ export class TagHandler {
       `;
     }
 
-    let whereClauses: string[] = [];
+    const whereClauses: string[] = [];
 
     // If there's a search query
     if (query) {

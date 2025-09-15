@@ -2,16 +2,16 @@ import { issuer } from '@openauthjs/openauth';
 import { CloudflareStorage } from '@openauthjs/openauth/storage/cloudflare';
 import { GithubProvider } from '@openauthjs/openauth/provider/github';
 import { createSubjects } from '@openauthjs/openauth/subject';
-import { object, string, optional } from 'valibot';
+import { z } from 'zod';
 
 // Define our user subject with the fields we care about
 const subjects = createSubjects({
-  user: object({
-    id: string(),
-    email: string(),
-    github_id: optional(string()),
-    orcid_id: optional(string()),
-    avatar_key: optional(string()),
+  user: z.object({
+    id: z.string(),
+    email: z.string(),
+    github_id: z.string().optional(),
+    orcid_id: z.string().optional(),
+    avatar_key: z.string().optional(),
   }),
 });
 

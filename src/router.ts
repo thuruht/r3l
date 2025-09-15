@@ -237,7 +237,7 @@ export class Router {
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
         const usersQuery = `
-          SELECT 
+          SELECT
             id,
             username,
             display_name,
@@ -305,7 +305,7 @@ export class Router {
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
         const usersQuery = `
-          SELECT 
+          SELECT
             id,
             username,
             display_name,
@@ -1250,6 +1250,27 @@ export class Router {
    * Handle file routes
    */
   private async handleFileRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    // Get a signed URL for a file
+    if (path.match(/^\/api\/files\/[^/]+\/signed-url$/) && request.method === 'GET') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+
+      const fileKey = path.split('/')[3];
+
+      try {
+        // You might want to add an ownership check here to ensure the user can access this file
+        const signedUrl = await this.fileHandler.getSignedUrl(fileKey, env);
+        return this.jsonResponse({ signedUrl });
+      } catch (error) {
+        console.error('Error generating signed URL:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to generate signed URL';
+        return this.errorResponse(errorMessage, 500);
+      }
+    }
+
     // Get file from R2 storage
     if (path.match(/^\/api\/files\/[^/]+/) && request.method === 'GET') {
       const fileKey = path.replace('/api/files/', '');
@@ -2335,7 +2356,7 @@ export class Router {
         try {
           const query = `
             DELETE FROM connections
-            WHERE 
+            WHERE
               (user_id = ? AND connected_user_id = ?) OR
               (user_id = ? AND connected_user_id = ?)
           `;
@@ -2508,7 +2529,7 @@ export class Router {
         // Delete the connection
         const query = `
           DELETE FROM connections
-          WHERE 
+          WHERE
             (user_id = ? AND connected_user_id = ?) OR
             (user_id = ? AND connected_user_id = ?)
         `;
@@ -2533,7 +2554,7 @@ export class Router {
     try {
       const query = `
         SELECT * FROM connections
-        WHERE 
+        WHERE
           (user_id = ? AND connected_user_id = ?) OR
           (user_id = ? AND connected_user_id = ?)
         LIMIT 1

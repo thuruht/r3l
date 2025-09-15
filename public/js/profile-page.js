@@ -21,7 +21,7 @@ function displayError(container, message, code) {
   }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Initialize the navigation bar
   NavigationBar.init('profile');
 
@@ -71,13 +71,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Save privacy settings
   savePrivacySettingsBtn.addEventListener('click', async () => {
     try {
-      // Get user ID from the URL or data attribute
       const userId = savePrivacySettingsBtn.getAttribute('data-user-id');
-      if (!userId) {
-        throw new Error('User ID not found');
-      }
+      if (!userId) throw new Error('User ID not found');
 
-      // Get selected visibility option
       let defaultContentVisibility = 'public';
       for (const radio of defaultVisibilityRadios) {
         if (radio.checked) {
@@ -86,89 +82,62 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Create preferences object
       const preferences = {
         lurkerModeEnabled: lurkerModeToggle.checked,
         lurkerModeRandomness: parseInt(lurkerRandomness.value),
         showLocationByDefault: locationVisibilityToggle.checked,
-        defaultContentVisibility
+        defaultContentVisibility,
       };
 
-      console.log('Saving preferences:', preferences);
-
-      // Save preferences
       const response = await fetch(`/api/users/${userId}/preferences`, {
         method: 'PATCH',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(preferences)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferences),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to save preferences: ${response.status} ${response.statusText}`);
-      }
-
-      // Show success message
+      if (!response.ok) throw new Error(`Failed to save preferences: ${response.status}`);
       alert('Preferences saved successfully');
     } catch (error) {
-      console.error('Error saving preferences:', error);
-      alert('Failed to save preferences. Please try again.');
+      displayError(errorContainerEl, 'Failed to save preferences.', 'FE-PROF-007');
     }
   });
 
-  // Function to populate user preferences
   function populateUserPreferences(user) {
-    // Set user ID as data attribute for save button
     savePrivacySettingsBtn.setAttribute('data-user-id', user.id);
+    if (!user.preferences) return;
 
-    // Check if user has preferences
-    if (user.preferences) {
-      // Set lurker mode toggle
-      lurkerModeToggle.checked = !!user.preferences.lurkerModeEnabled;
+    lurkerModeToggle.checked = !!user.preferences.lurkerModeEnabled;
+    const randomness = user.preferences.lurkerModeRandomness || 50;
+    lurkerRandomness.value = randomness;
+    lurkerRandomnessValue.textContent = `${randomness}%`;
+    locationVisibilityToggle.checked = !!user.preferences.showLocationByDefault;
 
-      // Set lurker randomness slider
-      const randomness = user.preferences.lurkerModeRandomness || 50;
-      lurkerRandomness.value = randomness;
-      lurkerRandomnessValue.textContent = `${randomness}%`;
-
-      // Set location visibility toggle
-      locationVisibilityToggle.checked = !!user.preferences.showLocationByDefault;
-
-      // Set default content visibility
-      const visibility = user.preferences.defaultContentVisibility || 'public';
-      for (const radio of defaultVisibilityRadios) {
-        if (radio.value === visibility) {
-          radio.checked = true;
-          break;
-        }
+    const visibility = user.preferences.defaultContentVisibility || 'public';
+    for (const radio of defaultVisibilityRadios) {
+      if (radio.value === visibility) {
+        radio.checked = true;
+        break;
       }
     }
   }
 
-  // Onboarding logic
   const handleOnboarding = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isNewRegistration = urlParams.get('new') === 'true';
     const onboardingComplete = localStorage.getItem('onboardingComplete');
-
     if (isNewRegistration && !onboardingComplete) {
       onboardingModal.classList.remove('hidden');
     }
-
     dismissOnboardingBtn.addEventListener('click', () => {
       onboardingModal.classList.add('hidden');
       localStorage.setItem('onboardingComplete', 'true');
     });
   };
 
-  // Function to check if user is authenticated and load profile data
   const loadProfileData = async () => {
     try {
-      const response = await fetch('/api/auth/jwt/profile', {
-        credentials: 'include',
-      });
+      const response = await fetch('/api/auth/jwt/profile', { credentials: 'include' });
 
       if (response.status === 401) {
         loadingEl.classList.add('hidden');
@@ -176,66 +145,57 @@ document.addEventListener('DOMContentLoaded', function() {
         notAuthenticatedEl.classList.remove('hidden');
         return;
       }
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`API error: ${response.status} ${response.statusText}`);
 
       const user = await response.json();
-      if (!user || !user.username) {
-        throw new Error('Invalid user data received from server.');
-      }
+      if (!user || !user.username) throw new Error('Invalid user data received.');
 
-      // --- Populate Profile UI ---
       populateProfileUI(user);
-
-      // --- Asynchronously load secondary data ---
       loadStats(user.id);
       loadMapPoints(user.id);
       setupAvatarUpload(user);
 
-      // Show profile data, hide loading
       loadingEl.classList.add('hidden');
       notAuthenticatedEl.classList.add('hidden');
       profileDataEl.classList.remove('hidden');
-
     } catch (error) {
       loadingEl.classList.add('hidden');
       notAuthenticatedEl.classList.add('hidden');
-      profileDataEl.classList.remove('hidden'); // Show container to display the error
-      displayError(errorContainerEl, 'Could not load your profile. Please try refreshing the page.', 'FE-PROF-001');
+      profileDataEl.classList.remove('hidden');
+      displayError(errorContainerEl, 'Could not load your profile.', 'FE-PROF-001');
     }
   };
 
   function populateProfileUI(user) {
-    // Set basic profile info
     profileNameEl.textContent = user.displayName || 'R3L User';
     profileUsernameEl.textContent = `@${user.username}`;
     profileJoinedEl.textContent = user.createdAt
       ? `Joined on ${new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`
       : 'Join date unknown';
 
-    // Set avatar
     if (user.avatarUrl) {
       profileAvatarEl.src = user.avatarUrl;
     } else if (user.avatar_key) {
       profileAvatarEl.src = `/api/files/${user.avatar_key}`;
     } else {
-      profileAvatarEl.src = '/icons/user-default.svg'; // Fallback to a default icon
+      profileAvatarEl.src = '/icons/user-default.svg';
     }
     profileAvatarEl.alt = `${user.displayName || user.username}'s avatar`;
 
-    // Populate preferences and set up event handlers
     populateUserPreferences(user);
     setupActionButtons(user);
+
+    // Auth providers
+    authProvidersEl.innerHTML = `
+      <div class="auth-provider"><span class="material-icons">key</span><span>Password</span></div>
+      <div class="auth-provider"><span class="material-icons">security</span><span>Recovery Key</span></div>
+    `;
   }
 
   async function loadStats(userId) {
     try {
       const statsResponse = await fetch(`/api/users/${userId}/stats`, { credentials: 'include' });
-      if (!statsResponse.ok) {
-        throw new Error('Stats API request failed');
-      }
+      if (!statsResponse.ok) throw new Error('Stats fetch failed');
       const stats = await statsResponse.json();
       statContributionsEl.textContent = stats.contributions || 0;
       statDrawersEl.textContent = stats.drawers || 0;
@@ -249,16 +209,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const mapPointsContainer = document.getElementById('user-map-points');
     const emptyState = document.querySelector('.empty-state');
     try {
-      const mapPointsResponse = await fetch(`/api/globe/data-points?userId=${userId}`, { credentials: 'include' });
-      if (!mapPointsResponse.ok) throw new Error('Failed to fetch map points');
-
-      const mapPoints = await mapPointsResponse.json();
+      const res = await fetch(`/api/globe/data-points?userId=${userId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Map points fetch failed');
+      const mapPoints = await res.json();
       if (!mapPoints || mapPoints.length === 0) {
         emptyState.classList.remove('hidden');
         mapPointsContainer.innerHTML = '';
         return;
       }
-
       emptyState.classList.add('hidden');
       mapPointsContainer.innerHTML = '';
       mapPoints.forEach(point => {
@@ -269,8 +227,12 @@ document.addEventListener('DOMContentLoaded', function() {
         pointCard.innerHTML = `
           <h4 class="map-point-title">${point.title}</h4>
           <p class="map-point-coords">${latitude}, ${longitude}</p>
+          ${point.description ? `<p class="map-point-desc">${point.description}</p>` : ''}
           <div class="map-point-actions">
-            <button class="view-on-map" data-id="${point.id}" aria-label="View on map"><span class="material-icons">map</span></button>
+            <button class="view-on-map" data-id="${point.id}"><span class="material-icons">map</span></button>
+            ${point.contentId ? `<button class="view-content" data-id="${point.contentId}"><span class="material-icons">description</span></button>` : ''}
+            <button class="edit-point" data-id="${point.id}"><span class="material-icons">edit</span></button>
+            <button class="delete-point" data-id="${point.id}"><span class="material-icons">delete</span></button>
           </div>
         `;
         mapPointsContainer.appendChild(pointCard);
@@ -285,64 +247,50 @@ document.addEventListener('DOMContentLoaded', function() {
     avatarUploadInput.addEventListener('change', async (event) => {
       const file = event.target.files[0];
       if (!file) return;
-
       if (!file.type.startsWith('image/')) {
         alert('Please select an image file.');
         return;
       }
-
       profileAvatarEl.src = '/icons/loading-spinner.svg';
-
       try {
         const formData = new FormData();
         formData.append('file', file);
-
-        const response = await fetch('/api/files/avatar', {
-          method: 'POST',
-          credentials: 'include',
-          body: formData,
-        });
-
-        if (!response.ok) throw new Error('Avatar upload failed');
-
+        const response = await fetch('/api/files/avatar', { method: 'POST', credentials: 'include', body: formData });
+        if (!response.ok) throw new Error('Upload failed');
         const result = await response.json();
         if (result.success && result.avatarUrl) {
           profileAvatarEl.src = result.avatarUrl;
         } else {
-          throw new Error('Invalid response from server');
+          throw new Error('Invalid response');
         }
       } catch (error) {
         displayError(errorContainerEl, 'Failed to upload avatar.', 'FE-PROF-004');
-        profileAvatarEl.src = user.avatarUrl || user.avatar_key ? `/api/files/${user.avatar_key}` : '/icons/user-default.svg';
+        profileAvatarEl.src = user.avatarUrl || (user.avatar_key ? `/api/files/${user.avatar_key}` : '/icons/user-default.svg');
       }
     });
   }
 
   function setupActionButtons(user) {
-    editProfileBtn.addEventListener('click', () => {
-      window.location.href = '/edit-profile.html';
-    });
+    editProfileBtn.addEventListener('click', () => window.location.href = '/edit-profile.html');
 
     generateRecoveryKeyBtn.addEventListener('click', async () => {
       if (!confirm('WARNING: Generating a new recovery key will invalidate your old one. Continue?')) return;
       try {
-        const response = await fetch('/api/auth/jwt/generate-recovery-key', { method: 'POST', credentials: 'include' });
-        if (!response.ok) throw new Error('Failed to generate key');
-        const result = await response.json();
-        if (!result.success || !result.recoveryKey) throw new Error('Invalid server response');
-
+        const res = await fetch('/api/auth/jwt/generate-recovery-key', { method: 'POST', credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to generate');
+        const result = await res.json();
+        if (!result.success || !result.recoveryKey) throw new Error('Invalid response');
         recoveryKeyDisplay.textContent = result.recoveryKey;
         recoveryKeyModal.classList.remove('hidden');
-
         copyRecoveryKeyBtn.onclick = () => {
           navigator.clipboard.writeText(result.recoveryKey).then(() => {
             copyRecoveryKeyBtn.textContent = 'Copied!';
-            setTimeout(() => { copyRecoveryKeyBtn.textContent = 'Copy to Clipboard' }, 2000);
+            setTimeout(() => copyRecoveryKeyBtn.textContent = 'Copy to Clipboard', 2000);
           });
         };
-        closeModalBtn.onclick = () => { recoveryKeyModal.classList.add('hidden'); };
+        closeModalBtn.onclick = () => recoveryKeyModal.classList.add('hidden');
       } catch (error) {
-        displayError(errorContainerEl, 'Could not generate a new recovery key.', 'FE-PROF-005');
+        displayError(errorContainerEl, 'Could not generate recovery key.', 'FE-PROF-005');
       }
     });
 
@@ -351,12 +299,12 @@ document.addEventListener('DOMContentLoaded', function() {
         await fetch('/api/auth/jwt/logout', { method: 'POST', credentials: 'include' });
         window.location.href = '/auth/login.html?message=You have been logged out.';
       } catch (error) {
-        displayError(errorContainerEl, 'Logout failed. Please try again.', 'FE-PROF-006');
+        displayError(errorContainerEl, 'Logout failed.', 'FE-PROF-006');
       }
     });
   }
 
-  // Load profile data on page load
   loadProfileData();
   handleOnboarding();
 });
+

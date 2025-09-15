@@ -102,7 +102,7 @@ export class GlobeVisualizer {
           transform: translateX(-50%);
           z-index: 1000;
         }
-        
+
         .map-message-control {
           background-color: rgba(0, 0, 0, 0.7);
           color: white;
@@ -115,7 +115,7 @@ export class GlobeVisualizer {
           max-width: 300px;
           transition: opacity 0.3s;
         }
-        
+
         .map-message-control.hidden {
           display: none;
         }

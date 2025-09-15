@@ -48,7 +48,6 @@ document.addEventListener('DOMContentLoaded', () => {
   newMessageBtn.addEventListener('click', showUserSearchModal);
   startConversationBtn.addEventListener('click', showUserSearchModal);
   closeSearchModalBtn.addEventListener('click', hideUserSearchModal);
-
   userSearchInput.addEventListener('input', debounce(searchUsers, 300));
 
   // Close modal when clicking outside
@@ -66,8 +65,31 @@ document.addEventListener('DOMContentLoaded', () => {
         showAuthError();
         return;
       }
+
+      // Load conversations
       await loadConversations();
-      // ... (rest of the logic remains the same)
+
+      // Check for conversation in URL params
+      const urlParams = new URLSearchParams(window.location.search);
+      const userParam = urlParams.get('user');
+
+      if (userParam) {
+        const existingConv = conversations.find(c => c.otherUserId === userParam);
+        if (existingConv) {
+          openConversation(existingConv.id);
+        } else {
+          const user = await fetchUserById(userParam);
+          if (user) startNewConversation(user);
+        }
+      }
+
+      // Poll for new messages
+      setInterval(async () => {
+        await loadConversations();
+        if (currentConversation) {
+          loadMessages(currentConversation);
+        }
+      }, 10000);
     } catch (error) {
       displayError(errorContainer, 'Could not initialize the messaging system.', generateRefCode('FE-MSG-001'));
     }
@@ -75,11 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Fetch current user details
   async function fetchCurrentUser() {
-    const response = await fetch('/api/auth/jwt/profile', { credentials: 'include' });
-    if (!response.ok) {
-      throw new Error('Not authenticated');
+    try {
+      const response = await fetch('/api/auth/jwt/profile', { credentials: 'include' });
+      if (!response.ok) return null;
+      return await response.json();
+    } catch {
+      return null;
     }
-    return await response.json();
   }
 
   // Load conversations
@@ -89,12 +113,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) throw new Error('Failed to load conversations');
       conversations = await response.json();
       renderConversations(conversations);
-    } catch (error) {
+    } catch {
       displayError(conversationsList, 'Could not load conversations.', generateRefCode('FE-MSG-002'));
     }
   }
 
-  // Render conversations in the sidebar
   function renderConversations(conversations) {
     conversationsList.innerHTML = '';
 
@@ -109,12 +132,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     conversations.forEach(conversation => {
       const isActive = currentConversation && currentConversation === conversation.id;
-
       const conversationEl = document.createElement('div');
       conversationEl.className = `conversation-item${isActive ? ' active' : ''}`;
       conversationEl.dataset.id = conversation.id;
 
-      // Format time relative to now
       const timeStr = formatRelativeTime(conversation.lastMessageAt);
 
       conversationEl.innerHTML = `
@@ -137,48 +158,23 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      conversationEl.addEventListener('click', () => {
-        openConversation(conversation.id);
-      });
-
+      conversationEl.addEventListener('click', () => openConversation(conversation.id));
       conversationsList.appendChild(conversationEl);
     });
   }
 
-  // Open a conversation
-  function openConversation(conversationId) {
-    // Update UI state
-    currentConversation = conversationId;
-
-    // Update active state in sidebar
-    const items = conversationsList.querySelectorAll('.conversation-item');
-    items.forEach(item => {
-      item.classList.toggle('active', item.dataset.id === conversationId);
-    });
-
-    // Show chat interface, hide empty state
-    emptyState.classList.add('hidden');
-    chatInterface.classList.remove('hidden');
-
-    // Load messages
-    loadMessages(conversationId);
-  }
-
-  // Load messages for a conversation
   async function loadMessages(conversationId) {
     try {
       const response = await fetch(`/api/messages/conversations/${conversationId}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to load messages');
       const data = await response.json();
       renderConversation(data);
-    } catch (error) {
+    } catch {
       displayError(chatMessages, 'Could not load messages for this conversation.', generateRefCode('FE-MSG-003'));
     }
   }
 
-  // Render conversation in the chat area
   function renderConversation(data) {
-    // Update header
     chatHeader.innerHTML = `
       <div class="conversation-avatar">
         ${data.otherUser?.avatarUrl ? `<img src="${data.otherUser.avatarUrl}" alt="${data.otherUser?.username || 'Unknown User'}" class="avatar-small">` :
@@ -188,9 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="chat-name">${data.otherUser?.displayName || data.otherUser?.username || 'Unknown User'}</div>
     `;
 
-    // Render messages
     chatMessages.innerHTML = '';
-
     if (data.messages.length === 0) {
       chatMessages.innerHTML = `
         <div class="empty-state" style="padding: var(--space-4);">
@@ -200,73 +194,47 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Group messages by day
     const messagesByDay = groupMessagesByDay(data.messages);
-
-    // Render each day's messages
     Object.entries(messagesByDay).forEach(([day, messages]) => {
-      // Add day separator
       const daySeparator = document.createElement('div');
       daySeparator.className = 'day-separator';
-      daySeparator.innerHTML = `
-        <div class="day-label">${day}</div>
-      `;
+      daySeparator.innerHTML = `<div class="day-label">${day}</div>`;
       chatMessages.appendChild(daySeparator);
-
-      // Render messages for this day
       renderMessageGroup(messages);
     });
 
-    // Scroll to bottom
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  // Group messages by day
   function groupMessagesByDay(messages) {
     const groups = {};
-
     messages.forEach(message => {
-      const date = new Date(message.createdAt);
-      const day = formatDate(date);
-
-      if (!groups[day]) {
-        groups[day] = [];
-      }
-
+      const day = formatDate(new Date(message.createdAt));
+      if (!groups[day]) groups[day] = [];
       groups[day].push(message);
     });
-
     return groups;
   }
 
-  // Render a group of messages
   function renderMessageGroup(messages) {
     messages.forEach(message => {
       const isOutgoing = message.fromUserId === currentUser.id;
-
       const messageEl = document.createElement('div');
       messageEl.className = `message-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
-
-      // Message content
       messageEl.innerHTML = `
         <div class="message-content">${message.content}</div>
         <div class="message-time">${formatTime(new Date(message.createdAt))}</div>
       `;
 
-      // Attachments (if any)
-      if (message.attachments && message.attachments.length > 0) {
+      if (message.attachments?.length > 0) {
         const attachmentsEl = document.createElement('div');
         attachmentsEl.className = 'message-attachments';
-
-        message.attachments.forEach(attachment => {
+        message.attachments.forEach(() => {
           const attachmentEl = document.createElement('div');
           attachmentEl.className = 'attachment-preview';
-          attachmentEl.innerHTML = `
-            <span class="material-icons">attachment</span>
-          `;
+          attachmentEl.innerHTML = `<span class="material-icons">attachment</span>`;
           attachmentsEl.appendChild(attachmentEl);
         });
-
         messageEl.appendChild(attachmentsEl);
       }
 
@@ -274,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Send a message
   async function sendMessage() {
     const content = messageInput.value.trim();
     if (!content || !currentConversation) return;
@@ -285,7 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const recipientId = conversation.otherUserId;
     const tempId = `temp-${Date.now()}`;
 
-    // Optimistic UI update
     const messageEl = document.createElement('div');
     messageEl.className = 'message-bubble outgoing';
     messageEl.dataset.tempId = tempId;
@@ -302,13 +268,9 @@ document.addEventListener('DOMContentLoaded', () => {
         credentials: 'include',
         body: JSON.stringify({ recipientId, content }),
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to send message');
-      }
-
-      await loadMessages(currentConversation); // Refresh messages to get real ID
-    } catch (error) {
+      if (!response.ok) throw new Error('Failed to send message');
+      await loadMessages(currentConversation);
+    } catch {
       const failedMessage = chatMessages.querySelector(`[data-temp-id="${tempId}"]`);
       if (failedMessage) {
         failedMessage.classList.add('failed');
@@ -318,13 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Show user search modal
   function showUserSearchModal() {
     searchModal.classList.remove('hidden');
     userSearchInput.focus();
   }
 
-  // Hide user search modal
   function hideUserSearchModal() {
     searchModal.classList.add('hidden');
     userSearchInput.value = '';
@@ -336,7 +296,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  // Search users
   async function searchUsers() {
     const query = userSearchInput.value.trim();
     if (query.length < 2) {
@@ -348,7 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
       searchResults.innerHTML = `<div class="search-empty-state"><p>Searching...</p></div>`;
       const response = await fetch(`/api/users/search?query=${encodeURIComponent(query)}`, { credentials: 'include' });
       if (!response.ok) throw new Error('User search failed');
-
       const data = await response.json();
       const users = data.users || [];
 
@@ -375,26 +333,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         searchResults.appendChild(userEl);
       });
-    } catch (error) {
+    } catch {
       displayError(searchResults, 'Could not perform user search.', generateRefCode('FE-MSG-005'));
     }
   }
 
-  // Start a new conversation with a user
   async function startNewConversation(user) {
-    // Check if conversation already exists
     const existingConv = conversations.find(c => c.otherUserId === user.id);
-
     if (existingConv) {
       openConversation(existingConv.id);
       return;
     }
 
-    // Show chat interface with empty messages
     emptyState.classList.add('hidden');
     chatInterface.classList.remove('hidden');
 
-    // Set up chat header
     chatHeader.innerHTML = `
       <div class="conversation-avatar">
         ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.username}" class="avatar-small">` :
@@ -404,31 +357,22 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="chat-name">${user.display_name || user.username}</div>
     `;
 
-    // Clear messages
     chatMessages.innerHTML = `
       <div class="empty-state" style="padding: var(--space-4);">
         <p>Start a conversation with ${user.display_name || user.username}</p>
       </div>
     `;
 
-    // Focus input
     messageInput.focus();
-
-    // Store recipient info for sending first message
     messageInput.dataset.recipientId = user.id;
-
-    // When user sends first message, a conversation will be created on the server
   }
 
-  // Fetch a user by ID
   async function fetchUserById(userId) {
     try {
       const response = await fetch(`/api/users/${userId}`, { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('User not found');
-      }
+      if (!response.ok) throw new Error('User not found');
       return await response.json();
-    } catch (error) {
+    } catch {
       displayError(errorContainer, 'Could not fetch user details.', generateRefCode('FE-MSG-006'));
       return null;
     }
@@ -447,83 +391,41 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
   }
 
-  // Helper: Format relative time
+  // Helpers
   function formatRelativeTime(timestamp) {
     const now = Date.now();
     const diff = now - timestamp;
-
-    // Less than a minute
-    if (diff < 60 * 1000) {
-      return 'just now';
-    }
-
-    // Less than an hour
-    if (diff < 60 * 60 * 1000) {
-      const minutes = Math.floor(diff / (60 * 1000));
-      return `${minutes}m`;
-    }
-
-    // Less than a day
-    if (diff < 24 * 60 * 60 * 1000) {
-      const hours = Math.floor(diff / (60 * 60 * 1000));
-      return `${hours}h`;
-    }
-
-    // Less than a week
-    if (diff < 7 * 24 * 60 * 60 * 1000) {
-      const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-      return `${days}d`;
-    }
-
-    // Format as date
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d`;
     return formatDate(new Date(timestamp));
   }
 
-  // Helper: Format date
   function formatDate(date) {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-
-    if (isSameDay(date, today)) {
-      return 'Today';
-    }
-
-    if (isSameDay(date, yesterday)) {
-      return 'Yesterday';
-    }
-
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric'
-    });
+    if (isSameDay(date, today)) return 'Today';
+    if (isSameDay(date, yesterday)) return 'Yesterday';
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
-  // Helper: Format time
   function formatTime(date) {
-    return date.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 
-  // Helper: Check if two dates are on the same day
-  function isSameDay(date1, date2) {
-    return date1.getDate() === date2.getDate() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getFullYear() === date2.getFullYear();
+  function isSameDay(d1, d2) {
+    return d1.getDate() === d2.getDate() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getFullYear() === d2.getFullYear();
   }
 
-  // Helper: Debounce function
   function debounce(func, wait) {
     let timeout;
-    return function executedFunction(...args) {
-      const later = () => {
-        clearTimeout(timeout);
-        func(...args);
-      };
+    return function (...args) {
       clearTimeout(timeout);
-      timeout = setTimeout(later, wait);
+      timeout = setTimeout(() => func(...args), wait);
     };
   }
 });

@@ -499,6 +499,7 @@
       
       <!-- Authenticated state -->
       <div id="profile-data" class="profile-container hidden">
+        <div id="error-container"></div>
         <div class="profile-header">
           <div id="profile-avatar-container" class="profile-avatar-container">
             <img id="profile-avatar" class="profile-avatar" alt="Profile Avatar">
@@ -645,6 +646,25 @@
       </div>
     </div>
   </main>
+
+  <!-- Onboarding Modal -->
+  <div id="onboarding-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 class="modal-title">Welcome to R3L:F!</h2>
+      <div class="modal-content">
+        <p>Here are a few key concepts to get you started:</p>
+        <ul>
+          <li><strong>Ephemeral Content:</strong> Files you upload will disappear after 7 days unless the community archives them.</li>
+          <li><strong>Chronological Feed:</strong> Your feed is a simple, time-ordered list of content from your connections. No algorithms.</li>
+          <li><strong>Your Drawer:</strong> This page is your personal space. Customize your "Communique" to express yourself to others who visit.</li>
+        </ul>
+        <p>Ready to explore? Make connections and see what you discover.</p>
+      </div>
+      <div class="modal-actions" style="justify-content: flex-end;">
+        <button id="dismiss-onboarding-btn" class="btn btn-primary">Let's Go</button>
+      </div>
+    </div>
+  </div>
 
   <footer>
     <div class="container">

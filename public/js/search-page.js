@@ -1,4 +1,5 @@
 import { NavigationBar } from './components/navigation.js';
+import { generateRefCode, displayEmptyState, displayError } from './utils/ui-helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize the navigation bar
@@ -41,118 +42,72 @@ document.addEventListener('DOMContentLoaded', () => {
     'default': 'insert_drive_file'
   };
 
-  // Function to fetch search results from API
+  /**
+   * Fetch search results from API with fallback + retry
+   */
   async function fetchSearchResults(searchParams) {
     try {
-      // Determine if it's a standard or anti-tracking search
       const endpoint = searchParams.antiTracking ? '/api/search/lurker' : '/api/search';
 
-      // Build query parameters
+      // Build query params
       const params = new URLSearchParams();
-
-      if (searchParams.query) {
-        params.append('q', searchParams.query);
-      }
-
-      // Add file type filters
-      if (searchParams.fileTypes.length > 0) {
-        searchParams.fileTypes.forEach(type => {
-          params.append('type', type);
-        });
-      }
-
-      // Add time frame filter
-      if (searchParams.timeFrame !== 'all') {
-        const now = Date.now();
-        let timeLimit;
-
-        switch (searchParams.timeFrame) {
-          case 'day':
-            timeLimit = now - (24 * 60 * 60 * 1000);
-            break;
-          case 'week':
-            timeLimit = now - (7 * 24 * 60 * 60 * 1000);
-            break;
-          case 'month':
-            timeLimit = now - (30 * 24 * 60 * 60 * 1000);
-            break;
-        }
-
-        if (timeLimit) {
-          params.append('date_start', timeLimit.toString());
-        }
-      }
-
-      // Add sorting and pagination
-      if (searchParams.sortBy) {
-        params.append('sort', searchParams.sortBy);
-      }
+      if (searchParams.query) params.append('q', searchParams.query);
+      if (searchParams.sortBy) params.append('sort', searchParams.sortBy);
 
       params.append('limit', '20');
       params.append('offset', ((searchParams.page - 1) * 20).toString());
 
-      // For lurker search, add randomness parameter
-      if (searchParams.antiTracking) {
-        params.append('randomness', '75');
+      // File types
+      searchParams.fileTypes.forEach(type => params.append('type', type));
+
+      // Time frame
+      if (searchParams.timeFrame !== 'all') {
+        const now = Date.now();
+        let timeLimit;
+        switch (searchParams.timeFrame) {
+          case 'day': timeLimit = now - (24 * 60 * 60 * 1000); break;
+          case 'week': timeLimit = now - (7 * 24 * 60 * 60 * 1000); break;
+          case 'month': timeLimit = now - (30 * 24 * 60 * 60 * 1000); break;
+        }
+        if (timeLimit) params.append('date_start', timeLimit.toString());
       }
 
-      // Check if user is logged in
-      const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
+      // Anti-tracking randomness
+      if (searchParams.antiTracking) params.append('randomness', '75');
 
-      // Send request
-      console.log(`Fetching search results from ${endpoint}?${params.toString()}`);
       const response = await fetch(`${endpoint}?${params.toString()}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include' // Include cookies for auth
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (!response.ok) {
-        console.error(`Search API error: ${response.status}, falling back to mock data`);
-        // Only use mock data if not logged in or error is severe
-        if (!isLoggedIn || response.status >= 500) {
-          return mockResults;
+        const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
+        if (isLoggedIn) {
+          return await retryWithSimplifiedQuery(endpoint, searchParams);
         }
-
-        // Try again with less restrictive query
-        return await retryWithSimplifiedQuery(endpoint, searchParams);
+        return mockResults;
       }
 
       const data = await response.json();
-      console.log('Search API response:', data);
 
-      // Handle different response formats
-      if (data.results && Array.isArray(data.results)) {
-        return data.results;
-      } else if (Array.isArray(data)) {
-        return data;
-      } else if (data && typeof data === 'object') {
-        // Extract results if they're in a different field
+      // Flexible handling of response formats
+      if (data.results && Array.isArray(data.results)) return data.results;
+      if (Array.isArray(data)) return data;
+      if (data && typeof data === 'object') {
         for (const key in data) {
-          if (Array.isArray(data[key])) {
-            return data[key];
-          }
+          if (Array.isArray(data[key])) return data[key];
         }
       }
 
-      // If we got an unexpected format and user is logged in, try again with less restrictive query
-      console.warn('Unexpected API response format, retrying with simplified query');
-      if (isLoggedIn) {
-        return await retryWithSimplifiedQuery(endpoint, searchParams);
-      }
+      // Unexpected format → retry
+      const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
+      if (isLoggedIn) return await retryWithSimplifiedQuery(endpoint, searchParams);
 
-      // Fall back to mock data as last resort
-      console.warn('Falling back to mock data');
       return mockResults;
     } catch (error) {
       console.error('Error fetching search results:', error);
-
-      // Check if user is logged in
       const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
-
-      // Try again with less restrictive query if user is logged in
       if (isLoggedIn) {
         try {
           return await retryWithSimplifiedQuery('/api/search', searchParams);
@@ -160,161 +115,78 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Retry failed:', retryError);
         }
       }
-
-      // Fallback to mock results if all else fails
       return mockResults;
     }
   }
 
   /**
-   * Retry search with simplified parameters in case the original query was too complex
+   * Retry search with simplified query (only text + limit)
    */
   async function retryWithSimplifiedQuery(endpoint, searchParams) {
-    // Create a simpler query - just the text search with no filters
     const simpleParams = new URLSearchParams();
-    if (searchParams.query) {
-      simpleParams.append('q', searchParams.query);
-    }
+    if (searchParams.query) simpleParams.append('q', searchParams.query);
     simpleParams.append('limit', '20');
-
-    console.log(`Retrying with simplified query: ${endpoint}?${simpleParams.toString()}`);
 
     const response = await fetch(`${endpoint}?${simpleParams.toString()}`, {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include'
     });
 
-    if (!response.ok) {
-      console.error('Simplified query also failed, falling back to mock data');
-      return mockResults;
-    }
+    if (!response.ok) return mockResults;
 
     const data = await response.json();
+    if (data.results && Array.isArray(data.results)) return data.results;
+    if (Array.isArray(data)) return data;
 
-    // Handle different response formats
-    if (data.results && Array.isArray(data.results)) {
-      return data.results;
-    } else if (Array.isArray(data)) {
-      return data;
-    }
-
-    // Last resort fallback
     return mockResults;
   }
 
-  // Format file size
-  function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' bytes';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
-    else return (bytes / 1073741824).toFixed(1) + ' GB';
-  }
-
-  // Format time remaining until expiry
-  function formatTimeRemaining(expiryTimestamp) {
-    if (!expiryTimestamp) return 'Archived';
-
-    const now = Date.now();
-    const diff = expiryTimestamp - now;
-
-    if (diff <= 0) return 'Expired';
-
-    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-
-    if (days === 0) return '<1d';
-    return days + 'd';
-  }
-
-  // Get icon for file type
-  function getFileIcon(fileType) {
-    for (const type in fileIcons) {
-      if (fileType.startsWith(type)) {
-        return fileIcons[type];
-      }
-    }
-    return fileIcons.default;
-  }
-
-  // Fallback mock results if API fails
+  // Mock fallback results
   const mockResults = [
     {
       id: 'mock_1',
       title: 'Community Research Notes',
       type: 'text/markdown',
       size: 25680,
-      is_public: true,
-      created_at: Date.now() - 1 * 24 * 60 * 60 * 1000,
       expires_at: Date.now() + 6 * 24 * 60 * 60 * 1000,
-      is_archived: false,
       user_name: 'Researcher42',
-      description: 'Collaborative notes on community research projects'
     },
     {
       id: 'mock_2',
       title: 'Association Web Visualization',
       type: 'image/png',
       size: 356000,
-      is_public: true,
-      created_at: Date.now() - 2 * 24 * 60 * 60 * 1000,
       expires_at: Date.now() + 5 * 24 * 60 * 60 * 1000,
-      is_archived: false,
       user_name: 'VisualArtist',
-      description: 'Visualization of content associations in the network'
-    },
-    {
-      id: 'mock_3',
-      title: 'Ephemeral Content Study',
-      type: 'application/pdf',
-      size: 2024000,
-      is_public: true,
-      created_at: Date.now() - 3 * 24 * 60 * 60 * 1000,
-      expires_at: Date.now() + 4 * 24 * 60 * 60 * 1000,
-      is_archived: false,
-      user_name: 'ResearchTeam',
-      description: 'Study on the impact of ephemeral content on engagement'
-    },
-    {
-      id: 'mock_4',
-      title: 'Urban Sound Mapping',
-      type: 'audio/mp3',
-      size: 7120000,
-      is_public: true,
-      created_at: Date.now() - 4 * 24 * 60 * 60 * 1000,
-      expires_at: Date.now() + 3 * 24 * 60 * 60 * 1000,
-      is_archived: false,
-      user_name: 'SoundCollector',
-      description: 'Audio recordings from urban environments'
-    },
-    {
-      id: 'mock_5',
-      title: 'R3L:F Philosophy Overview',
-      type: 'text/html',
-      size: 42000,
-      is_public: true,
-      created_at: Date.now() - 1 * 24 * 60 * 60 * 1000,
-      expires_at: Date.now() + 10 * 24 * 60 * 60 * 1000,
-      is_archived: false,
-      user_name: 'NetworkAdmin',
-      description: 'Overview of the R3L:F philosophy and project goals'
-    },
-    {
-      id: 'mock_6',
-      title: 'Community Data Analysis',
-      type: 'application/json',
-      size: 187000,
-      is_public: true,
-      created_at: Date.now() - 2 * 24 * 60 * 60 * 1000,
-      expires_at: Date.now() + 5 * 24 * 60 * 60 * 1000,
-      is_archived: false,
-      user_name: 'DataAnalyst',
-      description: 'Analysis of community participation and engagement'
     }
   ];
 
-  // Update anti-tracking status display
+  // Helpers
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' bytes';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+    return (bytes / 1073741824).toFixed(1) + ' GB';
+  }
+
+  function formatTimeRemaining(expiryTimestamp) {
+    if (!expiryTimestamp) return 'Archived';
+    const now = Date.now();
+    const diff = expiryTimestamp - now;
+    if (diff <= 0) return 'Expired';
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    return days === 0 ? '<1d' : `${days}d`;
+  }
+
+  function getFileIcon(fileType) {
+    for (const type in fileIcons) {
+      if (fileType.startsWith(type)) return fileIcons[type];
+    }
+    return fileIcons.default;
+  }
+
+  // Anti-tracking status indicator
   function updateAntiTrackingStatus() {
     if (antiTrackingSearch.checked) {
       antiTrackingStatus.textContent = 'Active';
@@ -325,124 +197,98 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Execute search based on form inputs
+  // Execute search
   async function executeSearch() {
-    // Show results container and loading state
     resultsContainer.classList.remove('hidden');
     loadingResults.classList.remove('hidden');
     noResults.classList.add('hidden');
     resultsGrid.classList.add('hidden');
     pagination.classList.add('hidden');
 
-    // Get form data
     const formData = new FormData(searchForm);
     const searchParams = {
       query: searchQuery.value,
       fileTypes: formData.getAll('fileType'),
       timeFrame: formData.get('timeFrame'),
       sortBy: formData.get('sortBy'),
-      includeExpiring: formData.get('includeExpiring') === 'on',
-      includeArchived: formData.get('includeArchived') === 'on',
       antiTracking: formData.get('antiTracking') === 'on',
       page: currentPage
     };
 
-    console.log('Search params:', searchParams);
-
     try {
-      // Fetch search results from API
       const results = await fetchSearchResults(searchParams);
-
-      // Update results count
-      resultsCount.textContent = `${results.length} results`;
-
-      // Hide loading state
       loadingResults.classList.add('hidden');
 
-      // Show results or empty state
-      if (results.length === 0) {
+      if (!results || results.length === 0) {
+        resultsCount.textContent = '0 results';
+        displayEmptyState(
+          noResults,
+          'No results found for your query. Try different keywords or filters.'
+        );
         noResults.classList.remove('hidden');
-      } else {
-        resultsGrid.innerHTML = '';
+        return;
+      }
 
-        // Create result items
-        results.forEach(result => {
-          const template = document.getElementById('result-item-template');
-          const resultItem = template.content.cloneNode(true);
+      resultsCount.textContent = `${results.length} results`;
+      resultsGrid.innerHTML = '';
 
-          // Map API response to expected format (handle different property names)
-          const item = {
-            id: result.id || result.content_id || '',
-            name: result.title || result.name || 'Untitled',
-            type: result.type || result.content_type || 'application/octet-stream',
-            size: result.size || result.file_size || 0,
-            expires: result.expires_at || result.expires || null,
-            user: result.user_name || result.username || result.display_name || 'Unknown'
-          };
+      results.forEach(result => {
+        const template = document.getElementById('result-item-template');
+        const resultItem = template.content.cloneNode(true);
 
-          // Set file icon
-          const iconElement = resultItem.querySelector('.file-icon .material-icons');
-          iconElement.textContent = getFileIcon(item.type);
+        const item = {
+          id: result.id || result.content_id || '',
+          name: result.title || result.name || 'Untitled',
+          type: result.type || result.content_type || 'application/octet-stream',
+          size: result.size || result.file_size || 0,
+          expires: result.expires_at || result.expires || null,
+          user: result.user_name || result.username || result.display_name || 'Unknown'
+        };
 
-          // Set file name
-          const nameElement = resultItem.querySelector('.file-name');
-          nameElement.textContent = `${item.name} (${item.user})`;
+        resultItem.querySelector('.file-icon .material-icons').textContent = getFileIcon(item.type);
+        resultItem.querySelector('.file-name').textContent = `${item.name} (${item.user})`;
+        resultItem.querySelector('.file-expiry').textContent = formatTimeRemaining(item.expires);
 
-          // Set file expiry
-          const expiryElement = resultItem.querySelector('.file-expiry');
-          expiryElement.textContent = formatTimeRemaining(item.expires);
-
-          // Add tooltip with details
-          const itemElement = resultItem.querySelector('.file-item');
-          itemElement.title = `${item.name}\nSize: ${formatFileSize(item.size)}\nUploaded by: ${item.user}\nType: ${item.type}`;
-
-          // Add click handler
-          itemElement.addEventListener('click', () => {
-            // Check if content or drawer ID
-            const targetPath = item.id.startsWith('drawer_')
-              ? `/drawer.html?id=${item.id.replace('drawer_', '')}`
-              : `/content/${item.id}`;
-            window.location.href = targetPath;
-          });
-
-          // Add to grid
-          resultsGrid.appendChild(resultItem);
+        const itemElement = resultItem.querySelector('.file-item');
+        itemElement.title = `${item.name}\nSize: ${formatFileSize(item.size)}\nUploaded by: ${item.user}\nType: ${item.type}`;
+        itemElement.addEventListener('click', () => {
+          const targetPath = item.id.startsWith('drawer_')
+            ? `/drawer.html?id=${item.id.replace('drawer_', '')}`
+            : `/content/${item.id}`;
+          window.location.href = targetPath;
         });
 
-        resultsGrid.classList.remove('hidden');
+        resultsGrid.appendChild(resultItem);
+      });
 
-        // Show pagination for larger result sets
-        if (results.length > 0) {
-          pagination.classList.remove('hidden');
-          totalPages = Math.ceil(results.length / 12);
-          pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      resultsGrid.classList.remove('hidden');
 
-          // Update button states
-          prevPage.disabled = currentPage <= 1;
-          nextPage.disabled = currentPage >= totalPages;
-        }
-      }
+      // Pagination
+      pagination.classList.remove('hidden');
+      totalPages = Math.ceil(results.length / 12);
+      pageIndicator.textContent = `Page ${currentPage} of ${totalPages}`;
+      prevPage.disabled = currentPage <= 1;
+      nextPage.disabled = currentPage >= totalPages;
     } catch (error) {
-      console.error('Search failed:', error);
       loadingResults.classList.add('hidden');
-      noResults.classList.remove('hidden');
-      document.querySelector('#no-results p').textContent = 'An error occurred while searching. Please try again.';
+      displayError(
+        resultsContainer,
+        'The search could not be completed.',
+        generateRefCode('FE-SRCH-001')
+      );
     }
   }
 
-  // Initialize event listeners
+  // Init event listeners
   function initEventListeners() {
-    // Search form submission
     searchForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      currentPage = 1; // Reset to first page on new search
+      currentPage = 1;
       executeSearch();
     });
 
-    // Anti-tracking toggle
     antiTrackingSearch.addEventListener('change', updateAntiTrackingStatus);
 
-    // Pagination
     prevPage.addEventListener('click', () => {
       if (currentPage > 1) {
         currentPage--;
@@ -458,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initialize the page
+  // Init page
   updateAntiTrackingStatus();
   initEventListeners();
 });

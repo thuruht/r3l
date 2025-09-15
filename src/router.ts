@@ -1256,6 +1256,24 @@ export class Router {
       return this.fileHandler.getFile(fileKey, env);
     }
 
+    // Create a presigned URL for direct-to-R2 uploads
+    if (path === '/api/files/upload-url' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      try {
+        const { fileName, contentType } = await request.json();
+        if (!fileName || !contentType) {
+          return this.errorResponse('fileName and contentType are required', 400);
+        }
+        return this.fileHandler.createPresignedUploadUrl(authenticatedUserId, fileName, contentType, env);
+      } catch (error) {
+        console.error('Error creating presigned URL:', error);
+        return this.errorResponse('Could not create upload URL', 500);
+      }
+    }
+
     // Upload avatar image - requires authentication
     if (path === '/api/files/avatar' && request.method === 'POST') {
       const authenticatedUserId = await this.getAuthenticatedUser(request, env);
@@ -1314,6 +1332,23 @@ export class Router {
 
         const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
         return this.errorResponse(errorMessage, 500);
+      }
+    }
+
+    // Register a file that has been successfully uploaded to R2
+    if (path === '/api/files/register' && request.method === 'POST') {
+      const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      try {
+        const data = await request.json();
+        const contentId = await this.contentHandler.createContentFromUpload(authenticatedUserId, data, env);
+        const newContent = await this.contentHandler.getContent(contentId, env);
+        return this.jsonResponse({ id: contentId, success: true, expiresAt: newContent?.expires_at });
+      } catch (error) {
+        console.error('Error registering file:', error);
+        return this.errorResponse('Could not register file', 500);
       }
     }
 

@@ -15,6 +15,10 @@ export interface Env {
   GITHUB_REDIRECT_URI?: string;
   R3L_APP_SECRET?: string;
   JWT_SECRET?: string;
+  R2_BUCKET_NAME?: string;
+  R2_ENDPOINT?: string;
+  R2_ACCESS_KEY_ID?: string;
+  R2_SECRET_ACCESS_KEY?: string;
 
   // Define KV namespace bindings
   R3L_USERS: KVNamespace;

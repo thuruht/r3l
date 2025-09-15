@@ -8,111 +8,75 @@
   <script src="/js/font-loader.js" defer></script>
   <style>
     .login-container {
-      max-width: 400px;
-      margin: 2rem auto;
-      padding: 2rem;
+      max-width: 450px;
+      margin: 4rem auto;
+      padding: 2.5rem;
       background-color: var(--bg-container);
-      border-radius: 8px;
-      box-shadow: var(--shadow-medium);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-primary);
+      box-shadow: 0 8px 32px var(--accent-purple-glow);
     }
-    
+    .login-container h1 {
+      color: var(--accent-green);
+      text-align: center;
+    }
+    .login-container p {
+      text-align: center;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+    }
     .form-group {
       margin-bottom: 1.5rem;
     }
-    
     .form-group label {
       display: block;
       margin-bottom: 0.5rem;
       font-weight: 500;
+      color: var(--text-secondary);
     }
-    
     .form-group input {
       width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--border-light);
-      border-radius: 4px;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
       background-color: var(--bg-input);
       color: var(--text-primary);
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
-    
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent-purple);
+      box-shadow: 0 0 0 3px var(--accent-purple-glow);
+    }
     .button-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       margin-top: 2rem;
     }
-    
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.75rem 1.5rem;
-      border-radius: 4px;
-      cursor: pointer;
-      font-weight: 500;
-      text-decoration: none;
-      transition: background-color 0.2s, transform 0.1s;
-    }
-    
-    .btn-primary {
-      background-color: var(--accent-primary);
-      color: white;
-      border: none;
-    }
-    
-    .btn-primary:hover {
-      background-color: var(--accent-primary-dark);
-      transform: translateY(-1px);
-    }
-    
-    .btn-secondary {
-      background-color: transparent;
-      color: var(--accent-primary);
-      border: 1px solid var(--accent-primary);
-    }
-    
-    .btn-secondary:hover {
-      background-color: var(--accent-primary-light);
-      transform: translateY(-1px);
-    }
-    
-    .error-message {
-      color: var(--error);
-      margin-top: 1rem;
-      padding: 0.75rem;
-      border-left: 3px solid var(--error);
-      background-color: var(--error-bg);
-      display: none;
-    }
-    
-    .success-message {
-      color: var(--success);
-      margin-top: 1rem;
-      padding: 0.75rem;
-      border-left: 3px solid var(--success);
-      background-color: var(--success-bg);
-      display: none;
-    }
-    
-    .social-login {
-      margin-top: 2rem;
-      text-align: center;
-      border-top: 1px solid var(--border-light);
-      padding-top: 1.5rem;
-    }
-    
-    .social-login p {
-      margin-bottom: 1rem;
-    }
-    
-    .social-buttons {
-      display: flex;
+    .button-container .btn {
+      width: 100%;
       justify-content: center;
-      gap: 1rem;
+    }
+    .info-text {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .info-text a {
+      color: var(--accent-lavender);
+      text-decoration: none;
+    }
+    .info-text a:hover {
+      text-decoration: underline;
+    }
+    .error-message, .success-message {
+      margin-bottom: 1rem;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      display: none;
     }
   </style>
 </head>
-<body>
+<body class="bg-deep">
   <header>
     <div class="container">
       <nav>
@@ -156,8 +120,10 @@
             <span class="material-icons">login</span>
             Log In
           </button>
-          <a href="/auth/register.html" class="btn btn-secondary">Create Account</a>
         </div>
+        <p class="info-text">
+          Don't have an account? <a href="/auth/register.html" class="link">Create one</a>
+        </p>
       </form>
     </div>
   </main>

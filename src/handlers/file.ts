@@ -1,3 +1,4 @@
+import { AwsClient } from 'aws4fetch';
 import { Env } from '../types/env.js';
 
 export class FileHandler {
@@ -220,5 +221,45 @@ export class FileHandler {
       console.error('Error deleting file:', error);
       return false;
     }
+  }
+
+  /**
+   * Generate a presigned URL for downloading a file from R2
+   * @param fileKey The file key in R2
+   * @param env Environment variables
+   * @returns A presigned URL string
+   */
+  async getSignedUrl(fileKey: string, env: Env): Promise<string> {
+    if (
+      !env.R2_ACCESS_KEY_ID ||
+      !env.R2_SECRET_ACCESS_KEY ||
+      !env.R2_BUCKET_NAME ||
+      !env.R2_ACCOUNT_ID
+    ) {
+      throw new Error('R2 credentials for signed URLs are not configured.');
+    }
+
+    const client = new AwsClient({
+      accessKeyId: env.R2_ACCESS_KEY_ID,
+      secretAccessKey: env.R2_SECRET_ACCESS_KEY,
+    });
+
+    const url = new URL(
+      `https://${env.R2_BUCKET_NAME}.${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileKey}`
+    );
+
+    // Set an expiry for the presigned URL, in seconds
+    url.searchParams.set('X-Amz-Expires', '3600'); // 1 hour
+
+    const signedRequest = await client.sign(
+      new Request(url, {
+        method: 'GET',
+      }),
+      {
+        aws: { signQuery: true }, // Sign the URL by adding query parameters
+      }
+    );
+
+    return signedRequest.url;
   }
 }

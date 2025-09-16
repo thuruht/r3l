@@ -20,6 +20,9 @@ export class NotificationManager {
     this.bellIcon = null;
     this.isOpen = false;
     this.onNotificationClick = null;
+    this.userId = null;
+    this.websocket = null;
+    this.websocketUrl = null;
   }
 
   /**
@@ -37,6 +40,7 @@ export class NotificationManager {
     this.badge = options.badge;
     this.bellIcon = options.bellIcon;
     this.onNotificationClick = options.onNotificationClick;
+    this.userId = options.userId;
 
     if (this.bellIcon) {
       this.bellIcon.addEventListener('click', e => {
@@ -62,13 +66,16 @@ export class NotificationManager {
     this.initialized = true;
     this.fetchUnreadCount();
     this.fetchNotifications();
+    if (this.userId) {
+      this.connectWebSocket();
+    }
   }
 
   /**
    * Create notification HTML elements
    */
-  createNotificationElements() {
-    debugLog('NotificationManager', 'Creating notification elements');
+  createNotificationElements(options = {}) {
+    debugLog('NotificationManager', 'Creating notification elements', options);
 
     if (!document.querySelector('.notification-container')) {
       const nav = document.querySelector('nav');
@@ -130,6 +137,7 @@ export class NotificationManager {
         container: notificationContainer,
         badge: bellWrapper.querySelector('.notification-badge'),
         bellIcon: bellWrapper.querySelector('.notification-bell'),
+        userId: options.userId,
         onNotificationClick: notification => {
           if (notification.actionUrl) {
             window.location.href = notification.actionUrl;
@@ -529,30 +537,61 @@ export class NotificationManager {
   }
 
   /**
-   * Poll for new notifications
-   * @param {number} interval - Polling interval in milliseconds
+   * Connect to the notification websocket
    */
-  startPolling(interval = 30000) {
-    this.stopPolling(); // Stop any existing interval
-
-    this.pollingInterval = setInterval(() => {
-      this.fetchUnreadCount();
-
-      // Also fetch notifications if panel is open
-      if (this.isOpen) {
-        this.fetchNotifications();
-      }
-    }, interval);
-  }
-
-  /**
-   * Stop polling for notifications
-   */
-  stopPolling() {
-    if (this.pollingInterval) {
-      clearInterval(this.pollingInterval);
-      this.pollingInterval = null;
+  connectWebSocket() {
+    if (this.websocket && this.websocket.readyState < 2) {
+      debugLog('NotificationManager', 'WebSocket already connected.');
+      return;
     }
+
+    // Determine websocket URL from current window location
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/connect`;
+    this.websocketUrl = wsUrl;
+
+    debugLog('NotificationManager', `Connecting to WebSocket: ${wsUrl}`);
+
+    this.websocket = new WebSocket(wsUrl);
+
+    this.websocket.onopen = () => {
+      debugLog('NotificationManager', 'WebSocket connection established.');
+      // Send a ping every 30 seconds to keep the connection alive
+      setInterval(() => {
+        if (this.websocket.readyState === WebSocket.OPEN) {
+          this.websocket.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000);
+    };
+
+    this.websocket.onmessage = event => {
+      try {
+        const data = JSON.parse(event.data);
+        debugLog('NotificationManager', 'WebSocket message received', data);
+
+        if (data.type === 'notification' && data.notification) {
+          // Add notification to the top of the list
+          this.notifications.unshift(data.notification);
+          this.unreadCount++;
+          this.updateBadge();
+          this.renderNotifications();
+        } else if (data.type === 'new_message' && data.message) {
+          // This is a message, not a notification, but we can still show a toast or update a badge
+          this.fetchUnreadCount(); // Re-fetch to update message count if it's included
+        }
+      } catch (error) {
+        debugLog('NotificationManager', 'Error parsing WebSocket message', error);
+      }
+    };
+
+    this.websocket.onclose = () => {
+      debugLog('NotificationManager', 'WebSocket connection closed. Reconnecting in 5 seconds...');
+      setTimeout(() => this.connectWebSocket(), 5000);
+    };
+
+    this.websocket.onerror = error => {
+      debugLog('NotificationManager', 'WebSocket error', error);
+    };
   }
 }
 

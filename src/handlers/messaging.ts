@@ -1,4 +1,5 @@
 import { Env } from '../types/env.js';
+import { NotificationHandler } from './notification.js';
 
 /**
  * Message structure
@@ -19,7 +20,11 @@ export interface Message {
  * Uses Durable Objects for real-time capabilities
  */
 export class MessagingHandler {
-  constructor() {}
+  private notificationHandler: NotificationHandler;
+
+  constructor() {
+    this.notificationHandler = new NotificationHandler();
+  }
 
   /**
    * Send a direct message to a user
@@ -125,12 +130,7 @@ export class MessagingHandler {
         : content;
 
     try {
-      // Get notification handler
-      const { NotificationHandler } = await import('./notification.js');
-      const notificationHandler = new NotificationHandler();
-
-      // Create notification
-      await notificationHandler.createNotification(
+      await this.notificationHandler.createNotification(
         toUserId,
         'message',
         notificationTitle,

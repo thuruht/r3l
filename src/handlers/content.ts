@@ -4,6 +4,7 @@ import { ValidationError } from '../types/errors.js';
 import { Validator } from '../validators/index.js';
 import { Sanitizer } from '../utils/sanitizer.js';
 import { Logger } from '../utils/logger.js';
+import { NotificationHandler } from './notification.js';
 
 interface ContentItem {
   id: string;
@@ -43,9 +44,11 @@ interface ContentCreateData {
 
 export class ContentHandler {
   private logger: Logger;
+  private notificationHandler: NotificationHandler;
 
   constructor() {
     this.logger = new Logger('ContentHandler');
+    this.notificationHandler = new NotificationHandler();
   }
 
   /**
@@ -540,6 +543,20 @@ export class ContentHandler {
       .bind(crypto.randomUUID(), contentId, userId, Date.now())
       .run();
 
+    // Notify content owner
+    if (content.user_id !== userId) {
+      const voter = await env.R3L_DB.prepare('SELECT display_name FROM users WHERE id = ?').bind(userId).first<{display_name: string}>();
+      const voterName = voter?.display_name || 'Someone';
+      await this.notificationHandler.createNotification(
+        content.user_id,
+        'content',
+        'Your content was upvoted',
+        `${voterName} voted to archive your content: "${content.title}"`,
+        `/content.html?id=${contentId}`,
+        env
+      );
+    }
+
     const voteResult = await env.R3L_DB.prepare(
       `
       SELECT COUNT(*) as vote_count FROM community_archive_votes
@@ -889,6 +906,20 @@ export class ContentHandler {
     )
       .bind(copyId, userId, contentId, `Copy of ${content.title}`, isPublic ? 1 : 0, now)
       .run();
+
+    // Notify content owner
+    if (content.user_id !== userId) {
+        const copier = await env.R3L_DB.prepare('SELECT display_name FROM users WHERE id = ?').bind(userId).first<{display_name: string}>();
+        const copierName = copier?.display_name || 'Someone';
+        await this.notificationHandler.createNotification(
+            content.user_id,
+            'content',
+            'Your content was copied',
+            `${copierName} copied your content to their drawer: "${content.title}"`,
+            `/content.html?id=${contentId}`,
+            env
+        );
+    }
 
     return copyId;
   }

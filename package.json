@@ -1,68 +1,17 @@
 {
   "name": "r3l",
   "version": "1.0.0",
-  "description": "R3L:F - Research Ecosystem for Living Futures - Realigned with original Rel-F vision",
   "private": true,
-  "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev",
-    "build": "tsc && echo 'TypeScript compilation successful'",
-    "clean": "rm -rf dist",
-    "test": "jest",
-    "format": "prettier --write '**/*.{js,ts,css,json,md}'",
-    "lint": "eslint -c .eslintrc.cjs 'src/**/*.{js,ts}'",
-    "lint:fe": "eslint -c .eslintrc.fe.cjs 'public/js/**/*.js'",
-    "lint:fix": "eslint -c .eslintrc.cjs 'src/**/*.{js,ts}' --fix && eslint -c .eslintrc.fe.cjs 'public/js/**/*.js' --fix",
-    "qa:fe": "node scripts/frontend-check.js"
-  },
-  "author": "jelicopter",
-  "license": "MIT",
-  "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250712.0",
-    "@rollup/plugin-commonjs": "^28.0.6",
-    "@rollup/plugin-node-resolve": "^16.0.1",
-    "@types/bcryptjs": "^2.4.6",
-    "@types/d3": "^7.1.0",
-    "@types/dompurify": "^3.0.5",
-    "@types/gsap": "^1.20.2",
-    "@types/jest": "^29.5.7",
-    "@types/leaflet": "^1.9.8",
-    "@types/marked": "^5.0.2",
-    "@types/node": "^24.0.13",
-    "@typescript-eslint/eslint-plugin": "^8.36.0",
-    "@typescript-eslint/parser": "^8.36.0",
-    "autoprefixer": "^10.4.21",
-    "eslint": "^8.57.0",
-    "eslint-config-prettier": "^10.1.5",
-    "jest": "^29.7.0",
-    "postcss": "^8.5.6",
-    "prettier": "^3.0.3",
-    "process": "^0.11.10",
-    "rollup": "^4.45.0",
-    "rollup-plugin-copy": "^3.5.0",
-    "three": "^0.178.0",
-    "ts-jest": "^29.1.1",
-    "typescript": "^5.3.3",
-    "wrangler": "^4.26.0"
+    "dev": "wrangler dev"
   },
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.0.5",
-    "@openauthjs/openauth": "^0.4.3",
-    "aws4fetch": "^1.0.20",
-    "bcryptjs": "^3.0.2",
-    "d3": "^7.8.5",
-    "dompurify": "^3.2.6",
-    "gsap": "^3.12.5",
-    "hono": "^4.0.5",
-    "itty-cors": "^0.3.5",
-    "jose": "^5.2.3",
-    "leaflet": "^1.9.4",
-    "marked": "^11.1.1",
+    "@hono/zod-validator": "^0.2.1",
+    "hono": "^4.2.7",
     "zod": "^3.22.4"
   },
-  "engines": {
-    "node": ">=18.0.0"
+  "devDependencies": {
+    "wrangler": "^3.47.0"
   }
 }

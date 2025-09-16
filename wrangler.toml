@@ -1,0 +1,73 @@
+# Top-level configuration for your Worker application
+name = "r3l"
+main = "src/index.js"
+compatibility_date = "2024-03-20"
+
+# The build command ensures dependencies from package.json are installed
+build = {
+  "command": "npm install"
+}
+
+# --- SERVICE BINDINGS ---
+# These are the connections to other Cloudflare services.
+
+[[d1_databases]]
+binding = "R3L_DB"
+database_name = "r3l-db"
+database_id = "YOUR_D1_DATABASE_ID" # IMPORTANT: Replace with your actual D1 database ID
+
+[[r2_buckets]]
+binding = "R3L_CONTENT_BUCKET"
+bucket_name = "r3l-content" # The name of your R2 bucket
+
+# --- KV NAMESPACES ---
+
+[[kv_namespaces]]
+binding = "R3L_SESSIONS"
+id = "YOUR_R3L_SESSIONS_KV_ID" # IMPORTANT: Replace with your actual KV ID
+preview_id = "YOUR_SESSIONS_PREVIEW_KV_ID"
+
+[[kv_namespaces]]
+binding = "R3L_KV" # Used for rate limiting and general purpose key-value storage
+id = "YOUR_R3L_KV_ID" # IMPORTANT: Replace with your actual KV ID
+preview_id = "YOUR_KV_PREVIEW_KV_ID"
+
+# --- DURABLE OBJECTS ---
+# As per your schema, these objects are part of the platform.
+# They must be bound here to be accessible from the Worker.
+[durable_objects]
+bindings = [
+  { name = "R3L_COLLABORATION", class_name = "CollaborationRoom" },
+  { name = "R3L_CONNECTIONS", class_name = "ConnectionsObject" },
+  { name = "R3L_VISUALIZATION", class_name = "VisualizationObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CollaborationRoom", "ConnectionsObject", "VisualizationObject"]
+
+# --- TRIGGERS ---
+[triggers]
+crons = ["0 */4 * * *"] # Runs every 4 hours for content lifecycle management
+
+# --- VARIABLES & SECRETS ---
+
+[vars]
+WORKER_ENV = "production"
+# Comma-separated list of allowed origins for CORS
+ALLOWED_ORIGINS = "[https://r3l.distorted.work](https://r3l.distorted.work),[https://distorted.work](https://distorted.work)"
+CONTENT_EXPIRATION_DAYS = 30
+# Max file size in bytes (10 * 1024 * 1024 = 10MB)
+MAX_UPLOAD_SIZE = 10485760
+RATE_LIMIT_REQUESTS = 100
+RATE_LIMIT_WINDOW = 60 # in seconds
+
+# Secrets are managed via the Cloudflare dashboard or `npx wrangler secret put <KEY>`
+# Ensure these secrets are set in your production environment:
+# - JWT_SECRET
+# - GITHUB_CLIENT_ID
+# - GITHUB_CLIENT_SECRET
+# - ORCID_CLIENT_ID
+# - ORCID_CLIENT_SECRET
+# - R3L_AI_CONTEXT_LIMIT
+# - R3L_AI_MAX_TOKENS

@@ -11,8 +11,17 @@
   <header class="container"></header>
   <main class="container">
     <div id="content-root" class="card card-accent" style="margin-top:1rem;"></div>
+    <div id="comments-section" class="card" style="margin-top:1rem;">
+      <div class="card-header">
+        <h3>Comments</h3>
+      </div>
+      <div class="card-body">
+        <!-- Comments will be rendered here -->
+      </div>
+    </div>
   </main>
   <footer class="footer"></footer>
+  <script type="module" src="./js/comments.js"></script>
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
     import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
@@ -46,8 +55,75 @@
             <h2>${escapeHtml(data.title || '(untitled)')}</h2>
             ${data.description ? `<p>${escapeHtml(data.description)}</p>` : ''}
             ${data.tags ? `<div class="text-muted">Tags: ${escapeHtml(data.tags)}</div>` : ''}
-            ${data.file_key ? `<div style="margin-top:1rem;"><a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a></div>` : ''}
+            <div style="margin-top:1rem;">
+              ${data.file_key ? `<a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a>` : ''}
+              <button id="bookmark-btn" class="btn btn-secondary">Bookmark</button>
+            </div>
+            <div id="reactions-section" style="margin-top:1rem;">
+              <button class="btn btn-sm" data-reaction="like">👍</button>
+              <button class="btn btn-sm" data-reaction="love">❤️</button>
+              <button class="btn btn-sm" data-reaction="insightful">💡</button>
+            </div>
           </div>`;
+        window.comments = window.Comments.init(id);
+        const bookmarkBtn = document.getElementById('bookmark-btn');
+        if (bookmarkBtn) {
+          let isBookmarked = false; // This will be checked against user's bookmarks
+
+          const updateBookmarkButton = () => {
+            bookmarkBtn.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
+            bookmarkBtn.classList.toggle('btn-primary', isBookmarked);
+            bookmarkBtn.classList.toggle('btn-secondary', !isBookmarked);
+          };
+
+          const toggleBookmark = async () => {
+            const user = await getAuthenticatedUser();
+            if (!user) {
+              window.location.href = '/login.html';
+              return;
+            }
+            if (isBookmarked) {
+              await apiDelete(API_ENDPOINTS.CONTENT.BOOKMARK.REMOVE(id));
+            } else {
+              await apiPost(API_ENDPOINTS.CONTENT.BOOKMARK.ADD(id));
+            }
+            isBookmarked = !isBookmarked;
+            updateBookmarkButton();
+          };
+
+          const checkBookmarkStatus = async () => {
+            const user = await getAuthenticatedUser();
+            if (user) {
+              const bookmarks = await apiGet(API_ENDPOINTS.USERS.BOOKMARKS(user.id));
+              if (bookmarks && bookmarks.some(b => b.id === id)) {
+                isBookmarked = true;
+                updateBookmarkButton();
+              }
+            }
+          };
+
+          bookmarkBtn.addEventListener('click', toggleBookmark);
+          checkBookmarkStatus();
+        }
+
+        const reactionsSection = document.getElementById('reactions-section');
+        if (reactionsSection) {
+          reactionsSection.addEventListener('click', async (e) => {
+            if (e.target.matches('button[data-reaction]')) {
+              const reaction = e.target.dataset.reaction;
+              const user = await getAuthenticatedUser();
+              if (!user) {
+                window.location.href = '/login.html';
+                return;
+              }
+              // For simplicity, this will just add a reaction.
+              // A real implementation would need to handle removing reactions as well.
+              await apiPost(API_ENDPOINTS.CONTENT.REACTIONS.ADD(id), { reaction });
+              e.target.classList.add('btn-primary');
+              e.target.disabled = true;
+            }
+          });
+        }
       } else {
         root.innerHTML = `<p class="text-error">Failed to load content${data?.status===403?': unauthorized':''}.</p>`;
       }

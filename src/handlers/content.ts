@@ -474,50 +474,28 @@ export class ContentHandler {
   }
 
   /**
-   * Archive content personally (by owner)
+   * Archive content
    * @param contentId Content ID
    * @param userId User ID (for authorization)
+   * @param type Type of archive
    * @param env Environment bindings
    */
-  async archiveContentPersonally(contentId: string, userId: string, env: Env): Promise<void> {
+  async archiveContent(contentId: string, userId: string, type: 'personal' | 'community', env: Env): Promise<void> {
     const content = await this.getContent(contentId, env);
 
     if (!content) {
       throw new ValidationError('Content not found');
     }
 
-    // Check ownership
-    if (content.user_id !== userId) {
+    // Check ownership for personal archiving
+    if (type === 'personal' && content.user_id !== userId) {
       throw new ValidationError('Unauthorized to archive this content');
     }
 
-    // Update content status
-    await env.R3L_DB.prepare(
-      `
-      UPDATE content
-      SET archive_status = 'personal',
-          community_archive_eligible = 1,
-          expires_at = NULL
-      WHERE id = ?
-    `
-    )
-      .bind(contentId)
-      .run();
+    const lifecycle = new ContentLifecycle();
+    await lifecycle.archiveContent(contentId, type, env);
 
-    // Update lifecycle record
-    await env.R3L_DB.prepare(
-      `
-      UPDATE content_lifecycle
-      SET archived_at = ?,
-          archive_type = 'personal',
-          expires_at = NULL
-      WHERE content_id = ?
-    `
-    )
-      .bind(Date.now(), contentId)
-      .run();
-
-    this.logger.info('Content archived personally', { contentId, userId });
+    this.logger.info(`Content archived as ${type}`, { contentId, userId });
   }
 
   /**
@@ -778,12 +756,15 @@ export class ContentHandler {
         c.*,
         u.username,
         u.display_name,
-        u.avatar_url
+        u.avatar_url,
+        cl.expires_at as content_expires_at,
+        cl.status as content_lifecycle_status
       FROM content c
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN content_lifecycle cl ON c.id = cl.content_id
       WHERE c.archive_status = 'active'
         AND c.user_id IN (${placeholders})
-        AND (c.expires_at IS NULL OR c.expires_at > ?)
+        AND (cl.expires_at IS NULL OR cl.expires_at > ?)
         AND (c.is_public = 1 OR c.user_id = ?)
       ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?

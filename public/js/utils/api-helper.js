@@ -24,6 +24,21 @@ export const API_ENDPOINTS = {
     DELETE: id => `/api/content/${id}`,
     TAGS: id => `/api/content/${id}/tags`,
     FEED: '/api/feed',
+    COMMENTS: {
+      GET: id => `/api/content/${id}/comments`,
+      CREATE: id => `/api/content/${id}/comments`,
+      UPDATE: (id, commentId) => `/api/content/${id}/comments/${commentId}`,
+      DELETE: (id, commentId) => `/api/content/${id}/comments/${commentId}`,
+    },
+    BOOKMARK: {
+      ADD: id => `/api/content/${id}/bookmark`,
+      REMOVE: id => `/api/content/${id}/bookmark`,
+    },
+    REACTIONS: {
+      GET: id => `/api/content/${id}/reactions`,
+      ADD: id => `/api/content/${id}/reactions`,
+      REMOVE: id => `/api/content/${id}/reactions`,
+    },
   },
 
   // User endpoints
@@ -32,6 +47,7 @@ export const API_ENDPOINTS = {
     GET: id => `/api/users/${id}`,
     UPDATE: id => `/api/users/${id}`,
     FILES: id => `/api/users/${id}/files`,
+    BOOKMARKS: id => `/api/users/${id}/bookmarks`,
   },
 
   // Connection endpoints

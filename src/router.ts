@@ -207,7 +207,7 @@ export class Router {
     }
 
     // Associations: connections and related
-    if (path.startsWith('/api/connections/')) {
+    if (path.startsWith('/api/connections')) {
       return this.handleAssociationRoutes(request, env, path);
     }
 
@@ -2272,7 +2272,7 @@ export class Router {
     }
 
     // Handle connection routes
-    if (path.startsWith('/api/connections/')) {
+    if (path.startsWith('/api/connections')) {
       return this.handleConnectionRoutes(request, env, path, authenticatedUserId);
     }
 
@@ -2581,7 +2581,7 @@ export class Router {
         `;
 
         await env.R3L_DB.prepare(insert)
-          .bind(id, userId, targetUserId, type, message, now, now)
+          .bind(id, userId, targetUserId, type, 'pending', message, now, now)
           .run();
 
         return this.jsonResponse({ success: true, id });
@@ -2609,6 +2609,47 @@ export class Router {
       } catch (error) {
         console.error('Error removing connection:', error);
         return this.errorResponse('Failed to remove connection');
+      }
+    }
+
+    // Update connection visibility
+    if (path.match(/^\/api\/connections\/[^/]+\/visibility$/) && request.method === 'PATCH') {
+      try {
+        const connectionId = path.split('/')[3];
+        const { visibility } = (await request.json()) as { visibility: string };
+
+        if (!visibility || !['public', 'private', 'mutual'].includes(visibility)) {
+          return this.errorResponse('Invalid visibility value. Must be one of: public, private, mutual.', 400);
+        }
+
+        // Check if the user is part of the connection
+        const connectionResult = await env.R3L_DB.prepare(
+          `SELECT user_id, connected_user_id FROM connections WHERE id = ?`
+        ).bind(connectionId).first();
+
+        if (!connectionResult) {
+          return this.errorResponse('Connection not found', 404);
+        }
+
+        const conn = connectionResult as { user_id: string; connected_user_id: string };
+
+        if (conn.user_id !== userId && conn.connected_user_id !== userId) {
+          return this.errorResponse('Unauthorized to update this connection', 403);
+        }
+
+        // Update the visibility
+        const updateQuery = `
+          UPDATE connections
+          SET visibility = ?, updated_at = ?
+          WHERE id = ?
+        `;
+
+        await env.R3L_DB.prepare(updateQuery).bind(visibility, Date.now(), connectionId).run();
+
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error updating connection visibility:', error);
+        return this.errorResponse('Failed to update connection visibility');
       }
     }
 

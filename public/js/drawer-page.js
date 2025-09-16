@@ -1,5 +1,5 @@
 import { NavigationBar } from './components/navigation.js';
-import { apiGet, API_ENDPOINTS } from './utils/api-helper.js';
+import { apiGet, apiPost, API_ENDPOINTS } from './utils/api-helper.js';
 import { displayError, displayEmptyState, generateRefCode } from './utils/ui-helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -34,6 +34,131 @@
     .form-group {
       margin-bottom: 1.25rem;
     }
+
+    .drop-zone {
+        border: 2px dashed var(--border-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-8);
+        text-align: center;
+        cursor: pointer;
+        transition: background-color var(--transition-fast), border-color var(--transition-fast);
+        margin-bottom: var(--space-6);
+    }
+
+    .drop-zone.drag-over {
+        background-color: var(--bg-secondary);
+        border-color: var(--accent-purple);
+    }
+
+    .drop-zone-text .material-icons {
+        font-size: 48px;
+        color: var(--text-muted);
+    }
+
+    .drop-zone-text p {
+        color: var(--text-muted);
+        font-size: var(--fs-lg);
+        margin: var(--space-4) 0 0;
+    }
+
+    .file-preview-container {
+        margin-top: var(--space-6);
+        margin-bottom: var(--space-6);
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: var(--space-4);
+    }
+
+    .file-preview {
+        background-color: var(--bg-container);
+        border-radius: var(--radius-md);
+        padding: var(--space-3);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+        border: 1px solid var(--border-subtle);
+    }
+
+    .file-preview-thumbnail {
+        width: 100%;
+        height: 120px;
+        background-color: var(--bg-deep);
+        border-radius: var(--radius-sm);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+
+    .file-preview-thumbnail img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .file-preview-thumbnail .material-icons {
+        font-size: 48px;
+        color: var(--text-muted);
+    }
+
+    .file-preview-info {
+        font-size: var(--fs-sm);
+        text-align: center;
+        overflow: hidden;
+    }
+
+    .file-preview-name {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: block;
+    }
+
+    .file-preview-size {
+        color: var(--text-secondary);
+    }
+
+    .file-preview-remove {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: rgba(0,0,0,0.6);
+        border-radius: 50%;
+        border: none;
+        color: white;
+        cursor: pointer;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .file-preview-remove .material-icons {
+        font-size: 18px;
+    }
+
+    .file-preview-progress-container {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background-color: var(--bg-input);
+        border-bottom-left-radius: var(--radius-md);
+        border-bottom-right-radius: var(--radius-md);
+    }
+
+    .file-preview-progress {
+        width: 0%;
+        height: 100%;
+        background-color: var(--accent-purple);
+        transition: width 0.2s ease;
+    }
+
   </style>
 </head>
 <body>
@@ -53,72 +178,68 @@
     </div>
 
     <div class="card mb-4">
-      <div class="card-header">
-        <h2>Share a File</h2>
-      </div>
-
-      <form id="upload-form" class="form-group">
-        <div class="form-group">
-          <label for="file-input">Choose a file to upload:</label>
-          <div class="flex gap-2 items-center">
-            <input type="file" id="file-input" name="file" class="mb-2" required>
-            <span id="file-type-indicator" class="material-icons" title="File type will be shown here">help_outline</span>
-          </div>
-          <small id="file-type-support"></small>
+        <div class="card-header">
+            <h2>Share Files</h2>
         </div>
 
-        <div class="form-group">
-          <label for="description">Description (optional):</label>
-          <textarea id="description" name="description" rows="3" placeholder="What's in this file? Why did you create it?"></textarea>
-        </div>
+        <form id="upload-form" class="form-group" novalidate>
+            <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drag and drop files here or click to select files">
+                <div class="drop-zone-text">
+                    <span class="material-icons" aria-hidden="true">cloud_upload</span>
+                    <p>Drag & drop files here, or click to select files</p>
+                </div>
+                <input type="file" id="file-input" class="hidden" multiple>
+            </div>
 
-        <div class="form-group">
-          <label for="tags">Tags (separated by commas):</label>
-          <input type="text" id="tags" name="tags" placeholder="art, code, music, research, etc.">
-        </div>
+            <div id="file-preview-container" class="file-preview-container">
+                <!-- File previews will be generated by JavaScript here -->
+            </div>
 
-        <div class="form-group">
-          <label for="visibility" class="flex items-center gap-2">
-            <input type="checkbox" id="visibility" name="isPublic" checked>
-            <span>Make this file public in the Rel</span>
-          </label>
-          <small>Private files are only visible to you and specific connections you choose to share with.</small>
-        </div>
+            <div class="form-group">
+                <label for="description">Description (optional, applies to all files):</label>
+                <textarea id="description" name="description" rows="3" placeholder="What's in these files? Why did you create them?"></textarea>
+            </div>
 
-        <div class="form-group">
-          <label class="flex items-center gap-2">
-            <input type="checkbox" id="ephemeral-acknowledge" required>
-            <span>I understand this content will expire in 7 days</span>
-          </label>
-          <small>Community members can vote to archive important content.</small>
-        </div>
+            <div class="form-group">
+                <label for="tags">Tags (separated by commas, applies to all files):</label>
+                <input type="text" id="tags" name="tags" placeholder="art, code, music, research, etc.">
+            </div>
 
-        <div class="alert alert-info mt-4">
-          <span class="material-icons">info</span>
-          <div>
-            <strong>File Support:</strong> R3L:F supports creative media (images, audio, video), documents (PDF, Markdown, HTML), and data files (JSON, CSV, IPYNB). <br>
-            <small>Note: To upload a profile avatar, go to your <a href="profile.html">Profile page</a>.</small>
-          </div>
-        </div>
-        
-        <div class="expiration-notice mt-4">
-          <span class="material-icons">timer</span>
-          <div>
-            <strong>Ephemeral by Default:</strong> Content expires after 7 days unless community-archived.
-          </div>
-        </div>
+            <div class="form-group">
+                <label for="visibility" class="flex items-center gap-2">
+                    <input type="checkbox" id="visibility" name="isPublic" checked>
+                    <span>Make these files public in the Rel</span>
+                </label>
+                <small>Private files are only visible to you and specific connections you choose to share with.</small>
+            </div>
 
-        <div class="flex gap-2 mt-4">
-          <button type="submit" class="btn">
-            <span class="material-icons">cloud_upload</span>
-            Upload to Rel
-          </button>
-          <button type="reset" class="btn btn-secondary">
-            <span class="material-icons">clear</span>
-            Reset
-          </button>
-        </div>
-      </form>
+            <div class="form-group">
+                <label class="flex items-center gap-2">
+                    <input type="checkbox" id="ephemeral-acknowledge" required>
+                    <span>I understand this content will expire in 7 days</span>
+                </label>
+                <small>Community members can vote to archive important content.</small>
+            </div>
+
+            <div class="alert alert-info mt-4">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <div>
+                    <strong>File Support:</strong> R3L:F supports creative media (images, audio, video), documents (PDF, Markdown, HTML), and data files (JSON, CSV, IPYNB). <br>
+                    <small>Note: To upload a profile avatar, go to your <a href="profile.html">Profile page</a>.</small>
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-4">
+                <button type="submit" id="upload-btn" class="btn" disabled>
+                    <span class="material-icons" aria-hidden="true">cloud_upload</span>
+                    Upload Files
+                </button>
+                <button type="button" id="clear-btn" class="btn btn-secondary">
+                    <span class="material-icons" aria-hidden="true">clear</span>
+                    Clear All
+                </button>
+            </div>
+        </form>
     </div>
 
     <div id="upload-result" class="card hidden">
@@ -130,11 +251,11 @@
       </div>
       <div class="flex gap-2 mt-4 p-4">
         <a href="drawer.html" class="btn">
-          <span class="material-icons">folder</span>
+          <span class="material-icons" aria-hidden="true">folder</span>
           Go to Your Drawer
         </a>
         <button id="copy-link" class="btn btn-secondary">
-          <span class="material-icons">content_copy</span>
+          <span class="material-icons" aria-hidden="true">content_copy</span>
           Copy Link
         </button>
       </div>

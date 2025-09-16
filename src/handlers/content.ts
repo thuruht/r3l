@@ -4,6 +4,7 @@ import { ValidationError } from '../types/errors.js';
 import { Validator } from '../validators/index.js';
 import { Sanitizer } from '../utils/sanitizer.js';
 import { Logger } from '../utils/logger.js';
+import { NotificationHandler } from './notification.js';
 
 interface ContentItem {
   id: string;
@@ -43,9 +44,11 @@ interface ContentCreateData {
 
 export class ContentHandler {
   private logger: Logger;
+  private notificationHandler: NotificationHandler;
 
   constructor() {
     this.logger = new Logger('ContentHandler');
+    this.notificationHandler = new NotificationHandler();
   }
 
   /**
@@ -474,50 +477,28 @@ export class ContentHandler {
   }
 
   /**
-   * Archive content personally (by owner)
+   * Archive content
    * @param contentId Content ID
    * @param userId User ID (for authorization)
+   * @param type Type of archive
    * @param env Environment bindings
    */
-  async archiveContentPersonally(contentId: string, userId: string, env: Env): Promise<void> {
+  async archiveContent(contentId: string, userId: string, type: 'personal' | 'community', env: Env): Promise<void> {
     const content = await this.getContent(contentId, env);
 
     if (!content) {
       throw new ValidationError('Content not found');
     }
 
-    // Check ownership
-    if (content.user_id !== userId) {
+    // Check ownership for personal archiving
+    if (type === 'personal' && content.user_id !== userId) {
       throw new ValidationError('Unauthorized to archive this content');
     }
 
-    // Update content status
-    await env.R3L_DB.prepare(
-      `
-      UPDATE content
-      SET archive_status = 'personal',
-          community_archive_eligible = 1,
-          expires_at = NULL
-      WHERE id = ?
-    `
-    )
-      .bind(contentId)
-      .run();
+    const lifecycle = new ContentLifecycle();
+    await lifecycle.archiveContent(contentId, type, env);
 
-    // Update lifecycle record
-    await env.R3L_DB.prepare(
-      `
-      UPDATE content_lifecycle
-      SET archived_at = ?,
-          archive_type = 'personal',
-          expires_at = NULL
-      WHERE content_id = ?
-    `
-    )
-      .bind(Date.now(), contentId)
-      .run();
-
-    this.logger.info('Content archived personally', { contentId, userId });
+    this.logger.info(`Content archived as ${type}`, { contentId, userId });
   }
 
   /**
@@ -540,9 +521,10 @@ export class ContentHandler {
 
     // Check if already voted
     const existingVote = await env.R3L_DB.prepare(
-      `
-      SELECT id FROM content_archive_votes
-      WHERE content_id = ? AND user_id = ? AND vote_type = 'explicit'
+
+      SELECT id FROM community_archive_votes
+      WHERE content_id = ? AND user_id = ?
+
     `
     )
       .bind(contentId, userId)
@@ -587,12 +569,16 @@ export class ContentHandler {
     // Add vote
     await env.R3L_DB.prepare(
       `
-      INSERT INTO content_archive_votes (id, content_id, user_id, vote_type, created_at)
-      VALUES (?, ?, ?, ?, ?)
+
+
+      INSERT INTO community_archive_votes (id, content_id, user_id, created_at)
+      VALUES (?, ?, ?, ?)
+
     `
     )
       .bind(crypto.randomUUID(), contentId, userId, 'explicit', Date.now())
       .run();
+
 
     // Decrement vote count
     await env.R3L_DB.prepare(
@@ -611,6 +597,26 @@ export class ContentHandler {
       UPDATE content SET archive_votes = archive_votes + 1
       WHERE id = ?
       RETURNING archive_votes
+
+    // Notify content owner
+    if (content.user_id !== userId) {
+      const voter = await env.R3L_DB.prepare('SELECT display_name FROM users WHERE id = ?').bind(userId).first<{display_name: string}>();
+      const voterName = voter?.display_name || 'Someone';
+      await this.notificationHandler.createNotification(
+        content.user_id,
+        'content',
+        'Your content was upvoted',
+        `${voterName} voted to archive your content: "${content.title}"`,
+        `/content.html?id=${contentId}`,
+        env
+      );
+    }
+
+    const voteResult = await env.R3L_DB.prepare(
+      `
+      SELECT COUNT(*) as vote_count FROM community_archive_votes
+      WHERE content_id = ?
+
     `
     )
       .bind(contentId)
@@ -691,6 +697,36 @@ export class ContentHandler {
     }
 
     const votes = content.archive_votes || 0;
+
+    const bookmarkResult = await env.R3L_DB.prepare(
+      `
+      SELECT COUNT(*) as bookmark_count FROM bookmarks
+      WHERE content_id = ?
+    `
+    )
+      .bind(contentId)
+      .first<{ bookmark_count: number }>();
+
+    const commentResult = await env.R3L_DB.prepare(
+      `
+      SELECT COUNT(*) as comment_count FROM comments
+      WHERE content_id = ?
+    `
+    )
+      .bind(contentId)
+      .first<{ comment_count: number }>();
+
+    const reactionResult = await env.R3L_DB.prepare(
+      `
+      SELECT COUNT(*) as reaction_count FROM reactions
+      WHERE content_id = ?
+    `
+    )
+      .bind(contentId)
+      .first<{ reaction_count: number }>();
+
+    const votes = (voteResult?.vote_count || 0) + (bookmarkResult?.bookmark_count || 0) + (commentResult?.comment_count || 0) + (reactionResult?.reaction_count || 0);
+
     const ageInDays = (Date.now() - content.created_at) / (24 * 60 * 60 * 1000);
     
     // Pure vote-based threshold to prevent algorithmic bias from engagement metrics
@@ -848,12 +884,15 @@ export class ContentHandler {
         c.*,
         u.username,
         u.display_name,
-        u.avatar_url
+        u.avatar_url,
+        cl.expires_at as content_expires_at,
+        cl.status as content_lifecycle_status
       FROM content c
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN content_lifecycle cl ON c.id = cl.content_id
       WHERE c.archive_status = 'active'
         AND c.user_id IN (${placeholders})
-        AND (c.expires_at IS NULL OR c.expires_at > ?)
+        AND (cl.expires_at IS NULL OR cl.expires_at > ?)
         AND (c.is_public = 1 OR c.user_id = ?)
       ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?
@@ -952,6 +991,268 @@ export class ContentHandler {
       .bind(copyId, userId, contentId, `Copy of ${content.title}`, isPublic ? 1 : 0, now)
       .run();
 
+    // Notify content owner
+    if (content.user_id !== userId) {
+        const copier = await env.R3L_DB.prepare('SELECT display_name FROM users WHERE id = ?').bind(userId).first<{display_name: string}>();
+        const copierName = copier?.display_name || 'Someone';
+        await this.notificationHandler.createNotification(
+            content.user_id,
+            'content',
+            'Your content was copied',
+            `${copierName} copied your content to their drawer: "${content.title}"`,
+            `/content.html?id=${contentId}`,
+            env
+        );
+    }
+
     return copyId;
+  }
+
+  /**
+   * Create a new comment
+   * @param userId User ID of the commenter
+   * @param contentId Content ID being commented on
+   * @param parentCommentId Parent comment ID for threading
+   * @param comment The comment text
+   * @param env Environment bindings
+   * @returns Created comment ID
+   */
+  async createComment(
+    userId: string,
+    contentId: string,
+    parentCommentId: string | null,
+    comment: string,
+    env: Env
+  ): Promise<string> {
+    const commentId = crypto.randomUUID();
+    const now = Date.now();
+
+    // Sanitize comment
+    const sanitizedComment = Sanitizer.sanitizeText(comment, 2000);
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT INTO comments (
+        id, content_id, user_id, parent_comment_id, comment, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `
+    )
+      .bind(
+        commentId,
+        contentId,
+        userId,
+        parentCommentId || null,
+        sanitizedComment,
+        now
+      )
+      .run();
+
+    return commentId;
+  }
+
+  /**
+   * Get all comments for a content item, structured as threads
+   * @param contentId Content ID
+   * @param env Environment bindings
+   * @returns Array of comment threads
+   */
+  async getComments(contentId: string, env: Env): Promise<any[]> {
+    const { results } = await env.R3L_DB.prepare(
+      `
+      SELECT c.*, u.username, u.display_name, u.avatar_url
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.content_id = ?
+      ORDER BY c.created_at ASC
+    `
+    )
+      .bind(contentId)
+      .all();
+
+    if (!results) {
+      return [];
+    }
+
+    // Build the thread
+    const commentsById = new Map();
+    results.forEach((comment: any) => {
+      comment.replies = [];
+      commentsById.set(comment.id, comment);
+    });
+
+    const rootComments: any[] = [];
+    results.forEach((comment: any) => {
+      if (comment.parent_comment_id && commentsById.has(comment.parent_comment_id)) {
+        commentsById.get(comment.parent_comment_id).replies.push(comment);
+      } else {
+        rootComments.push(comment);
+      }
+    });
+
+    return rootComments;
+  }
+
+  /**
+   * Update a comment
+   * @param commentId Comment ID
+   * @param userId User ID (for authorization)
+   * @param comment The updated comment text
+   * @param env Environment bindings
+   */
+  async updateComment(
+    commentId: string,
+    userId: string,
+    comment: string,
+    env: Env
+  ): Promise<void> {
+    // First, verify the user owns the comment
+    const existingComment = await env.R3L_DB.prepare(
+      `SELECT user_id FROM comments WHERE id = ?`
+    )
+      .bind(commentId)
+      .first<{ user_id: string }>();
+
+    if (!existingComment) {
+      throw new ValidationError('Comment not found');
+    }
+
+    if (existingComment.user_id !== userId) {
+      throw new ValidationError('Unauthorized to update this comment');
+    }
+
+    // Sanitize and update the comment
+    const sanitizedComment = Sanitizer.sanitizeText(comment, 2000);
+    await env.R3L_DB.prepare(
+      `UPDATE comments SET comment = ? WHERE id = ?`
+    )
+      .bind(sanitizedComment, commentId)
+      .run();
+  }
+
+  /**
+   * Delete a comment
+   * @param commentId Comment ID
+   * @param userId User ID (for authorization)
+   * @param env Environment bindings
+   */
+  async deleteComment(commentId: string, userId: string, env: Env): Promise<void> {
+    // First, verify the user owns the comment
+    const existingComment = await env.R3L_DB.prepare(
+      `SELECT user_id FROM comments WHERE id = ?`
+    )
+      .bind(commentId)
+      .first<{ user_id: string }>();
+
+    if (!existingComment) {
+      throw new ValidationError('Comment not found');
+    }
+
+    if (existingComment.user_id !== userId) {
+      throw new ValidationError('Unauthorized to delete this comment');
+    }
+
+    // Delete the comment. The foreign key constraint with ON DELETE CASCADE
+    // should handle replies.
+    await env.R3L_DB.prepare(`DELETE FROM comments WHERE id = ?`)
+      .bind(commentId)
+      .run();
+  }
+
+  /**
+   * Add a bookmark for a user
+   * @param userId User ID
+   * @param contentId Content ID
+   * @param env Environment bindings
+   */
+  async addBookmark(userId: string, contentId: string, env: Env): Promise<void> {
+    const bookmarkId = crypto.randomUUID();
+    const now = Date.now();
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT OR IGNORE INTO bookmarks (id, user_id, content_id, created_at)
+      VALUES (?, ?, ?, ?)
+    `
+    )
+      .bind(bookmarkId, userId, contentId, now)
+      .run();
+  }
+
+  /**
+   * Remove a bookmark for a user
+   * @param userId User ID
+   * @param contentId Content ID
+   * @param env Environment bindings
+   */
+  async removeBookmark(userId: string, contentId: string, env: Env): Promise<void> {
+    await env.R3L_DB.prepare(
+      `
+      DELETE FROM bookmarks
+      WHERE user_id = ? AND content_id = ?
+    `
+    )
+      .bind(userId, contentId)
+      .run();
+  }
+
+  /**
+   * Add a reaction for a user
+   * @param userId User ID
+   * @param contentId Content ID
+   * @param reaction Reaction type
+   * @param env Environment bindings
+   */
+  async addReaction(userId: string, contentId: string, reaction: string, env: Env): Promise<void> {
+    const reactionId = crypto.randomUUID();
+    const now = Date.now();
+
+    await env.R3L_DB.prepare(
+      `
+      INSERT OR IGNORE INTO reactions (id, user_id, content_id, reaction, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `
+    )
+      .bind(reactionId, userId, contentId, reaction, now)
+      .run();
+  }
+
+  /**
+   * Remove a reaction for a user
+   * @param userId User ID
+   * @param contentId Content ID
+   * @param reaction Reaction type
+   * @param env Environment bindings
+   */
+  async removeReaction(userId: string, contentId: string, reaction: string, env: Env): Promise<void> {
+    await env.R3L_DB.prepare(
+      `
+      DELETE FROM reactions
+      WHERE user_id = ? AND content_id = ? AND reaction = ?
+    `
+    )
+      .bind(userId, contentId, reaction)
+      .run();
+  }
+
+  /**
+   * Get all reactions for a content item
+   * @param contentId Content ID
+   * @param env Environment bindings
+   * @returns Array of reactions
+   */
+  async getReactions(contentId: string, env: Env): Promise<any[]> {
+    const { results } = await env.R3L_DB.prepare(
+      `
+      SELECT reaction, COUNT(*) as count
+      FROM reactions
+      WHERE content_id = ?
+      GROUP BY reaction
+    `
+    )
+      .bind(contentId)
+      .all();
+
+    return results || [];
   }
 }

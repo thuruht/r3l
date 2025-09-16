@@ -144,6 +144,14 @@
   padding: 0;
 }
 
+/* Enhanced focus visibility for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-cyan) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 10px var(--accent-cyan);
+  border-radius: var(--radius-sm);
+}
+
 /* Core body styling */
 body {
   background-color: var(--bg-deep);
@@ -384,7 +392,6 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--accent-lavender);
-  outline: none;
 }
 
 input::placeholder,

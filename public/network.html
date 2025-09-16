@@ -875,7 +875,7 @@
           
           // Prepare API endpoints
           let contentEndpoint = '/api/search?limit=30';
-          let usersEndpoint = '/api/users?limit=20';
+          let usersEndpoint = '/api/users?limit=100&include_lurkers=true';
           let tagsEndpoint = '/api/search/tags?limit=15';
           
           // Add current user endpoint
@@ -1050,6 +1050,7 @@
             connectionCount: user.connection_count,
             contentCount: user.content_count,
             connectionStatus: user.connectionStatus,
+            is_lurker: user.is_lurker,
             isSelf: isAuthenticated && currentUserData && user.id === currentUserData.id
           }));
           
@@ -1077,7 +1078,8 @@
           
           // Create links between files and their creators
           files.forEach(file => {
-            if (file.creator) {
+            const creatorNode = userNodes.find(u => u.id === file.creator);
+            if (file.creator && (!creatorNode || !creatorNode.is_lurker)) {
               networkData.links.push({
                 source: file.id,
                 target: file.creator,
@@ -1186,24 +1188,32 @@
                 
                 connections.forEach(conn => {
                   if (conn.status === 'accepted') {
-                    networkData.links.push({
-                      source: currentUserData.id,
-                      target: conn.user_id,
-                      type: 'connection',
-                      weight: 2
-                    });
+                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
+                    const targetNode = userNodes.find(u => u.id === conn.user_id);
+                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                      networkData.links.push({
+                        source: currentUserData.id,
+                        target: conn.user_id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
                   }
                 });
               } else {
                 // Fallback to user statuses from user data
                 userNodes.forEach(user => {
                   if (user.connectionStatus === 'accepted') {
-                    networkData.links.push({
-                      source: currentUserData.id,
-                      target: user.id,
-                      type: 'connection',
-                      weight: 2
-                    });
+                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
+                    const targetNode = userNodes.find(u => u.id === user.id);
+                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                      networkData.links.push({
+                        source: currentUserData.id,
+                        target: user.id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
                   }
                 });
               }
@@ -1220,12 +1230,16 @@
                 const networkConnections = networkConnectionsData.connections || [];
                 
                 networkConnections.forEach(conn => {
-                  networkData.links.push({
-                    source: conn.user_id,
-                    target: conn.connected_user_id,
-                    type: 'connection',
-                    weight: 2
-                  });
+                  const sourceNode = userNodes.find(u => u.id === conn.user_id);
+                  const targetNode = userNodes.find(u => u.id === conn.connected_user_id);
+                  if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                    networkData.links.push({
+                      source: conn.user_id,
+                      target: conn.connected_user_id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
                 });
               } else {
                 // Create some random connections if network endpoint fails
@@ -1236,8 +1250,7 @@
                       continue;
                     }
                     
-                    // Create a connection with 20% probability
-                    if (Math.random() < 0.2) {
+                    if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
                       networkData.links.push({
                         source: userNodes[i].id,
                         target: userNodes[j].id,
@@ -1254,8 +1267,7 @@
               // Fallback to random connections
               for (let i = 0; i < userNodes.length; i++) {
                 for (let j = i + 1; j < userNodes.length; j++) {
-                  // Create a connection with 20% probability
-                  if (Math.random() < 0.2) {
+                  if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
                     networkData.links.push({
                       source: userNodes[i].id,
                       target: userNodes[j].id,
@@ -1271,8 +1283,7 @@
             const allUsers = [...userNodes];
             for (let i = 0; i < allUsers.length; i++) {
               for (let j = i + 1; j < allUsers.length; j++) {
-                // Create a connection with 20% probability
-                if (Math.random() < 0.2) {
+                if (!allUsers[i].is_lurker && !allUsers[j].is_lurker && Math.random() < 0.2) {
                   networkData.links.push({
                     source: allUsers[i].id,
                     target: allUsers[j].id,
@@ -1305,7 +1316,6 @@
         const networkData = await fetchNetworkData();
         
         // Set as global data
-        window.mockData = networkData;
         let currentData = JSON.parse(JSON.stringify(networkData));
         let selectedNodeId = null;
         
@@ -1389,11 +1399,12 @@
         // Filter data by time window
         function filterDataByTime(days) {
           const timeLimit = Date.now() - (days * 24 * 60 * 60 * 1000);
-          
+          let filteredData = JSON.parse(JSON.stringify(networkData));
+
           // Filter files based on creation date
-          const filteredFiles = networkData.nodes.filter(node => {
+          const filteredFiles = filteredData.nodes.filter(node => {
             if (node.type !== 'file') return true;
-            return node.created >= timeLimit;
+            return new Date(node.created).getTime() >= timeLimit;
           });
           
           // Get IDs of filtered files
@@ -1402,26 +1413,34 @@
             .map(node => node.id);
           
           // Filter links to only include connections to filtered files
-          const filteredLinks = networkData.links.filter(link => {
+          const filteredLinks = filteredData.links.filter(link => {
+            const sourceId = link.source.id || link.source;
+            const targetId = link.target.id || link.target;
+
+            const sourceNode = filteredData.nodes.find(n => n.id === sourceId);
+            const targetNode = filteredData.nodes.find(n => n.id === targetId);
+
+            if (!sourceNode || !targetNode) return false;
+
             // Keep user-user connections
-            const sourceIsFile = typeof link.source === 'string' && link.source.includes('file');
-            const targetIsFile = typeof link.target === 'string' && link.target.includes('file');
-            
-            if (!sourceIsFile && !targetIsFile) return true;
+            if (sourceNode.type !== 'file' && targetNode.type !== 'file') return true;
             
             // Keep links connected to filtered files
-            if (sourceIsFile && !filteredFileIds.includes(link.source)) return false;
-            if (targetIsFile && !filteredFileIds.includes(link.target)) return false;
+            if (sourceNode.type === 'file' && !filteredFileIds.includes(sourceId)) return false;
+            if (targetNode.type === 'file' && !filteredFileIds.includes(targetId)) return false;
             
             return true;
           });
           
+          const nodeIdsInFilteredLinks = new Set();
+          filteredLinks.forEach(link => {
+            nodeIdsInFilteredLinks.add(link.source.id || link.source);
+            nodeIdsInFilteredLinks.add(link.target.id || link.target);
+          });
+
           // Update current data and redraw
           currentData = {
-            nodes: networkData.nodes.filter(node => {
-              if (node.type !== 'file') return true;
-              return node.created >= timeLimit;
-            }),
+            nodes: filteredData.nodes.filter(node => nodeIdsInFilteredLinks.has(node.id)),
             links: filteredLinks
           };
           
@@ -1432,103 +1451,89 @@
         function filterDataByType(filter) {
           let filteredData = JSON.parse(JSON.stringify(networkData));
           
-          switch (filter) {
-            case 'users':
-              // Show only user-user connections
-              filteredData.links = networkData.links.filter(link => {
-                const sourceIsUser = typeof link.source === 'string' && !link.source.includes('file') && !link.source.includes('tag');
-                const targetIsUser = typeof link.target === 'string' && !link.target.includes('file') && !link.target.includes('tag');
-                return sourceIsUser && targetIsUser;
-              });
-              break;
+          const getNodeId = (node) => typeof node === 'string' ? node : node.id;
+
+          if (filter !== 'all') {
+            switch (filter) {
+              case 'users':
+                filteredData.links = filteredData.links.filter(link => {
+                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
+                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
+                  return sourceNode?.type === 'user' && targetNode?.type === 'user';
+                });
+                break;
               
-            case 'files':
-              // Show only file connections
-              filteredData.links = networkData.links.filter(link => {
-                const sourceIsFile = typeof link.source === 'string' && link.source.includes('file');
-                const targetIsFile = typeof link.target === 'string' && link.target.includes('file');
-                return sourceIsFile || targetIsFile;
-              });
-              break;
-              
-            case 'tags':
-              // Show only tag connections
-              filteredData.links = networkData.links.filter(link => {
-                const sourceIsTag = typeof link.source === 'string' && link.source.includes('tag');
-                const targetIsTag = typeof link.target === 'string' && link.target.includes('tag');
-                return sourceIsTag || targetIsTag;
-              });
-              break;
-              
-            case 'my-connections':
-              // Show only your connections
-              filteredData.links = networkData.links.filter(link => {
-                // Identify self user ID
-                const selfUserId = networkData.nodes.find(n => n.isSelf && n.type === 'user')?.id;
-                if (!selfUserId) return false;
+              case 'files':
+                filteredData.links = filteredData.links.filter(link => {
+                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
+                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
+                  return sourceNode?.type === 'file' || targetNode?.type === 'file';
+                });
+                break;
                 
-                const sourceIsSelf = link.source === selfUserId || 
-                  networkData.nodes.find(n => n.id === link.source)?.isSelf;
-                const targetIsSelf = link.target === selfUserId || 
-                  networkData.nodes.find(n => n.id === link.target)?.isSelf;
-                  
-                return sourceIsSelf || targetIsSelf;
-              });
-              break;
-              
-            case 'popular':
-              // Show connections with high weights
-              filteredData.links = networkData.links.filter(link => link.weight >= 2);
-              break;
-              
-            case 'recent':
-              // Show recently created content (last 3 days)
-              const recentTimeLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-              const recentFileIds = networkData.nodes
-                .filter(node => node.type === 'file' && node.created >= recentTimeLimit)
-                .map(node => node.id);
+              case 'tags':
+                filteredData.links = filteredData.links.filter(link => {
+                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
+                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
+                  return sourceNode?.type === 'tag' || targetNode?.type === 'tag';
+                });
+                break;
                 
-              filteredData.links = networkData.links.filter(link => {
-                const sourceIsRecentFile = typeof link.source === 'string' && 
-                  link.source.includes('file') && recentFileIds.includes(link.source);
-                const targetIsRecentFile = typeof link.target === 'string' && 
-                  link.target.includes('file') && recentFileIds.includes(link.target);
-                return sourceIsRecentFile || targetIsRecentFile;
-              });
-              break;
-              
-            case 'expiring':
-              // Show content expiring soon (within 2 days)
-              const expiryTimeLimit = Date.now() + (2 * 24 * 60 * 60 * 1000);
-              const expiringFileIds = networkData.nodes
-                .filter(node => node.type === 'file' && node.expires && node.expires <= expiryTimeLimit)
-                .map(node => node.id);
+              case 'my-connections':
+                const selfUserId = filteredData.nodes.find(n => n.isSelf && n.type === 'user')?.id;
+                if (selfUserId) {
+                  filteredData.links = filteredData.links.filter(link => {
+                    const sourceId = getNodeId(link.source);
+                    const targetId = getNodeId(link.target);
+                    return sourceId === selfUserId || targetId === selfUserId;
+                  });
+                } else {
+                  filteredData.links = [];
+                }
+                break;
                 
-              filteredData.links = networkData.links.filter(link => {
-                const sourceIsExpiringFile = typeof link.source === 'string' && 
-                  link.source.includes('file') && expiringFileIds.includes(link.source);
-                const targetIsExpiringFile = typeof link.target === 'string' && 
-                  link.target.includes('file') && expiringFileIds.includes(link.target);
-                return sourceIsExpiringFile || targetIsExpiringFile;
-              });
-              break;
-              
-            default: // 'all'
-              // Use all data
-              break;
+              case 'popular':
+                filteredData.links = filteredData.links.filter(link => link.weight >= 2);
+                break;
+
+              case 'recent':
+                const recentTimeLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
+                const recentFileIds = new Set(
+                  filteredData.nodes
+                    .filter(node => node.type === 'file' && new Date(node.created).getTime() >= recentTimeLimit)
+                    .map(node => node.id)
+                );
+                filteredData.links = filteredData.links.filter(link => {
+                  const sourceId = getNodeId(link.source);
+                  const targetId = getNodeId(link.target);
+                  return recentFileIds.has(sourceId) || recentFileIds.has(targetId);
+                });
+                break;
+
+              case 'expiring':
+                const expiryTimeLimit = Date.now() + (2 * 24 * 60 * 60 * 1000);
+                const expiringFileIds = new Set(
+                  filteredData.nodes
+                    .filter(node => node.type === 'file' && node.expires && new Date(node.expires).getTime() <= expiryTimeLimit)
+                    .map(node => node.id)
+                );
+                filteredData.links = filteredData.links.filter(link => {
+                  const sourceId = getNodeId(link.source);
+                  const targetId = getNodeId(link.target);
+                  return expiringFileIds.has(sourceId) || expiringFileIds.has(targetId);
+                });
+                break;
+            }
           }
           
-          // Get all node IDs that are part of the filtered links
-          const nodeIds = new Set();
+          const nodeIdsInFilteredLinks = new Set();
           filteredData.links.forEach(link => {
-            nodeIds.add(link.source);
-            nodeIds.add(link.target);
+            nodeIdsInFilteredLinks.add(getNodeId(link.source));
+            nodeIdsInFilteredLinks.add(getNodeId(link.target));
           });
           
-          // Filter nodes to only include those in the links
-          filteredData.nodes = networkData.nodes.filter(node => nodeIds.has(node.id));
+          filteredData.nodes = filteredData.nodes.filter(node => nodeIdsInFilteredLinks.has(node.id));
           
-          // Update current data and redraw
           currentData = filteredData;
           renderGraph(currentData, layoutSelect.value);
         }
@@ -1536,701 +1541,6 @@
       
       // Initialize the network
       initNetwork();
-      
-      // Function to generate mock network data
-      function createMockData() {
-        const nodes = [];
-        const links = [];
-        
-        // Add user nodes
-        const users = [
-          { id: 'user1', label: 'Researcher42', type: 'user' },
-          { id: 'user2', label: 'VisualArtist', type: 'user' },
-          { id: 'user3', label: 'CodeWizard', type: 'user' },
-          { id: 'user4', label: 'SoundCollector', type: 'user' },
-          { id: 'user5', label: 'DataScientist', type: 'user' },
-          { id: 'user6', label: 'YOU', type: 'user', isSelf: true },
-          { id: 'user7', label: 'FilmMaker', type: 'user' },
-          { id: 'user8', label: 'PoetWriter', type: 'user' }
-        ];
-        
-        // Add file nodes
-        const files = [
-          { id: 'file1', label: 'research-notes.md', type: 'file', creator: 'user1', 
-            created: Date.now() - 2 * 24 * 60 * 60 * 1000, expires: Date.now() + 5 * 24 * 60 * 60 * 1000 },
-          { id: 'file2', label: 'visualization.png', type: 'file', creator: 'user2', 
-            created: Date.now() - 3 * 24 * 60 * 60 * 1000, expires: Date.now() + 4 * 24 * 60 * 60 * 1000 },
-          { id: 'file3', label: 'algorithm.js', type: 'file', creator: 'user3', 
-            created: Date.now() - 4 * 24 * 60 * 60 * 1000, expires: Date.now() + 3 * 24 * 60 * 60 * 1000 },
-          { id: 'file4', label: 'field-recording.mp3', type: 'file', creator: 'user4', 
-            created: Date.now() - 5 * 24 * 60 * 60 * 1000, expires: Date.now() + 2 * 24 * 60 * 60 * 1000 },
-          { id: 'file5', label: 'dataset.csv', type: 'file', creator: 'user5', 
-            created: Date.now() - 6 * 24 * 60 * 60 * 1000, expires: Date.now() + 1 * 24 * 60 * 60 * 1000 },
-          { id: 'file6', label: 'my-notes.txt', type: 'file', creator: 'user6', isSelf: true, 
-            created: Date.now() - 1 * 24 * 60 * 60 * 1000, expires: Date.now() + 6 * 24 * 60 * 60 * 1000 },
-          { id: 'file7', label: 'short-film.mp4', type: 'file', creator: 'user7', 
-            created: Date.now() - 7 * 24 * 60 * 60 * 1000, expires: Date.now() + 0.5 * 24 * 60 * 60 * 1000 },
-          { id: 'file8', label: 'poem-collection.pdf', type: 'file', creator: 'user8', 
-            created: Date.now() - 8 * 24 * 60 * 60 * 1000, expires: null, isArchived: true },
-          { id: 'file9', label: 'my-research.pdf', type: 'file', creator: 'user6', isSelf: true, 
-            created: Date.now() - 15 * 24 * 60 * 60 * 1000, expires: null, isArchived: true },
-          { id: 'file10', label: 'collaborative-doc.md', type: 'file', creator: 'user1', 
-            created: Date.now() - 2.5 * 24 * 60 * 60 * 1000, expires: Date.now() + 4.5 * 24 * 60 * 60 * 1000 },
-        ];
-        
-        // Add tag nodes
-        const tags = [
-          { id: 'tag1', label: 'research', type: 'tag' },
-          { id: 'tag2', label: 'art', type: 'tag' },
-          { id: 'tag3', label: 'code', type: 'tag' },
-          { id: 'tag4', label: 'audio', type: 'tag' },
-          { id: 'tag5', label: 'data', type: 'tag' },
-          { id: 'tag6', label: 'science', type: 'tag' },
-          { id: 'tag7', label: 'visualization', type: 'tag' },
-          { id: 'tag8', label: 'creative', type: 'tag' },
-          { id: 'tag9', label: 'collaboration', type: 'tag' }
-        ];
-        
-        // Add all nodes
-        nodes.push(...users, ...files, ...tags);
-        
-        // Create links between users and their files
-        files.forEach(file => {
-          links.push({
-            source: file.id,
-            target: file.creator,
-            type: 'creator',
-            weight: 3
-          });
-        });
-        
-        // Create links between files and tags
-        links.push(
-          { source: 'file1', target: 'tag1', type: 'tag', weight: 1 },
-          { source: 'file1', target: 'tag6', type: 'tag', weight: 1 },
-          { source: 'file2', target: 'tag2', type: 'tag', weight: 1 },
-          { source: 'file2', target: 'tag7', type: 'tag', weight: 1 },
-          { source: 'file3', target: 'tag3', type: 'tag', weight: 1 },
-          { source: 'file4', target: 'tag4', type: 'tag', weight: 1 },
-          { source: 'file5', target: 'tag5', type: 'tag', weight: 1 },
-          { source: 'file5', target: 'tag6', type: 'tag', weight: 1 },
-          { source: 'file6', target: 'tag1', type: 'tag', weight: 1 },
-          { source: 'file6', target: 'tag8', type: 'tag', weight: 1 },
-          { source: 'file7', target: 'tag2', type: 'tag', weight: 1 },
-          { source: 'file7', target: 'tag8', type: 'tag', weight: 1 },
-          { source: 'file8', target: 'tag8', type: 'tag', weight: 1 },
-          { source: 'file9', target: 'tag1', type: 'tag', weight: 1 },
-          { source: 'file9', target: 'tag6', type: 'tag', weight: 1 },
-          { source: 'file10', target: 'tag9', type: 'tag', weight: 1 },
-          { source: 'file10', target: 'tag1', type: 'tag', weight: 1 }
-        );
-        
-        // Create connections between users
-        links.push(
-          { source: 'user1', target: 'user5', type: 'connection', weight: 2 },
-          { source: 'user1', target: 'user6', type: 'connection', weight: 2 },
-          { source: 'user2', target: 'user7', type: 'connection', weight: 2 },
-          { source: 'user2', target: 'user8', type: 'connection', weight: 2 },
-          { source: 'user3', target: 'user5', type: 'connection', weight: 2 },
-          { source: 'user4', target: 'user7', type: 'connection', weight: 2 },
-          { source: 'user6', target: 'user3', type: 'connection', weight: 2 },
-          { source: 'user6', target: 'user5', type: 'connection', weight: 2 },
-          { source: 'user6', target: 'user8', type: 'connection', weight: 2 }
-        );
-        
-        // Create file connections (files that reference each other)
-        links.push(
-          { source: 'file1', target: 'file10', type: 'reference', weight: 1.5 },
-          { source: 'file3', target: 'file5', type: 'reference', weight: 1.5 },
-          { source: 'file6', target: 'file9', type: 'reference', weight: 1.5 },
-          { source: 'file2', target: 'file7', type: 'reference', weight: 1.5 }
-        );
-        
-        // Add collaborative file connections
-        links.push(
-          { source: 'file10', target: 'user1', type: 'creator', weight: 3 },
-          { source: 'file10', target: 'user5', type: 'collaborator', weight: 2 },
-          { source: 'file10', target: 'user6', type: 'collaborator', weight: 2 }
-        );
-        
-        return { nodes, links };
-      }
-      
-      // Filter data by time window
-      function filterDataByTime(days) {
-        const timeLimit = Date.now() - (days * 24 * 60 * 60 * 1000);
-        
-        // Filter files based on creation date
-        const filteredFiles = mockData.nodes.filter(node => {
-          if (node.type !== 'file') return true;
-          return node.created >= timeLimit;
-        });
-        
-        // Get IDs of filtered files
-        const filteredFileIds = filteredFiles
-          .filter(node => node.type === 'file')
-          .map(node => node.id);
-        
-        // Filter links to only include connections to filtered files
-        const filteredLinks = mockData.links.filter(link => {
-          // Keep user-user connections
-          if (!link.source.includes('file') && !link.target.includes('file')) return true;
-          
-          // Keep links connected to filtered files
-          const sourceIsFile = link.source.includes('file');
-          const targetIsFile = link.target.includes('file');
-          
-          if (sourceIsFile && !filteredFileIds.includes(link.source)) return false;
-          if (targetIsFile && !filteredFileIds.includes(link.target)) return false;
-          
-          return true;
-        });
-        
-        // Update current data and redraw
-        currentData = {
-          nodes: mockData.nodes.filter(node => {
-            if (node.type !== 'file') return true;
-            return node.created >= timeLimit;
-          }),
-          links: filteredLinks
-        };
-        
-        renderGraph(currentData, layoutSelect.value);
-      }
-      
-      // Filter data by type
-      function filterDataByType(filter) {
-        let filteredData = JSON.parse(JSON.stringify(mockData));
-        
-        switch (filter) {
-          case 'users':
-            // Show only user-user connections
-            filteredData.links = mockData.links.filter(link => 
-              !link.source.includes('file') && 
-              !link.target.includes('file') && 
-              !link.source.includes('tag') && 
-              !link.target.includes('tag')
-            );
-            break;
-            
-          case 'files':
-            // Show only file connections
-            filteredData.links = mockData.links.filter(link => 
-              link.source.includes('file') || 
-              link.target.includes('file')
-            );
-            break;
-            
-          case 'tags':
-            // Show only tag connections
-            filteredData.links = mockData.links.filter(link => 
-              link.source.includes('tag') || 
-              link.target.includes('tag')
-            );
-            break;
-            
-          case 'my-connections':
-            // Show only your connections
-            filteredData.links = mockData.links.filter(link => 
-              link.source === 'user6' || 
-              link.target === 'user6' || 
-              mockData.nodes.find(n => n.id === link.source)?.isSelf || 
-              mockData.nodes.find(n => n.id === link.target)?.isSelf
-            );
-            break;
-            
-          case 'popular':
-            // Show connections with high weights
-            filteredData.links = mockData.links.filter(link => link.weight >= 2);
-            break;
-            
-          case 'recent':
-            // Show recently created content (last 3 days)
-            const recentTimeLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-            const recentFileIds = mockData.nodes
-              .filter(node => node.type === 'file' && node.created >= recentTimeLimit)
-              .map(node => node.id);
-              
-            filteredData.links = mockData.links.filter(link => {
-              if (link.source.includes('file') && recentFileIds.includes(link.source)) return true;
-              if (link.target.includes('file') && recentFileIds.includes(link.target)) return true;
-              return false;
-            });
-            break;
-            
-          case 'expiring':
-            // Show content expiring soon (within 2 days)
-            const expiryTimeLimit = Date.now() + (2 * 24 * 60 * 60 * 1000);
-            const expiringFileIds = mockData.nodes
-              .filter(node => node.type === 'file' && node.expires && node.expires <= expiryTimeLimit)
-              .map(node => node.id);
-              
-            filteredData.links = mockData.links.filter(link => {
-              if (link.source.includes('file') && expiringFileIds.includes(link.source)) return true;
-              if (link.target.includes('file') && expiringFileIds.includes(link.target)) return true;
-              return false;
-            });
-            break;
-            
-          default: // 'all'
-            // Use all data
-            break;
-        }
-        
-        // Get all node IDs that are part of the filtered links
-        const nodeIds = new Set();
-        filteredData.links.forEach(link => {
-          nodeIds.add(link.source);
-          nodeIds.add(link.target);
-        });
-        
-        // Filter nodes to only include those in the links
-        filteredData.nodes = mockData.nodes.filter(node => nodeIds.has(node.id));
-        
-        // Update current data and redraw
-        currentData = filteredData;
-        renderGraph(currentData, layoutSelect.value);
-      }
-      
-      // Render the graph
-      function renderGraph(data, layout) {
-        // Clear the container
-        container.selectAll('*').remove();
-        
-        // Create links
-        const link = container.append('g')
-          .selectAll('line')
-          .data(data.links)
-          .enter().append('line')
-          .attr('class', 'link')
-          .attr('stroke', '#999')
-          .attr('stroke-width', d => d.weight)
-          .on('mouseover', function(event, d) {
-            d3.select(this)
-              .attr('stroke', '#fff')
-              .attr('stroke-width', d.weight + 1);
-              
-            // Show tooltip
-            const sourceNode = data.nodes.find(n => n.id === d.source);
-            const targetNode = data.nodes.find(n => n.id === d.target);
-            
-            if (sourceNode && targetNode) {
-              let relationshipType = d.type;
-              
-              switch (relationshipType) {
-                case 'creator':
-                  relationshipType = 'Created by';
-                  break;
-                case 'collaborator':
-                  relationshipType = 'Collaborated on';
-                  break;
-                case 'tag':
-                  relationshipType = 'Tagged as';
-                  break;
-                case 'reference':
-                  relationshipType = 'References';
-                  break;
-                case 'connection':
-                  relationshipType = 'Connected to';
-                  break;
-              }
-              
-              tooltip.innerHTML = `
-                <strong>${sourceNode.label}</strong> → <strong>${targetNode.label}</strong><br>
-                Relationship: ${relationshipType}
-              `;
-              
-              tooltip.style.left = (event.pageX + 10) + 'px';
-              tooltip.style.top = (event.pageY - 10) + 'px';
-              tooltip.style.opacity = 1;
-            }
-          })
-          .on('mouseout', function() {
-            d3.select(this)
-              .attr('stroke', '#999')
-              .attr('stroke-width', d => d.weight);
-              
-            tooltip.style.opacity = 0;
-          });
-        
-        // Create nodes with different shapes based on type
-        const nodesGroup = container.append('g').attr('class', 'nodes-group');
-        
-        // Function to create different shapes
-        const createNodeShape = (selection, d) => {
-          const shapeSize = d.type === 'user' ? 10 : d.type === 'file' ? 8 : 6;
-          
-          if (d.type === 'user') {
-            // Circle for users
-            return selection.append('circle')
-              .attr('r', shapeSize)
-              .attr('cx', 0)
-              .attr('cy', 0);
-          } else if (d.type === 'file') {
-            // Square for files
-            return selection.append('rect')
-              .attr('width', shapeSize * 2)
-              .attr('height', shapeSize * 2)
-              .attr('x', -shapeSize)
-              .attr('y', -shapeSize);
-          } else if (d.type === 'tag') {
-            // Diamond for tags
-            return selection.append('polygon')
-              .attr('points', `0,-${shapeSize} ${shapeSize},0 0,${shapeSize} -${shapeSize},0`);
-          } else {
-            // Triangle for other types
-            const triangleSize = shapeSize * 1.5;
-            return selection.append('polygon')
-              .attr('points', `0,-${triangleSize} ${triangleSize},${triangleSize} -${triangleSize},${triangleSize}`);
-          }
-        };
-        
-        // Create node groups that will contain the shapes
-        const node = nodesGroup.selectAll('.node-group')
-          .data(data.nodes)
-          .enter()
-          .append('g')
-          .attr('class', 'node-group')
-          .each(function(d) {
-            // Create shape based on node type
-            createNodeShape(d3.select(this), d)
-              .attr('class', 'node')
-              .attr('fill', d.isSelf ? colorScale.self : colorScale[d.type])
-              .attr('stroke', '#fff')
-              .attr('stroke-width', 1.5);
-          })
-          .on('mouseover', function(event, d) {
-            d3.select(this).select('.node')
-              .attr('stroke-width', 3);
-              
-            // Show tooltip
-            let typeLabel = d.type.charAt(0).toUpperCase() + d.type.slice(1);
-            let details = '';
-            
-            if (d.type === 'file') {
-              const creator = data.nodes.find(n => n.id === d.creator);
-              const expiryTime = d.expires ? formatTimeRemaining(d.expires) : 'Archived';
-              details = `<br>Creator: ${creator ? creator.label : 'Unknown'}<br>Expires: ${expiryTime}`;
-            }
-            
-            tooltip.innerHTML = `
-              <strong>${d.label}</strong><br>
-              Type: ${typeLabel}${details}
-            `;
-            
-            tooltip.style.left = (event.pageX + 10) + 'px';
-            tooltip.style.top = (event.pageY - 10) + 'px';
-            tooltip.style.opacity = 1;
-          })
-          .on('mouseout', function() {
-            if (d3.select(this).datum().id !== selectedNodeId) {
-              d3.select(this).select('.node').attr('stroke-width', 1.5);
-            }
-            tooltip.style.opacity = 0;
-          })
-          .on('click', function(event, d) {
-            // Show node details
-            selectedNodeId = d.id;
-            
-            // Highlight selected node
-            container.selectAll('.node')
-              .attr('stroke-width', 1.5);
-            d3.select(this).select('.node')
-              .attr('stroke-width', 3);
-            
-            // Update details panel
-            showNodeDetails(d);
-          })
-          .call(d3.drag()
-            .on('start', dragstarted)
-            .on('drag', dragged)
-            .on('end', dragended));
-        
-        // Add labels to nodes
-        const nodeLabel = container.append('g')
-          .selectAll('text')
-          .data(data.nodes)
-          .enter().append('text')
-          .attr('class', 'node-label')
-          .attr('text-anchor', 'middle')
-          .attr('dy', d => {
-            // Adjust label position based on shape
-            if (d.type === 'user') return '24px'; // Circle
-            if (d.type === 'file') return '22px'; // Square
-            if (d.type === 'tag') return '20px';  // Diamond
-            return '24px';                        // Triangle
-          })
-          .text(d => d.label)
-          .style('font-size', '10px')
-          .style('fill', '#fff')
-          .style('pointer-events', 'none')
-          .style('display', showLabelsCheckbox.checked ? 'block' : 'none');
-        
-        // Apply initial transform to center the graph
-        svg.call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8));
-        
-        // Initialize layout
-        let simulation;
-        
-        if (layout === 'force') {
-          // Force-directed layout
-          simulation = d3.forceSimulation(data.nodes)
-            .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-200))
-            .force('center', d3.forceCenter(0, 0))
-            .force('collision', d3.forceCollide().radius(20));
-            
-          simulation.on('tick', () => {
-            link
-              .attr('x1', d => d.source.x)
-              .attr('y1', d => d.source.y)
-              .attr('x2', d => d.target.x)
-              .attr('y2', d => d.target.y);
-            
-            // Update node groups
-            container.selectAll('.node-group')
-              .attr('transform', d => `translate(${d.x}, ${d.y})`);
-            
-            nodeLabel
-              .attr('x', d => d.x)
-              .attr('y', d => d.y);
-          });
-        } else if (layout === 'radial') {
-          // Radial layout
-          const radius = Math.min(width, height) / 3;
-          const angleStep = (2 * Math.PI) / data.nodes.length;
-          
-          data.nodes.forEach((d, i) => {
-            d.x = radius * Math.cos(i * angleStep);
-            d.y = radius * Math.sin(i * angleStep);
-          });
-          
-          link
-            .attr('x1', d => d.source.x)
-            .attr('y1', d => d.source.y)
-            .attr('x2', d => d.target.x)
-            .attr('y2', d => d.target.y);
-          
-          // Update node groups
-          container.selectAll('.node-group')
-            .attr('transform', d => `translate(${d.x}, ${d.y})`);
-          
-          nodeLabel
-            .attr('x', d => d.x)
-            .attr('y', d => d.y);
-            
-          // Allow nodes to be draggable
-          node.call(d3.drag()
-            .on('start', dragstarted)
-            .on('drag', dragged)
-            .on('end', dragended));
-        } else if (layout === 'cluster') {
-          // Cluster layout (group by type)
-          const typeGroups = {
-            user: { x: -width / 4, y: -height / 4 },
-            file: { x: width / 4, y: -height / 4 },
-            tag: { x: 0, y: height / 4 }
-          };
-          
-          data.nodes.forEach(d => {
-            const group = typeGroups[d.type];
-            const jitter = 50; // Add some randomness
-            d.x = group.x + (Math.random() - 0.5) * jitter * 2;
-            d.y = group.y + (Math.random() - 0.5) * jitter * 2;
-          });
-          
-          // Simple force layout within clusters
-          simulation = d3.forceSimulation(data.nodes)
-            .force('link', d3.forceLink(data.links).id(d => d.id).distance(30))
-            .force('charge', d3.forceManyBody().strength(-20))
-            .force('x', d3.forceX().x(d => typeGroups[d.type].x).strength(0.1))
-            .force('y', d3.forceY().y(d => typeGroups[d.type].y).strength(0.1))
-            .force('collision', d3.forceCollide().radius(15));
-            
-          simulation.on('tick', () => {
-            link
-              .attr('x1', d => d.source.x)
-              .attr('y1', d => d.source.y)
-              .attr('x2', d => d.target.x)
-              .attr('y2', d => d.target.y);
-            
-            // Update node groups
-            container.selectAll('.node-group')
-              .attr('transform', d => `translate(${d.x}, ${d.y})`);
-            
-            nodeLabel
-              .attr('x', d => d.x)
-              .attr('y', d => d.y);
-          });
-        }
-        
-        // Drag functions
-        function dragstarted(event) {
-          if (!event.active && simulation) simulation.alphaTarget(0.3).restart();
-          event.subject.fx = event.subject.x;
-          event.subject.fy = event.subject.y;
-        }
-        
-        function dragged(event) {
-          event.subject.fx = event.x;
-          event.subject.fy = event.y;
-        }
-        
-        function dragended(event) {
-          if (!event.active && simulation) simulation.alphaTarget(0);
-          event.subject.fx = null;
-          event.subject.fy = null;
-        }
-      }
-      
-      // Show node details in panel
-      function showNodeDetails(node) {
-        detailsTitle.textContent = node.label;
-        
-        let content = '';
-        
-        if (node.type === 'user') {
-          // User details
-          const userFiles = currentData.nodes.filter(n => n.type === 'file' && n.creator === node.id);
-          const userConnections = currentData.links.filter(l => 
-            (l.source === node.id || l.target === node.id) && l.type === 'connection'
-          );
-          
-          content = `
-            <p><strong>Type:</strong> User</p>
-            <p><strong>Files:</strong> ${userFiles.length}</p>
-            <p><strong>Connections:</strong> ${userConnections.length}</p>
-            ${node.isSelf ? '<p><em>This is you</em></p>' : ''}
-            
-            <h4 class="mt-2">Files</h4>
-            <ul class="mt-1">
-              ${userFiles.map(file => `
-                <li>
-                  <a href="content/${file.id}" class="link-hover">
-                    ${file.label} (${file.expires ? formatTimeRemaining(file.expires) : 'Archived'})
-                  </a>
-                </li>
-              `).join('')}
-            </ul>
-          `;
-        } else if (node.type === 'file') {
-          // File details
-          const creator = currentData.nodes.find(n => n.id === node.creator);
-          const tags = currentData.links
-            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'tag')
-            .map(l => {
-              const tagId = l.source === node.id ? l.target : l.source;
-              return currentData.nodes.find(n => n.id === tagId);
-            });
-          
-          const collaborators = currentData.links
-            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'collaborator')
-            .map(l => {
-              const userId = l.source === node.id ? l.target : l.source;
-              return currentData.nodes.find(n => n.id === userId);
-            });
-          
-          const references = currentData.links
-            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'reference')
-            .map(l => {
-              const fileId = l.source === node.id ? l.target : l.source;
-              return currentData.nodes.find(n => n.id === fileId);
-            });
-          
-          content = `
-            <p><strong>Type:</strong> File</p>
-            <p><strong>Creator:</strong> ${creator ? creator.label : 'Unknown'}</p>
-            <p><strong>Status:</strong> ${node.expires ? `Expires in ${formatTimeRemaining(node.expires)}` : 'Archived'}</p>
-            
-            <h4 class="mt-2">Tags</h4>
-            <div class="flex flex-wrap gap-1 mt-1">
-              ${tags.map(tag => `
-                <a href="search?q=${tag.label}" class="tag">
-                  ${tag.label}
-                </a>
-              `).join('')}
-            </div>
-            
-            ${collaborators.length > 0 ? `
-              <h4 class="mt-2">Collaborators</h4>
-              <ul class="mt-1">
-                ${collaborators.map(user => `
-                  <li>
-                    <a href="user/${user.id}" class="link-hover">
-                      ${user.label}
-                    </a>
-                  </li>
-                `).join('')}
-              </ul>
-            ` : ''}
-            
-            ${references.length > 0 ? `
-              <h4 class="mt-2">Referenced Files</h4>
-              <ul class="mt-1">
-                ${references.map(file => `
-                  <li>
-                    <a href="content/${file.id}" class="link-hover">
-                      ${file.label}
-                    </a>
-                  </li>
-                `).join('')}
-              </ul>
-            ` : ''}
-          `;
-          
-          // Customize view button for files
-          viewItem.innerHTML = '<span class="material-icons">visibility</span> View File';
-        } else if (node.type === 'tag') {
-          // Tag details
-          const taggedFiles = currentData.links
-            .filter(l => (l.source === node.id || l.target === node.id) && l.type === 'tag')
-            .map(l => {
-              const fileId = l.source === node.id ? l.target : l.source;
-              return currentData.nodes.find(n => n.id === fileId);
-            });
-          
-          content = `
-            <p><strong>Type:</strong> Tag</p>
-            <p><strong>Used in:</strong> ${taggedFiles.length} files</p>
-            
-            <h4 class="mt-2">Tagged Files</h4>
-            <ul class="mt-1">
-              ${taggedFiles.map(file => `
-                <li>
-                  <a href="content/${file.id}" class="link-hover">
-                    ${file.label} - ${file.creator ? currentData.nodes.find(n => n.id === file.creator).label : 'Unknown'}
-                  </a>
-                </li>
-              `).join('')}
-            </ul>
-          `;
-          
-          // Customize view button for tags
-          viewItem.innerHTML = '<span class="material-icons">search</span> Search Tag';
-        }
-        
-        detailsContent.innerHTML = content;
-        nodeDetails.style.display = 'block';
-      }
-      
-      // Format time remaining until expiry
-      function formatTimeRemaining(expiryTimestamp) {
-        if (!expiryTimestamp) return 'Archived';
-        
-        const now = Date.now();
-        const diff = expiryTimestamp - now;
-        
-        if (diff <= 0) return 'Expired';
-        
-        const days = Math.floor(diff / (24 * 60 * 60 * 1000));
-        
-        if (days === 0) {
-          const hours = Math.floor(diff / (60 * 60 * 1000));
-          return `${hours}h`;
-        }
-        
-        return `${days}d`;
-      }
     });
   </script>
 </body>

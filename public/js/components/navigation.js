@@ -34,20 +34,20 @@ export class NavigationBar {
             <!-- Main navigation items with focused primary items -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-icons">explore</span>
+                <span class="material-icons" aria-hidden="true">explore</span>
                 <span class="nav-label">Explore</span>
               </a>
               <div class="nav-dropdown">
                 <a href="/network.html" class="dropdown-item ${currentPage === 'network' ? 'active' : ''}">
-                  <span class="material-icons">hub</span>
+                  <span class="material-icons" aria-hidden="true">hub</span>
                   Association Web
                 </a>
                 <a href="/map.html" class="dropdown-item ${currentPage === 'map' ? 'active' : ''}">
-                  <span class="material-icons">public</span>
+                  <span class="material-icons" aria-hidden="true">public</span>
                   Map
                 </a>
                 <a href="/random.html" class="dropdown-item ${currentPage === 'random' ? 'active' : ''}">
-                  <span class="material-icons">shuffle</span>
+                  <span class="material-icons" aria-hidden="true">shuffle</span>
                   Random Communique
                 </a>
               </div>
@@ -56,21 +56,25 @@ export class NavigationBar {
             <!-- Connect and Collaborate group -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-icons">people</span>
+                <span class="material-icons" aria-hidden="true">people</span>
                 <span class="nav-label">Connect</span>
               </a>
               <div class="nav-dropdown">
                 <a href="/feed.html" class="dropdown-item ${currentPage === 'feed' ? 'active' : ''}">
-                  <span class="material-icons">dynamic_feed</span>
+                  <span class="material-icons" aria-hidden="true">dynamic_feed</span>
                   Feed
                 </a>
                 <a href="/connect.html" class="dropdown-item ${currentPage === 'connect' ? 'active' : ''}">
-                  <span class="material-icons">person_add</span>
+                  <span class="material-icons" aria-hidden="true">person_add</span>
                   Find People
                 </a>
                 <a href="/messages.html" class="dropdown-item ${currentPage === 'messages' ? 'active' : ''}">
-                  <span class="material-icons">chat</span>
+                  <span class="material-icons" aria-hidden="true">chat</span>
                   Messages
+                </a>
+                <a href="/collaborate.html" class="dropdown-item ${currentPage === 'collaborate' ? 'active' : ''}">
+                  <span class="material-icons">groups</span>
+                  Collaborate
                 </a>
               </div>
             </li>
@@ -78,12 +82,12 @@ export class NavigationBar {
             <!-- Content group -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-icons">folder</span>
+                <span class="material-icons" aria-hidden="true">folder</span>
                 <span class="nav-label">Content</span>
               </a>
               <div class="nav-dropdown">
                 <a href="/drawer.html" class="dropdown-item ${currentPage === 'drawer' ? 'active' : ''}">
-                  <span class="material-icons">folder</span>
+                  <span class="material-icons" aria-hidden="true">folder</span>
                   My Drawer
                 </a>
                 <a href="/archive.html" class="dropdown-item ${currentPage === 'archive' ? 'active' : ''}">
@@ -91,7 +95,7 @@ export class NavigationBar {
                   Community Archive
                 </a>
                 <a href="/upload.html" class="dropdown-item ${currentPage === 'upload' ? 'active' : ''}">
-                  <span class="material-icons">upload_file</span>
+                  <span class="material-icons" aria-hidden="true">upload_file</span>
                   Upload Files
                 </a>
               </div>
@@ -99,27 +103,27 @@ export class NavigationBar {
             
             <!-- Keep Search as a main item -->
             <li><a href="/search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
-              <span class="material-icons">search</span>
+              <span class="material-icons" aria-hidden="true">search</span>
               <span class="nav-label">Search</span>
             </a></li>
             
             <!-- Help and About dropdown -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
-                <span class="material-icons">help_outline</span>
+                <span class="material-icons" aria-hidden="true">help_outline</span>
                 <span class="nav-label">Info</span>
               </a>
               <div class="nav-dropdown">
                 <a href="/help.html" class="dropdown-item ${currentPage === 'help' ? 'active' : ''}">
-                  <span class="material-icons">help_outline</span>
+                  <span class="material-icons" aria-hidden="true">help_outline</span>
                   Help & FAQ
                 </a>
                 <a href="/about.html" class="dropdown-item ${currentPage === 'about' ? 'active' : ''}">
-                  <span class="material-icons">info</span>
+                  <span class="material-icons" aria-hidden="true">info</span>
                   About
                 </a>
                 <a href="/sitemap.html" class="dropdown-item ${currentPage === 'sitemap' ? 'active' : ''}">
-                  <span class="material-icons">map</span>
+                  <span class="material-icons" aria-hidden="true">map</span>
                   Site Map
                 </a>
               </div>
@@ -127,7 +131,7 @@ export class NavigationBar {
             
             <!-- Login remains a direct link -->
             <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
-              <span class="material-icons">login</span>
+              <span class="material-icons" aria-hidden="true">login</span>
               <span class="nav-label">Login</span>
             </a></li>
           </ul>
@@ -300,15 +304,15 @@ export class NavigationBar {
                 </a>
                 <div class="user-dropdown">
                   <a href="/profile.html" class="dropdown-item">
-                    <span class="material-icons">person</span>
+                    <span class="material-icons" aria-hidden="true">person</span>
                     My Profile
                   </a>
                   <a href="/drawer.html" class="dropdown-item">
-                    <span class="material-icons">folder</span>
+                    <span class="material-icons" aria-hidden="true">folder</span>
                     My Drawer
                   </a>
                   <a href="#" id="logout-link" class="dropdown-item">
-                    <span class="material-icons">logout</span>
+                    <span class="material-icons" aria-hidden="true">logout</span>
                     Logout
                   </a>
                 </div>
@@ -323,18 +327,12 @@ export class NavigationBar {
 
             // Initialize notification system
             console.log('[NavigationBar] Initializing notification system');
-            notificationManager.createNotificationElements();
-            notificationManager.startPolling(30000); // Poll every 30 seconds
+            notificationManager.createNotificationElements({ userId: user.id });
 
-            // Fetch notifications immediately
-            notificationManager
-              .fetchUnreadCount()
-              .then(count => {
-                console.log('[NavigationBar] Initial unread notifications count:', count);
-              })
-              .catch(err => {
-                console.error('[NavigationBar] Error fetching initial notifications:', err);
-              });
+            // Trigger connection suggestions
+            apiPost(`/api/suggestions/connections/${user.id}`).catch(err => {
+              console.error('Error triggering connection suggestions:', err);
+            });
           } else {
             console.log('[NavigationBar] User profile was null, showing login link');
             this.handleAuthError();

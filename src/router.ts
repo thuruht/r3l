@@ -217,17 +217,22 @@ export class Router {
       const limit = parseInt(url.searchParams.get('limit') || '12');
       const page = parseInt(url.searchParams.get('page') || '1');
       const offset = (page - 1) * limit;
+      const includeLurkers = url.searchParams.get('include_lurkers') === 'true';
 
       try {
-        const countQuery = `
+        let countQuery = `
           SELECT COUNT(*) as total
           FROM users
           WHERE id != ?
+        `;
+        if (!includeLurkers) {
+          countQuery += `
             AND (
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
             )
-        `;
+          `;
+        }
 
         const countResult = await env.R3L_DB.prepare(countQuery)
           .bind(authenticatedUserId)
@@ -236,7 +241,7 @@ export class Router {
         const total = countResult ? Number(countResult.total) : 0;
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        const usersQuery = `
+        let usersQuery = `
           SELECT
             id,
             username,
@@ -245,12 +250,20 @@ export class Router {
             avatar_url,
             created_at,
             (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
+            ${includeLurkers ? ", JSON_EXTRACT(preferences, '$.lurkerModeEnabled') as is_lurker" : ''}
           FROM users
           WHERE id != ?
+        `;
+
+        if (!includeLurkers) {
+          usersQuery += `
             AND (
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
             )
+          `;
+        }
+        usersQuery += `
           ORDER BY username ASC
           LIMIT ? OFFSET ?
         `;
@@ -261,6 +274,7 @@ export class Router {
 
         const users = (result.results || []).map((u: any) => ({
           ...u,
+          is_lurker: includeLurkers ? (u.is_lurker === 1 || u.is_lurker === 'true' || u.is_lurker === true) : false,
           connectionStatus: 'none',
         }));
 
@@ -279,24 +293,31 @@ export class Router {
         return this.errorResponse('Authentication required', 401);
       }
 
-  const url = new URL(request.url);
-  const query = url.searchParams.get('query') || '';
+      const url = new URL(request.url);
+      const query = url.searchParams.get('query') || '';
       const limit = parseInt(url.searchParams.get('limit') || '12');
       const page = parseInt(url.searchParams.get('page') || '1');
       const offset = (page - 1) * limit;
+      const includeLurkers = url.searchParams.get('include_lurkers') === 'true';
 
       try {
         const like = `%${query}%`;
-        const countQuery = `
+        let countQuery = `
           SELECT COUNT(*) as total
           FROM users
           WHERE id != ?
             AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
         `;
+
+        if (!includeLurkers) {
+            countQuery += `
+              AND (
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+              )
+            `;
+        }
+
         const countResult = await env.R3L_DB.prepare(countQuery)
           .bind(authenticatedUserId, like, like)
           .first<{ total: number }>();
@@ -304,7 +325,7 @@ export class Router {
         const total = countResult ? Number(countResult.total) : 0;
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        const usersQuery = `
+        let usersQuery = `
           SELECT
             id,
             username,
@@ -313,13 +334,22 @@ export class Router {
             avatar_url,
             created_at,
             (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
+            ${includeLurkers ? ", JSON_EXTRACT(preferences, '$.lurkerModeEnabled') as is_lurker" : ''}
           FROM users
           WHERE id != ?
             AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
+        `;
+
+        if (!includeLurkers) {
+            usersQuery += `
+              AND (
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+              )
+            `;
+        }
+
+        usersQuery += `
           ORDER BY username ASC
           LIMIT ? OFFSET ?
         `;
@@ -330,6 +360,7 @@ export class Router {
 
         const users = (result.results || []).map((u: any) => ({
           ...u,
+          is_lurker: includeLurkers ? (u.is_lurker === 1 || u.is_lurker === 'true' || u.is_lurker === true) : false,
           connectionStatus: 'none',
         }));
 

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Bookmarks - R3L:F</title>
+  <link rel="stylesheet" href="css/rel-f-global.css">
+  <script src="js/font-loader.js" defer></script>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      NavigationBar.init('bookmarks');
+    });
+  </script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <!-- Navigation will be inserted by JavaScript -->
+    </div>
+  </header>
+
+  <main class="container">
+    <h1>My Bookmarks</h1>
+    <div id="bookmarks-list" class="card-grid">
+      <!-- Bookmarks will be rendered here -->
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p class="footer-motto">"the rel is what you make it"</p>
+    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
+  </footer>
+
+  <script type="module">
+    import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
+    import { escapeHtml } from './js/utils/ui-helpers.js';
+    import { authenticatedFetch, getAuthenticatedUser } from './js/utils/cookie-helper.js';
+
+    const bookmarksList = document.getElementById('bookmarks-list');
+
+    async function loadBookmarks() {
+      const user = await getAuthenticatedUser();
+      if (!user) {
+        bookmarksList.innerHTML = '<p>You must be logged in to see your bookmarks.</p>';
+        return;
+      }
+
+      bookmarksList.innerHTML = '<p>Loading bookmarks...</p>';
+      try {
+        const bookmarks = await apiGet(API_ENDPOINTS.USERS.BOOKMARKS(user.id));
+        if (bookmarks && bookmarks.length > 0) {
+          const bookmarksHtml = bookmarks.map(content => `
+            <div class="card">
+              <div class="card-body">
+                <h3><a href="/content.html?id=${content.id}">${escapeHtml(content.title)}</a></h3>
+                <p>${escapeHtml(content.description)}</p>
+                <div class="text-muted">By ${escapeHtml(content.display_name || content.username)}</div>
+              </div>
+            </div>
+          `).join('');
+          bookmarksList.innerHTML = bookmarksHtml;
+        } else {
+          bookmarksList.innerHTML = '<p>You have no bookmarks yet.</p>';
+        }
+      } catch (error) {
+        bookmarksList.innerHTML = '<p class="text-error">Failed to load bookmarks.</p>';
+        console.error('Error loading bookmarks:', error);
+      }
+    }
+
+    loadBookmarks();
+  </script>
+</body>
+</html>

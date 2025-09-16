@@ -72,6 +72,10 @@ export class NavigationBar {
                   <span class="material-icons" aria-hidden="true">chat</span>
                   Messages
                 </a>
+                <a href="/collaborate.html" class="dropdown-item ${currentPage === 'collaborate' ? 'active' : ''}">
+                  <span class="material-icons">groups</span>
+                  Collaborate
+                </a>
               </div>
             </li>
             
@@ -319,18 +323,12 @@ export class NavigationBar {
 
             // Initialize notification system
             console.log('[NavigationBar] Initializing notification system');
-            notificationManager.createNotificationElements();
-            notificationManager.startPolling(30000); // Poll every 30 seconds
+            notificationManager.createNotificationElements({ userId: user.id });
 
-            // Fetch notifications immediately
-            notificationManager
-              .fetchUnreadCount()
-              .then(count => {
-                console.log('[NavigationBar] Initial unread notifications count:', count);
-              })
-              .catch(err => {
-                console.error('[NavigationBar] Error fetching initial notifications:', err);
-              });
+            // Trigger connection suggestions
+            apiPost(`/api/suggestions/connections/${user.id}`).catch(err => {
+              console.error('Error triggering connection suggestions:', err);
+            });
           } else {
             console.log('[NavigationBar] User profile was null, showing login link');
             this.handleAuthError();

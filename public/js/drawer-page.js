@@ -1,5 +1,5 @@
 import { NavigationBar } from './components/navigation.js';
-import { apiGet, apiPost, API_ENDPOINTS } from './utils/api-helper.js';
+import { apiGet, apiPost, apiPatch, apiUpload, API_ENDPOINTS } from './utils/api-helper.js';
 import { displayError, displayEmptyState, generateRefCode } from './utils/ui-helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const userNameEl = document.getElementById('user-name');
   const userAvatarEl = document.getElementById('user-avatar');
   const userJoinedEl = document.getElementById('user-joined');
+  const editNameBtn = document.getElementById('edit-name-btn');
+  const saveNameBtn = document.getElementById('save-name-btn');
+  const avatarUploadInput = document.getElementById('avatar-upload');
 
   // Stats
   const filesCountEl = document.getElementById('files-count');
@@ -23,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Communique
   const communiqueEditor = document.getElementById('communique');
   const saveCommuniqueBtn = document.getElementById('save-communique');
+
+  // Theme Selector
+  const themeSelector = document.getElementById('theme-selector');
 
   // File Management
   const fileGrid = document.getElementById('file-grid');
@@ -90,15 +96,34 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /**
+   * Applies the selected theme to the document.
+   * @param {'system'|'light'|'dark'} theme
+   */
+  const applyTheme = (theme) => {
+    const root = document.documentElement;
+    if (theme === 'system') {
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      root.classList.toggle('dark-theme', systemPrefersDark);
+    } else {
+      root.classList.toggle('dark-theme', theme === 'dark');
+    }
+  };
+
+  /**
    * Populates the user information section.
    */
   const populateUserInfo = (user) => {
-    userNameEl.textContent = user.display_name || user.username;
+    userNameEl.textContent = user.display_name || 'Anonymous';
     userJoinedEl.textContent = formatDate(user.created_at);
     if (user.avatar_key) {
       userAvatarEl.src = `/api/files/${user.avatar_key}`;
     }
-    communiqueEditor.innerHTML = user.communique || '';
+    communiqueEditor.innerHTML = user.preferences?.communique || '';
+
+    // Set theme
+    const currentTheme = user.preferences?.theme || 'system';
+    themeSelector.value = currentTheme;
+    applyTheme(currentTheme);
   };
 
   /**
@@ -229,11 +254,72 @@ document.addEventListener('DOMContentLoaded', () => {
   saveCommuniqueBtn.addEventListener('click', async () => {
     const content = communiqueEditor.innerHTML;
     try {
-      const result = await apiPost(API_ENDPOINTS.USERS.UPDATE(currentUser.id), { communique: content });
+      // Note: We save the communique under the 'preferences' object now.
+      const result = await apiPatch(API_ENDPOINTS.USERS.PREFERENCES(currentUser.id), { communique: content });
       if (result.error) throw new Error(result.error);
       // You could add a success message here
     } catch (error) {
       displayError(errorContainer, 'Failed to save communique.', 'FE-DRWR-SAVE');
+    }
+  });
+
+  themeSelector.addEventListener('change', async (e) => {
+    const newTheme = e.target.value;
+    applyTheme(newTheme);
+    try {
+      const result = await apiPatch(API_ENDPOINTS.USERS.PREFERENCES(currentUser.id), { theme: newTheme });
+      if (result.error) throw new Error(result.error);
+    } catch (error) {
+      displayError(errorContainer, 'Failed to save theme preference.', 'FE-DRWR-THEME');
+      // Revert UI on failure? For now, we leave it.
+    }
+  });
+
+  editNameBtn.addEventListener('click', () => {
+    userNameEl.contentEditable = true;
+    userNameEl.focus();
+    editNameBtn.classList.add('hidden');
+    saveNameBtn.classList.remove('hidden');
+  });
+
+  saveNameBtn.addEventListener('click', async () => {
+    const newName = userNameEl.textContent;
+    userNameEl.contentEditable = false;
+    editNameBtn.classList.remove('hidden');
+    saveNameBtn.classList.add('hidden');
+
+    try {
+      const result = await apiPatch(API_ENDPOINTS.USERS.PROFILE(currentUser.id), { displayName: newName });
+      if (result.error) throw new Error(result.error);
+    } catch (error) {
+      displayError(errorContainer, 'Failed to save display name.', 'FE-DRWR-NAME');
+      // Revert UI on failure
+      userNameEl.textContent = currentUser.display_name;
+    }
+  });
+
+  avatarUploadInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const uploadResult = await apiUpload('/api/files/avatar', formData);
+      if (uploadResult.error) throw new Error(uploadResult.error);
+
+      const { avatarKey } = uploadResult;
+      const profileUpdateResult = await apiPatch(API_ENDPOINTS.USERS.PROFILE(currentUser.id), { avatarKey });
+      if (profileUpdateResult.error) throw new Error(profileUpdateResult.error);
+
+      // Update the avatar image on the page
+      userAvatarEl.src = `/api/files/${avatarKey}`;
+      // Update the currentUser object
+      currentUser.avatar_key = avatarKey;
+
+    } catch (error) {
+      displayError(errorContainer, 'Failed to upload avatar.', 'FE-DRWR-AVATAR');
     }
   });
 

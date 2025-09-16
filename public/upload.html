@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upload Content - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.css">
   <script src="js/font-loader.js" defer></script>
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
@@ -268,5 +269,14 @@
   </footer>
 
   <script type="module" src="js/upload-page.js"></script>
+  <script src="https://cdn.jsdelivr.net/simplemde/latest/simplemde.min.js"></script>
+  <script>
+    // Make simplemde globally available
+    window.simplemde = new SimpleMDE({
+      element: document.getElementById("description"),
+      spellChecker: false, // Disable spell checker for now
+      placeholder: "Write a description for your content. Markdown is supported.",
+    });
+  </script>
 </body>
 </html>

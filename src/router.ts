@@ -7,6 +7,7 @@ import { UserHandler } from './handlers/user.js';
 import { ContentHandler } from './handlers/content.js';
 import { StatisticsHandler } from './handlers/statistics.js';
 import { NotificationHandler } from './handlers/notification.js';
+import { SuggestionHandler } from './handlers/suggestions.js';
 import { TagHandler } from './handlers/tag.js';
 import { SearchHandler } from './handlers/search.js';
 import { AIHandler } from './handlers/ai.js';
@@ -28,6 +29,7 @@ export class Router {
   private contentHandler: ContentHandler;
   private statsHandler: StatisticsHandler;
   private notificationHandler: NotificationHandler;
+  private suggestionHandler: SuggestionHandler;
   private tagHandler: TagHandler;
   private searchHandler: SearchHandler;
   private aiHandler: AIHandler;
@@ -42,6 +44,7 @@ export class Router {
     this.contentHandler = new ContentHandler();
     this.statsHandler = new StatisticsHandler();
     this.notificationHandler = new NotificationHandler();
+    this.suggestionHandler = new SuggestionHandler();
     this.tagHandler = new TagHandler();
     this.searchHandler = new SearchHandler();
     this.aiHandler = new AIHandler();
@@ -167,6 +170,10 @@ export class Router {
       return this.handleNotificationRoutes(request, env, path);
     }
 
+    if (path.startsWith('/api/suggestions/')) {
+        return this.handleSuggestionRoutes(request, env, path);
+    }
+
     if (path.startsWith('/api/tags/')) {
       return this.handleTagRoutes(request, env, path);
     }
@@ -195,6 +202,10 @@ export class Router {
       return this.handleMessagingRoutes(request, env, path);
     }
 
+    if (path.startsWith('/api/workspaces/')) {
+      return this.handleWorkspaceRoutes(request, env, path);
+    }
+
     // Associations: connections and related
     if (path.startsWith('/api/connections/')) {
       return this.handleAssociationRoutes(request, env, path);
@@ -217,17 +228,22 @@ export class Router {
       const limit = parseInt(url.searchParams.get('limit') || '12');
       const page = parseInt(url.searchParams.get('page') || '1');
       const offset = (page - 1) * limit;
+      const includeLurkers = url.searchParams.get('include_lurkers') === 'true';
 
       try {
-        const countQuery = `
+        let countQuery = `
           SELECT COUNT(*) as total
           FROM users
           WHERE id != ?
+        `;
+        if (!includeLurkers) {
+          countQuery += `
             AND (
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
             )
-        `;
+          `;
+        }
 
         const countResult = await env.R3L_DB.prepare(countQuery)
           .bind(authenticatedUserId)
@@ -236,7 +252,7 @@ export class Router {
         const total = countResult ? Number(countResult.total) : 0;
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        const usersQuery = `
+        let usersQuery = `
           SELECT
             id,
             username,
@@ -245,12 +261,20 @@ export class Router {
             avatar_url,
             created_at,
             (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
+            ${includeLurkers ? ", JSON_EXTRACT(preferences, '$.lurkerModeEnabled') as is_lurker" : ''}
           FROM users
           WHERE id != ?
+        `;
+
+        if (!includeLurkers) {
+          usersQuery += `
             AND (
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
               JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
             )
+          `;
+        }
+        usersQuery += `
           ORDER BY username ASC
           LIMIT ? OFFSET ?
         `;
@@ -261,6 +285,7 @@ export class Router {
 
         const users = (result.results || []).map((u: any) => ({
           ...u,
+          is_lurker: includeLurkers ? (u.is_lurker === 1 || u.is_lurker === 'true' || u.is_lurker === true) : false,
           connectionStatus: 'none',
         }));
 
@@ -279,24 +304,31 @@ export class Router {
         return this.errorResponse('Authentication required', 401);
       }
 
-  const url = new URL(request.url);
-  const query = url.searchParams.get('query') || '';
+      const url = new URL(request.url);
+      const query = url.searchParams.get('query') || '';
       const limit = parseInt(url.searchParams.get('limit') || '12');
       const page = parseInt(url.searchParams.get('page') || '1');
       const offset = (page - 1) * limit;
+      const includeLurkers = url.searchParams.get('include_lurkers') === 'true';
 
       try {
         const like = `%${query}%`;
-        const countQuery = `
+        let countQuery = `
           SELECT COUNT(*) as total
           FROM users
           WHERE id != ?
             AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
         `;
+
+        if (!includeLurkers) {
+            countQuery += `
+              AND (
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+              )
+            `;
+        }
+
         const countResult = await env.R3L_DB.prepare(countQuery)
           .bind(authenticatedUserId, like, like)
           .first<{ total: number }>();
@@ -304,7 +336,7 @@ export class Router {
         const total = countResult ? Number(countResult.total) : 0;
         const totalPages = Math.max(1, Math.ceil(total / limit));
 
-        const usersQuery = `
+        let usersQuery = `
           SELECT
             id,
             username,
@@ -313,13 +345,22 @@ export class Router {
             avatar_url,
             created_at,
             (SELECT COUNT(*) FROM content WHERE user_id = users.id) AS content_count
+            ${includeLurkers ? ", JSON_EXTRACT(preferences, '$.lurkerModeEnabled') as is_lurker" : ''}
           FROM users
           WHERE id != ?
             AND (username LIKE ? OR display_name LIKE ?)
-            AND (
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
-              JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
-            )
+        `;
+
+        if (!includeLurkers) {
+            usersQuery += `
+              AND (
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') IS NULL OR
+                JSON_EXTRACT(preferences, '$.lurkerModeEnabled') = 0
+              )
+            `;
+        }
+
+        usersQuery += `
           ORDER BY username ASC
           LIMIT ? OFFSET ?
         `;
@@ -330,6 +371,7 @@ export class Router {
 
         const users = (result.results || []).map((u: any) => ({
           ...u,
+          is_lurker: includeLurkers ? (u.is_lurker === 1 || u.is_lurker === 'true' || u.is_lurker === true) : false,
           connectionStatus: 'none',
         }));
 
@@ -639,6 +681,21 @@ export class Router {
       }
     }
 
+    // Get user bookmarks
+    if (path.match(/^\/api\/users\/[^/]+\/bookmarks$/) && request.method === 'GET') {
+      const userId = path.split('/')[3];
+      if (authenticatedUserId !== userId) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      try {
+        const bookmarks = await this.userHandler.getBookmarks(userId, env);
+        return this.jsonResponse(bookmarks);
+      } catch (error) {
+        console.error('Error fetching bookmarks:', error);
+        return this.errorResponse('Failed to fetch bookmarks');
+      }
+    }
+
     // Get user stats - requires authentication for private stats
     if (path.match(/^\/api\/users\/[^/]+\/stats$/) && request.method === 'GET') {
       const userId = path.split('/')[3];
@@ -748,6 +805,163 @@ export class Router {
       } catch (error) {
         console.error('Error fetching content tags:', error);
         return this.errorResponse('Failed to fetch content tags');
+      }
+    }
+
+    // Get comments for a content item
+    if (path.match(/^\/api\/content\/[^/]+\/comments$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      try {
+        const comments = await this.contentHandler.getComments(contentId, env);
+        return this.jsonResponse(comments);
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        return this.errorResponse('Failed to fetch comments');
+      }
+    }
+
+    // Create a new comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { parentCommentId, comment } = (await request.json()) as {
+          parentCommentId: string | null;
+          comment: string;
+        };
+        const commentId = await this.contentHandler.createComment(
+          authenticatedUserId,
+          contentId,
+          parentCommentId,
+          comment,
+          env
+        );
+        return this.jsonResponse({ id: commentId, success: true });
+      } catch (error) {
+        console.error('Error creating comment:', error);
+        return this.errorResponse('Failed to create comment');
+      }
+    }
+
+    // Update a comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments\/[^/]+$/) && request.method === 'PATCH') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const commentId = path.split('/')[5];
+      try {
+        const { comment } = (await request.json()) as { comment: string };
+        await this.contentHandler.updateComment(
+          commentId,
+          authenticatedUserId,
+          comment,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error updating comment:', error);
+        return this.errorResponse('Failed to update comment');
+      }
+    }
+
+    // Delete a comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const commentId = path.split('/')[5];
+      try {
+        await this.contentHandler.deleteComment(commentId, authenticatedUserId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        return this.errorResponse('Failed to delete comment');
+      }
+    }
+
+    // Add a bookmark
+    if (path.match(/^\/api\/content\/[^/]+\/bookmark$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        await this.contentHandler.addBookmark(authenticatedUserId, contentId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error adding bookmark:', error);
+        return this.errorResponse('Failed to add bookmark');
+      }
+    }
+
+    // Remove a bookmark
+    if (path.match(/^\/api\/content\/[^/]+\/bookmark$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        await this.contentHandler.removeBookmark(authenticatedUserId, contentId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing bookmark:', error);
+        return this.errorResponse('Failed to remove bookmark');
+      }
+    }
+
+    // Get reactions for a content item
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      try {
+        const reactions = await this.contentHandler.getReactions(contentId, env);
+        return this.jsonResponse(reactions);
+      } catch (error) {
+        console.error('Error fetching reactions:', error);
+        return this.errorResponse('Failed to fetch reactions');
+      }
+    }
+
+    // Add a reaction
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { reaction } = (await request.json()) as { reaction: string };
+        await this.contentHandler.addReaction(
+          authenticatedUserId,
+          contentId,
+          reaction,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error adding reaction:', error);
+        return this.errorResponse('Failed to add reaction');
+      }
+    }
+
+    // Remove a reaction
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { reaction } = (await request.json()) as { reaction: string };
+        await this.contentHandler.removeReaction(
+          authenticatedUserId,
+          contentId,
+          reaction,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing reaction:', error);
+        return this.errorResponse('Failed to remove reaction');
       }
     }
 
@@ -870,7 +1084,7 @@ export class Router {
       const contentId = path.split('/')[3];
 
       try {
-        await this.contentHandler.archiveContentPersonally(contentId, authenticatedUserId, env);
+        await this.contentHandler.archiveContent(contentId, authenticatedUserId, 'personal', env);
 
         return this.jsonResponse({ success: true });
       } catch (error) {
@@ -1090,6 +1304,28 @@ export class Router {
 
     return this.notFoundResponse();
   }
+
+  /**
+   * Handle suggestion routes
+   */
+  private async handleSuggestionRoutes(
+    request: Request,
+    env: Env,
+    path: string
+    ): Promise<Response> {
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+        if (!authenticatedUserId) {
+            return this.errorResponse('Authentication required', 401);
+        }
+
+        if (path.match(/^\/api\/suggestions\/connections\/[^/]+$/) && request.method === 'POST') {
+            const userId = path.split('/')[4];
+            const newRequest = { ...request, params: { userId } } as IRequest;
+            return this.suggestionHandler.createSuggestionNotifications(newRequest, env);
+        }
+
+        return this.notFoundResponse();
+    }
 
   /**
    * Handle tag routes
@@ -2220,7 +2456,7 @@ export class Router {
             'connection',
             `New connection request`,
             `${userId} has sent you a connection request`,
-            JSON.stringify({ userId, connectionId }),
+            `/profile.html?id=${userId}`,
             env
           );
         }
@@ -2408,7 +2644,7 @@ export class Router {
           'connection',
           `Connection request accepted`,
           `${userId} has accepted your connection request`,
-          JSON.stringify({ userId }),
+          `/profile.html?id=${userId}`,
           env
         );
 
@@ -2769,6 +3005,66 @@ export class Router {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
       }
+    }
+
+    return this.notFoundResponse();
+  }
+
+  /**
+   * Handle workspace routes
+   */
+  private async handleWorkspaceRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+    if (!authenticatedUserId) {
+      return this.errorResponse('Authentication required', 401);
+    }
+
+    // Create a new workspace
+    if (path === '/api/workspaces' && request.method === 'POST') {
+      const { name } = await request.json();
+      if (!name) {
+        return this.errorResponse('Workspace name is required', 400);
+      }
+
+      const id = env.R3L_WORKSPACES.newUniqueId();
+      const stub = env.R3L_WORKSPACES.get(id);
+
+      // We can initialize the workspace by sending a request to it.
+      await stub.fetch(new Request(`https://workspace/initialize`, {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+          headers: { 'Content-Type': 'application/json' },
+      }));
+
+      // Store workspace metadata (e.g., in D1)
+      // For now, we'll just return the ID. A more robust implementation would store this.
+
+      return this.jsonResponse({ id: id.toString(), name });
+    }
+
+    // Forward request to a specific workspace DO
+    const match = path.match(/^\/api\/workspaces\/([a-zA-Z0-9]+)(\/.*)?$/);
+    if (match) {
+        const workspaceId = match[1];
+        const subpath = match[2] || '/';
+
+        try {
+            const doId = env.R3L_WORKSPACES.idFromString(workspaceId);
+            const stub = env.R3L_WORKSPACES.get(doId);
+
+            // Add user info to the request URL for the DO
+            const url = new URL(request.url);
+            const user = await this.userHandler.getUser(authenticatedUserId, env);
+            url.searchParams.set('userId', authenticatedUserId);
+            url.searchParams.set('userName', user?.username || 'Anonymous');
+
+            const newRequest = new Request(url, request);
+
+            return await stub.fetch(newRequest);
+
+        } catch (e) {
+            return this.errorResponse('Invalid workspace ID format', 400);
+        }
     }
 
     return this.notFoundResponse();

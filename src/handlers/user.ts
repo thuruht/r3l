@@ -598,4 +598,27 @@ export class UserHandler {
         .run();
     }
   }
+
+  /**
+   * Get user's bookmarks
+   * @param userId User ID
+   * @param env Environment bindings
+   * @returns Array of bookmarked content items
+   */
+  async getBookmarks(userId: string, env: Env): Promise<any[]> {
+    const { results } = await env.R3L_DB.prepare(
+      `
+      SELECT c.*, u.username, u.display_name, u.avatar_url
+      FROM bookmarks b
+      JOIN content c ON b.content_id = c.id
+      JOIN users u ON c.user_id = u.id
+      WHERE b.user_id = ?
+      ORDER BY b.created_at DESC
+    `
+    )
+      .bind(userId)
+      .all();
+
+    return results || [];
+  }
 }

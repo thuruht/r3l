@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Workspace - R3L</title>
+    <link rel="stylesheet" href="/css/rel-f-global.css">
+    <link rel="stylesheet" href="/css/messaging.css">
+    <style>
+        .workspace-container {
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        .sidebar {
+            width: 250px;
+            border-right: 1px solid var(--color-border);
+            padding: var(--space-2);
+            display: flex;
+            flex-direction: column;
+        }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .editor-container {
+            flex-grow: 1;
+            padding: var(--space-2);
+        }
+        #document-editor {
+            width: 100%;
+            height: 100%;
+            border: 1px solid var(--color-border);
+            padding: var(--space-2);
+            font-family: monospace;
+        }
+        .chat-panel {
+            width: 300px;
+            border-left: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: var(--space-2);
+            overflow-y: auto;
+        }
+        .chat-input {
+            padding: var(--space-2);
+            border-top: 1px solid var(--color-border);
+        }
+        #chat-input-field {
+            width: 100%;
+            padding: var(--space-2);
+            border: 1px solid var(--color-border);
+        }
+    </style>
+</head>
+<body>
+    <header class="main-header">
+        <div class="logo">R3L</div>
+        <nav id="main-nav"></nav>
+    </header>
+
+    <main class="container">
+        <div class="workspace-container">
+            <aside class="sidebar">
+                <h3>Documents</h3>
+                <ul id="document-list"></ul>
+                <button id="new-doc-btn">New Document</button>
+                <hr>
+                <h3>Participants</h3>
+                <ul id="participant-list"></ul>
+            </aside>
+            <section class="main-content">
+                <div class="editor-container">
+                    <textarea id="document-editor" placeholder="Start collaborating..."></textarea>
+                </div>
+            </section>
+            <aside class="chat-panel">
+                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-input">
+                    <input type="text" id="chat-input-field" placeholder="Type a message...">
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script type="module" src="/js/components/navigation.js"></script>
+    <script type="module" src="/js/collaborate.js"></script>
+</body>
+</html>

@@ -39,6 +39,7 @@ export class SearchHandler {
       dateRange?: { start?: number; end?: number };
       visibility?: 'public' | 'private' | 'both';
       userId?: string;
+      status?: 'active' | 'community';
     } = {},
     limit: number = 20,
     offset: number = 0,
@@ -118,10 +119,15 @@ export class SearchHandler {
       conditions.push('is_public = 1');
     }
 
-    // Ensure content is active and not expired
-    conditions.push(`archive_status = 'active'`);
-    conditions.push(`(expires_at IS NULL OR expires_at > ?)`);
-    params.push(Date.now());
+    // Handle content status (active, archived, etc.)
+    if (filters.status === 'community') {
+      conditions.push(`archive_status = 'community'`);
+    } else {
+      // Default to active content
+      conditions.push(`archive_status = 'active'`);
+      conditions.push(`(expires_at IS NULL OR expires_at > ?)`);
+      params.push(Date.now());
+    }
 
     // Build the final query
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -190,6 +196,7 @@ export class SearchHandler {
       tags?: string[];
       dateRange?: { start?: number; end?: number };
       userId?: string;
+      status?: 'active' | 'community';
     } = {},
     limit: number = 20,
     env: Env
@@ -209,7 +216,7 @@ export class SearchHandler {
     // Get base results from regular search
     const baseResults = await this.basicSearch(
       query,
-      { ...filters, visibility: 'public' },
+      { ...filters, visibility: 'public', status: filters.status },
       expandedLimit,
       0,
       env
@@ -299,6 +306,9 @@ export class SearchHandler {
     radius: number = 5,
     limit: number = 20,
     randomness: number = 0,
+    filters: {
+      status?: 'active' | 'community';
+    } = {},
     env: Env
   ): Promise<SearchResult[]> {
     // Validate coordinates
@@ -318,6 +328,24 @@ export class SearchHandler {
 
     // Get more results if randomness is enabled
     const expandedLimit = randomness > 0 ? Math.min(limit * 3, 100) : limit;
+
+    // Build query conditions
+    const conditions = [
+      'cl.lat BETWEEN ? AND ?',
+      'cl.lng BETWEEN ? AND ?',
+      'c.is_public = 1',
+    ];
+    const params: any[] = [minLat, maxLat, minLng, maxLng];
+
+    if (filters.status === 'community') {
+      conditions.push(`c.archive_status = 'community'`);
+    } else {
+      conditions.push(`c.archive_status = 'active'`);
+      conditions.push(`(c.expires_at IS NULL OR c.expires_at > ?)`);
+      params.push(Date.now());
+    }
+
+    const whereClause = conditions.join(' AND ');
 
     try {
       const result = await env.R3L_DB.prepare(
@@ -340,11 +368,7 @@ export class SearchHandler {
         FROM content c
         JOIN content_location cl ON c.id = cl.content_id
         JOIN users u ON c.user_id = u.id
-        WHERE cl.lat BETWEEN ? AND ?
-        AND cl.lng BETWEEN ? AND ?
-        AND c.is_public = 1
-        AND c.archive_status = 'active'
-        AND (c.expires_at IS NULL OR c.expires_at > ?)
+        WHERE ${whereClause}
         ORDER BY (
           (cl.lat - ?) * (cl.lat - ?) + 
           (cl.lng - ?) * (cl.lng - ?)
@@ -352,7 +376,7 @@ export class SearchHandler {
         LIMIT ?
       `
       )
-        .bind(minLat, maxLat, minLng, maxLng, Date.now(), lat, lat, lng, lng, expandedLimit)
+        .bind(...params, lat, lat, lng, lng, expandedLimit)
         .all<SearchResult & { lat: number; lng: number; location_name?: string }>();
 
       let results = result.results || [];

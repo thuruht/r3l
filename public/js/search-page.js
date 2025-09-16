@@ -75,6 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Anti-tracking randomness
       if (searchParams.antiTracking) params.append('randomness', '75');
 
+      if (searchParams.includeArchived) {
+        params.append('status', 'community');
+      }
+
       const response = await fetch(`${endpoint}?${params.toString()}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
@@ -212,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
       timeFrame: formData.get('timeFrame'),
       sortBy: formData.get('sortBy'),
       antiTracking: formData.get('antiTracking') === 'on',
+      includeArchived: window.location.pathname.includes('archive.html'),
       page: currentPage
     };
 
@@ -242,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
           type: result.type || result.content_type || 'application/octet-stream',
           size: result.size || result.file_size || 0,
           expires: result.expires_at || result.expires || null,
-          user: result.user_name || result.username || result.display_name || 'Unknown'
+          user: result.display_name || result.username || 'Unknown'
         };
 
         resultItem.querySelector('.file-icon .material-icons').textContent = getFileIcon(item.type);

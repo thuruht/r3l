@@ -24,7 +24,7 @@
   <script type="module" src="./js/comments.js"></script>
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
-    import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
+    import { apiGet, apiPost, API_ENDPOINTS } from './js/utils/api-helper.js';
 
     NavigationBar.init('content');
 
@@ -55,6 +55,14 @@
             <h2>${escapeHtml(data.title || '(untitled)')}</h2>
             ${data.description ? `<p>${escapeHtml(data.description)}</p>` : ''}
             ${data.tags ? `<div class="text-muted">Tags: ${escapeHtml(data.tags)}</div>` : ''}
+            <div id="actions-container" style="margin-top:1rem; display: flex; gap: 0.5rem;">
+              ${data.file_key ? `<a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a>` : ''}
+              <button id="vote-btn" class="btn btn-secondary">Vote to Archive</button>
+            </div>
+            <div id="vote-status" class="text-muted" style="margin-top:0.5rem;"></div>
+          </div>`;
+
+        document.getElementById('vote-btn').addEventListener('click', vote);
             <div style="margin-top:1rem;">
               ${data.file_key ? `<a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a>` : ''}
               <button id="bookmark-btn" class="btn btn-secondary">Bookmark</button>
@@ -126,6 +134,27 @@
         }
       } else {
         root.innerHTML = `<p class="text-error">Failed to load content${data?.status===403?': unauthorized':''}.</p>`;
+      }
+    }
+
+    async function vote() {
+      const voteBtn = document.getElementById('vote-btn');
+      const voteStatus = document.getElementById('vote-status');
+      voteBtn.disabled = true;
+      voteStatus.textContent = 'Submitting vote...';
+
+      const result = await apiPost(API_ENDPOINTS.CONTENT.VOTE(id));
+
+      if (result && !result.error) {
+        voteStatus.textContent = `Vote successful! Total votes: ${result.votes}. Status: ${result.status}.`;
+        if (result.status === 'archived') {
+          voteBtn.textContent = 'Archived!';
+        } else {
+          voteBtn.textContent = 'Voted!';
+        }
+      } else {
+        voteStatus.textContent = `Error: ${result.message || 'Failed to vote.'}`;
+        voteBtn.disabled = false;
       }
     }
 

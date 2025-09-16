@@ -22,6 +22,7 @@ export const API_ENDPOINTS = {
     CREATE: '/api/content',
     UPDATE: id => `/api/content/${id}`,
     DELETE: id => `/api/content/${id}`,
+    VOTE: id => `/api/content/${id}/vote`,
     TAGS: id => `/api/content/${id}/tags`,
     FEED: '/api/feed',
     COMMENTS: {

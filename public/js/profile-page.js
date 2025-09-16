@@ -187,8 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Auth providers
     authProvidersEl.innerHTML = `
-      <div class="auth-provider"><span class="material-icons">key</span><span>Password</span></div>
-      <div class="auth-provider"><span class="material-icons">security</span><span>Recovery Key</span></div>
+      <div class="auth-provider"><span class="material-icons" aria-hidden="true">key</span><span>Password</span></div>
+      <div class="auth-provider"><span class="material-icons" aria-hidden="true">security</span><span>Recovery Key</span></div>
     `;
   }
 
@@ -229,10 +229,10 @@ document.addEventListener('DOMContentLoaded', function () {
           <p class="map-point-coords">${latitude}, ${longitude}</p>
           ${point.description ? `<p class="map-point-desc">${point.description}</p>` : ''}
           <div class="map-point-actions">
-            <button class="view-on-map" data-id="${point.id}"><span class="material-icons">map</span></button>
-            ${point.contentId ? `<button class="view-content" data-id="${point.contentId}"><span class="material-icons">description</span></button>` : ''}
-            <button class="edit-point" data-id="${point.id}"><span class="material-icons">edit</span></button>
-            <button class="delete-point" data-id="${point.id}"><span class="material-icons">delete</span></button>
+            <button class="view-on-map" data-id="${point.id}" aria-label="View on Map"><span class="material-icons" aria-hidden="true">map</span></button>
+            ${point.contentId ? `<button class="view-content" data-id="${point.contentId}" aria-label="View Content"><span class="material-icons" aria-hidden="true">description</span></button>` : ''}
+            <button class="edit-point" data-id="${point.id}" aria-label="Edit Point"><span class="material-icons" aria-hidden="true">edit</span></button>
+            <button class="delete-point" data-id="${point.id}" aria-label="Delete Point"><span class="material-icons" aria-hidden="true">delete</span></button>
           </div>
         `;
         mapPointsContainer.appendChild(pointCard);

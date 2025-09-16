@@ -541,8 +541,8 @@ export class ContentHandler {
     // Check if already voted
     const existingVote = await env.R3L_DB.prepare(
       `
-      SELECT id FROM archive_votes
-      WHERE content_id = ? AND user_id = ?
+      SELECT id FROM content_archive_votes
+      WHERE content_id = ? AND user_id = ? AND vote_type = 'explicit'
     `
     )
       .bind(contentId, userId)
@@ -552,26 +552,145 @@ export class ContentHandler {
       throw new ValidationError('User has already voted to archive this content');
     }
 
+    // Check daily vote limit
+    const today = new Date().toISOString().split('T')[0];
+    let dailyVote = await env.R3L_DB.prepare(
+      `
+      SELECT * FROM user_daily_votes
+      WHERE user_id = ? AND last_reset_date = ?
+    `
+    )
+      .bind(userId, today)
+      .first<{ id: string; votes_used: number; votes_available: number }>();
+
+    if (!dailyVote) {
+      // Create a new record for the day
+      await env.R3L_DB.prepare(
+        `
+        INSERT INTO user_daily_votes (id, user_id, votes_used, votes_available, last_reset_date)
+        VALUES (?, ?, 0, 1, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+          votes_used = 0,
+          votes_available = 1,
+          last_reset_date = ?
+      `
+      )
+        .bind(crypto.randomUUID(), userId, today, today)
+        .run();
+      dailyVote = { id: '', votes_used: 0, votes_available: 1 };
+    }
+
+    if (dailyVote.votes_used >= dailyVote.votes_available) {
+      throw new ValidationError('No more explicit archive votes available today');
+    }
+
     // Add vote
     await env.R3L_DB.prepare(
       `
-      INSERT INTO archive_votes (id, content_id, user_id, voted_at)
+      INSERT INTO content_archive_votes (id, content_id, user_id, vote_type, created_at)
+      VALUES (?, ?, ?, ?, ?)
+    `
+    )
+      .bind(crypto.randomUUID(), contentId, userId, 'explicit', Date.now())
+      .run();
+
+    // Decrement vote count
+    await env.R3L_DB.prepare(
+      `
+      UPDATE user_daily_votes
+      SET votes_used = votes_used + 1
+      WHERE user_id = ? AND last_reset_date = ?
+    `
+    )
+      .bind(userId, today)
+      .run();
+
+    // Update total vote count on content
+    const voteResult = await env.R3L_DB.prepare(
+      `
+      UPDATE content SET archive_votes = archive_votes + 1
+      WHERE id = ?
+      RETURNING archive_votes
+    `
+    )
+      .bind(contentId)
+      .first<{ archive_votes: number }>();
+
+    const votes = voteResult?.archive_votes || 0;
+    const { threshold, status } = await this._checkAndArchiveContent(contentId, env);
+
+    return { votes, threshold, status };
+  }
+
+  /**
+   * Record a content download/bookmark
+   * @param contentId Content ID
+   * @param userId User ID downloading the content
+   * @param env Environment bindings
+   */
+  async recordDownload(contentId: string, userId: string, env: Env): Promise<void> {
+    const content = await this.getContent(contentId, env);
+
+    if (!content) {
+      throw new ValidationError('Content not found');
+    }
+
+    // Record the download
+    await env.R3L_DB.prepare(
+      `
+      INSERT INTO content_downloads (id, content_id, user_id, downloaded_at)
       VALUES (?, ?, ?, ?)
     `
     )
       .bind(crypto.randomUUID(), contentId, userId, Date.now())
       .run();
 
-    const voteResult = await env.R3L_DB.prepare(
+    // Also count as an archive vote if user hasn't voted yet
+    const existingVote = await env.R3L_DB.prepare(
       `
-      SELECT COUNT(*) as vote_count FROM archive_votes
-      WHERE content_id = ?
+      SELECT id FROM content_archive_votes
+      WHERE content_id = ? AND user_id = ? AND vote_type = 'download'
     `
     )
-      .bind(contentId)
-      .first<{ vote_count: number }>();
+      .bind(contentId, userId)
+      .first();
 
-    const votes = voteResult?.vote_count || 0;
+    if (!existingVote) {
+      await env.R3L_DB.prepare(
+        `
+        INSERT INTO content_archive_votes (id, content_id, user_id, vote_type, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `
+      )
+        .bind(crypto.randomUUID(), contentId, userId, 'download', Date.now())
+        .run();
+
+      // Update total vote count on content
+      await env.R3L_DB.prepare(
+        `
+        UPDATE content SET archive_votes = archive_votes + 1
+        WHERE id = ?
+      `
+      )
+        .bind(contentId)
+        .run();
+
+      await this._checkAndArchiveContent(contentId, env);
+    }
+
+    this.logger.info('Content download recorded', { contentId, userId });
+  }
+
+  private async _checkAndArchiveContent(
+    contentId: string,
+    env: Env
+  ): Promise<{ threshold: number; status: string }> {
+    const content = await this.getContent(contentId, env);
+    if (!content) {
+      throw new Error('Content not found for archiving check');
+    }
+
+    const votes = content.archive_votes || 0;
     const ageInDays = (Date.now() - content.created_at) / (24 * 60 * 60 * 1000);
     
     // Pure vote-based threshold to prevent algorithmic bias from engagement metrics
@@ -623,56 +742,7 @@ export class ContentHandler {
       });
     }
 
-    return { votes, threshold, status };
-  }
-
-  /**
-   * Record a content download/bookmark
-   * @param contentId Content ID
-   * @param userId User ID downloading the content
-   * @param env Environment bindings
-   */
-  async recordDownload(contentId: string, userId: string, env: Env): Promise<void> {
-    const content = await this.getContent(contentId, env);
-
-    if (!content) {
-      throw new ValidationError('Content not found');
-    }
-
-    // Record the download
-    await env.R3L_DB.prepare(
-      `
-      INSERT INTO content_downloads (id, content_id, user_id, downloaded_at)
-      VALUES (?, ?, ?, ?)
-    `
-    )
-      .bind(crypto.randomUUID(), contentId, userId, Date.now())
-      .run();
-
-    // Also count as an archive vote if user hasn't voted yet
-    const existingVote = await env.R3L_DB.prepare(
-      `
-      SELECT id FROM archive_votes
-      WHERE content_id = ? AND user_id = ?
-    `
-    )
-      .bind(contentId, userId)
-      .first();
-
-    if (!existingVote) {
-      await env.R3L_DB.prepare(
-        `
-        INSERT INTO archive_votes (id, content_id, user_id, voted_at)
-        VALUES (?, ?, ?, ?)
-      `
-      )
-        .bind(crypto.randomUUID(), contentId, userId, Date.now())
-        .run();
-    }
-
-    this.logger.info('Content download recorded', { contentId, userId });
-
-    this.logger.info('Content download recorded', { contentId, userId });
+    return { threshold, status };
   }
 
   /**

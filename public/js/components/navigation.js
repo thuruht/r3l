@@ -86,6 +86,10 @@ export class NavigationBar {
                   <span class="material-icons">folder</span>
                   My Drawer
                 </a>
+                <a href="/archive.html" class="dropdown-item ${currentPage === 'archive' ? 'active' : ''}">
+                  <span class="material-icons">archive</span>
+                  Community Archive
+                </a>
                 <a href="/upload.html" class="dropdown-item ${currentPage === 'upload' ? 'active' : ''}">
                   <span class="material-icons">upload_file</span>
                   Upload Files

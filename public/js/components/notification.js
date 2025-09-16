@@ -310,6 +310,9 @@ export class NotificationManager {
         case 'message':
           icon = 'mail';
           break;
+        case 'expiration_warning':
+          icon = 'warning';
+          break;
       }
 
       // Format date - safely handle various date formats

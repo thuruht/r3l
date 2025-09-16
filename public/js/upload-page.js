@@ -140,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // 3. Register the uploaded file with our backend
       setButtonState('<span class="material-icons">sync</span> Registering file...', true);
-      const descriptionInput = document.getElementById('description');
       const tagsInput = document.getElementById('tags');
       const visibilityInput = document.getElementById('visibility');
 
@@ -153,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
           fileName: file.name,
           contentType: file.type,
           title: file.name, // Using file name as title, could be a separate field
-          description: descriptionInput.value,
+          description: window.simplemde.value(),
           tags: tagsInput.value,
           isPublic: visibilityInput.checked,
         }),

@@ -639,6 +639,21 @@ export class Router {
       }
     }
 
+    // Get user bookmarks
+    if (path.match(/^\/api\/users\/[^/]+\/bookmarks$/) && request.method === 'GET') {
+      const userId = path.split('/')[3];
+      if (authenticatedUserId !== userId) {
+        return this.errorResponse('Unauthorized', 403);
+      }
+      try {
+        const bookmarks = await this.userHandler.getBookmarks(userId, env);
+        return this.jsonResponse(bookmarks);
+      } catch (error) {
+        console.error('Error fetching bookmarks:', error);
+        return this.errorResponse('Failed to fetch bookmarks');
+      }
+    }
+
     // Get user stats - requires authentication for private stats
     if (path.match(/^\/api\/users\/[^/]+\/stats$/) && request.method === 'GET') {
       const userId = path.split('/')[3];
@@ -748,6 +763,163 @@ export class Router {
       } catch (error) {
         console.error('Error fetching content tags:', error);
         return this.errorResponse('Failed to fetch content tags');
+      }
+    }
+
+    // Get comments for a content item
+    if (path.match(/^\/api\/content\/[^/]+\/comments$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      try {
+        const comments = await this.contentHandler.getComments(contentId, env);
+        return this.jsonResponse(comments);
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        return this.errorResponse('Failed to fetch comments');
+      }
+    }
+
+    // Create a new comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { parentCommentId, comment } = (await request.json()) as {
+          parentCommentId: string | null;
+          comment: string;
+        };
+        const commentId = await this.contentHandler.createComment(
+          authenticatedUserId,
+          contentId,
+          parentCommentId,
+          comment,
+          env
+        );
+        return this.jsonResponse({ id: commentId, success: true });
+      } catch (error) {
+        console.error('Error creating comment:', error);
+        return this.errorResponse('Failed to create comment');
+      }
+    }
+
+    // Update a comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments\/[^/]+$/) && request.method === 'PATCH') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const commentId = path.split('/')[5];
+      try {
+        const { comment } = (await request.json()) as { comment: string };
+        await this.contentHandler.updateComment(
+          commentId,
+          authenticatedUserId,
+          comment,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error updating comment:', error);
+        return this.errorResponse('Failed to update comment');
+      }
+    }
+
+    // Delete a comment
+    if (path.match(/^\/api\/content\/[^/]+\/comments\/[^/]+$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const commentId = path.split('/')[5];
+      try {
+        await this.contentHandler.deleteComment(commentId, authenticatedUserId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        return this.errorResponse('Failed to delete comment');
+      }
+    }
+
+    // Add a bookmark
+    if (path.match(/^\/api\/content\/[^/]+\/bookmark$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        await this.contentHandler.addBookmark(authenticatedUserId, contentId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error adding bookmark:', error);
+        return this.errorResponse('Failed to add bookmark');
+      }
+    }
+
+    // Remove a bookmark
+    if (path.match(/^\/api\/content\/[^/]+\/bookmark$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        await this.contentHandler.removeBookmark(authenticatedUserId, contentId, env);
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing bookmark:', error);
+        return this.errorResponse('Failed to remove bookmark');
+      }
+    }
+
+    // Get reactions for a content item
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'GET') {
+      const contentId = path.split('/')[3];
+      try {
+        const reactions = await this.contentHandler.getReactions(contentId, env);
+        return this.jsonResponse(reactions);
+      } catch (error) {
+        console.error('Error fetching reactions:', error);
+        return this.errorResponse('Failed to fetch reactions');
+      }
+    }
+
+    // Add a reaction
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'POST') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { reaction } = (await request.json()) as { reaction: string };
+        await this.contentHandler.addReaction(
+          authenticatedUserId,
+          contentId,
+          reaction,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error adding reaction:', error);
+        return this.errorResponse('Failed to add reaction');
+      }
+    }
+
+    // Remove a reaction
+    if (path.match(/^\/api\/content\/[^/]+\/reactions$/) && request.method === 'DELETE') {
+      if (!authenticatedUserId) {
+        return this.errorResponse('Authentication required', 401);
+      }
+      const contentId = path.split('/')[3];
+      try {
+        const { reaction } = (await request.json()) as { reaction: string };
+        await this.contentHandler.removeReaction(
+          authenticatedUserId,
+          contentId,
+          reaction,
+          env
+        );
+        return this.jsonResponse({ success: true });
+      } catch (error) {
+        console.error('Error removing reaction:', error);
+        return this.errorResponse('Failed to remove reaction');
       }
     }
 
@@ -870,7 +1042,7 @@ export class Router {
       const contentId = path.split('/')[3];
 
       try {
-        await this.contentHandler.archiveContentPersonally(contentId, authenticatedUserId, env);
+        await this.contentHandler.archiveContent(contentId, authenticatedUserId, 'personal', env);
 
         return this.jsonResponse({ success: true });
       } catch (error) {

@@ -12,6 +12,7 @@ interface ContentExpiryItem {
   content_id: string;
   user_id: string;
   title: string;
+  description: string;
   type?: string;
   file_key?: string;
 }
@@ -48,11 +49,11 @@ export class ContentLifecycle {
     // Mark for deletion → Auto-delete (unless archived)
     await env.R3L_DB.prepare(
       `
-      INSERT INTO content_lifecycle (id, content_id, created_at, expires_at, marked_for_deletion_at)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO content_lifecycle (id, content_id, created_at, expires_at, marked_for_deletion_at, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     `
     )
-      .bind(crypto.randomUUID(), contentId, Date.now(), expiresAt, warningDate)
+      .bind(crypto.randomUUID(), contentId, Date.now(), expiresAt, warningDate, 'active')
       .run();
 
     this.logger.info('Content scheduled for expiration', {
@@ -101,7 +102,8 @@ export class ContentLifecycle {
         SET expires_at = ?,
             marked_for_deletion_at = ?,
             archived_at = NULL,
-            archive_type = NULL
+            archive_type = NULL,
+            status = 'active'
         WHERE content_id = ?
       `
       )
@@ -137,10 +139,7 @@ export class ContentLifecycle {
 
     await env.R3L_DB.prepare(
       `
-      UPDATE content_lifecycle
-      SET expires_at = NULL,
-          marked_for_deletion_at = NULL
-      WHERE content_id = ?
+      DELETE FROM content_lifecycle WHERE content_id = ?
     `
     )
       .bind(contentId)
@@ -157,14 +156,14 @@ export class ContentLifecycle {
   async processExpirations(env: Env): Promise<void> {
     const now = Date.now();
 
-    // Send warnings for content about to expire
+    // 1. Mark content for deletion and send warnings
     const warningResults = await env.R3L_DB.prepare(
       `
       SELECT cl.content_id, c.user_id, c.title
       FROM content_lifecycle cl
       JOIN content c ON cl.content_id = c.id
       WHERE cl.marked_for_deletion_at <= ?
-      AND cl.marked_for_deletion_at > 0
+      AND cl.status = 'active'
       AND c.archive_status = 'active'
     `
     )
@@ -175,30 +174,30 @@ export class ContentLifecycle {
     for (const item of warningItems) {
       await this.sendExpirationWarning(item.user_id, item.title, env);
 
-      // Update to show warning was sent
       await env.R3L_DB.prepare(
         `
         UPDATE content_lifecycle 
-        SET marked_for_deletion_at = -1
+        SET status = 'marked_for_deletion'
         WHERE content_id = ?
       `
       )
         .bind(item.content_id)
         .run();
 
-      this.logger.info('Sent expiration warning', {
+      this.logger.info('Content marked for deletion', {
         contentId: item.content_id,
         userId: item.user_id,
       });
     }
 
-    // Process final deletions
+    // 2. Process final deletions for content marked for deletion
     const expiryResults = await env.R3L_DB.prepare(
       `
-      SELECT cl.content_id, c.user_id, c.title, c.type, c.file_key
+      SELECT cl.content_id, c.user_id, c.title, c.description, c.type, c.file_key
       FROM content_lifecycle cl
       JOIN content c ON cl.content_id = c.id
       WHERE cl.expires_at <= ?
+      AND cl.status = 'marked_for_deletion'
       AND c.archive_status = 'active'
     `
     )
@@ -242,7 +241,9 @@ export class ContentLifecycle {
 
         await env.R3L_DB.prepare(
           `
-          DELETE FROM content_lifecycle WHERE content_id = ?
+          UPDATE content_lifecycle
+          SET status = 'deleted'
+          WHERE content_id = ?
         `
         )
           .bind(item.content_id)
@@ -312,7 +313,8 @@ export class ContentLifecycle {
       UPDATE content_lifecycle
       SET archived_at = ?,
           archive_type = ?,
-          expires_at = NULL
+          expires_at = NULL,
+          status = 'archived'
       WHERE content_id = ?
     `
     )

@@ -7,6 +7,7 @@ import { UserHandler } from './handlers/user.js';
 import { ContentHandler } from './handlers/content.js';
 import { StatisticsHandler } from './handlers/statistics.js';
 import { NotificationHandler } from './handlers/notification.js';
+import { SuggestionHandler } from './handlers/suggestions.js';
 import { TagHandler } from './handlers/tag.js';
 import { SearchHandler } from './handlers/search.js';
 import { AIHandler } from './handlers/ai.js';
@@ -28,6 +29,7 @@ export class Router {
   private contentHandler: ContentHandler;
   private statsHandler: StatisticsHandler;
   private notificationHandler: NotificationHandler;
+  private suggestionHandler: SuggestionHandler;
   private tagHandler: TagHandler;
   private searchHandler: SearchHandler;
   private aiHandler: AIHandler;
@@ -42,6 +44,7 @@ export class Router {
     this.contentHandler = new ContentHandler();
     this.statsHandler = new StatisticsHandler();
     this.notificationHandler = new NotificationHandler();
+    this.suggestionHandler = new SuggestionHandler();
     this.tagHandler = new TagHandler();
     this.searchHandler = new SearchHandler();
     this.aiHandler = new AIHandler();
@@ -165,6 +168,10 @@ export class Router {
 
     if (path.startsWith('/api/notifications') || path === '/api/notifications') {
       return this.handleNotificationRoutes(request, env, path);
+    }
+
+    if (path.startsWith('/api/suggestions/')) {
+        return this.handleSuggestionRoutes(request, env, path);
     }
 
     if (path.startsWith('/api/tags/')) {
@@ -1090,6 +1097,28 @@ export class Router {
 
     return this.notFoundResponse();
   }
+
+  /**
+   * Handle suggestion routes
+   */
+  private async handleSuggestionRoutes(
+    request: Request,
+    env: Env,
+    path: string
+    ): Promise<Response> {
+        const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+        if (!authenticatedUserId) {
+            return this.errorResponse('Authentication required', 401);
+        }
+
+        if (path.match(/^\/api\/suggestions\/connections\/[^/]+$/) && request.method === 'POST') {
+            const userId = path.split('/')[4];
+            const newRequest = { ...request, params: { userId } } as IRequest;
+            return this.suggestionHandler.createSuggestionNotifications(newRequest, env);
+        }
+
+        return this.notFoundResponse();
+    }
 
   /**
    * Handle tag routes
@@ -2220,7 +2249,7 @@ export class Router {
             'connection',
             `New connection request`,
             `${userId} has sent you a connection request`,
-            JSON.stringify({ userId, connectionId }),
+            `/profile.html?id=${userId}`,
             env
           );
         }
@@ -2408,7 +2437,7 @@ export class Router {
           'connection',
           `Connection request accepted`,
           `${userId} has accepted your connection request`,
-          JSON.stringify({ userId }),
+          `/profile.html?id=${userId}`,
           env
         );
 

@@ -1042,7 +1042,7 @@ export class Router {
       const contentId = path.split('/')[3];
 
       try {
-        await this.contentHandler.archiveContentPersonally(contentId, authenticatedUserId, env);
+        await this.contentHandler.archiveContent(contentId, authenticatedUserId, 'personal', env);
 
         return this.jsonResponse({ success: true });
       } catch (error) {

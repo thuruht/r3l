@@ -72,6 +72,10 @@ export class NavigationBar {
                   <span class="material-icons">chat</span>
                   Messages
                 </a>
+                <a href="/collaborate.html" class="dropdown-item ${currentPage === 'collaborate' ? 'active' : ''}">
+                  <span class="material-icons">groups</span>
+                  Collaborate
+                </a>
               </div>
             </li>
             

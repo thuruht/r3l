@@ -202,6 +202,10 @@ export class Router {
       return this.handleMessagingRoutes(request, env, path);
     }
 
+    if (path.startsWith('/api/workspaces/')) {
+      return this.handleWorkspaceRoutes(request, env, path);
+    }
+
     // Associations: connections and related
     if (path.startsWith('/api/connections/')) {
       return this.handleAssociationRoutes(request, env, path);
@@ -3001,6 +3005,66 @@ export class Router {
         console.error('Error performing location search:', error);
         return this.errorResponse('Failed to perform location search');
       }
+    }
+
+    return this.notFoundResponse();
+  }
+
+  /**
+   * Handle workspace routes
+   */
+  private async handleWorkspaceRoutes(request: Request, env: Env, path: string): Promise<Response> {
+    const authenticatedUserId = await this.getAuthenticatedUser(request, env);
+    if (!authenticatedUserId) {
+      return this.errorResponse('Authentication required', 401);
+    }
+
+    // Create a new workspace
+    if (path === '/api/workspaces' && request.method === 'POST') {
+      const { name } = await request.json();
+      if (!name) {
+        return this.errorResponse('Workspace name is required', 400);
+      }
+
+      const id = env.R3L_WORKSPACES.newUniqueId();
+      const stub = env.R3L_WORKSPACES.get(id);
+
+      // We can initialize the workspace by sending a request to it.
+      await stub.fetch(new Request(`https://workspace/initialize`, {
+          method: 'POST',
+          body: JSON.stringify({ name }),
+          headers: { 'Content-Type': 'application/json' },
+      }));
+
+      // Store workspace metadata (e.g., in D1)
+      // For now, we'll just return the ID. A more robust implementation would store this.
+
+      return this.jsonResponse({ id: id.toString(), name });
+    }
+
+    // Forward request to a specific workspace DO
+    const match = path.match(/^\/api\/workspaces\/([a-zA-Z0-9]+)(\/.*)?$/);
+    if (match) {
+        const workspaceId = match[1];
+        const subpath = match[2] || '/';
+
+        try {
+            const doId = env.R3L_WORKSPACES.idFromString(workspaceId);
+            const stub = env.R3L_WORKSPACES.get(doId);
+
+            // Add user info to the request URL for the DO
+            const url = new URL(request.url);
+            const user = await this.userHandler.getUser(authenticatedUserId, env);
+            url.searchParams.set('userId', authenticatedUserId);
+            url.searchParams.set('userName', user?.username || 'Anonymous');
+
+            const newRequest = new Request(url, request);
+
+            return await stub.fetch(newRequest);
+
+        } catch (e) {
+            return this.errorResponse('Invalid workspace ID format', 400);
+        }
     }
 
     return this.notFoundResponse();

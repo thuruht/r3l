@@ -76,6 +76,10 @@
       {
         "name": "R3L_COLLABORATION",
         "class_name": "CollaborationRoom"
+      },
+      {
+        "name": "R3L_WORKSPACES",
+        "class_name": "Workspace"
       }
     ]
   },

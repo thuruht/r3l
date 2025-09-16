@@ -30,8 +30,10 @@ export const API_ENDPOINTS = {
   USERS: {
     LIST: '/api/users',
     GET: id => `/api/users/${id}`,
-    UPDATE: id => `/api/users/${id}`,
+    PROFILE: id => `/api/users/${id}`,
+    PREFERENCES: id => `/api/users/${id}/preferences`,
     FILES: id => `/api/users/${id}/files`,
+    STATS: id => `/api/users/${id}/stats`,
   },
 
   // Connection endpoints
@@ -109,6 +111,39 @@ export async function apiGet(endpoint, params = {}) {
 }
 
 /**
+ * Make a file upload request
+ * @param {string} endpoint The API endpoint
+ * @param {FormData} formData The form data to send
+ * @returns {Promise<any>} The JSON response
+ */
+export async function apiUpload(endpoint, formData) {
+  try {
+    const response = await authenticatedFetch(endpoint, {
+      method: 'POST',
+      body: formData,
+      // Note: Do not set Content-Type header for FormData, browser does it with boundary
+    });
+
+    // Check for authentication error
+    if (response.status === 401) {
+      console.warn('Authentication required for API call:', endpoint);
+      return { error: 'Authentication required', status: 401 };
+    }
+
+    // Check for other errors
+    if (!response.ok) {
+      console.error('API error:', response.status, await response.text());
+      return { error: `API error: ${response.status}`, status: response.status };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error, { endpoint });
+    return { error: error.message || 'Network error', status: 0 };
+  }
+}
+
+/**
  * Make an API POST request
  * @param {string} endpoint The API endpoint
  * @param {object} data The data to send
@@ -118,6 +153,38 @@ export async function apiPost(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    // Check for authentication error
+    if (response.status === 401) {
+      console.warn('Authentication required for API call:', endpoint);
+      return { error: 'Authentication required', status: 401 };
+    }
+
+    // Check for other errors
+    if (!response.ok) {
+      console.error('API error:', response.status, await response.text());
+      return { error: `API error: ${response.status}`, status: response.status };
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error, { endpoint, data });
+    return { error: error.message || 'Network error', status: 0 };
+  }
+}
+
+/**
+ * Make an API PATCH request
+ * @param {string} endpoint The API endpoint
+ * @param {object} data The data to send
+ * @returns {Promise<any>} The JSON response
+ */
+export async function apiPatch(endpoint, data = {}) {
+  try {
+    const response = await authenticatedFetch(endpoint, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
 

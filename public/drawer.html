@@ -176,6 +176,41 @@
     .embed-file-item .material-icons {
       margin-right: 0.5rem;
     }
+
+    .relative {
+      position: relative;
+    }
+
+    .avatar-upload-label {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background-color: rgba(0,0,0,0.6);
+      color: white;
+      padding: 0.25rem;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-upload-label .material-icons {
+      font-size: 1rem;
+    }
+
+    .editable-field[contenteditable="true"] {
+      border-bottom: 2px solid var(--primary);
+      outline: none;
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      padding: 0.25rem;
+      cursor: pointer;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -199,11 +234,23 @@
     <div class="drawer-container">
       <div class="drawer-header">
         <div class="flex gap-4 items-center">
-          <div class="drawer-icon">
+          <div class="drawer-icon relative">
             <img id="user-avatar" src="./icons/user-default.svg" alt="User avatar" class="avatar-large">
+            <label for="avatar-upload" class="avatar-upload-label">
+              <span class="material-icons">edit</span>
+            </label>
+            <input type="file" id="avatar-upload" class="hidden" accept="image/*">
           </div>
           <div>
-            <h2 id="user-name">Username</h2>
+            <div class="flex items-center gap-2">
+              <h2 id="user-name" contenteditable="false" class="editable-field">Username</h2>
+              <button id="edit-name-btn" class="btn btn-icon">
+                <span class="material-icons">edit</span>
+              </button>
+              <button id="save-name-btn" class="btn btn-icon hidden">
+                <span class="material-icons">save</span>
+              </button>
+            </div>
             <p class="drawer-subtitle">Joined: <span id="user-joined">July 12, 2025</span></p>
           </div>
         </div>
@@ -281,6 +328,20 @@
         <div id="lurker-status" class="lurker-mode-status">Inactive</div>
       </div>
       <small>When active, your presence in the association web is minimized and your drawer appears with reduced visibility.</small>
+
+      <!-- Theme Selector -->
+      <div class="theme-selector-container mt-4">
+        <label for="theme-selector">
+          <span class="material-icons">palette</span>
+          Theme
+        </label>
+        <select id="theme-selector" class="select-input">
+          <option value="system">System Default</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+        <small>Choose how your drawer and the site appears to you.</small>
+      </div>
     </div>
 
     <!-- File Management Tabs -->

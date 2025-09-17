@@ -23,6 +23,7 @@ interface ContentItem {
   is_ephemeral: boolean;
   expires_at?: number;
   view_count: number;
+  archive_votes: number;
 }
 
 interface ContentCreateData {
@@ -521,11 +522,10 @@ export class ContentHandler {
 
     // Check if already voted
     const existingVote = await env.R3L_DB.prepare(
-
+      `
       SELECT id FROM community_archive_votes
       WHERE content_id = ? AND user_id = ?
-
-    `
+      `
     )
       .bind(contentId, userId)
       .first();
@@ -569,12 +569,9 @@ export class ContentHandler {
     // Add vote
     await env.R3L_DB.prepare(
       `
-
-
-      INSERT INTO community_archive_votes (id, content_id, user_id, created_at)
-      VALUES (?, ?, ?, ?)
-
-    `
+      INSERT INTO community_archive_votes (id, content_id, user_id, vote_type, created_at)
+      VALUES (?, ?, ?, ?, ?)
+      `
     )
       .bind(crypto.randomUUID(), contentId, userId, 'explicit', Date.now())
       .run();
@@ -592,11 +589,12 @@ export class ContentHandler {
       .run();
 
     // Update total vote count on content
-    const voteResult = await env.R3L_DB.prepare(
+    await env.R3L_DB.prepare(
       `
       UPDATE content SET archive_votes = archive_votes + 1
       WHERE id = ?
-      RETURNING archive_votes
+      `
+    ).bind(contentId).run();
 
     // Notify content owner
     if (content.user_id !== userId) {
@@ -616,8 +614,7 @@ export class ContentHandler {
       `
       SELECT COUNT(*) as vote_count FROM community_archive_votes
       WHERE content_id = ?
-
-    `
+      `
     )
       .bind(contentId)
       .first<{ archive_votes: number }>();
@@ -725,7 +722,6 @@ export class ContentHandler {
       .bind(contentId)
       .first<{ reaction_count: number }>();
 
-    const votes = (voteResult?.vote_count || 0) + (bookmarkResult?.bookmark_count || 0) + (commentResult?.comment_count || 0) + (reactionResult?.reaction_count || 0);
 
     const ageInDays = (Date.now() - content.created_at) / (24 * 60 * 60 * 1000);
     

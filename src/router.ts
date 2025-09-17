@@ -1320,8 +1320,7 @@ export class Router {
 
         if (path.match(/^\/api\/suggestions\/connections\/[^/]+$/) && request.method === 'POST') {
             const userId = path.split('/')[4];
-            const newRequest = { ...request, params: { userId } } as IRequest;
-            return this.suggestionHandler.createSuggestionNotifications(newRequest, env);
+            return this.suggestionHandler.createSuggestionNotifications(userId, env);
         }
 
         return this.notFoundResponse();
@@ -3033,6 +3032,7 @@ export class Router {
           radius,
           limit,
           0, // Default randomness to 0
+          {},
           env
         );
 
@@ -3062,12 +3062,12 @@ export class Router {
 
     // Create a new workspace
     if (path === '/api/workspaces' && request.method === 'POST') {
-      const { name } = await request.json();
+      const { name } = (await request.json()) as { name: string };
       if (!name) {
         return this.errorResponse('Workspace name is required', 400);
       }
 
-      const id = env.R3L_WORKSPACES.newUniqueId();
+      const id = (env.R3L_WORKSPACES as any).newUniqueId();
       const stub = env.R3L_WORKSPACES.get(id);
 
       // We can initialize the workspace by sending a request to it.

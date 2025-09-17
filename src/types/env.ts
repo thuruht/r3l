@@ -30,6 +30,7 @@ export interface Env {
   R3L_CONNECTIONS: DurableObjectNamespace;
   R3L_VISUALIZATION: DurableObjectNamespace;
   R3L_COLLABORATION: DurableObjectNamespace;
+  R3L_WORKSPACES: DurableObjectNamespace;
 
   // OAuth provider helper binding (optional)
   OAUTH_PROVIDER?: any;

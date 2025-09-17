@@ -54,12 +54,7 @@ export class SuggestionHandler {
    * @param request - The incoming request
    * @param env - The environment object
    */
-  async createSuggestionNotifications(request: IRequest, env: Env): Promise<Response> {
-    const { userId } = request.params;
-
-    if (!userId) {
-      return new Response('User ID is required', { status: 400 });
-    }
+  async createSuggestionNotifications(userId: string, env: Env): Promise<Response> {
 
     try {
       const suggestions = await this.getConnectionSuggestions(userId, env);

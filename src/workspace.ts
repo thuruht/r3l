@@ -46,7 +46,7 @@ export class Workspace {
     const url = new URL(request.url);
 
     if (url.pathname === '/initialize' && request.method === 'POST') {
-        const { name } = await request.json();
+        const { name } = (await request.json()) as { name: string };
         this.workspaceState.name = name;
         await this.state.storage.put('workspaceState', this.workspaceState);
         return new Response(null, { status: 200 });
@@ -87,7 +87,7 @@ export class Workspace {
     // Announce user joined
     this.broadcast({ type: 'user_joined', userId, userName, timestamp: new Date().toISOString() }, connectionId);
 
-    server.addEventListener('message', async (event) => {
+    server.addEventListener('message', async (event: MessageEvent) => {
         try {
           const message = JSON.parse(event.data as string);
           // Handle different message types (e.g., document updates, chat)
@@ -148,7 +148,7 @@ export class Workspace {
     const action = pathSegments[3]; // e.g., 'documents'
 
     if (request.method === 'POST' && action === 'documents') {
-        const { name } = await request.json();
+        const { name } = (await request.json()) as { name: string };
         const newDoc = await this.createDocument(name);
         return new Response(JSON.stringify(newDoc), { status: 201 });
     }

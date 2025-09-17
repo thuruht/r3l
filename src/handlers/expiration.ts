@@ -291,7 +291,7 @@ export class ContentLifecycle {
    * @param type Type of archiving ('personal' or 'community')
    * @param env Environment bindings
    */
-  private async archiveContent(
+  public async archiveContent(
     contentId: string,
     type: 'personal' | 'community',
     env: Env

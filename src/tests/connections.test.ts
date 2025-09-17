@@ -2,7 +2,7 @@ import { Router } from '../router';
 import { Env } from '../types/env';
 
 // Mock the crypto.randomUUID function
-const mockUUID = 'mock-uuid';
+const mockUUID = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
 global.crypto = {
   ...global.crypto,
   randomUUID: () => mockUUID,
@@ -73,7 +73,7 @@ describe('Connection Routes', () => {
       });
 
       const response = await router.handle(request, env);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(response.status).toBe(200);
       expect(Array.isArray(data)).toBe(true);
@@ -110,7 +110,7 @@ describe('Connection Routes', () => {
       });
 
       const response = await router.handle(request, env);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);
@@ -141,7 +141,7 @@ describe('Connection Routes', () => {
       });
 
       const response = await router.handle(request, env);
-      const data = await response.json();
+      const data = await response.json() as any;
 
       expect(response.status).toBe(200);
       expect(data.success).toBe(true);

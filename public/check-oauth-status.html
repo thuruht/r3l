@@ -78,47 +78,6 @@
         `;
       }
       
-      // Check if fix-cookies endpoint works
-      const fixButton = document.getElementById('fix-cookies-btn');
-      fixButton.addEventListener('click', async () => {
-        try {
-          const fixResponse = await fetch('/api/auth/fix-cookies', {
-              credentials: 'include'
-            });
-          
-          const fixStatus = fixResponse.status;
-          const fixResponseText = await fixResponse.text();
-          
-          document.getElementById('fix-results').innerHTML = `
-            <h3>Fix Cookies Result</h3>
-            <p><strong>Status:</strong> ${fixStatus}</p>
-            <p><strong>Response:</strong></p>
-            <pre class="code-box">${fixResponseText}</pre>
-            <p>Cookies after fix:</p>
-            <pre class="code-box">${document.cookie.replace(/;/g, ';\n')}</pre>
-          `;
-          
-          // Reload cookie status
-          setTimeout(() => {
-            const hasAuthState = document.cookie.includes('r3l_auth_state=true');
-            const hasSession = document.cookie.includes('r3l_jwt=');
-            
-            cookiesDiv.innerHTML = `
-              <h3>Cookie Status</h3>
-              <p><strong>Auth State Cookie:</strong> ${hasAuthState ? 'Present ✅' : 'Missing ❌'}</p>
-              <p><strong>Session Cookie:</strong> ${hasSession ? 'Present ✅' : 'Missing ❌'}</p>
-              <pre class="code-box">${document.cookie.replace(/;/g, ';\n')}</pre>
-            `;
-          }, 500);
-        } catch (error) {
-          document.getElementById('fix-results').innerHTML = `
-            <div class="error-box">
-              <h3>❌ Error fixing cookies</h3>
-              <p>${error.message}</p>
-            </div>
-          `;
-        }
-      });
       
       // Test initialization endpoints
       document.getElementById('test-orcid-btn').addEventListener('click', async () => {
@@ -266,10 +225,6 @@
       <h2>Cookie Status</h2>
       <div id="cookie-status">
         <p>Loading cookie status...</p>
-      </div>
-      
-      <div class="action-buttons">
-        <button id="fix-cookies-btn" class="btn">Fix Cookies</button>
       </div>
       
       <div id="fix-results"></div>

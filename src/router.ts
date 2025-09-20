@@ -2498,53 +2498,50 @@ export class Router {
       try {
         // Fetch a network of connections within 2 degrees of separation
         const query = `
-          WITH user_connections AS (
-            -- Direct connections of the user
-            SELECT 
-              user_id, 
-              connected_user_id,
-              'direct' as connection_type,
-              created_at
-            FROM connections
-            WHERE 
-              (user_id = ? OR connected_user_id = ?) 
-              AND status = 'accepted' 
-              AND type = 'mutual'
-            
-            UNION
-            
-            -- Second-degree connections (connections of connections)
-            SELECT 
-              c2.user_id,
-              c2.connected_user_id,
-              'second-degree' as connection_type,
-              c2.created_at
-            FROM connections c1
-            JOIN connections c2 ON 
-              (c1.connected_user_id = c2.user_id OR c1.connected_user_id = c2.connected_user_id OR
-               c1.user_id = c2.user_id OR c1.user_id = c2.connected_user_id)
-            WHERE 
-              ((c1.user_id = ? OR c1.connected_user_id = ?) AND
-               c1.user_id != c2.user_id AND
-               c1.user_id != c2.connected_user_id AND
-               c1.connected_user_id != c2.user_id AND
-               c1.connected_user_id != c2.connected_user_id)
-              AND c1.status = 'accepted' 
-              AND c1.type = 'mutual'
-              AND c2.status = 'accepted'
-              AND c2.type = 'mutual'
+          -- CTE to get the IDs of the user's direct connections (friends)
+          WITH friends AS (
+              SELECT
+                  CASE WHEN user_id = ? THEN connected_user_id ELSE user_id END AS friend_id
+              FROM connections
+              WHERE (user_id = ? OR connected_user_id = ?) AND status = 'accepted' AND type = 'mutual'
           )
-          SELECT DISTINCT
-            user_id,
-            connected_user_id,
-            connection_type,
-            created_at
-          FROM user_connections
-          ORDER BY created_at DESC
+          -- Select all connections (direct and second-degree)
+          SELECT
+              c.user_id,
+              c.connected_user_id,
+              -- Determine if the connection is direct or second-degree
+              CASE
+                  WHEN (c.user_id = ? OR c.connected_user_id = ?) THEN 'direct'
+                  ELSE 'second-degree'
+              END AS connection_type,
+              c.created_at
+          FROM connections c
+          WHERE
+              c.status = 'accepted' AND c.type = 'mutual'
+              -- The connection must either be a direct connection OR connect a friend to a non-friend non-self user
+              AND (
+                  -- It's a direct connection
+                  (c.user_id = ? OR c.connected_user_id = ?)
+                  OR
+                  -- It's a second-degree connection
+                  (
+                      -- One user is a friend, the other is not the original user and not a friend
+                      (c.user_id IN (SELECT friend_id FROM friends) AND c.connected_user_id != ? AND c.connected_user_id NOT IN (SELECT friend_id FROM friends))
+                      OR
+                      (c.connected_user_id IN (SELECT friend_id FROM friends) AND c.user_id != ? AND c.user_id NOT IN (SELECT friend_id FROM friends))
+                  )
+              )
+          ORDER BY c.created_at DESC
           LIMIT 100
         `;
 
-        const result = await env.R3L_DB.prepare(query).bind(userId, userId, userId, userId).all();
+        const result = await env.R3L_DB.prepare(query).bind(
+            userId, userId, userId, // for friends CTE
+            userId, userId,           // for CASE
+            userId, userId,           // for direct connection check
+            userId,                   // for second-degree check (not user)
+            userId                    // for second-degree check (not user)
+        ).all();
 
         const connections = result.results || [];
 

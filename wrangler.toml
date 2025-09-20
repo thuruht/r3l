@@ -20,7 +20,7 @@ bucket_name = "r3l-content"
 
 [[kv_namespaces]]
 binding = "R3L_KV"
-id = "R3L_KV" # Placeholder, wrangler will manage this
+id = "ae72fbc4082047309134b41345a34a9f"
 
 [[kv_namespaces]]
 binding = "R3L_SESSIONS"

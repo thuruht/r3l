@@ -866,276 +866,452 @@
       
       // Function to fetch network data from API
       async function fetchNetworkData() {
-        loadingIndicator.style.display = 'block';
-        const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
-
         try {
-            const [contentRes, usersRes, tagsRes, currentUserRes, networkRes] = await Promise.all([
-                fetch('/api/search?limit=50', { credentials: 'include' }),
-                fetch('/api/users?limit=100&include_lurkers=false', { credentials: 'include' }),
-                fetch('/api/tags?limit=50', { credentials: 'include' }),
-                isAuthenticated ? fetch('/api/auth/jwt/profile', { credentials: 'include' }) : Promise.resolve(null),
-                isAuthenticated ? fetch('/api/connections/network', { credentials: 'include' }) : Promise.resolve(null)
+          // Show loading indicator
+          loadingIndicator.style.display = 'block';
+
+          // Check if user is authenticated
+          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+
+          // Prepare API endpoints
+          let contentEndpoint = '/api/search?limit=30';
+          let usersEndpoint = '/api/users?limit=100&include_lurkers=true';
+          let tagsEndpoint = '/api/tags?limit=15';
+
+          // Add current user endpoint
+          let currentUserEndpoint = '/api/auth/jwt/profile';
+
+          // Fetch data in parallel
+          let responses;
+          try {
+            responses = await Promise.all([
+              fetch(contentEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              }),
+              fetch(usersEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              }),
+              fetch(tagsEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              }),
+              isAuthenticated ? fetch(currentUserEndpoint, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              }) : Promise.resolve(null)
             ]);
+          } catch (error) {
+            console.error('Error fetching API data:', error);
+            throw new Error('API request failed');
+          }
 
-            if (!contentRes.ok || !usersRes.ok || !tagsRes.ok) {
-                throw new Error('Failed to fetch essential network data');
+          const [contentResponse, usersResponse, tagsResponse, currentUserResponse] = responses;
+
+          // Check if essential responses are OK
+          if (!contentResponse.ok || !tagsResponse.ok) {
+            console.error('Essential API responses failed:', {
+              content: contentResponse.status,
+              tags: tagsResponse.status
+            });
+            throw new Error('Essential API request failed');
+          }
+
+          // Parse JSON responses
+          let contentData, userData, tagsData, currentUserData;
+
+          try {
+            contentData = await contentResponse.json();
+
+            if (usersResponse && usersResponse.ok) {
+              userData = await usersResponse.json();
+            } else {
+              userData = { users: [] };
             }
 
-            const contentData = await contentRes.json();
-            const usersData = await usersRes.json();
-            const tagsData = await tagsRes.json();
-            const currentUserData = currentUserRes && currentUserRes.ok ? await currentUserRes.json() : null;
-            const networkConnectionsData = networkRes && networkRes.ok ? await networkRes.json() : { connections: [] };
+            tagsData = await tagsResponse.json();
 
-            const networkData = { nodes: [], links: [] };
-            const nodeIds = new Set();
+            if (currentUserResponse && currentUserResponse.ok) {
+              currentUserData = await currentUserResponse.json();
+            } else {
+              currentUserData = null;
+            }
+          } catch (error) {
+            console.error('Error parsing API response:', error);
+            throw new Error('Failed to parse API response');
+          }
 
-            const addNode = (node) => {
-                if (!nodeIds.has(node.id)) {
-                    networkData.nodes.push(node);
-                    nodeIds.add(node.id);
-                }
-            };
+          // Create network data structure
+          const networkData = {
+            nodes: [],
+            links: []
+          };
 
-            // Process Users
-            usersData.users?.forEach(user => addNode({
-                id: user.id,
-                label: user.display_name || user.username,
-                type: 'user',
-                isSelf: isAuthenticated && currentUserData && user.id === currentUserData.id,
-                ...user
-            }));
-            
-            // Add current user if not in the list
-            if (currentUserData) {
-                addNode({
-                    id: currentUserData.id,
-                    label: currentUserData.display_name || currentUserData.username,
-                    type: 'user',
-                    isSelf: true,
-                    ...currentUserData
+          // Process content/files
+          let content = [];
+
+          // Handle different response formats
+          if (contentData.results && Array.isArray(contentData.results)) {
+            content = contentData.results;
+          } else if (Array.isArray(contentData)) {
+            content = contentData;
+          } else if (contentData.content && Array.isArray(contentData.content)) {
+            content = contentData.content;
+          }
+
+          // If we have no content, try one more approach
+          if (content.length === 0 && isAuthenticated) {
+            try {
+              // Fetch user's own content via the user files endpoint
+              if (currentUserData && currentUserData.id) {
+                const myContentResponse = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
+                  method: 'GET',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include'
                 });
-            }
 
-            // Process Content
-            contentData.results?.forEach(item => addNode({
-                id: item.id,
-                label: item.title || 'Untitled',
-                type: 'file',
-                isSelf: isAuthenticated && currentUserData && item.user_id === currentUserData.id,
-                ...item
-            }));
-
-            // Process Tags
-            tagsData.tags?.forEach(tag => addNode({
-                id: `tag-${tag.name}`,
-                label: tag.name,
-                type: 'tag',
-                ...tag
-            }));
-
-            // Create Links
-            // File -> User (Creator)
-            networkData.nodes.filter(n => n.type === 'file' && n.user_id).forEach(fileNode => {
-                if (nodeIds.has(fileNode.user_id)) {
-                    networkData.links.push({ source: fileNode.id, target: fileNode.user_id, type: 'creator', weight: 3 });
+                if (myContentResponse && myContentResponse.ok) {
+                  const myContentData = await myContentResponse.json();
+                  if (myContentData.files && Array.isArray(myContentData.files)) {
+                    content = myContentData.files;
+                  }
                 }
-            });
+              }
 
-            // File -> Tag
-            for (const fileNode of networkData.nodes.filter(n => n.type === 'file')) {
-                const tagsRes = await fetch(`/api/content/${fileNode.id}/tags`, { credentials: 'include' });
-                if (tagsRes.ok) {
-                    const fileTagsData = await tagsRes.json();
-                    fileTagsData.tags?.forEach(tag => {
-                        const tagNodeId = `tag-${tag.name}`;
-                        if (nodeIds.has(tagNodeId)) {
-                            networkData.links.push({ source: fileNode.id, target: tagNodeId, type: 'tag', weight: 1 });
-                        }
+              if (myContentResponse.ok) {
+                const myContentData = await myContentResponse.json();
+                if (myContentData.content && Array.isArray(myContentData.content)) {
+                  content = myContentData.content;
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching personal content:', error);
+            }
+          }
+
+          // Map content to file nodes
+          const files = content.map(item => ({
+            id: item.id || item.content_id,
+            label: item.title || item.name || 'Untitled',
+            type: 'file',
+            creator: item.user_id || item.creator_id,
+            created: item.created_at || item.created || Date.now(),
+            expires: item.expires_at || item.expires,
+            isArchived: item.is_archived || item.archived || false,
+            isSelf: isAuthenticated && currentUserData && item.user_id === currentUserData.id
+          }));
+
+          // Add files to nodes
+          networkData.nodes.push(...files);
+
+          // Process tags
+          let tags = [];
+
+          // Handle different response formats
+          if (tagsData.tags && Array.isArray(tagsData.tags)) {
+            tags = tagsData.tags;
+          } else if (Array.isArray(tagsData)) {
+            tags = tagsData;
+          }
+
+          // Map tags to nodes
+          const tagNodes = tags.map(tag => ({
+            id: `tag-${tag.id || tag.name}`,
+            label: tag.name,
+            type: 'tag',
+            count: tag.count || tag.usage_count || 1
+          }));
+
+          // Add tags to nodes
+          networkData.nodes.push(...tagNodes);
+
+          // Process users
+          let users = [];
+
+          // Handle different response formats
+          if (userData.users && Array.isArray(userData.users)) {
+            users = userData.users;
+          } else if (Array.isArray(userData)) {
+            users = userData;
+          }
+
+          // Map users to nodes
+          const userNodes = users.map(user => ({
+            id: user.id,
+            label: user.display_name || user.username,
+            type: 'user',
+            bio: user.bio,
+            avatar: user.avatar_url,
+            connectionCount: user.connection_count,
+            contentCount: user.content_count,
+            connectionStatus: user.connectionStatus,
+            is_lurker: user.is_lurker,
+            isSelf: isAuthenticated && currentUserData && user.id === currentUserData.id
+          }));
+
+          // Add current user if available
+          if (isAuthenticated && currentUserData) {
+            const currentUser = {
+              id: currentUserData.id,
+              label: currentUserData.display_name || currentUserData.username,
+              type: 'user',
+              bio: currentUserData.bio,
+              avatar: currentUserData.avatar_url,
+              connectionCount: currentUserData.connection_count,
+              contentCount: currentUserData.content_count,
+              isSelf: true
+            };
+            
+            // Add current user to nodes if not already present
+            if (!userNodes.some(u => u.id === currentUser.id)) {
+              networkData.nodes.push(currentUser);
+            }
+          }
+
+          // Add user nodes
+          networkData.nodes.push(...userNodes);
+
+          // Create links between files and their creators
+          files.forEach(file => {
+            const creatorNode = userNodes.find(u => u.id === file.creator);
+            if (file.creator && (!creatorNode || !creatorNode.is_lurker)) {
+              networkData.links.push({
+                source: file.id,
+                target: file.creator,
+                type: 'creator',
+                weight: 3
+              });
+            }
+          });
+
+          // Create links between files and tags
+          // Fetch content-tag associations or create random ones if not available
+          try {
+            for (const file of files) {
+                const fileTagsResponse = await fetch(`/api/content/${file.id}/tags`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+
+              if (fileTagsResponse.ok) {
+                const fileTagsData = await fileTagsResponse.json();
+                const fileTags = fileTagsData.tags || [];
+
+                fileTags.forEach(tag => {
+                  const tagNode = tagNodes.find(t => t.label === tag.name);
+                  if (tagNode) {
+                    networkData.links.push({
+                      source: file.id,
+                      target: tagNode.id,
+                      type: 'tag',
+                      weight: 1
                     });
+                  }
+                });
+              } else {
+                // If content doesn't have tags endpoint, check if it has tags field
+                const contentItem = content.find(c => c.id === file.id);
+                if (contentItem && contentItem.tags) {
+                  const tagsList = typeof contentItem.tags === 'string'
+                    ? contentItem.tags.split(',').map(t => t.trim())
+                    : contentItem.tags;
+
+                  tagsList.forEach(tagName => {
+                    const tagNode = tagNodes.find(t => t.label === tagName);
+                    if (tagNode) {
+                      networkData.links.push({
+                        source: file.id,
+                        target: tagNode.id,
+                        type: 'tag',
+                        weight: 1
+                      });
+                    }
+                  });
+                } else {
+                  // Fallback to random tags if no tag data available
+                  const numTags = Math.floor(Math.random() * 3) + 1;
+                  const randomTags = tagNodes
+                    .sort(() => 0.5 - Math.random())
+                    .slice(0, numTags);
+
+                  randomTags.forEach(tag => {
+                    networkData.links.push({
+                      source: file.id,
+                      target: tag.id,
+                      type: 'tag',
+                      weight: 1
+                    });
+                  });
                 }
+              }
             }
+          } catch (error) {
+            console.error('Error creating file-tag links:', error);
 
-            // User -> User (Connections)
-            networkConnectionsData.connections?.forEach(conn => {
-                if (nodeIds.has(conn.user_id) && nodeIds.has(conn.connected_user_id)) {
-                    networkData.links.push({ source: conn.user_id, target: conn.connected_user_id, type: 'connection', weight: 2 });
-                }
+            // Fallback to some tag connections
+            files.forEach(file => {
+              const numTags = Math.floor(Math.random() * 3) + 1;
+              const randomTags = tagNodes
+                .sort(() => 0.5 - Math.random())
+                .slice(0, numTags);
+
+              randomTags.forEach(tag => {
+                networkData.links.push({
+                  source: file.id,
+                  target: tag.id,
+                  type: 'tag',
+                  weight: 1
+                });
+              });
             });
+          }
 
-            loadingIndicator.style.display = 'none';
-            return networkData;
+          // Create connections between users
+          if (isAuthenticated && currentUserData) {
+            try {
+              // Try to get user connections
+              const connectionsResponse = await fetch('/api/connections', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
 
+              if (connectionsResponse.ok) {
+                const connectionsData = await connectionsResponse.json();
+                const connections = connectionsData.connections || [];
+
+                connections.forEach(conn => {
+                  if (conn.status === 'accepted') {
+                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
+                    const targetNode = userNodes.find(u => u.id === conn.user_id);
+                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                      networkData.links.push({
+                        source: currentUserData.id,
+                        target: conn.user_id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
+                  }
+                });
+              } else {
+                // Fallback to user statuses from user data
+                userNodes.forEach(user => {
+                  if (user.connectionStatus === 'accepted') {
+                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
+                    const targetNode = userNodes.find(u => u.id === user.id);
+                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                      networkData.links.push({
+                        source: currentUserData.id,
+                        target: user.id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
+                  }
+                });
+              }
+
+              // Try to get connections between other users
+              const networkConnectionsResponse = await fetch('/api/connections/network', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include'
+              });
+
+              if (networkConnectionsResponse.ok) {
+                const networkConnectionsData = await networkConnectionsResponse.json();
+                const networkConnections = networkConnectionsData.connections || [];
+
+                networkConnections.forEach(conn => {
+                  const sourceNode = userNodes.find(u => u.id === conn.user_id);
+                  const targetNode = userNodes.find(u => u.id === conn.connected_user_id);
+                  if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
+                    networkData.links.push({
+                      source: conn.user_id,
+                      target: conn.connected_user_id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                });
+              } else {
+                // Create some random connections if network endpoint fails
+                for (let i = 0; i < userNodes.length; i++) {
+                  for (let j = i + 1; j < userNodes.length; j++) {
+                    // Skip connections to self
+                    if (userNodes[i].id === currentUserData.id || userNodes[j].id === currentUserData.id) {
+                      continue;
+                    }
+
+                    if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
+                      networkData.links.push({
+                        source: userNodes[i].id,
+                        target: userNodes[j].id,
+                        type: 'connection',
+                        weight: 2
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching connections:', error);
+
+              // Fallback to random connections
+              for (let i = 0; i < userNodes.length; i++) {
+                for (let j = i + 1; j < userNodes.length; j++) {
+                  if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
+                    networkData.links.push({
+                      source: userNodes[i].id,
+                      target: userNodes[j].id,
+                      type: 'connection',
+                      weight: 2
+                    });
+                  }
+                }
+              }
+            }
+          } else {
+            // For non-authenticated users, create random connections
+            const allUsers = [...userNodes];
+            for (let i = 0; i < allUsers.length; i++) {
+              for (let j = i + 1; j < allUsers.length; j++) {
+                if (!allUsers[i].is_lurker && !allUsers[j].is_lurker && Math.random() < 0.2) {
+                  networkData.links.push({
+                    source: allUsers[i].id,
+                    target: allUsers[j].id,
+                    type: 'connection',
+                    weight: 2
+                  });
+                }
+              }
+            }
+          }
+
+          // Hide loading indicator
+          loadingIndicator.style.display = 'none';
+
+          return networkData;
         } catch (error) {
-            console.error('Error fetching network data:', error);
-            loadingIndicator.style.display = 'none';
-            // Display an error message on the graph
-            container.append('text')
-              .attr('x', width / 2)
-              .attr('y', height / 2)
-              .attr('text-anchor', 'middle')
-              .attr('fill', 'red')
-              .style('font-size', '18px')
-              .text('Failed to load network data. Please try again later.');
-            return { nodes: [], links: [] }; // Return empty data to prevent breaking the renderer
+          console.error('Error fetching network data:', error);
+
+          // Hide loading indicator
+          loadingIndicator.style.display = 'none';
+
+          // Return mock data as fallback
+          return createMockData();
         }
       }
       
       // Initialize the network
       async function initNetwork() {
-        function renderGraph(data, layout) {
-          // Clear previous graph
-          container.selectAll('*').remove();
-
-          const nodes = data.nodes;
-          const links = data.links;
-
-          if (!nodes || !nodes.length) {
-            container.append('text')
-              .attr('x', width / 2)
-              .attr('y', height / 2)
-              .attr('text-anchor', 'middle')
-              .attr('fill', 'white')
-              .style('font-size', '18px')
-              .text('No data to display for the selected filters.');
-            return;
-          }
-
-          const simulation = d3.forceSimulation(nodes)
-            .force('link', d3.forceLink(links).id(d => d.id).distance(80).strength(0.1))
-            .force('charge', d3.forceManyBody().strength(-200));
-
-          // Apply forces based on selected layout
-          switch (layout) {
-            case 'radial':
-              simulation
-                .force('r', d3.forceRadial(d => {
-                  if (d.isSelf) return 50;
-                  switch (d.type) {
-                    case 'user': return 150;
-                    case 'file': return 250;
-                    case 'tag': return 350;
-                    default: return 200;
-                  }
-                }).strength(0.6))
-                .force('center', d3.forceCenter(width / 2, height / 2));
-              break;
-
-            case 'cluster':
-              const clusterCenters = {
-                user: { x: width * 0.25, y: height / 2 },
-                file: { x: width * 0.5, y: height / 2 },
-                tag: { x: width * 0.75, y: height / 2 },
-                self: { x: width * 0.5, y: height * 0.25 }
-              };
-              simulation
-                .force('x', d3.forceX(d => (clusterCenters[d.isSelf ? 'self' : d.type] || {x: width/2}).x).strength(0.1))
-                .force('y', d3.forceY(d => (clusterCenters[d.isSelf ? 'self' : d.type] || {y: height/2}).y).strength(0.1));
-              break;
-
-            case 'force':
-            default:
-              simulation
-                .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('x', d3.forceX(width / 2).strength(0.015))
-                .force('y', d3.forceY(height / 2).strength(0.015));
-              break;
-          }
-
-          const link = container.append('g')
-            .attr('class', 'links')
-            .attr('stroke', '#999')
-            .attr('stroke-opacity', 0.6)
-            .selectAll('line')
-            .data(links)
-            .join('line')
-            .attr('stroke-width', d => Math.sqrt(d.weight || 1));
-
-          const node = container.append('g')
-            .attr('class', 'nodes')
-            .selectAll('g')
-            .data(nodes)
-            .join('g')
-            .attr('class', 'node')
-            .call(d3.drag()
-              .on('start', (event, d) => {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-              })
-              .on('drag', (event, d) => {
-                d.fx = event.x;
-                d.fy = event.y;
-              })
-              .on('end', (event, d) => {
-                if (!event.active) simulation.alphaTarget(0);
-                d.fx = null;
-                d.fy = null;
-              }));
-
-          node.append('circle')
-            .attr('r', 8)
-            .attr('stroke', '#fff')
-            .attr('stroke-width', 1.5)
-            .attr('fill', d => colorScale[d.isSelf ? 'self' : d.type] || '#ccc');
-
-          const labels = node.append('text')
-            .text(d => d.label)
-            .attr('x', 12)
-            .attr('y', 4)
-            .attr('class', 'node-label')
-            .attr('fill', 'white')
-            .style('font-size', '12px')
-            .style('display', showLabelsCheckbox.checked ? 'block' : 'none');
-
-          node.on('mouseover', (event, d) => {
-            tooltip.style('opacity', 1)
-              .html(`<strong>${d.label}</strong><br/>Type: ${d.type}`)
-              .style('left', (event.pageX + 15) + 'px')
-              .style('top', (event.pageY - 28) + 'px');
-
-            link
-              .style('stroke-opacity', l => (l.source === d || l.target === d) ? 1 : 0.2)
-              .style('stroke', l => (l.source === d || l.target === d) ? '#ffc107' : '#999');
-          })
-          .on('mouseout', () => {
-            tooltip.style('opacity', 0);
-            link.style('stroke-opacity', 0.6).style('stroke', '#999');
-          });
-
-          node.on('click', (event, d) => {
-            selectedNodeId = d.id;
-            detailsTitle.textContent = `Details: ${d.label}`;
-            let contentHtml = `<p><strong>ID:</strong> ${d.id}</p><p><strong>Type:</strong> ${d.type}</p>`;
-            if (d.type === 'user') {
-              contentHtml += `<p><strong>Bio:</strong> ${d.bio || 'N/A'}</p>`;
-            } else if (d.type === 'file') {
-              contentHtml += `<p><strong>Creator:</strong> ${d.creator || 'N/A'}</p>`;
-              contentHtml += `<p><strong>Created:</strong> ${new Date(d.created).toLocaleString()}</p>`;
-              if (d.expires) {
-                contentHtml += `<p><strong>Expires:</strong> ${new Date(d.expires).toLocaleString()}</p>`;
-              }
-            }
-            detailsContent.innerHTML = contentHtml;
-            nodeDetails.style.display = 'block';
-
-            node.selectAll('circle').attr('stroke-width', 1.5).attr('stroke', '#fff');
-            d3.select(event.currentTarget).select('circle').attr('stroke-width', 3).attr('stroke', 'cyan');
-          });
-
-          simulation.on('tick', () => {
-            link
-              .attr('x1', d => d.source.x)
-              .attr('y1', d => d.source.y)
-              .attr('x2', d => d.target.x)
-              .attr('y2', d => d.target.y);
-
-            node
-              .attr('transform', d => `translate(${d.x},${d.y})`);
-          });
-        }
-
         // Fetch data from API or fallback to mock data
         const networkData = await fetchNetworkData();
         

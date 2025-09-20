@@ -187,10 +187,17 @@ document.addEventListener('DOMContentLoaded', () => {
       const icon = fileIcons[iconName];
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
+
+      const isArchived = file.archive_status && file.archive_status !== 'active';
+      const statusText = isArchived
+        ? file.archive_status.charAt(0).toUpperCase() + file.archive_status.slice(1)
+        : formatTimeRemaining(file.expires_at);
+      const statusTitle = isArchived ? 'Status' : 'Expires';
+
       fileItem.innerHTML = `
         <div class="file-icon"><span class="material-icons">${icon}</span></div>
         <div class="file-name" title="${file.title}">${file.title}</div>
-        <div class="file-expiry" title="Expires">${formatTimeRemaining(file.expires_at)}</div>
+        <div class="file-expiry" title="${statusTitle}">${statusText}</div>
       `;
       fileGrid.appendChild(fileItem);
     });

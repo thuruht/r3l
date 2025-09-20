@@ -17,6 +17,7 @@ jspm_packages/
 dist/
 build/
 .webpack/
+dry-run-dist/
 
 # IDE and editor files
 .idea/

@@ -199,7 +199,10 @@ const contentCreateSchema = z.object({
 function createApp(r2) {
     const app = new Hono();
 
-    // Static assets are served automatically via wrangler site configuration
+    // Handle root path
+    app.get('/', (c) => {
+        return c.redirect('/index.html');
+    });
 
     app.onError((err, c) => {
         console.error(`Hono App Error: ${err}`, err.stack);

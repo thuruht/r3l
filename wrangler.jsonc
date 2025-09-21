@@ -1,5 +1,4 @@
 {
-  "$schema": "https://raw.githubusercontent.com/cloudflare/wrangler/main/config-schema.json",
   "name": "r3l",
   "main": "./src/index.js",
   "compatibility_date": "2025-07-18",

@@ -199,8 +199,7 @@ const contentCreateSchema = z.object({
 function createApp(r2) {
     const app = new Hono();
 
-    // Serve static assets from 'public' directory first
-    app.use('*', serveStatic({ root: './' }));
+    // Static assets are served automatically via wrangler site configuration
 
     app.onError((err, c) => {
         console.error(`Hono App Error: ${err}`, err.stack);

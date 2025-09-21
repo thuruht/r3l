@@ -11,7 +11,7 @@
     {
       "binding": "R3L_DB",
       "database_name": "r3l-db",
-      "database_id": "r3l-db"
+      "database_id": "69954d65-1aec-441f-8577-061148440abd"
     }
   ],
   "r2_buckets": [
@@ -58,11 +58,5 @@
   },
   "triggers": {
     "crons": ["0 */6 * * *"]
-  },
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_classes": ["CollaborationRoom", "ConnectionsObject", "VisualizationObject"]
-    }
-  ]
+  }
 }

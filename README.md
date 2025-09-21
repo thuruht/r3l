@@ -122,9 +122,35 @@ The project follows a modular architecture:
 ## Documentation
 
 - [Project Documentation](./project-documentation.md): Detailed technical documentation and runbook
+- [Codebase Analysis](./CODEBASE_ANALYSIS.md): Security issues, bugs, and code quality assessment
+- [Feature Roadmap](./FEATURE_ROADMAP.md): Implementation priorities and planned features
+- [Project State](./PROJECT_STATE.md): Current status and completion tracking
 - [Connections & Feed](./public/feed.html): Minimal feed UI powered by `/api/feed`
 - [Help & FAQ](./public/help.html): Comprehensive user guide and frequently asked questions
 - [Philosophy & Motivation](./public/reMDE.md): In-depth explanation of project principles
+
+## Current Status
+
+### ✅ Completed Features
+- JWT-based authentication system
+- Content upload and management
+- User profiles and drawers
+- Basic search functionality
+- Real-time messaging infrastructure
+- Geographic map integration
+- Association web visualization (D3.js)
+- Notification system
+
+### ⚠️ Known Issues (See CODEBASE_ANALYSIS.md)
+- **Critical**: SSRF vulnerability in src/index.js (line 334-335)
+- **High**: Data loss risk in Durable Objects using in-memory storage
+- **Medium**: Performance bottlenecks in rate limiting and database operations
+
+### 🚧 In Progress
+- Content expiration workflow enhancement
+- Real-time messaging UI polish
+- Association web data integration
+- User privacy controls
 
 ## Troubleshooting
 
@@ -136,6 +162,9 @@ The project follows a modular architecture:
    - We exclude `public/js/**` from tsc. Use `npm run lint:fe` for frontend checks.
 - Feed shows no items
    - Confirm content exists and associations are correct. Feed is strictly chronological and privacy-respecting.
+- Security Issues
+   - See [CODEBASE_ANALYSIS.md](./CODEBASE_ANALYSIS.md) for detailed security assessment
+   - Monitor via `wrangler tail` after deployment for any exploitation attempts
 
 ## Contributing
 

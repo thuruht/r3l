@@ -131,26 +131,21 @@ The project follows a modular architecture:
 
 ## Current Status
 
-### ✅ Completed Features
+### ✅ Live and Working
 - JWT-based authentication system
 - Content upload and management
 - User profiles and drawers
-- Basic search functionality
+- Search functionality
 - Real-time messaging infrastructure
-- Geographic map integration
+- Geographic map integration (combined best features)
 - Association web visualization (D3.js)
 - Notification system
+- Deployed to: https://r3l.distorted.work
 
-### ⚠️ Known Issues (See CODEBASE_ANALYSIS.md)
-- **Critical**: SSRF vulnerability in src/index.js (line 334-335)
-- **High**: Data loss risk in Durable Objects using in-memory storage
-- **Medium**: Performance bottlenecks in rate limiting and database operations
-
-### 🚧 In Progress
-- Content expiration workflow enhancement
-- Real-time messaging UI polish
-- Association web data integration
-- User privacy controls
+### 🔧 Monitoring
+- Performance optimizations needed (see CODEBASE_ANALYSIS.md)
+- Real-time features under live testing
+- User privacy controls in development
 
 ## Troubleshooting
 
@@ -162,9 +157,9 @@ The project follows a modular architecture:
    - We exclude `public/js/**` from tsc. Use `npm run lint:fe` for frontend checks.
 - Feed shows no items
    - Confirm content exists and associations are correct. Feed is strictly chronological and privacy-respecting.
-- Security Issues
-   - See [CODEBASE_ANALYSIS.md](./CODEBASE_ANALYSIS.md) for detailed security assessment
-   - Monitor via `wrangler tail` after deployment for any exploitation attempts
+- Live Testing
+   - Monitor via `wrangler tail` for performance and errors
+   - See [CODEBASE_ANALYSIS.md](./CODEBASE_ANALYSIS.md) for known issues
 
 ## Contributing
 

@@ -15,13 +15,21 @@ export function generateRefCode(prefix = 'ERR') {
  * @param {string} [refCode] - An optional reference code to display.
  */
 export function displayEmptyState(container, message, refCode) {
-  const codeHtml = refCode ? `<small>Ref: ${refCode}</small>` : '';
-  container.innerHTML = `
-    <div class="empty-state-container">
-      <p>${message}</p>
-      ${codeHtml}
-    </div>
-  `;
+  const emptyStateDiv = document.createElement('div');
+  emptyStateDiv.className = 'empty-state-container';
+  
+  const p = document.createElement('p');
+  p.textContent = message;
+  emptyStateDiv.appendChild(p);
+  
+  if (refCode) {
+    const small = document.createElement('small');
+    small.textContent = `Ref: ${refCode}`;
+    emptyStateDiv.appendChild(small);
+  }
+  
+  container.innerHTML = '';
+  container.appendChild(emptyStateDiv);
 }
 
 /**
@@ -32,20 +40,32 @@ export function displayEmptyState(container, message, refCode) {
  */
 export function displayError(container, message, code) {
   console.error(`Error ${code}: ${message}`);
-  const errorHtml = `
-    <div class="alert alert-error">
-      <span class="material-icons">error_outline</span>
-      <div>
-        <strong>An Error Occurred</strong>
-        <p>${message}</p>
-        <small>Error code: ${code}</small>
-      </div>
-    </div>
-  `;
-  if (typeof container === 'string') {
-    const el = document.getElementById(container);
-    if (el) el.innerHTML = errorHtml;
-  } else {
-    container.innerHTML = errorHtml;
+  
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'alert alert-error';
+  
+  const icon = document.createElement('span');
+  icon.className = 'material-icons';
+  icon.textContent = 'error_outline';
+  
+  const contentDiv = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = 'An Error Occurred';
+  const p = document.createElement('p');
+  p.textContent = message;
+  const small = document.createElement('small');
+  small.textContent = `Error code: ${code}`;
+  
+  contentDiv.appendChild(strong);
+  contentDiv.appendChild(p);
+  contentDiv.appendChild(small);
+  
+  alertDiv.appendChild(icon);
+  alertDiv.appendChild(contentDiv);
+  
+  const targetContainer = typeof container === 'string' ? document.getElementById(container) : container;
+  if (targetContainer) {
+    targetContainer.innerHTML = '';
+    targetContainer.appendChild(alertDiv);
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-env es6, browser */
 import { NavigationBar } from './components/navigation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -115,7 +116,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function addChatMessage(message) {
         const div = document.createElement('div');
-        div.innerHTML = `<b>${message.userName}:</b> ${message.message}`;
+        const userSpan = document.createElement('b');
+        userSpan.textContent = message.userName + ':';
+        div.appendChild(userSpan);
+        div.appendChild(document.createTextNode(' ' + message.message));
         chatMessages.appendChild(div);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }

@@ -292,6 +292,8 @@ function createApp(r2) {
         return c.json({ token: sessionToken });
     });
 
+
+
     api.route('/', publicApi);
 
     // --- PROTECTED API ROUTES ---
@@ -351,17 +353,25 @@ function createApp(r2) {
 
     protectedApi.all('/collaboration/:id/*', async (c) => {
         try {
-            const id = c.env.R3L_COLLABORATION.idFromName(c.req.param('id'));
+            const collaborationId = c.req.param('id');
+            // Validate collaboration ID to prevent injection
+            if (!/^[a-zA-Z0-9_-]+$/.test(collaborationId)) {
+                return c.json({ error: 'Invalid collaboration ID' }, 400);
+            }
+            
+            const id = c.env.R3L_COLLABORATION.idFromName(collaborationId);
             const stub = c.env.R3L_COLLABORATION.get(id);
-            // Construct the new URL by taking the original URL and replacing the host and path
-            const newUrl = new URL(c.req.url)
-            const match = newUrl.pathname.match(/\/api\/collaboration\/[^/]+(\/.*)/)
+            
+            // Safely construct path without user input in URL
+            const originalUrl = new URL(c.req.url);
+            const match = originalUrl.pathname.match(/\/api\/collaboration\/[^/]+(\/.*)/)
             if (!match) {
                 return c.json({ error: 'Invalid collaboration path' }, 400)
             }
-            const newPath = match[1]
-            newUrl.pathname = newPath
-            const response = await stub.fetch(new Request(newUrl, c.req.raw));
+            
+            // Create a safe internal URL for the Durable Object
+            const safeUrl = new URL('http://localhost' + match[1]);
+            const response = await stub.fetch(new Request(safeUrl, c.req.raw));
             return response;
         } catch (e) {
             console.error("Error forwarding to CollaborationRoom:", e.message);
@@ -381,6 +391,8 @@ function createApp(r2) {
             return c.json({ error: "Could not retrieve visualization stats" }, 500);
         }
     });
+
+
 
     api.route('/', protectedApi);
 

@@ -1,6 +1,5 @@
-import { NavigationBar } from './components/navigation.js';
-import { apiGet, apiPost, apiPatch, apiUpload, API_ENDPOINTS } from './utils/api-helper.js';
-import { displayError, displayEmptyState, generateRefCode } from './utils/ui-helpers.js';
+import { apiGet, apiPatch, apiUpload, API_ENDPOINTS } from './utils/api-helper.js';
+import { displayError } from './utils/ui-helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // NOTE: NavigationBar is initialized in drawer.html, so we don't call it here.
@@ -51,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Helper Functions ---
   const formatDate = (timestamp) => new Date(timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const formatFileSize = (bytes) => {
+  const _formatFileSize = (bytes) => {
     if (bytes < 1024) return `${bytes} bytes`;
     if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / 1048576).toFixed(1)} MB`;

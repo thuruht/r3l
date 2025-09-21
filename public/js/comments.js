@@ -1,3 +1,4 @@
+/* eslint-env es6, browser */
 import { apiGet, apiPost, API_ENDPOINTS } from './utils/api-helper.js';
 import { escapeHtml } from './utils/ui-helpers.js';
 
@@ -55,7 +56,7 @@ class Comments {
           <p>${escapeHtml(comment.comment)}</p>
         </div>
         <div class="comment-footer">
-          <button class="btn-link" onclick="window.comments.showReplyForm('${comment.id}')">Reply</button>
+          <button class="btn-link reply-btn" data-comment-id="${comment.id}">Reply</button>
         </div>
         ${repliesHtml}
       </div>
@@ -77,13 +78,17 @@ class Comments {
         if (existingForm) {
             existingForm.remove();
         }
-        parentComment.insertAdjacentHTML('beforeend', formHtml);
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = formHtml;
+        parentComment.appendChild(tempDiv.firstElementChild);
         const form = document.getElementById(`comment-form-${parentCommentId}`);
         form.addEventListener('submit', (e) => this.handleCommentSubmit(e, parentCommentId));
         form.querySelector('textarea').focus();
       }
     } else {
-      this.commentsContainer.insertAdjacentHTML('beforeend', formHtml);
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = formHtml;
+      this.commentsContainer.appendChild(tempDiv.firstElementChild);
       document.getElementById('comment-form-root').addEventListener('submit', (e) => this.handleCommentSubmit(e, null));
     }
   }

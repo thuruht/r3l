@@ -334,26 +334,60 @@ export class NotificationManager {
         minute: '2-digit',
       });
 
-      notificationEl.innerHTML = `
-        <div class="notification-icon">
-          <span class="material-icons">${icon}</span>
-        </div>
-        <div class="notification-content">
-          <div class="notification-header">
-            <h4>${notification.title}</h4>
-            <span class="notification-time">${formattedDate}</span>
-          </div>
-          <p>${notification.content || notification.message || ''}</p>
-        </div>
-        <div class="notification-actions">
-          <button class="mark-read-btn" aria-label="Mark as read">
-            <span class="material-icons">done</span>
-          </button>
-          <button class="delete-btn" aria-label="Delete notification">
-            <span class="material-icons">delete</span>
-          </button>
-        </div>
-      `;
+      // Create notification icon
+      const iconDiv = document.createElement('div');
+      iconDiv.className = 'notification-icon';
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'material-icons';
+      iconSpan.textContent = icon;
+      iconDiv.appendChild(iconSpan);
+      
+      // Create notification content
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'notification-content';
+      
+      const headerDiv = document.createElement('div');
+      headerDiv.className = 'notification-header';
+      const h4 = document.createElement('h4');
+      h4.textContent = notification.title;
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'notification-time';
+      timeSpan.textContent = formattedDate;
+      headerDiv.appendChild(h4);
+      headerDiv.appendChild(timeSpan);
+      
+      const p = document.createElement('p');
+      p.textContent = notification.content || notification.message || '';
+      
+      contentDiv.appendChild(headerDiv);
+      contentDiv.appendChild(p);
+      
+      // Create notification actions
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'notification-actions';
+      
+      const markReadBtn = document.createElement('button');
+      markReadBtn.className = 'mark-read-btn';
+      markReadBtn.setAttribute('aria-label', 'Mark as read');
+      const doneIcon = document.createElement('span');
+      doneIcon.className = 'material-icons';
+      doneIcon.textContent = 'done';
+      markReadBtn.appendChild(doneIcon);
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.setAttribute('aria-label', 'Delete notification');
+      const deleteIcon = document.createElement('span');
+      deleteIcon.className = 'material-icons';
+      deleteIcon.textContent = 'delete';
+      deleteBtn.appendChild(deleteIcon);
+      
+      actionsDiv.appendChild(markReadBtn);
+      actionsDiv.appendChild(deleteBtn);
+      
+      notificationEl.appendChild(iconDiv);
+      notificationEl.appendChild(contentDiv);
+      notificationEl.appendChild(actionsDiv);
 
       // Add event listeners
       notificationEl.addEventListener('click', e => {
@@ -371,9 +405,9 @@ export class NotificationManager {
       });
 
       // Mark as read button
-      const markReadBtn = notificationEl.querySelector('.mark-read-btn');
-      if (markReadBtn) {
-        markReadBtn.addEventListener('click', e => {
+      const markReadBtnEl = notificationEl.querySelector('.mark-read-btn');
+      if (markReadBtnEl) {
+        markReadBtnEl.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
           this.markAsRead([notification.id]);
@@ -381,9 +415,9 @@ export class NotificationManager {
       }
 
       // Delete button
-      const deleteBtn = notificationEl.querySelector('.delete-btn');
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', e => {
+      const deleteBtnEl = notificationEl.querySelector('.delete-btn');
+      if (deleteBtnEl) {
+        deleteBtnEl.addEventListener('click', e => {
           e.preventDefault();
           e.stopPropagation();
           this.deleteNotification(notification.id);

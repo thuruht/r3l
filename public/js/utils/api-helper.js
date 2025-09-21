@@ -3,7 +3,7 @@
  * Provides consistent interface for API calls with proper error handling
  */
 
-import { isAuthenticated, authenticatedFetch } from './cookie-helper.js';
+import { authenticatedFetch } from './cookie-helper.js';
 
 // Define API endpoints centrally to avoid mismatches
 export const API_ENDPOINTS = {

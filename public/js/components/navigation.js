@@ -4,7 +4,7 @@
  */
 
 import { notificationManager } from './notification.js';
-import { getCookie, isAuthenticated, fixAuthCookies } from '../utils/cookie-helper.js';
+import { getCookie, isAuthenticated } from '../utils/cookie-helper.js';
 import { apiGet, apiPost, API_ENDPOINTS } from '../utils/api-helper.js';
 
 // Define a simple debug log function

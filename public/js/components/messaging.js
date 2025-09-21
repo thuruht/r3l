@@ -3,6 +3,7 @@
  * Handles direct messaging between users
  */
 
+/* eslint-env es6, browser */
 // Import API helper functions
 import { apiGet, apiPost, apiDelete } from '../utils/api-helper.js';
 
@@ -300,11 +301,12 @@ export class MessagingManager {
     this.conversationsContainer.innerHTML = '';
 
     if (this.conversations.length === 0) {
-      this.conversationsContainer.innerHTML = `
-        <div class="empty-conversations">
-          <p>No conversations yet</p>
-        </div>
-      `;
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty-conversations';
+      const p = document.createElement('p');
+      p.textContent = 'No conversations yet';
+      emptyDiv.appendChild(p);
+      this.conversationsContainer.appendChild(emptyDiv);
       return;
     }
 
@@ -324,29 +326,43 @@ export class MessagingManager {
         minute: '2-digit',
       });
 
-      // Create HTML
-      conversationEl.innerHTML = `
-        <div class="conversation-avatar">
-          <span class="avatar-placeholder">${conversation.otherUserId.charAt(0).toUpperCase()}</span>
-        </div>
-        <div class="conversation-content">
-          <div class="conversation-header">
-            <h4>${conversation.otherUserId}</h4>
-            <span class="conversation-time">${formattedDate}</span>
-          </div>
-          <p class="conversation-preview">
-            ${conversation.isLastMessageFromMe ? 'You: ' : ''}
-            ${conversation.lastMessagePreview || 'No messages yet'}
-          </p>
-        </div>
-        ${
-          conversation.unreadCount > 0
-            ? `
-          <div class="unread-badge">${conversation.unreadCount}</div>
-        `
-            : ''
-        }
-      `;
+      // Create elements safely
+      const avatar = document.createElement('div');
+      avatar.className = 'conversation-avatar';
+      const avatarSpan = document.createElement('span');
+      avatarSpan.className = 'avatar-placeholder';
+      avatarSpan.textContent = conversation.otherUserId.charAt(0).toUpperCase();
+      avatar.appendChild(avatarSpan);
+
+      const content = document.createElement('div');
+      content.className = 'conversation-content';
+      
+      const header = document.createElement('div');
+      header.className = 'conversation-header';
+      const h4 = document.createElement('h4');
+      h4.textContent = conversation.otherUserId;
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'conversation-time';
+      timeSpan.textContent = formattedDate;
+      header.appendChild(h4);
+      header.appendChild(timeSpan);
+      
+      const preview = document.createElement('p');
+      preview.className = 'conversation-preview';
+      preview.textContent = (conversation.isLastMessageFromMe ? 'You: ' : '') + (conversation.lastMessagePreview || 'No messages yet');
+      
+      content.appendChild(header);
+      content.appendChild(preview);
+      
+      conversationEl.appendChild(avatar);
+      conversationEl.appendChild(content);
+      
+      if (conversation.unreadCount > 0) {
+        const badge = document.createElement('div');
+        badge.className = 'unread-badge';
+        badge.textContent = conversation.unreadCount;
+        conversationEl.appendChild(badge);
+      }
 
       // Add click event
       conversationEl.addEventListener('click', () => {
@@ -470,11 +486,12 @@ export class MessagingManager {
     }
 
     if (sortedMessages.length === 0) {
-      this.messagesContainer.innerHTML = `
-        <div class="empty-messages">
-          <p>No messages yet. Start the conversation!</p>
-        </div>
-      `;
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'empty-messages';
+      const p = document.createElement('p');
+      p.textContent = 'No messages yet. Start the conversation!';
+      emptyDiv.appendChild(p);
+      this.messagesContainer.appendChild(emptyDiv);
       return;
     }
 
@@ -496,7 +513,9 @@ export class MessagingManager {
 
         const dateEl = document.createElement('div');
         dateEl.className = 'message-date-separator';
-        dateEl.innerHTML = `<span>${messageDate.toLocaleDateString()}</span>`;
+        const span = document.createElement('span');
+        span.textContent = messageDate.toLocaleDateString();
+        dateEl.appendChild(span);
         this.messagesContainer.appendChild(dateEl);
       }
 
@@ -511,26 +530,36 @@ export class MessagingManager {
         minute: '2-digit',
       });
 
-      // Create message content
-      messageEl.innerHTML = `
-        <div class="message-content">
-          <div class="message-bubble">
-            <p>${message.isEncrypted ? '[Encrypted Message]' : message.content}</p>
-          </div>
-          <div class="message-meta">
-            <span class="message-time">${formattedTime}</span>
-            ${
-              message.fromUserId === this.userId
-                ? `
-              <span class="message-status">
-                <span class="material-icons">${message.isRead ? 'done_all' : 'done'}</span>
-              </span>
-            `
-                : ''
-            }
-          </div>
-        </div>
-      `;
+      // Create message content safely
+      const messageContent = document.createElement('div');
+      messageContent.className = 'message-content';
+      
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble';
+      const p = document.createElement('p');
+      p.textContent = message.isEncrypted ? '[Encrypted Message]' : message.content;
+      bubble.appendChild(p);
+      
+      const meta = document.createElement('div');
+      meta.className = 'message-meta';
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'message-time';
+      timeSpan.textContent = formattedTime;
+      meta.appendChild(timeSpan);
+      
+      if (message.fromUserId === this.userId) {
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'message-status';
+        const icon = document.createElement('span');
+        icon.className = 'material-icons';
+        icon.textContent = message.isRead ? 'done_all' : 'done';
+        statusSpan.appendChild(icon);
+        meta.appendChild(statusSpan);
+      }
+      
+      messageContent.appendChild(bubble);
+      messageContent.appendChild(meta);
+      messageEl.appendChild(messageContent);
 
       // Add message to container
       this.messagesContainer.appendChild(messageEl);

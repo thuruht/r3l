@@ -1,24 +1,35 @@
+/* eslint-env es6, browser */
 import { NavigationBar } from './components/navigation.js';
 import { generateRefCode, displayEmptyState } from './utils/ui-helpers.js';
 
 // A helper to display errors in a consistent way
 function displayError(container, message, code) {
   console.error(`Error ${code}: ${message}`);
-  const errorHtml = `
-    <div class="alert alert-error">
-      <span class="material-icons">error_outline</span>
-      <div>
-        <strong>An Error Occurred</strong>
-        <p>${message}</p>
-        <small>Error code: ${code}</small>
-      </div>
-    </div>
-  `;
-  if (typeof container === 'string') {
-    document.getElementById(container).innerHTML = errorHtml;
-  } else {
-    container.innerHTML = errorHtml;
-  }
+  const alertDiv = document.createElement('div');
+  alertDiv.className = 'alert alert-error';
+  
+  const icon = document.createElement('span');
+  icon.className = 'material-icons';
+  icon.textContent = 'error_outline';
+  
+  const contentDiv = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = 'An Error Occurred';
+  const p = document.createElement('p');
+  p.textContent = message;
+  const small = document.createElement('small');
+  small.textContent = `Error code: ${code}`;
+  
+  contentDiv.appendChild(strong);
+  contentDiv.appendChild(p);
+  contentDiv.appendChild(small);
+  
+  alertDiv.appendChild(icon);
+  alertDiv.appendChild(contentDiv);
+  
+  const targetContainer = typeof container === 'string' ? document.getElementById(container) : container;
+  targetContainer.innerHTML = '';
+  targetContainer.appendChild(alertDiv);
 }
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -224,17 +235,74 @@ document.addEventListener('DOMContentLoaded', function () {
         pointCard.className = 'map-point-card';
         const latitude = parseFloat(point.latitude).toFixed(4);
         const longitude = parseFloat(point.longitude).toFixed(4);
-        pointCard.innerHTML = `
-          <h4 class="map-point-title">${point.title}</h4>
-          <p class="map-point-coords">${latitude}, ${longitude}</p>
-          ${point.description ? `<p class="map-point-desc">${point.description}</p>` : ''}
-          <div class="map-point-actions">
-            <button class="view-on-map" data-id="${point.id}" aria-label="View on Map"><span class="material-icons" aria-hidden="true">map</span></button>
-            ${point.contentId ? `<button class="view-content" data-id="${point.contentId}" aria-label="View Content"><span class="material-icons" aria-hidden="true">description</span></button>` : ''}
-            <button class="edit-point" data-id="${point.id}" aria-label="Edit Point"><span class="material-icons" aria-hidden="true">edit</span></button>
-            <button class="delete-point" data-id="${point.id}" aria-label="Delete Point"><span class="material-icons" aria-hidden="true">delete</span></button>
-          </div>
-        `;
+        const title = document.createElement('h4');
+        title.className = 'map-point-title';
+        title.textContent = point.title;
+        
+        const coords = document.createElement('p');
+        coords.className = 'map-point-coords';
+        coords.textContent = `${latitude}, ${longitude}`;
+        
+        pointCard.appendChild(title);
+        pointCard.appendChild(coords);
+        
+        if (point.description) {
+          const desc = document.createElement('p');
+          desc.className = 'map-point-desc';
+          desc.textContent = point.description;
+          pointCard.appendChild(desc);
+        }
+        
+        const actions = document.createElement('div');
+        actions.className = 'map-point-actions';
+        
+        const viewMapBtn = document.createElement('button');
+        viewMapBtn.className = 'view-on-map';
+        viewMapBtn.dataset.id = point.id;
+        viewMapBtn.setAttribute('aria-label', 'View on Map');
+        const mapIcon = document.createElement('span');
+        mapIcon.className = 'material-icons';
+        mapIcon.setAttribute('aria-hidden', 'true');
+        mapIcon.textContent = 'map';
+        viewMapBtn.appendChild(mapIcon);
+        actions.appendChild(viewMapBtn);
+        
+        if (point.contentId) {
+          const viewContentBtn = document.createElement('button');
+          viewContentBtn.className = 'view-content';
+          viewContentBtn.dataset.id = point.contentId;
+          viewContentBtn.setAttribute('aria-label', 'View Content');
+          const descIcon = document.createElement('span');
+          descIcon.className = 'material-icons';
+          descIcon.setAttribute('aria-hidden', 'true');
+          descIcon.textContent = 'description';
+          viewContentBtn.appendChild(descIcon);
+          actions.appendChild(viewContentBtn);
+        }
+        
+        const editBtn = document.createElement('button');
+        editBtn.className = 'edit-point';
+        editBtn.dataset.id = point.id;
+        editBtn.setAttribute('aria-label', 'Edit Point');
+        const editIcon = document.createElement('span');
+        editIcon.className = 'material-icons';
+        editIcon.setAttribute('aria-hidden', 'true');
+        editIcon.textContent = 'edit';
+        editBtn.appendChild(editIcon);
+        actions.appendChild(editBtn);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-point';
+        deleteBtn.dataset.id = point.id;
+        deleteBtn.setAttribute('aria-label', 'Delete Point');
+        const deleteIcon = document.createElement('span');
+        deleteIcon.className = 'material-icons';
+        deleteIcon.setAttribute('aria-hidden', 'true');
+        deleteIcon.textContent = 'delete';
+        deleteBtn.appendChild(deleteIcon);
+        actions.appendChild(deleteBtn);
+        
+        pointCard.appendChild(actions);
         mapPointsContainer.appendChild(pointCard);
       });
     } catch (error) {
@@ -270,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  function setupActionButtons(user) {
+  function setupActionButtons(_user) {
     editProfileBtn.addEventListener('click', () => window.location.href = '/edit-profile.html');
 
     generateRecoveryKeyBtn.addEventListener('click', async () => {

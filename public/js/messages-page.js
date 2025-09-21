@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM elements
   const errorContainer = document.getElementById('error-container');
   const conversationsList = document.getElementById('conversations-list');
-  const chatContent = document.getElementById('chat-content');
+  const _chatContent = document.getElementById('chat-content');
   const emptyState = document.getElementById('empty-state');
   const chatInterface = document.getElementById('chat-interface');
   const chatHeader = document.getElementById('chat-header');
@@ -56,6 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
       hideUserSearchModal();
     }
   });
+
+  // Open a conversation
+  function openConversation(conversationId) {
+    currentConversation = conversationId;
+    emptyState.classList.add('hidden');
+    chatInterface.classList.remove('hidden');
+    
+    // Update active conversation in list
+    document.querySelectorAll('.conversation-item').forEach(item => {
+      item.classList.toggle('active', item.dataset.id === conversationId);
+    });
+    
+    loadMessages(conversationId);
+  }
 
   // Initialize messaging functionality
   async function initMessaging() {

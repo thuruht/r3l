@@ -353,7 +353,11 @@ function createApp(r2) {
             const stub = c.env.R3L_COLLABORATION.get(id);
             // Construct the new URL by taking the original URL and replacing the host and path
             const newUrl = new URL(c.req.url)
-            const newPath = newUrl.pathname.match(/\/api\/collaboration\/[^/]+(\/.*)/)[1]
+            const match = newUrl.pathname.match(/\/api\/collaboration\/[^/]+(\/.*)/)
+            if (!match) {
+                return c.json({ error: 'Invalid collaboration path' }, 400)
+            }
+            const newPath = match[1]
             newUrl.pathname = newPath
             const response = await stub.fetch(new Request(newUrl, c.req.raw));
             return response;

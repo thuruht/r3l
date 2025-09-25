@@ -1,0 +1,67 @@
+{
+  "name": "r3l",
+  "main": "./src/index.js",
+  "compatibility_date": "2025-07-18",
+  "compatibility_flags": ["nodejs_compat", "durable_object_alarms"],
+  "workers_dev": false,
+  "site": {
+    "bucket": "./public"
+  },
+  "d1_databases": [
+    {
+      "binding": "R3L_DB",
+      "database_name": "r3l-db",
+      "database_id": "69954d65-1aec-441f-8577-061148440abd"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "R3L_CONTENT_BUCKET",
+      "bucket_name": "r3l-content"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "R3L_KV",
+      "id": "ae72fbc4082047309134b41345a34a9f"
+    },
+    {
+      "binding": "R3L_SESSIONS",
+      "id": "2f02798d0e524db8947968539d298fd8"
+    },
+    {
+      "binding": "R3L_USER_EMBEDDINGS",
+      "id": "eedf189a672a4c49be3174dc12d4b119"
+    },
+    {
+      "binding": "R3L_USERS",
+      "id": "69534b9fac23416ab5bf24aab0c2ac6b"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "R3L_COLLABORATION", "class_name": "CollaborationRoom" },
+      { "name": "R3L_CONNECTIONS", "class_name": "ConnectionsObject" },
+      { "name": "R3L_VISUALIZATION", "class_name": "VisualizationObject" }
+    ]
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://r3l.distorted.work",
+    "CONTENT_EXPIRATION_DAYS": 30,
+    "D1_DATABASE": "R3L_DB",
+    "KV_NAMESPACE": "R3L_KV",
+    "MAX_UPLOAD_SIZE": 10485760,
+    "R2_BUCKET": "R3L_CONTENT_BUCKET",
+    "RATE_LIMIT_REQUESTS": 100,
+    "RATE_LIMIT_WINDOW": 60,
+    "WORKER_ENV": "production"
+  },
+  "triggers": {
+    "crons": ["0 */6 * * *"]
+  },
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  }
+}

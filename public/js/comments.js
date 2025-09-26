@@ -1,4 +1,3 @@
-import { apiGet, apiPost, API_ENDPOINTS } from './utils/api-helper.js';
 import { escapeHtml } from './utils/ui-helpers.js';
 
 class Comments {
@@ -21,7 +20,7 @@ class Comments {
   async loadComments() {
     this.commentsContainer.innerHTML = '<p>Loading comments...</p>';
     try {
-      const comments = await apiGet(API_ENDPOINTS.CONTENT.COMMENTS.GET(this.contentId));
+      const comments = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.CONTENT.COMMENTS.GET(this.contentId));
       this.renderComments(comments);
     } catch (error) {
       this.commentsContainer.innerHTML = '<p class="text-error">Failed to load comments.</p>';
@@ -36,63 +35,48 @@ class Comments {
       const commentsHtml = comments.map(comment => this.renderComment(comment)).join('');
       this.commentsContainer.innerHTML = commentsHtml;
     }
-    this.addCommentForm();
+
+    if (window.r3l.isAuthenticated()) {
+        this.addCommentForm();
+    } else {
+        this.commentsContainer.insertAdjacentHTML('beforeend', '<p>You must be <a href="/login.html">logged in</a> to comment.</p>');
+    }
   }
 
   renderComment(comment) {
-    const repliesHtml = comment.replies && comment.replies.length > 0
-      ? `<div class="comment-replies">${comment.replies.map(reply => this.renderComment(reply)).join('')}</div>`
-      : '';
-
     return `
       <div class="comment" data-comment-id="${comment.id}">
         <div class="comment-header">
-          <img src="${comment.avatar_url || '/icons/avatar.svg'}" alt="avatar" width="24" height="24" style="border-radius:50%">
+          <img src="/icons/avatar.svg" alt="avatar" width="24" height="24" style="border-radius:50%">
           <strong>${escapeHtml(comment.display_name || comment.username)}</strong>
           <span class="text-muted">${new Date(comment.created_at).toLocaleString()}</span>
         </div>
         <div class="comment-body">
           <p>${escapeHtml(comment.comment)}</p>
         </div>
-        <div class="comment-footer">
-          <button class="btn-link" onclick="window.comments.showReplyForm('${comment.id}')">Reply</button>
-        </div>
-        ${repliesHtml}
       </div>
     `;
   }
 
-  addCommentForm(parentCommentId = null) {
+  addCommentForm() {
     const formHtml = `
-      <form id="comment-form-${parentCommentId || 'root'}" class="comment-form">
+      <form id="comment-form-root" class="comment-form">
         <textarea name="comment" placeholder="Add a comment..." required></textarea>
         <button type="submit" class="btn">Submit</button>
       </form>
     `;
-    if (parentCommentId) {
-      const parentComment = this.commentsContainer.querySelector(`.comment[data-comment-id="${parentCommentId}"]`);
-      if (parentComment) {
-        // Remove any existing reply forms
-        const existingForm = parentComment.querySelector('.comment-form');
-        if (existingForm) {
-            existingForm.remove();
-        }
-        parentComment.insertAdjacentHTML('beforeend', formHtml);
-        const form = document.getElementById(`comment-form-${parentCommentId}`);
-        form.addEventListener('submit', (e) => this.handleCommentSubmit(e, parentCommentId));
-        form.querySelector('textarea').focus();
-      }
-    } else {
-      this.commentsContainer.insertAdjacentHTML('beforeend', formHtml);
-      document.getElementById('comment-form-root').addEventListener('submit', (e) => this.handleCommentSubmit(e, null));
+
+    // Remove existing form before adding a new one
+    const existingForm = this.commentsContainer.querySelector('#comment-form-root');
+    if (existingForm) {
+        existingForm.remove();
     }
+
+    this.commentsContainer.insertAdjacentHTML('beforeend', formHtml);
+    document.getElementById('comment-form-root').addEventListener('submit', (e) => this.handleCommentSubmit(e));
   }
 
-  showReplyForm(parentCommentId) {
-    this.addCommentForm(parentCommentId);
-  }
-
-  async handleCommentSubmit(event, parentCommentId) {
+  async handleCommentSubmit(event) {
     event.preventDefault();
     const form = event.target;
     const textarea = form.querySelector('textarea');
@@ -100,8 +84,7 @@ class Comments {
 
     if (comment) {
       try {
-        await apiPost(API_ENDPOINTS.CONTENT.COMMENTS.CREATE(this.contentId), {
-          parentCommentId,
+        await window.r3l.apiPost(window.r3l.API_ENDPOINTS.CONTENT.COMMENTS.CREATE(this.contentId), {
           comment,
         });
         textarea.value = '';

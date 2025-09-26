@@ -21,6 +21,8 @@ CREATE TABLE profiles (
     username TEXT UNIQUE NOT NULL, -- Public, user-chosen, changeable username
     displayName TEXT,
     bio TEXT,
+    avatarKey TEXT, -- Key for the user's avatar in R2
+    preferences TEXT, -- JSON blob for user preferences like theme, etc.
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -85,3 +87,40 @@ CREATE TABLE connections (
     FOREIGN KEY (followingId) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_connections_followingId ON connections(followingId);
+
+-- Bookmarks table
+CREATE TABLE bookmarks (
+    userId TEXT NOT NULL,
+    contentId TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    PRIMARY KEY (userId, contentId),
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (contentId) REFERENCES content(id) ON DELETE CASCADE
+);
+
+-- Messages table
+CREATE TABLE messages (
+    id TEXT PRIMARY KEY,
+    senderId TEXT NOT NULL,
+    recipientId TEXT NOT NULL,
+    content TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    isRead BOOLEAN DEFAULT 0,
+    FOREIGN KEY (senderId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (recipientId) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_messages_recipientId_createdAt ON messages(recipientId, createdAt);
+
+-- Notifications table
+CREATE TABLE notifications (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    type TEXT NOT NULL, -- e.g., 'new_message', 'new_follower', 'content_vote'
+    title TEXT NOT NULL,
+    content TEXT,
+    actionUrl TEXT, -- URL to navigate to when notification is clicked
+    isRead BOOLEAN DEFAULT 0,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_notifications_userId_createdAt ON notifications(userId, createdAt);

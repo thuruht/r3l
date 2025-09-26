@@ -275,6 +275,34 @@ function createApp(r2) {
         }
     });
 
+    publicApi.get('/content/:id', async (c) => {
+        const contentId = c.req.param('id');
+        const content = await c.env.R3L_DB.prepare(
+            `SELECT c.id, c.title, c.description, p.displayName as display_name, p.username, c.createdAt as created_at
+             FROM content c
+             JOIN profiles p ON c.userId = p.userId
+             WHERE c.id = ?`
+        ).bind(contentId).first();
+
+        if (!content) {
+            return c.json({ error: 'Content not found' }, 404);
+        }
+        return c.json(content);
+    });
+
+    publicApi.get('/content/:id/comments', async (c) => {
+        const contentId = c.req.param('id');
+        // This is a simplified query that doesn't handle nested replies.
+        const { results } = await c.env.R3L_DB.prepare(
+            `SELECT cm.id, cm.comment, cm.createdAt as created_at, p.displayName as display_name, p.username
+             FROM comments cm
+             JOIN profiles p ON cm.userId = p.userId
+             WHERE cm.contentId = ?
+             ORDER BY cm.createdAt DESC`
+        ).bind(contentId).all();
+        return c.json(results || []);
+    });
+
     publicApi.post('/login', zValidator('json', loginSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
         const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE email = ?")
@@ -409,6 +437,371 @@ function createApp(r2) {
         }
     });
 
+    protectedApi.get('/profile', async (c) => {
+        const userId = c.get('userId');
+        const user = await c.env.R3L_DB.prepare(
+            `SELECT u.id, u.email, u.createdAt as created_at, p.username, p.displayName, p.bio, p.avatarKey, p.preferences
+             FROM users u JOIN profiles p ON u.id = p.userId WHERE u.id = ?`
+        ).bind(userId).first();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 404);
+        }
+
+        // Parse preferences if they exist
+        if (user.preferences) {
+            try {
+                user.preferences = JSON.parse(user.preferences);
+            } catch (e) {
+                console.error("Failed to parse user preferences:", e);
+                user.preferences = {};
+            }
+        } else {
+            user.preferences = {};
+        }
+
+        return c.json(user);
+    });
+
+    protectedApi.get('/bookmarks', async (c) => {
+        const userId = c.get('userId');
+        const { results } = await c.env.R3L_DB.prepare(
+            `SELECT c.id, c.title, c.description, p.displayName as display_name, p.username
+             FROM content c
+             JOIN bookmarks b ON c.id = b.contentId
+             JOIN profiles p ON c.userId = p.userId
+             WHERE b.userId = ?`
+        ).bind(userId).all();
+        return c.json(results);
+    });
+
+    protectedApi.get('/messages/user/:otherUserId', async (c) => {
+        const userId = c.get('userId');
+        const otherUserId = c.req.param('otherUserId');
+
+        const { results } = await c.env.R3L_DB.prepare(`
+            SELECT id, senderId, recipientId, content, createdAt, isRead
+            FROM messages
+            WHERE (senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?)
+            ORDER BY createdAt ASC
+        `).bind(userId, otherUserId, otherUserId, userId).all();
+
+        return c.json(results);
+    });
+
+    protectedApi.post('/content/:id/vote', async (c) => {
+        const userId = c.get('userId');
+        const contentId = c.req.param('id');
+        // This is a simplified implementation for demonstration.
+        // A real app would have more robust vote tracking.
+        console.log(`User ${userId} voted for content ${contentId}`);
+        return c.json({ success: true, message: 'Vote recorded' });
+    });
+
+    protectedApi.post('/content/:id/bookmark', async (c) => {
+        const userId = c.get('userId');
+        const contentId = c.req.param('id');
+        await c.env.R3L_DB.prepare(
+            "INSERT OR IGNORE INTO bookmarks (userId, contentId) VALUES (?, ?)"
+        ).bind(userId, contentId).run();
+        return c.json({ success: true, message: 'Bookmarked' });
+    });
+
+    protectedApi.delete('/content/:id/bookmark', async (c) => {
+        const userId = c.get('userId');
+        const contentId = c.req.param('id');
+        await c.env.R3L_DB.prepare(
+            "DELETE FROM bookmarks WHERE userId = ? AND contentId = ?"
+        ).bind(userId, contentId).run();
+        return c.json({ success: true, message: 'Bookmark removed' });
+    });
+
+    protectedApi.post('/content/:id/react', async (c) => {
+        const userId = c.get('userId');
+        const contentId = c.req.param('id');
+        const { reaction } = await c.req.json();
+        // Simplified implementation
+        console.log(`User ${userId} reacted with ${reaction} to content ${contentId}`);
+        return c.json({ success: true, message: 'Reaction saved' });
+    });
+
+    protectedApi.post('/content/:id/comments', async (c) => {
+        const userId = c.get('userId');
+        const contentId = c.req.param('id');
+        const { comment, parentCommentId } = await c.req.json();
+
+        if (!comment || comment.trim().length === 0) {
+            return c.json({ error: 'Comment cannot be empty' }, 400);
+        }
+
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO comments (id, userId, contentId, parentCommentId, comment) VALUES (?, ?, ?, ?, ?)"
+        ).bind(crypto.randomUUID(), userId, contentId, parentCommentId || null, comment).run();
+
+        return c.json({ success: true });
+    });
+
+    protectedApi.get('/messages/conversations', async (c) => {
+        const userId = c.get('userId');
+
+        const { results } = await c.env.R3L_DB.prepare(`
+            WITH LastMessage AS (
+                SELECT
+                    CASE
+                        WHEN senderId = ? THEN recipientId
+                        ELSE senderId
+                    END AS otherUserId,
+                    MAX(createdAt) AS lastMessageTime
+                FROM messages
+                WHERE senderId = ? OR recipientId = ?
+                GROUP BY otherUserId
+            )
+            SELECT
+                lm.otherUserId,
+                p.displayName,
+                p.username,
+                m.content as lastMessagePreview,
+                m.createdAt as lastMessageAt,
+                (m.senderId = ?) as isLastMessageFromMe,
+                (SELECT COUNT(*) FROM messages WHERE senderId = lm.otherUserId AND recipientId = ? AND isRead = 0) as unreadCount
+            FROM LastMessage lm
+            JOIN messages m ON (
+                (m.senderId = lm.otherUserId AND m.recipientId = ?) OR
+                (m.senderId = ? AND m.recipientId = lm.otherUserId)
+            ) AND m.createdAt = lm.lastMessageTime
+            JOIN profiles p ON p.userId = lm.otherUserId
+            ORDER BY lm.lastMessageTime DESC
+        `).bind(userId, userId, userId, userId, userId, userId, userId).all();
+
+        return c.json(results);
+    });
+
+    protectedApi.post('/messages/send', async (c) => {
+        const userId = c.get('userId');
+        const { recipientId, content } = await c.req.json();
+
+        if (!recipientId || !content) {
+            return c.json({ error: 'Recipient and content are required' }, 400);
+        }
+
+        const messageId = crypto.randomUUID();
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO messages (id, senderId, recipientId, content) VALUES (?, ?, ?, ?)"
+        ).bind(messageId, userId, recipientId, content).run();
+
+        return c.json({ success: true, messageId });
+    });
+
+    protectedApi.get('/feed', async (c) => {
+        const userId = c.get('userId');
+        const { limit = 20, offset = 0 } = c.req.query();
+
+        const { results } = await c.env.R3L_DB.prepare(`
+            SELECT
+                c.id, c.title, c.description, c.createdAt as created_at,
+                p.username, p.displayName as display_name, p.avatarKey as avatar_key,
+                cl.expiresAt as content_expires_at
+            FROM content c
+            JOIN profiles p ON c.userId = p.userId
+            JOIN content_lifecycle cl ON c.id = cl.contentId
+            WHERE c.userId IN (SELECT followingId FROM connections WHERE followerId = ?)
+            ORDER BY c.createdAt DESC
+            LIMIT ? OFFSET ?
+        `).bind(userId, limit, offset).all();
+
+        const hasMore = results.length === limit;
+
+        return c.json({
+            items: results || [],
+            pagination: { hasMore }
+        });
+    });
+
+    protectedApi.post('/files/avatar', async (c) => {
+        const userId = c.get('userId');
+        const formData = await c.req.formData();
+        const file = formData.get('file');
+
+        if (!file || !(file instanceof File)) {
+            return c.json({ error: 'File upload is required.' }, 400);
+        }
+
+        const objectKey = `avatars/${userId}/${crypto.randomUUID()}-${file.name}`;
+
+        await c.env.R3L_CONTENT_BUCKET.put(objectKey, await file.arrayBuffer(), {
+            httpMetadata: { contentType: file.type },
+        });
+
+        return c.json({ success: true, avatarKey: objectKey });
+    });
+
+    protectedApi.patch('/user/profile', async (c) => {
+        const userId = c.get('userId');
+        const { displayName, bio, avatarKey } = await c.req.json();
+
+        // Build the update query dynamically
+        const fields = [];
+        const params = [];
+        if (displayName !== undefined) {
+            fields.push('displayName = ?');
+            params.push(displayName);
+        }
+        if (bio !== undefined) {
+            fields.push('bio = ?');
+            params.push(bio);
+        }
+        if (avatarKey !== undefined) {
+            fields.push('avatarKey = ?');
+            params.push(avatarKey);
+        }
+
+        if (fields.length === 0) {
+            return c.json({ error: 'No fields to update' }, 400);
+        }
+
+        params.push(userId);
+        const stmt = `UPDATE profiles SET ${fields.join(', ')} WHERE userId = ?`;
+
+        await c.env.R3L_DB.prepare(stmt).bind(...params).run();
+
+        return c.json({ success: true });
+    });
+
+    protectedApi.patch('/user/preferences', async (c) => {
+        const userId = c.get('userId');
+        const body = await c.req.json();
+
+        // Fetch existing preferences
+        const user = await c.env.R3L_DB.prepare(`SELECT preferences FROM profiles WHERE userId = ?`).bind(userId).first();
+        let preferences = {};
+        if (user && user.preferences) {
+            try {
+                preferences = JSON.parse(user.preferences);
+            } catch (e) { /* ignore invalid json */ }
+        }
+
+        // Merge new preferences
+        const newPreferences = { ...preferences, ...body };
+
+        await c.env.R3L_DB.prepare(
+            `UPDATE profiles SET preferences = ? WHERE userId = ?`
+        ).bind(JSON.stringify(newPreferences), userId).run();
+
+        return c.json({ success: true });
+    });
+
+    protectedApi.get('/user/files', async (c) => {
+        const userId = c.get('userId');
+        const { filter, page = 1, query = '' } = c.req.query();
+        const limit = 20;
+        const offset = (page - 1) * limit;
+
+        let whereClause = 'WHERE c.userId = ?';
+        const params = [userId];
+
+        if (query) {
+            whereClause += ` AND (c.title LIKE ? OR c.description LIKE ?)`;
+            params.push(`%${query}%`, `%${query}%`);
+        }
+
+        if (filter && filter !== 'all') {
+            // This is a simplified filter. A real app might have more complex logic.
+            whereClause += ` AND cl.status = ?`;
+            params.push(filter);
+        }
+
+        const filesPromise = c.env.R3L_DB.prepare(`
+            SELECT c.id, c.title, c.description, cl.status as archive_status, cl.expiresAt as expires_at, ct.contentType as type
+            FROM content c
+            JOIN content_lifecycle cl ON c.id = cl.contentId
+            JOIN content_location ct ON c.id = ct.contentId
+            ${whereClause}
+            ORDER BY c.createdAt DESC
+            LIMIT ? OFFSET ?
+        `).bind(...params, limit, offset).all();
+
+        const countPromise = c.env.R3L_DB.prepare(`
+            SELECT COUNT(*) as count
+            FROM content c
+            JOIN content_lifecycle cl ON c.id = cl.contentId
+            ${whereClause}
+        `).bind(...params).first();
+
+        const [filesResult, countResult] = await Promise.all([filesPromise, countPromise]);
+
+        return c.json({
+            files: filesResult.results || [],
+            page: Number(page),
+            totalPages: Math.ceil((countResult.count || 0) / limit),
+        });
+    });
+
+    protectedApi.get('/user/stats', async (c) => {
+        const userId = c.get('userId');
+
+        const contentPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM content WHERE userId = ?`).bind(userId).first();
+        const archivedPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM content c JOIN content_lifecycle cl ON c.id = cl.contentId WHERE c.userId = ? AND cl.status = 'archived'`).bind(userId).first();
+        const connectionsPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM connections WHERE followerId = ?`).bind(userId).first();
+
+        const [contentResult, archivedResult, connectionsResult] = await Promise.all([contentPromise, archivedPromise, connectionsPromise]);
+
+        return c.json({
+            content_count: contentResult.count || 0,
+            archived_count: archivedResult.count || 0,
+            connection_count: connectionsResult.count || 0,
+        });
+    });
+
+    // Notification routes
+    protectedApi.get('/notifications', async (c) => {
+        const userId = c.get('userId');
+        const { results } = await c.env.R3L_DB.prepare(
+            `SELECT id, type, title, content, actionUrl, isRead, createdAt
+             FROM notifications
+             WHERE userId = ?
+             ORDER BY createdAt DESC`
+        ).bind(userId).all();
+        return c.json(results || []);
+    });
+
+    protectedApi.get('/notifications/unread-count', async (c) => {
+        const userId = c.get('userId');
+        const result = await c.env.R3L_DB.prepare(
+            `SELECT COUNT(*) as count FROM notifications WHERE userId = ? AND isRead = 0`
+        ).bind(userId).first();
+        return c.json({ count: result.count });
+    });
+
+    protectedApi.post('/notifications/mark-read', async (c) => {
+        const userId = c.get('userId');
+        const { ids } = await c.req.json();
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return c.json({ error: 'Notification IDs must be provided in an array.' }, 400);
+        }
+        const placeholders = ids.map(() => '?').join(',');
+        await c.env.R3L_DB.prepare(
+            `UPDATE notifications SET isRead = 1 WHERE userId = ? AND id IN (${placeholders})`
+        ).bind(userId, ...ids).run();
+        return c.json({ success: true });
+    });
+
+    protectedApi.post('/notifications/mark-all-read', async (c) => {
+        const userId = c.get('userId');
+        await c.env.R3L_DB.prepare(
+            `UPDATE notifications SET isRead = 1 WHERE userId = ?`
+        ).bind(userId).run();
+        return c.json({ success: true });
+    });
+
+    protectedApi.delete('/notifications/:id', async (c) => {
+        const userId = c.get('userId');
+        const notificationId = c.req.param('id');
+        await c.env.R3L_DB.prepare(
+            `DELETE FROM notifications WHERE id = ? AND userId = ?`
+        ).bind(notificationId, userId).run();
+        return c.json({ success: true });
+    });
+
     api.route('/', protectedApi);
 
     app.route('/api', api);
@@ -462,14 +855,14 @@ async function processDeletedContent(env, r2) {
 // --- WORKER EXPORT ---
 export default {
   async fetch(request, env, ctx) {
-    try {
-      const r2 = env.R3L_CONTENT_BUCKET;
-      const app = createApp(r2);
-      return await app.fetch(request, env, ctx);
-    } catch (err) {
-      console.error('Unhandled error in fetch:', err);
-      return new Response('Internal Server Error', { status: 500 });
+    const url = new URL(request.url);
+    // If the request is for an API route, let Hono handle it.
+    if (url.pathname.startsWith('/api/')) {
+        const app = createApp(env.R3L_CONTENT_BUCKET);
+        return app.fetch(request, env, ctx);
     }
+    // Otherwise, serve the static asset.
+    return env.ASSETS.fetch(request);
   },
   async scheduled(event, env, ctx) {
     console.log(`CRON: Triggered at ${new Date(event.scheduledTime).toISOString()}`);

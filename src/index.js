@@ -3,7 +3,6 @@ import { bearerAuth } from 'hono/bearer-auth';
 import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { serveStatic } from 'hono/cloudflare-workers';
 import bcrypt from 'bcryptjs';
 
 // --- DURABLE OBJECTS ---
@@ -195,12 +194,18 @@ const contentCreateSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+const validationErrorHandler = (result, c) => {
+    if (!result.success) {
+        return c.json({
+            error: 'Validation failed',
+            messages: result.error.flatten().fieldErrors
+        }, 422);
+    }
+};
+
 // --- HONO APP FACTORY ---
 function createApp(r2) {
     const app = new Hono();
-
-    // Serve static assets from 'public' directory first
-    app.use('*', serveStatic({ root: './' }));
 
     app.onError((err, c) => {
         console.error(`Hono App Error: ${err}`, err.stack);
@@ -241,7 +246,7 @@ function createApp(r2) {
     // --- PUBLIC API ROUTES ---
     const publicApi = new Hono();
 
-    publicApi.post('/register', zValidator('json', registerSchema), async (c) => {
+    publicApi.post('/register', zValidator('json', registerSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
         const userId = crypto.randomUUID();
         const passwordHash = await bcrypt.hash(body.password, 10);
@@ -255,27 +260,36 @@ function createApp(r2) {
             ]);
             return c.json({ success: true, userId: userId }, 201);
         } catch (e) {
-             if (e.message.includes('UNIQUE constraint failed')) {
+             if (e.message && e.message.includes('UNIQUE constraint failed')) {
+                // More specific error based on which constraint failed
+                if (e.message.includes('users.email')) {
+                    return c.json({ error: 'An account with this email already exists.' }, 409);
+                }
+                if (e.message.includes('profiles.username')) {
+                    return c.json({ error: 'This username is already taken.' }, 409);
+                }
                 return c.json({ error: 'Email or username already exists.' }, 409);
             }
-            console.error("Registration failed:", e.message);
+            console.error("Registration failed:", e);
             return c.json({ error: 'Registration failed due to a server error.' }, 500);
         }
     });
 
-    publicApi.post('/login', zValidator('json', loginSchema), async (c) => {
+    publicApi.post('/login', zValidator('json', loginSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
         const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE email = ?")
             .bind(body.email)
             .first();
 
         if (!user) {
+            console.log(`Login failed: User not found for email ${body.email}`);
             return c.json({ error: 'Invalid email or password.' }, 401);
         }
 
         const passwordMatch = await bcrypt.compare(body.password, user.passwordHash);
 
         if (!passwordMatch) {
+            console.log(`Login failed: Invalid password for user ${user.id}`);
             return c.json({ error: 'Invalid email or password.' }, 401);
         }
 
@@ -297,15 +311,26 @@ function createApp(r2) {
     protectedApi.use('*', bearerAuth({
         verifyToken: async (token, c) => {
             const session = await c.env.R3L_DB.prepare(
-                "SELECT userId FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
+                "SELECT userId, userAgent FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
             ).bind(token).first();
-            if (!session) return false;
+
+            if (!session) {
+                return false;
+            }
+
+            // Verify the User-Agent to prevent token hijacking
+            const requestUserAgent = c.req.header('user-agent') || 'unknown';
+            if (session.userAgent !== requestUserAgent) {
+                console.warn(`Session token used with mismatched User-Agent. Original: "${session.userAgent}", Request: "${requestUserAgent}"`);
+                return false;
+            }
+
             c.set('userId', session.userId);
             return true;
         }
     }));
 
-    protectedApi.post('/content', zValidator('json', contentCreateSchema), async (c) => {
+    protectedApi.post('/content', zValidator('json', contentCreateSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
         const userId = c.get('userId');
         const maxUploadSize = Number(c.env.MAX_UPLOAD_SIZE);

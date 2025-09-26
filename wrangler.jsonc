@@ -45,6 +45,16 @@
       { "name": "R3L_VISUALIZATION", "class_name": "VisualizationObject" }
     ]
   },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "CollaborationRoom",
+        "ConnectionsObject",
+        "VisualizationObject"
+      ]
+    }
+  ],
   "vars": {
     "ALLOWED_ORIGINS": "https://r3l.distorted.work",
     "CONTENT_EXPIRATION_DAYS": 30,

@@ -124,3 +124,18 @@ CREATE TABLE notifications (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_notifications_userId_createdAt ON notifications(userId, createdAt);
+
+-- Comments table
+CREATE TABLE comments (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    contentId TEXT NOT NULL,
+    parentCommentId TEXT, -- For nested replies
+    comment TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (contentId) REFERENCES content(id) ON DELETE CASCADE,
+    FOREIGN KEY (parentCommentId) REFERENCES comments(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_comments_contentId ON comments(contentId);
+CREATE INDEX idx_comments_parentCommentId ON comments(parentCommentId);

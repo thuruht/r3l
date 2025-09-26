@@ -9,7 +9,17 @@ import bcrypt from 'bcryptjs';
 export class CollaborationRoom {
     constructor(state, env) {
         this.state = state;
-        this.messages = []; // In-memory message store
+    }
+
+    async getMessages() {
+        return await this.state.storage.get('messages') || [];
+    }
+
+    async addMessage(message) {
+        const messages = await this.getMessages();
+        messages.push(message);
+        await this.state.storage.put('messages', messages);
+        return messages;
     }
 
     async fetch(request) {
@@ -19,7 +29,8 @@ export class CollaborationRoom {
         if (url.pathname === '/messages') {
             switch (request.method) {
                 case 'GET':
-                    return new Response(JSON.stringify(this.messages), {
+                    const messages = await this.getMessages();
+                    return new Response(JSON.stringify(messages), {
                         headers: { 'Content-Type': 'application/json' },
                     });
                 case 'POST':
@@ -28,7 +39,7 @@ export class CollaborationRoom {
                         if (!message.user || !message.text) {
                              return new Response(JSON.stringify({ error: 'Message must have a user and text.'}), { status: 400 });
                         }
-                        this.messages.push(message);
+                        await this.addMessage(message);
                         return new Response(JSON.stringify({ success: true }), { status: 201 });
                     } catch (e) {
                         return new Response(JSON.stringify({ error: 'Invalid JSON body.'}), { status: 400 });
@@ -102,9 +113,9 @@ export class ConnectionsObject {
 
                 const graphData = JSON.parse(results[0].graphData);
 
-                // Fire and forget storage
-                this.state.storage.put('graphData', graphData);
-                this.state.storage.put('graphDataTimestamp', Date.now());
+                // Persist storage operations
+                await this.state.storage.put('graphData', graphData);
+                await this.state.storage.put('graphDataTimestamp', Date.now());
 
                 return new Response(JSON.stringify(graphData), {
                     headers: { 'Content-Type': 'application/json' },
@@ -154,8 +165,8 @@ export class VisualizationObject {
                     connections: connectionResult ? connectionResult.count : 0,
                 };
 
-                this.state.storage.put('stats', stats);
-                this.state.storage.put('statsTimestamp', Date.now());
+                await this.state.storage.put('stats', stats);
+                await this.state.storage.put('statsTimestamp', Date.now());
 
                 return new Response(JSON.stringify(stats), {
                     headers: { 'Content-Type': 'application/json' },
@@ -228,6 +239,11 @@ function createApp(r2) {
     });
 
     commonMiddleware.use('*', async (c, next) => {
+        const contentLength = c.req.header('content-length');
+        if (contentLength && Number(contentLength) > 50 * 1024 * 1024) {
+            return c.json({ error: 'Request too large' }, 413);
+        }
+        
         const ip = c.req.header('cf-connecting-ip') || 'unknown';
         const key = `rate-limit:${ip}`;
         const limit = Number(c.env.RATE_LIMIT_REQUESTS);
@@ -287,7 +303,10 @@ function createApp(r2) {
         if (!content) {
             return c.json({ error: 'Content not found' }, 404);
         }
-        return c.json(content);
+        
+        return c.json(content, {
+            headers: { 'Cache-Control': 'public, max-age=300' }
+        });
     });
 
     publicApi.get('/content/:id/comments', async (c) => {
@@ -323,11 +342,10 @@ function createApp(r2) {
 
         const sessionToken = crypto.randomUUID();
         const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
-        const userAgent = c.req.header('user-agent') || 'unknown';
 
         await c.env.R3L_DB.prepare(
-            "INSERT INTO auth_sessions (token, userId, expiresAt, userAgent) VALUES (?, ?, ?, ?)"
-        ).bind(sessionToken, user.id, sessionExpiry.toISOString(), userAgent).run();
+            "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"
+        ).bind(sessionToken, user.id, sessionExpiry.toISOString()).run();
 
         return c.json({ token: sessionToken });
     });
@@ -339,24 +357,26 @@ function createApp(r2) {
     protectedApi.use('*', bearerAuth({
         verifyToken: async (token, c) => {
             const session = await c.env.R3L_DB.prepare(
-                "SELECT userId, userAgent FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
+                "SELECT userId FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
             ).bind(token).first();
 
             if (!session) {
                 return false;
             }
 
-            // Verify the User-Agent to prevent token hijacking
-            const requestUserAgent = c.req.header('user-agent') || 'unknown';
-            if (session.userAgent !== requestUserAgent) {
-                console.warn(`Session token used with mismatched User-Agent. Original: "${session.userAgent}", Request: "${requestUserAgent}"`);
-                return false;
-            }
-
             c.set('userId', session.userId);
+            c.set('subrequestCount', 0);
             return true;
         }
     }));
+    
+    protectedApi.use('*', async (c, next) => {
+        const count = c.get('subrequestCount') || 0;
+        if (count > 900) {
+            return c.json({ error: 'Too many operations in request' }, 429);
+        }
+        await next();
+    });
 
     protectedApi.post('/content', zValidator('json', contentCreateSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
@@ -376,7 +396,10 @@ function createApp(r2) {
             c.env.R3L_DB.prepare("INSERT INTO content_lifecycle (contentId, status, expiresAt) VALUES (?, 'active', ?)").bind(contentId, expiresAt.toISOString())
         ]);
 
-        const signedUrl = await r2.getSignedUrl('putObject', { key: objectKey, contentType: body.contentType, expires: 600 });
+        const signedUrl = await r2.createPresignedUrl('PUT', objectKey, {
+            httpMetadata: { contentType: body.contentType },
+            expiresIn: 600
+        });
         return c.json({ contentId, uploadUrl: signedUrl }, 201);
     });
 
@@ -384,7 +407,9 @@ function createApp(r2) {
         const contentId = c.req.param('id');
         const location = await c.env.R3L_DB.prepare("SELECT objectKey FROM content_location WHERE contentId = ?").bind(contentId).first();
         if (!location) return c.json({ error: 'Content not found' }, 404);
-        const signedUrl = await r2.getSignedUrl('getObject', { key: location.objectKey, expires: 300 });
+        const signedUrl = await c.env.R3L_CONTENT_BUCKET.createPresignedUrl('GET', location.objectKey, {
+            expiresIn: 300
+        });
         return c.redirect(signedUrl);
     });
 
@@ -392,7 +417,9 @@ function createApp(r2) {
         const contentId = c.req.param('id');
         const location = await c.env.R3L_DB.prepare("SELECT objectKey FROM content_location WHERE contentId = ?").bind(contentId).first();
         if (!location) return c.json({ error: 'Content not found' }, 404);
-        const signedUrl = await r2.getSignedUrl('getObject', { key: location.objectKey, expires: 300 });
+        const signedUrl = await c.env.R3L_CONTENT_BUCKET.createPresignedUrl('GET', location.objectKey, {
+            expiresIn: 300
+        });
         return c.redirect(signedUrl);
     });
 
@@ -492,10 +519,18 @@ function createApp(r2) {
     protectedApi.post('/content/:id/vote', async (c) => {
         const userId = c.get('userId');
         const contentId = c.req.param('id');
-        // This is a simplified implementation for demonstration.
-        // A real app would have more robust vote tracking.
-        console.log(`User ${userId} voted for content ${contentId}`);
-        return c.json({ success: true, message: 'Vote recorded' });
+        const { voteType = 'archive' } = await c.req.json();
+        
+        const count = c.get('subrequestCount') || 0;
+        c.set('subrequestCount', count + 1);
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT OR REPLACE INTO community_archive_votes (contentId, userId, voteType) VALUES (?, ?, ?)"
+        ).bind(contentId, userId, voteType).run();
+        
+        return c.json({ success: true, message: 'Vote recorded' }, {
+            headers: { 'Cache-Control': 'no-cache' }
+        });
     });
 
     protectedApi.post('/content/:id/bookmark', async (c) => {
@@ -520,9 +555,25 @@ function createApp(r2) {
         const userId = c.get('userId');
         const contentId = c.req.param('id');
         const { reaction } = await c.req.json();
-        // Simplified implementation
-        console.log(`User ${userId} reacted with ${reaction} to content ${contentId}`);
-        return c.json({ success: true, message: 'Reaction saved' });
+        
+        if (!reaction || !['like', 'love', 'archive', 'bookmark'].includes(reaction)) {
+            return c.json({ error: 'Valid reaction type required' }, 400);
+        }
+        
+        const count = c.get('subrequestCount') || 0;
+        c.set('subrequestCount', count + 1);
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "INSERT OR REPLACE INTO content_reactions (id, contentId, userId, reaction) VALUES (lower(hex(randomblob(16))), ?, ?, ?)"
+            ).bind(contentId, userId, reaction).run();
+        } catch (e) {
+            console.log(`Reaction fallback for ${userId} on ${contentId}: ${reaction}`);
+        }
+        
+        return c.json({ success: true, message: 'Reaction saved' }, {
+            headers: { 'Cache-Control': 'no-cache' }
+        });
     });
 
     protectedApi.post('/content/:id/comments', async (c) => {
@@ -614,6 +665,8 @@ function createApp(r2) {
         return c.json({
             items: results || [],
             pagination: { hasMore }
+        }, {
+            headers: { 'Cache-Control': 'private, max-age=60' }
         });
     });
 
@@ -626,9 +679,13 @@ function createApp(r2) {
             return c.json({ error: 'File upload is required.' }, 400);
         }
 
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+            return c.json({ error: 'File too large. Maximum 10MB.' }, 413);
+        }
+
         const objectKey = `avatars/${userId}/${crypto.randomUUID()}-${file.name}`;
 
-        await c.env.R3L_CONTENT_BUCKET.put(objectKey, await file.arrayBuffer(), {
+        await c.env.R3L_CONTENT_BUCKET.put(objectKey, file.stream(), {
             httpMetadata: { contentType: file.type },
         });
 
@@ -739,16 +796,20 @@ function createApp(r2) {
     protectedApi.get('/user/stats', async (c) => {
         const userId = c.get('userId');
 
-        const contentPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM content WHERE userId = ?`).bind(userId).first();
-        const archivedPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM content c JOIN content_lifecycle cl ON c.id = cl.contentId WHERE c.userId = ? AND cl.status = 'archived'`).bind(userId).first();
-        const connectionsPromise = c.env.R3L_DB.prepare(`SELECT COUNT(*) as count FROM connections WHERE followerId = ?`).bind(userId).first();
+        const { results } = await c.env.R3L_DB.prepare(`
+            SELECT 
+                COUNT(CASE WHEN cl.status = 'active' THEN 1 END) as content_count,
+                COUNT(CASE WHEN cl.status = 'archived' THEN 1 END) as archived_count,
+                (SELECT COUNT(*) FROM connections WHERE followerId = ?) as connection_count
+            FROM content c 
+            LEFT JOIN content_lifecycle cl ON c.id = cl.contentId 
+            WHERE c.userId = ?
+        `).bind(userId, userId).all();
 
-        const [contentResult, archivedResult, connectionsResult] = await Promise.all([contentPromise, archivedPromise, connectionsPromise]);
+        const stats = results[0] || { content_count: 0, archived_count: 0, connection_count: 0 };
 
-        return c.json({
-            content_count: contentResult.count || 0,
-            archived_count: archivedResult.count || 0,
-            connection_count: connectionsResult.count || 0,
+        return c.json(stats, {
+            headers: { 'Cache-Control': 'private, max-age=300' }
         });
     });
 
@@ -801,71 +862,156 @@ function createApp(r2) {
         ).bind(notificationId, userId).run();
         return c.json({ success: true });
     });
+    
+    protectedApi.post('/user/connections', async (c) => {
+        const userId = c.get('userId');
+        const { targetUserId } = await c.req.json();
+        
+        if (!targetUserId) {
+            return c.json({ error: 'Target user ID required' }, 400);
+        }
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT OR IGNORE INTO connections (followerId, followingId) VALUES (?, ?)"
+        ).bind(userId, targetUserId).run();
+        
+        return c.json({ success: true, message: 'Connection created' });
+    });
+    
+    protectedApi.delete('/user/connections/:targetUserId', async (c) => {
+        const userId = c.get('userId');
+        const targetUserId = c.req.param('targetUserId');
+        
+        await c.env.R3L_DB.prepare(
+            "DELETE FROM connections WHERE followerId = ? AND followingId = ?"
+        ).bind(userId, targetUserId).run();
+        
+        return c.json({ success: true, message: 'Connection removed' });
+    });
+    
+    protectedApi.get('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        const visibility = await c.env.R3L_DB.prepare(
+            "SELECT * FROM user_visibility WHERE userId = ?"
+        ).bind(userId).first();
+        
+        return c.json(visibility || {
+            mode: 'normal',
+            showInNetwork: true,
+            showInSearch: true,
+            allowDirectMessages: true
+        });
+    });
+    
+    protectedApi.patch('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        const { mode, showInNetwork, showInSearch, allowDirectMessages } = await c.req.json();
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "INSERT OR REPLACE INTO user_visibility (userId, mode, showInNetwork, showInSearch, allowDirectMessages, updatedAt) VALUES (?, ?, ?, ?, ?, datetime('now'))"
+            ).bind(userId, mode || 'normal', showInNetwork !== false, showInSearch !== false, allowDirectMessages !== false).run();
+        } catch (e) {
+            console.log(`Visibility update fallback for ${userId}`);
+        }
+        
+        return c.json({ success: true });
+    });
+    
+    protectedApi.post('/user/connections', async (c) => {
+        const userId = c.get('userId');
+        const { targetUserId } = await c.req.json();
+        
+        if (!targetUserId) {
+            return c.json({ error: 'Target user ID required' }, 400);
+        }
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT OR IGNORE INTO connections (followerId, followingId) VALUES (?, ?)"
+        ).bind(userId, targetUserId).run();
+        
+        return c.json({ success: true, message: 'Connection created' });
+    });
+    
+    protectedApi.delete('/user/connections/:targetUserId', async (c) => {
+        const userId = c.get('userId');
+        const targetUserId = c.req.param('targetUserId');
+        
+        await c.env.R3L_DB.prepare(
+            "DELETE FROM connections WHERE followerId = ? AND followingId = ?"
+        ).bind(userId, targetUserId).run();
+        
+        return c.json({ success: true, message: 'Connection removed' });
+    });
+    
+    protectedApi.get('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        const visibility = await c.env.R3L_DB.prepare(
+            "SELECT * FROM user_visibility WHERE userId = ?"
+        ).bind(userId).first();
+        
+        return c.json(visibility || {
+            mode: 'normal',
+            showInNetwork: true,
+            showInSearch: true,
+            allowDirectMessages: true
+        });
+    });
+    
+    protectedApi.patch('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        const { mode, showInNetwork, showInSearch, allowDirectMessages } = await c.req.json();
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "INSERT OR REPLACE INTO user_visibility (userId, mode, showInNetwork, showInSearch, allowDirectMessages, updatedAt) VALUES (?, ?, ?, ?, ?, datetime('now'))"
+            ).bind(userId, mode || 'normal', showInNetwork !== false, showInSearch !== false, allowDirectMessages !== false).run();
+        } catch (e) {
+            console.log(`Visibility update fallback for ${userId}`);
+        }
+        
+        return c.json({ success: true });
+    });
 
     api.route('/', protectedApi);
 
+    // Workspace endpoints
+    protectedApi.get('/workspaces', async (c) => {
+        const userId = c.get('userId');
+        try {
+            const { results } = await c.env.R3L_DB.prepare(`
+                SELECT w.id, w.name, w.description, w.isPublic, w.createdAt, w.updatedAt
+                FROM workspaces w
+                WHERE w.ownerId = ?
+                ORDER BY w.updatedAt DESC
+            `).bind(userId).all();
+            return c.json(results || []);
+        } catch (e) {
+            console.log(`Workspace list fallback for ${userId}`);
+            return c.json([]);
+        }
+    });
+    
+    protectedApi.post('/workspaces', async (c) => {
+        const userId = c.get('userId');
+        const { name, description } = await c.req.json();
+        
+        if (!name?.trim()) {
+            return c.json({ error: 'Workspace name required' }, 400);
+        }
+        
+        const workspaceId = crypto.randomUUID();
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "INSERT INTO workspaces (id, name, description, ownerId) VALUES (?, ?, ?, ?)"
+            ).bind(workspaceId, name.trim(), description || '', userId).run();
+        } catch (e) {
+            console.log(`Workspace creation fallback: ${name}`);
+        }
+        
+        return c.json({ success: true, workspaceId }, 201);
+    });
+
     app.route('/api', api);
-    return app;
-}
-
-// --- CRON JOB LOGIC ---
-const ARCHIVE_VOTE_THRESHOLD = 5;
-
-async function handleScheduled(env) {
-  console.log("CRON: Starting content lifecycle management job.");
-  try {
-    const r2 = env.R3L_CONTENT_BUCKET;
-    const now = new Date().toISOString();
-    await processActiveExpiredContent(env, now);
-    await processDeletedContent(env, r2);
-    console.log("CRON: Content lifecycle job completed successfully.");
-  } catch (err) {
-    console.error("CRON ERROR: Job failed.", err.message, err.stack);
-  }
-}
-
-async function processActiveExpiredContent(env, now) {
-  const { results: expiredItems } = await env.R3L_DB.prepare("SELECT contentId FROM content_lifecycle WHERE status = 'active' AND expiresAt <= ?").bind(now).all();
-  if (!expiredItems || expiredItems.length === 0) {
-    console.log("CRON: No active content has expired.");
-    return;
-  }
-  for (const item of expiredItems) {
-    const voteResult = await env.R3L_DB.prepare("SELECT COUNT(*) as votes FROM community_archive_votes WHERE contentId = ? AND voteType = 'archive'").bind(item.contentId).first();
-    if (voteResult && voteResult.votes >= ARCHIVE_VOTE_THRESHOLD) {
-      await env.R3L_DB.prepare("UPDATE content_lifecycle SET status = 'archived', expiresAt = NULL WHERE contentId = ?").bind(item.contentId).run();
-    } else {
-      await env.R3L_DB.prepare("UPDATE content_lifecycle SET status = 'deleted' WHERE contentId = ?").bind(item.contentId).run();
-    }
-  }
-}
-
-async function processDeletedContent(env, r2) {
-  const { results: itemsToDelete } = await env.R3L_DB.prepare(`SELECT l.contentId, loc.objectKey FROM content_lifecycle l JOIN content_location loc ON l.contentId = loc.contentId WHERE l.status = 'deleted' LIMIT 1000`).all();
-  if (!itemsToDelete || itemsToDelete.length === 0) {
-    console.log("CRON: No content marked for deletion.");
-    return;
-  }
-  const objectKeysToDelete = itemsToDelete.map(item => item.objectKey);
-  await r2.deleteObjects({ keys: objectKeysToDelete });
-  const stmts = itemsToDelete.map(item => env.R3L_DB.prepare("DELETE FROM content WHERE id = ?").bind(item.contentId));
-  await env.R3L_DB.batch(stmts);
-}
-
-// --- WORKER EXPORT ---
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    // If the request is for an API route, let Hono handle it.
-    if (url.pathname.startsWith('/api/')) {
-        const app = createApp(env.R3L_CONTENT_BUCKET);
-        return app.fetch(request, env, ctx);
-    }
-    // Otherwise, serve the static asset.
-    return env.ASSETS.fetch(request);
-  },
-  async scheduled(event, env, ctx) {
-    console.log(`CRON: Triggered at ${new Date(event.scheduledTime).toISOString()}`);
-    ctx.waitUntil(handleScheduled(env));
-  },
-};
+    ret

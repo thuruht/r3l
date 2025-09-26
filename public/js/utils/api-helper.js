@@ -137,6 +137,34 @@ export const API_ENDPOINTS = {
   // File uploads
   FILES: {
       AVATAR: '/api/files/avatar',
+  },
+
+  // User connections and visibility
+  USER_CONNECTIONS: {
+    CREATE: '/api/user/connections',
+    DELETE: targetUserId => `/api/user/connections/${targetUserId}`,
+  },
+
+  USER_VISIBILITY: {
+    GET: '/api/user/visibility',
+    UPDATE: '/api/user/visibility',
+  },
+
+  // Workspaces
+  WORKSPACES: {
+    LIST: '/api/workspaces',
+    GET: id => `/api/workspaces/${id}`,
+    CREATE: '/api/workspaces',
+    UPDATE: id => `/api/workspaces/${id}`,
+    DELETE: id => `/api/workspaces/${id}`,
+    SAVE: id => `/api/workspaces/${id}/save`,
+  },
+
+  // Content tags
+  CONTENT_TAGS: {
+    GET: contentId => `/api/content/${contentId}/tags`,
+    ADD: contentId => `/api/content/${contentId}/tags`,
+    REMOVE: (contentId, tagId) => `/api/content/${contentId}/tags/${tagId}`,
   }
 };
 
@@ -186,6 +214,54 @@ export async function apiGet(endpoint) {
   }
 }
 
+/**
+ * Make an API DELETE request
+ * @param {string} endpoint The API endpoint
+ * @returns {Promise<any>} The JSON response
+ */
+export async function apiDelete(endpoint) {
+  try {
+    const response = await authenticatedFetch(endpoint, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error, { endpoint });
+    throw error;
+  }
+}
+
+/**
+ * Make an API PATCH request
+ * @param {string} endpoint The API endpoint
+ * @param {object} data The data to send
+ * @returns {Promise<any>} The JSON response
+ */
+export async function apiPatch(endpoint, data = {}) {
+  try {
+    const response = await authenticatedFetch(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+      throw new Error(errorData.error || `API error: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('API call failed:', error, { endpoint, data });
+    throw error;
+  }
+}
+
 // Export functions to be used in other scripts
 window.r3l = {
   storeAuthToken,
@@ -194,5 +270,7 @@ window.r3l = {
   authenticatedFetch,
   apiPost,
   apiGet,
+  apiDelete,
+  apiPatch,
   API_ENDPOINTS
 };

@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Association Web - R3L:F</title>
+    <link rel="stylesheet" href="/css/rel-f-global.css">
+    <link rel="stylesheet" href="/css/rel-f-accent.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .network-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 120px);
+        }
+        
+        .network-controls {
+            padding: 1rem;
+            background: var(--surface-color);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--background-color);
+            color: var(--text-color);
+        }
+        
+        .network-visualization {
+            flex: 1;
+            background: var(--surface-color);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .network-legend {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+        
+        .network-stats {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        
+        .visibility-controls {
+            background: var(--surface-color);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+        
+        .visibility-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .association-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        
+        .loading-spinner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header></header>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>Association Web</h1>
+            <p>Explore the network of connections and content relationships in R3L:F</p>
+        </div>
+        
+        <div class="network-container">
+            <div class="network-controls">
+                <div class="control-group">
+                    <label for="filter-type">Show:</label>
+                    <select id="filter-type">
+                        <option value="all">All Nodes</option>
+                        <option value="users">Users Only</option>
+                        <option value="content">Content Only</option>
+                        <option value="workspaces">Workspaces Only</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="layout-strength">Layout Strength:</label>
+                    <input type="range" id="layout-strength" min="0.1" max="2" step="0.1" value="1">
+                </div>
+                
+                <div class="control-group">
+                    <button id="refresh-btn" class="btn btn-primary">
+                        <span class="material-icons">refresh</span>
+                        Refresh
+                    </button>
+                </div>
+                
+                <div class="control-group">
+                    <button id="center-btn" class="btn btn-secondary">
+                        <span class="material-icons">center_focus_strong</span>
+                        Center View
+                    </button>
+                </div>
+            </div>
+            
+            <div class="network-visualization">
+                <div id="association-web-container"></div>
+                
+                <div class="network-legend">
+                    <h4>Legend</h4>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4f46e5;"></div>
+                        <span>Users</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #059669;"></div>
+                        <span>Content</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #dc2626;"></div>
+                        <span>Workspaces</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #8b5cf6; border-radius: 2px;"></div>
+                        <span>Follows</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f59e0b; border-radius: 2px;"></div>
+                        <span>Author</span>
+                    </div>
+                </div>
+                
+                <div class="network-stats" id="network-stats">
+                    Loading network data...
+                </div>
+            </div>
+        </div>
+        
+        <div class="visibility-controls" id="visibility-controls" style="display: none;">
+            <h3>Your Visibility Settings</h3>
+            <p>Control how you appear in the Association Web</p>
+            
+            <div class="visibility-toggle">
+                <input type="checkbox" id="show-in-network">
+                <label for="show-in-network">Show me in the network visualization</label>
+            </div>
+            
+            <div class="visibility-toggle">
+                <input type="radio" name="visibility-mode" value="normal" id="mode-normal">
+                <label for="mode-normal">Normal visibility</label>
+            </div>
+            
+            <div class="visibility-toggle">
+                <input type="radio" name="visibility-mode" value="lurker" id="mode-lurker">
+                <label for="mode-lurker">Lurker in the Mist mode (low visibility)</label>
+            </div>
+            
+            <button id="save-visibility" class="btn btn-primary">Save Settings</button>
+        </div>
+    </main>
+    
+    <script type="module">
+        import { NavigationBar } from '/js/components/navigation.js';
+        import { AssociationWeb } from '/js/components/association-web.js';
+        
+        // Initialize navigation
+        NavigationBar.init('network');
+        
+        // Initialize association web
+        let associationWeb;
+        
+        async function initializeNetwork() {
+            try {
+                associationWeb = new AssociationWeb('association-web-container', {
+                    width: 800,
+                    height: 600
+                });
+                
+                await associationWeb.init();
+                updateNetworkStats();
+                
+                // Show visibility controls if authenticated
+                if (window.r3l && window.r3l.isAuthenticated()) {
+                    await loadVisibilitySettings();
+                    document.getElementById('visibility-controls').style.display = 'block';
+                }
+                
+            } catch (error) {
+                console.error('Failed to initialize network:', error);
+                document.getElementById('association-web-container').innerHTML = 
+                    '<div class="loading-spinner">Failed to load network data. Please try again.</div>';
+            }
+        }
+        
+        function updateNetworkStats() {
+            if (!associationWeb) return;
+            
+            const stats = document.getElementById('network-stats');
+            const nodeCount = associationWeb.nodes.length;
+            const linkCount = associationWeb.links.length;
+            const userCount = associationWeb.nodes.filter(n => n.type === 'user').length;
+            const contentCount = associationWeb.nodes.filter(n => n.type === 'content').length;
+            
+            stats.innerHTML = `
+                ${nodeCount} nodes, ${linkCount} connections<br>
+                ${userCount} users, ${contentCount} content items
+            `;
+        }
+        
+        async function loadVisibilitySettings() {
+            try {
+                const visibility = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.USER_VISIBILITY.GET);
+                
+                document.getElementById('show-in-network').checked = visibility.showInNetwork !== false;
+                document.querySelector(`input[name="visibility-mode"][value="${visibility.mode || 'normal'}"]`).checked = true;
+                
+            } catch (error) {
+                console.error('Failed to load visibility settings:', error);
+            }
+        }
+        
+        async function saveVisibilitySettings() {
+            try {
+                const showInNetwork = document.getElementById('show-in-network').checked;
+                const mode = document.querySelector('input[name="visibility-mode"]:checked').value;
+                
+                await window.r3l.apiPatch(window.r3l.API_ENDPOINTS.USER_VISIBILITY.UPDATE, {
+                    showInNetwork,
+                    mode,
+                    showInSearch: true, // Keep search visibility for now
+                    allowDirectMessages: true
+                });
+                
+                // Refresh the network to reflect changes
+                if (associationWeb) {
+                    await associationWeb.refresh();
+                    updateNetworkStats();
+                }
+                
+                alert('Visibility settings saved successfully!');
+                
+            } catch (error) {
+                console.error('Failed to save visibility settings:', error);
+                alert('Failed to save settings. Please try again.');
+            }
+        }
+        
+        // Event listeners
+        document.getElementById('refresh-btn').addEventListener('click', async () => {
+            if (associationWeb) {
+                await associationWeb.refresh();
+                updateNetworkStats();
+            }
+        });
+        
+        document.getElementById('center-btn').addEventListener('click', () => {
+            if (associationWeb && associationWeb.simulation) {
+                associationWeb.simulation.alpha(0.3).restart();
+            }
+        });
+        
+        document.getElementById('filter-type').addEventListener('change', (e) => {
+            // Implement filtering logic
+            console.log('Filter changed to:', e.target.value);
+        });
+        
+        document.getElementById('layout-strength').addEventListener('input', (e) => {
+            if (associationWeb && associationWeb.simulation) {
+                const strength = parseFloat(e.target.value);
+                associationWeb.simulation.force('charge').strength(-300 * strength);
+                associationWeb.simulation.alpha(0.3).restart();
+            }
+        });
+        
+        document.getElementById('save-visibility').addEventListener('click', saveVisibilitySettings);
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeNetwork);
+    </script>
+</body>
+</html>

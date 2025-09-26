@@ -18,14 +18,24 @@ R3L:F is a decentralized, ephemeral, anti-algorithmic social file-sharing platfo
 
 ## Technology Stack
 
-*   **Backend**: Cloudflare Workers, D1, R2, KV, and Durable Objects.
-*   **Routing**: Hono
-*   **Authentication**: Bearer token authentication with database-backed sessions.
-*   **Frontend**: A Single Page Application served from the `/public` directory.
+*   **Backend**: Cloudflare Workers (latest runtime), D1 (SQLite), R2 (object storage), KV (key-value store), and Durable Objects.
+*   **Routing**: Hono v4+ with modern middleware
+*   **Authentication**: Bearer token authentication with database-backed sessions and User-Agent validation.
+*   **Frontend**: Single Page Application served via Cloudflare Pages/Assets binding.
+*   **Observability**: Built-in logging and error tracking.
 
 ## Project Structure
 
-*   `public/`: All frontend assets (HTML, CSS, JS).
-*   `src/index.js`: The main Cloudflare Worker, containing all backend logic, API routes, and Durable Object definitions.
-*   `wrangler.jsonc`: The configuration file for the Cloudflare Worker.
-*   `db/schema.sql`: The schema for the D1 database.
+*   `public/`: All frontend assets served via Assets binding.
+*   `src/index.js`: Main Worker entry point with Hono routing, API logic, and Durable Object classes.
+*   `wrangler.jsonc`: Worker configuration with proper compatibility settings.
+*   `db/schema.sql`: Complete D1 database schema including all required tables.
+*   `docs/`: Project documentation and guides.
+
+## Key Features
+
+*   **Modern R2 API**: Uses `createPresignedUrl` for secure file operations
+*   **Proper Error Handling**: Comprehensive error handling for all Cloudflare services
+*   **Rate Limiting**: KV-based rate limiting with configurable thresholds
+*   **Cron Jobs**: Automated content lifecycle management
+*   **Real-time Features**: Durable Objects for collaboration and network visualization

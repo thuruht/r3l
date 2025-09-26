@@ -9,68 +9,123 @@
   <script src="./js/font-loader.js" defer></script>
   <script src="vendor/d3/d3.v7.min.js" defer></script>
   <style>
-    .hero-container {
+    .slideshow-container {
       position: relative;
-      height: 70vh;
-      min-height: 500px;
-      margin-bottom: var(--space-8);
-      margin-top: var(--space-8); /* Add margin to push hero below navbar */
-      background-color: var(--bg-deep);
-      border-radius: var(--radius-lg);
+      height: 100vh;
+      margin-top: var(--space-8);
       overflow: hidden;
+      border-radius: var(--radius-lg);
       box-shadow: 0 8px 32px var(--accent-purple-glow);
-      border: 1px solid var(--accent-purple-muted);
     }
     
-    .hero-overlay {
+    .slide {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
       display: flex;
-      flex-direction: column;
-      justify-content: center;
       align-items: center;
-      padding: var(--space-8);
-      background: linear-gradient(to bottom, rgba(14, 31, 28, 0.7), rgba(14, 31, 28, 0.95));
-      text-align: center;
-      z-index: 5; /* Reduce z-index so dropdown menus can appear above */
+      justify-content: center;
     }
     
-    .hero-title {
+    .slide.active {
+      opacity: 1;
+    }
+    
+    .slide-overlay {
+      position: relative;
+      z-index: 10;
+      text-align: center;
+      padding: var(--space-8);
+      background: rgba(14, 31, 28, 0.85);
+      border-radius: var(--radius-lg);
+      max-width: 800px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .slide-title {
       font-size: var(--fs-4xl);
       color: var(--accent-purple);
       margin-bottom: var(--space-4);
       text-shadow: 0 0 20px var(--accent-purple-glow);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
     }
     
-    .hero-subtitle {
+    .slide-tagline {
       font-family: var(--font-serif);
-      font-size: var(--fs-3xl);
+      font-size: var(--fs-xl);
       color: var(--accent-green);
-      margin-bottom: var(--space-2);
-      max-width: 800px;
+      margin-bottom: var(--space-4);
       font-style: italic;
     }
-
-    .hero-description {
+    
+    .slide-subtitle {
+      font-size: var(--fs-2xl);
+      color: var(--accent-green);
+      margin-bottom: var(--space-4);
+    }
+    
+    .slide-overlay p {
       font-size: var(--fs-lg);
       color: var(--text-secondary);
-      margin-bottom: var(--space-6);
-      max-width: 600px;
+      margin-bottom: var(--space-4);
+      line-height: 1.6;
     }
     
-    .hero-actions {
+    .slide-actions {
       display: flex;
       gap: var(--space-4);
+      justify-content: center;
       margin-top: var(--space-6);
+      flex-wrap: wrap;
     }
     
-    .hero-btn {
-      padding: var(--space-3) var(--space-6);
-      font-size: var(--fs-lg);
-      font-weight: 600;
+    .slideshow-nav {
+      position: absolute;
+      bottom: var(--space-6);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: var(--space-2);
+      z-index: 20;
+    }
+    
+    .nav-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.3);
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+    
+    .nav-dot.active {
+      background-color: var(--accent-purple);
+      box-shadow: 0 0 10px var(--accent-purple-glow);
+    }
+    
+    .nav-dot:hover {
+      background-color: rgba(255, 255, 255, 0.6);
+    }
+    
+    #hero-visualization {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    
+    #hero-visualization svg {
+      width: 100%;
+      height: 100%;
     }
     
     .feature-grid {
@@ -193,38 +248,118 @@
   </header>
 
   <main class="container">
-    <!-- Hero Section with Network Visualization -->
-    <div class="hero-container">
+    <!-- Interactive Slideshow with Network Visualization -->
+    <div class="slideshow-container">
       <div id="hero-visualization" aria-hidden="true">
         <!-- D3.js visualization will be rendered here -->
       </div>
       
-      <div class="hero-overlay">
-        <h1 class="hero-title">
-          <span class="material-icons" aria-hidden="true">public</span>
-          R3L:F
-        </h1>
-        <h2 class="hero-subtitle">
-          "the rel is what you make it"
-        </h2>
-        <p class="hero-description">
-          A decentralized, ephemeral, anti-algorithmic social file-sharing platform where you control your connections and content lifecycle.
-        </p>
-        
-        <div class="hero-actions">
-          <a href="/auth/login.html" class="btn hero-btn glow-accent">
-            <span class="material-icons" aria-hidden="true">login</span>
-            Get Started
-          </a>
-          <a href="network.html" class="btn btn-secondary hero-btn">
-            <span class="material-icons" aria-hidden="true">hub</span>
-            Explore the Network
-          </a>
-          <a href="help.html" class="btn btn-secondary hero-btn">
-            <span class="material-icons" aria-hidden="true">help_outline</span>
-            Learn More
-          </a>
+      <!-- Slide 1: Introduction -->
+      <div class="slide active">
+        <div class="slide-overlay">
+          <h1 class="slide-title">
+            <span class="material-icons" aria-hidden="true">public</span>
+            R3L:F
+          </h1>
+          <p class="slide-tagline">"the rel is what you make it"</p>
+          <p>A decentralized, ephemeral, anti-algorithmic social file-sharing platform where you control your connections and content lifecycle. No engagement optimization, no corporate manipulation, just intentional sharing and meaningful connections.</p>
+          <div class="slide-actions">
+            <a href="/auth/login.html" class="btn glow-accent">
+              <span class="material-icons">login</span>
+              Get Started
+            </a>
+            <a href="network.html" class="btn btn-secondary">
+              <span class="material-icons">hub</span>
+              Explore
+            </a>
+          </div>
         </div>
+      </div>
+
+      <!-- Slide 2: Ephemeral Content -->
+      <div class="slide">
+        <div class="slide-overlay">
+          <h2 class="slide-title">
+            <span class="material-icons" aria-hidden="true">timer</span>
+            Ephemeral by Design
+          </h2>
+          <p class="slide-tagline">"the rel is what you make it"</p>
+          <p>Content expires after 7 days unless community-archived, ensuring that the Rel remains fresh and relevant rather than accumulating digital clutter.</p>
+          <p>This creates a living ecosystem of content that evolves with your community.</p>
+          <div class="slide-actions">
+            <a href="help.html" class="btn btn-secondary">
+              <span class="material-icons">help_outline</span>
+              Learn More
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 3: File Sharing -->
+      <div class="slide">
+        <div class="slide-overlay">
+          <h2 class="slide-title">
+            <span class="material-icons" aria-hidden="true">folder_shared</span>
+            Social File Sharing
+          </h2>
+          <p class="slide-tagline">"the rel is what you make it"</p>
+          <p>A filenet system where documents, audio, video, and creative works are the foundation of interaction.</p>
+          <p>Share what matters with those who matter - not with algorithms designed to maximize engagement.</p>
+          <div class="slide-actions">
+            <a href="random.html" class="btn btn-secondary">
+              <span class="material-icons">shuffle</span>
+              Discover Content
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 4: Connection Web -->
+      <div class="slide">
+        <div class="slide-overlay">
+          <h2 class="slide-title">
+            <span class="material-icons" aria-hidden="true">account_tree</span>
+            Association Web
+          </h2>
+          <p class="slide-tagline">"the rel is what you make it"</p>
+          <p>Users are connected visually in an association web through explicit, mutually agreed relationships.</p>
+          <p>See the branching structure of connections with stronger links for frequent interactions, all generated from public contact lists.</p>
+          <div class="slide-actions">
+            <a href="network.html" class="btn">
+              <span class="material-icons">hub</span>
+              View Network
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slide 5: Join Now -->
+      <div class="slide">
+        <div class="slide-overlay">
+          <h2 class="slide-title">Join the Rel</h2>
+          <p class="slide-subtitle">Experience a different kind of social network</p>
+          <p class="slide-tagline">"the rel is what you make it"</p>
+          <p>Where connections are meaningful, content is ephemeral, and you remain in control of your digital experience.</p>
+          <div class="slide-actions">
+            <a href="/auth/register.html" class="btn glow-accent">
+              <span class="material-icons">person_add</span>
+              Create Account
+            </a>
+            <a href="help.html" class="btn btn-secondary">
+              <span class="material-icons">help_outline</span>
+              Learn More
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation dots -->
+      <div class="slideshow-nav">
+        <div class="nav-dot active" data-slide="0"></div>
+        <div class="nav-dot" data-slide="1"></div>
+        <div class="nav-dot" data-slide="2"></div>
+        <div class="nav-dot" data-slide="3"></div>
+        <div class="nav-dot" data-slide="4"></div>
       </div>
     </div>
     
@@ -320,6 +455,38 @@
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize the navigation bar
       NavigationBar.init('home');
+      
+      // Initialize slideshow
+      const slides = document.querySelectorAll('.slide');
+      const dots = document.querySelectorAll('.nav-dot');
+      let currentSlide = 0;
+      let slideInterval;
+
+      function showSlide(n) {
+        slides.forEach(slide => slide.classList.remove('active'));
+        dots.forEach(dot => dot.classList.remove('active'));
+        currentSlide = (n + slides.length) % slides.length;
+        slides[currentSlide].classList.add('active');
+        dots[currentSlide].classList.add('active');
+      }
+
+      function nextSlide() {
+        showSlide(currentSlide + 1);
+      }
+
+      function startSlideshow() {
+        slideInterval = setInterval(nextSlide, 8000);
+      }
+
+      dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          clearInterval(slideInterval);
+          showSlide(index);
+          startSlideshow();
+        });
+      });
+
+      startSlideshow();
       
       // Hero visualization
       const container = document.getElementById('hero-visualization');

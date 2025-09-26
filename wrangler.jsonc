@@ -1,8 +1,7 @@
 {
   "name": "r3l",
   "main": "./src/index.js",
-  "compatibility_date": "2025-07-18",
-  "compatibility_flags": ["nodejs_compat", "durable_object_alarms"],
+  "compatibility_date": "2025-09-01",
   "workers_dev": false,
   "assets": {
     "binding": "ASSETS",

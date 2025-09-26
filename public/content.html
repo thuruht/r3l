@@ -6,6 +6,9 @@
   <title>R3L:F — Content</title>
   <link rel="stylesheet" href="./css/rel-f-global.css" />
   <link rel="stylesheet" href="./css/rel-f-accent.css" />
+
+  <!-- Load critical auth helper script synchronously -->
+  <script src="/js/utils/api-helper.js"></script>
 </head>
 <body>
   <header class="container"></header>
@@ -24,7 +27,6 @@
   <script type="module" src="./js/comments.js"></script>
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
-    import { apiGet, apiPost, API_ENDPOINTS } from './js/utils/api-helper.js';
 
     NavigationBar.init('content');
 
@@ -41,11 +43,13 @@
         root.innerHTML = '<p class="text-muted">No content id provided.</p>';
         return;
       }
-      const data = await apiGet(API_ENDPOINTS.CONTENT.GET(id));
+
+      const data = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.CONTENT.GET(id));
+
       if(data && !data.error){
         root.innerHTML = `
           <div class="card-header" style="display:flex;align-items:center;gap:.75rem;">
-            <img src="${data.avatar_url || '/icons/avatar.svg'}" alt="avatar" width="40" height="40" style="border-radius:50%"/>
+            <img src="/icons/avatar.svg" alt="avatar" width="40" height="40" style="border-radius:50%"/>
             <div>
               <div class="text-accent">${escapeHtml(data.display_name || data.username || '')}</div>
               <div class="text-muted" style="font-size:.85em;">${new Date(data.created_at).toLocaleString()}</div>
@@ -54,86 +58,35 @@
           <div class="card-body">
             <h2>${escapeHtml(data.title || '(untitled)')}</h2>
             ${data.description ? `<p>${escapeHtml(data.description)}</p>` : ''}
-            ${data.tags ? `<div class="text-muted">Tags: ${escapeHtml(data.tags)}</div>` : ''}
             <div id="actions-container" style="margin-top:1rem; display: flex; gap: 0.5rem;">
-              ${data.file_key ? `<a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a>` : ''}
+              <a class="btn" href="/api/content/${id}/download" target="_blank">Download</a>
               <button id="vote-btn" class="btn btn-secondary">Vote to Archive</button>
-            </div>
-            <div id="vote-status" class="text-muted" style="margin-top:0.5rem;"></div>
-          </div>`;
-
-        document.getElementById('vote-btn').addEventListener('click', vote);
-            <div style="margin-top:1rem;">
-              ${data.file_key ? `<a class="btn" href="/api/files/${data.file_key}" target="_blank">Open file</a>` : ''}
               <button id="bookmark-btn" class="btn btn-secondary">Bookmark</button>
             </div>
+            <div id="vote-status" class="text-muted" style="margin-top:0.5rem;"></div>
             <div id="reactions-section" style="margin-top:1rem;">
               <button class="btn btn-sm" data-reaction="like">👍</button>
               <button class="btn btn-sm" data-reaction="love">❤️</button>
               <button class="btn btn-sm" data-reaction="insightful">💡</button>
             </div>
           </div>`;
+
+        // Attach event listeners only if the user is authenticated
+        if (window.r3l.isAuthenticated()) {
+            document.getElementById('vote-btn').addEventListener('click', vote);
+            document.getElementById('bookmark-btn').addEventListener('click', toggleBookmark);
+            document.getElementById('reactions-section').addEventListener('click', handleReaction);
+        } else {
+            // Disable buttons if user is not logged in
+            document.getElementById('vote-btn').disabled = true;
+            document.getElementById('bookmark-btn').disabled = true;
+            document.querySelectorAll('#reactions-section button').forEach(b => b.disabled = true);
+            document.getElementById('vote-status').textContent = 'You must be logged in to interact.';
+        }
+
         window.comments = window.Comments.init(id);
-        const bookmarkBtn = document.getElementById('bookmark-btn');
-        if (bookmarkBtn) {
-          let isBookmarked = false; // This will be checked against user's bookmarks
-
-          const updateBookmarkButton = () => {
-            bookmarkBtn.textContent = isBookmarked ? 'Bookmarked' : 'Bookmark';
-            bookmarkBtn.classList.toggle('btn-primary', isBookmarked);
-            bookmarkBtn.classList.toggle('btn-secondary', !isBookmarked);
-          };
-
-          const toggleBookmark = async () => {
-            const user = await getAuthenticatedUser();
-            if (!user) {
-              window.location.href = '/login.html';
-              return;
-            }
-            if (isBookmarked) {
-              await apiDelete(API_ENDPOINTS.CONTENT.BOOKMARK.REMOVE(id));
-            } else {
-              await apiPost(API_ENDPOINTS.CONTENT.BOOKMARK.ADD(id));
-            }
-            isBookmarked = !isBookmarked;
-            updateBookmarkButton();
-          };
-
-          const checkBookmarkStatus = async () => {
-            const user = await getAuthenticatedUser();
-            if (user) {
-              const bookmarks = await apiGet(API_ENDPOINTS.USERS.BOOKMARKS(user.id));
-              if (bookmarks && bookmarks.some(b => b.id === id)) {
-                isBookmarked = true;
-                updateBookmarkButton();
-              }
-            }
-          };
-
-          bookmarkBtn.addEventListener('click', toggleBookmark);
-          checkBookmarkStatus();
-        }
-
-        const reactionsSection = document.getElementById('reactions-section');
-        if (reactionsSection) {
-          reactionsSection.addEventListener('click', async (e) => {
-            if (e.target.matches('button[data-reaction]')) {
-              const reaction = e.target.dataset.reaction;
-              const user = await getAuthenticatedUser();
-              if (!user) {
-                window.location.href = '/login.html';
-                return;
-              }
-              // For simplicity, this will just add a reaction.
-              // A real implementation would need to handle removing reactions as well.
-              await apiPost(API_ENDPOINTS.CONTENT.REACTIONS.ADD(id), { reaction });
-              e.target.classList.add('btn-primary');
-              e.target.disabled = true;
-            }
-          });
-        }
       } else {
-        root.innerHTML = `<p class="text-error">Failed to load content${data?.status===403?': unauthorized':''}.</p>`;
+        root.innerHTML = `<p class="text-error">Failed to load content. ${data.error || ''}</p>`;
       }
     }
 
@@ -143,19 +96,50 @@
       voteBtn.disabled = true;
       voteStatus.textContent = 'Submitting vote...';
 
-      const result = await apiPost(API_ENDPOINTS.CONTENT.VOTE(id));
-
-      if (result && !result.error) {
-        voteStatus.textContent = `Vote successful! Total votes: ${result.votes}. Status: ${result.status}.`;
-        if (result.status === 'archived') {
-          voteBtn.textContent = 'Archived!';
-        } else {
-          voteBtn.textContent = 'Voted!';
-        }
-      } else {
-        voteStatus.textContent = `Error: ${result.message || 'Failed to vote.'}`;
+      try {
+        const result = await window.r3l.apiPost(window.r3l.API_ENDPOINTS.CONTENT.VOTE(id));
+        voteStatus.textContent = `Vote successful!`;
+        voteBtn.textContent = 'Voted!';
+      } catch (error) {
+        voteStatus.textContent = `Error: ${error.message || 'Failed to vote.'}`;
         voteBtn.disabled = false;
       }
+    }
+
+    async function toggleBookmark() {
+        const bookmarkBtn = document.getElementById('bookmark-btn');
+        const isBookmarked = bookmarkBtn.classList.contains('btn-primary');
+
+        try {
+            if (isBookmarked) {
+                await window.r3l.apiDelete(window.r3l.API_ENDPOINTS.CONTENT.BOOKMARK(id));
+                bookmarkBtn.textContent = 'Bookmark';
+                bookmarkBtn.classList.remove('btn-primary');
+                bookmarkBtn.classList.add('btn-secondary');
+            } else {
+                await window.r3l.apiPost(window.r3l.API_ENDPOINTS.CONTENT.BOOKMARK(id));
+                bookmarkBtn.textContent = 'Bookmarked';
+                bookmarkBtn.classList.remove('btn-secondary');
+                bookmarkBtn.classList.add('btn-primary');
+            }
+        } catch (error) {
+            console.error('Bookmark error:', error);
+            alert('Failed to update bookmark.');
+        }
+    }
+
+    async function handleReaction(e) {
+        if (e.target.matches('button[data-reaction]')) {
+            const reaction = e.target.dataset.reaction;
+            try {
+                await window.r3l.apiPost(window.r3l.API_ENDPOINTS.CONTENT.REACT(id), { reaction });
+                e.target.classList.add('btn-primary');
+                e.target.disabled = true;
+            } catch (error) {
+                console.error('Reaction error:', error);
+                alert('Failed to save reaction.');
+            }
+        }
     }
 
     load();

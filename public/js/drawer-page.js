@@ -1,36 +1,31 @@
 import { NavigationBar } from './components/navigation.js';
-import { apiGet, apiPost, apiPatch, apiUpload, API_ENDPOINTS } from './utils/api-helper.js';
-import { displayError, displayEmptyState, generateRefCode } from './utils/ui-helpers.js';
+import { displayError, displayEmptyState } from './utils/ui-helpers.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // NOTE: NavigationBar is initialized in drawer.html, so we don't call it here.
+  NavigationBar.init('drawer');
 
   // --- UI Element Selectors ---
   const errorContainer = document.getElementById('error-container');
   const drawerContainer = document.querySelector('.drawer-container');
-  const authPrompt = document.getElementById('auth-prompt'); // Assuming this exists for unauth users
+  const authPrompt = document.getElementById('auth-prompt');
 
-  // User info
   const userNameEl = document.getElementById('user-name');
   const userAvatarEl = document.getElementById('user-avatar');
   const userJoinedEl = document.getElementById('user-joined');
   const editNameBtn = document.getElementById('edit-name-btn');
   const saveNameBtn = document.getElementById('save-name-btn');
   const avatarUploadInput = document.getElementById('avatar-upload');
+  const avatarUploadLabel = document.querySelector('label[for="avatar-upload"]');
 
-  // Stats
   const filesCountEl = document.getElementById('files-count');
   const archivedCountEl = document.getElementById('archived-count');
   const connectionsCountEl = document.getElementById('connections-count');
 
-  // Communique
   const communiqueEditor = document.getElementById('communique');
   const saveCommuniqueBtn = document.getElementById('save-communique');
 
-  // Theme Selector
   const themeSelector = document.getElementById('theme-selector');
 
-  // File Management
   const fileGrid = document.getElementById('file-grid');
   const loadingPlaceholder = document.getElementById('loading-placeholder');
   const emptyState = document.getElementById('empty-state');
@@ -51,12 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Helper Functions ---
   const formatDate = (timestamp) => new Date(timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return `${bytes} bytes`;
-    if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / 1048576).toFixed(1)} MB`;
-  };
-   const formatTimeRemaining = (expiryTimestamp) => {
+  const formatTimeRemaining = (expiryTimestamp) => {
     if (!expiryTimestamp) return '∞';
     const diff = new Date(expiryTimestamp) - Date.now();
     if (diff <= 0) return 'Expired';
@@ -66,17 +56,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- Core Functions ---
 
-  /**
-   * Checks authentication and fetches initial user data.
-   * This is the entry point for the page's dynamic content.
-   */
   const init = async () => {
+    if (!window.r3l || !window.r3l.isAuthenticated()) {
+        drawerContainer.classList.add('hidden');
+        if (authPrompt) authPrompt.classList.remove('hidden');
+        return;
+    }
+
     try {
-      const data = await apiGet(API_ENDPOINTS.AUTH.PROFILE);
-      if (data.error) {
-        throw new Error('Not authenticated');
-      }
-      currentUser = data;
+      currentUser = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.AUTH.PROFILE);
       drawerContainer.classList.remove('hidden');
       if (authPrompt) authPrompt.classList.add('hidden');
       
@@ -87,18 +75,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (error) {
       console.error('Initialization failed:', error);
       drawerContainer.classList.add('hidden');
-      if (authPrompt) {
-        authPrompt.classList.remove('hidden');
-      } else {
-        displayError(errorContainer, 'You must be logged in to view your drawer.', 'FE-DRWR-AUTH');
-      }
+      displayError(errorContainer, 'You must be logged in to view your drawer.', 'FE-DRWR-AUTH');
     }
   };
 
-  /**
-   * Applies the selected theme to the document.
-   * @param {'system'|'light'|'dark'} theme
-   */
   const applyTheme = (theme) => {
     const root = document.documentElement;
     if (theme === 'system') {
@@ -109,30 +89,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  /**
-   * Populates the user information section.
-   */
   const populateUserInfo = (user) => {
-    userNameEl.textContent = user.display_name || 'Anonymous';
+    userNameEl.textContent = user.displayName || 'Anonymous';
     userJoinedEl.textContent = formatDate(user.created_at);
-    if (user.avatar_key) {
-      userAvatarEl.src = `/api/files/${user.avatar_key}`;
+    if (user.avatarKey) {
+      userAvatarEl.src = `/api/files/${user.avatarKey}`;
     }
-    communiqueEditor.innerHTML = user.preferences?.communique || '';
-
-    // Set theme
-    const currentTheme = user.preferences?.theme || 'system';
+    if (user.preferences && user.preferences.communique) {
+        communiqueEditor.innerHTML = user.preferences.communique;
+    }
+    const currentTheme = (user.preferences && user.preferences.theme) || 'system';
     themeSelector.value = currentTheme;
     applyTheme(currentTheme);
   };
 
-  /**
-   * Fetches user statistics.
-   */
   const fetchUserStats = async () => {
     try {
-      const stats = await apiGet(API_ENDPOINTS.USERS.STATS(currentUser.id));
-      if (stats.error) return;
+      const stats = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.USER.STATS);
       filesCountEl.textContent = stats.content_count || 0;
       archivedCountEl.textContent = stats.archived_count || 0;
       connectionsCountEl.textContent = stats.connection_count || 0;
@@ -141,24 +114,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  /**
-   * Fetches and renders files based on current state (filter, page, search).
-   */
   const fetchAndRenderFiles = async () => {
     loadingPlaceholder.classList.remove('hidden');
     fileGrid.classList.add('hidden');
     emptyState.classList.add('hidden');
 
     try {
-      const params = {
+      const params = new URLSearchParams({
         filter: currentFilter,
         page: currentPage,
         query: currentSearchQuery,
-      };
-      const data = await apiGet(API_ENDPOINTS.USERS.FILES(currentUser.id), params);
+      });
+      const data = await window.r3l.apiGet(`${window.r3l.API_ENDPOINTS.USER.FILES}?${params}`);
       
-      if (data.error) throw new Error(data.error);
-
       renderFiles(data.files);
       renderPagination(data.page, data.totalPages);
 
@@ -170,43 +138,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  /**
-   * Renders the file grid.
-   */
   const renderFiles = (files) => {
     fileGrid.innerHTML = '';
     if (!files || files.length === 0) {
       emptyState.classList.remove('hidden');
       return;
     }
-
     const fileIcons = { 'image/': 'image', 'audio/': 'audiotrack', 'video/': 'videocam', 'application/pdf': 'picture_as_pdf', 'default': 'insert_drive_file' };
-    
     files.forEach(file => {
       const iconName = Object.keys(fileIcons).find(key => file.type.startsWith(key)) || 'default';
       const icon = fileIcons[iconName];
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
-
-      const isArchived = file.archive_status && file.archive_status !== 'active';
-      const statusText = isArchived
-        ? file.archive_status.charAt(0).toUpperCase() + file.archive_status.slice(1)
-        : formatTimeRemaining(file.expires_at);
-      const statusTitle = isArchived ? 'Status' : 'Expires';
-
-      fileItem.innerHTML = `
-        <div class="file-icon"><span class="material-icons">${icon}</span></div>
-        <div class="file-name" title="${file.title}">${file.title}</div>
-        <div class="file-expiry" title="${statusTitle}">${statusText}</div>
-      `;
+      const statusText = file.archive_status !== 'active' ? 'Archived' : formatTimeRemaining(file.expires_at);
+      fileItem.innerHTML = `<div class="file-icon"><span class="material-icons">${icon}</span></div><div class="file-name" title="${file.title}">${file.title}</div><div class="file-expiry" title="Status">${statusText}</div>`;
       fileGrid.appendChild(fileItem);
     });
     fileGrid.classList.remove('hidden');
   };
 
-  /**
-   * Renders pagination controls.
-   */
   const renderPagination = (page, total) => {
     currentPage = page;
     totalPages = total;
@@ -221,115 +171,55 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- Event Listeners ---
-  
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      currentFilter = button.id.replace('tab-', '');
-      currentPage = 1;
-      currentSearchQuery = '';
-      fileSearchInput.value = '';
-      fetchAndRenderFiles();
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-    });
-  });
-
-  prevPageBtn.addEventListener('click', () => {
-    if (currentPage > 1) {
-      currentPage--;
-      fetchAndRenderFiles();
-    }
-  });
-
-  nextPageBtn.addEventListener('click', () => {
-    if (currentPage < totalPages) {
-      currentPage++;
-      fetchAndRenderFiles();
-    }
-  });
-
+  tabButtons.forEach(button => button.addEventListener('click', () => {
+    currentFilter = button.id.replace('tab-', '');
+    currentPage = 1;
+    currentSearchQuery = '';
+    fileSearchInput.value = '';
+    fetchAndRenderFiles();
+    tabButtons.forEach(btn => btn.classList.remove('active'));
+    button.classList.add('active');
+  }));
+  prevPageBtn.addEventListener('click', () => { if (currentPage > 1) { currentPage--; fetchAndRenderFiles(); } });
+  nextPageBtn.addEventListener('click', () => { if (currentPage < totalPages) { currentPage++; fetchAndRenderFiles(); } });
   refreshBtn.addEventListener('click', fetchAndRenderFiles);
-
-  fileSearchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      currentSearchQuery = e.target.value;
-      currentPage = 1;
-      fetchAndRenderFiles();
-    }
-  });
-
+  fileSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { currentSearchQuery = e.target.value; currentPage = 1; fetchAndRenderFiles(); } });
   saveCommuniqueBtn.addEventListener('click', async () => {
-    const content = communiqueEditor.innerHTML;
     try {
-      // Note: We save the communique under the 'preferences' object now.
-      const result = await apiPatch(API_ENDPOINTS.USERS.PREFERENCES(currentUser.id), { communique: content });
-      if (result.error) throw new Error(result.error);
-      // You could add a success message here
-    } catch (error) {
-      displayError(errorContainer, 'Failed to save communique.', 'FE-DRWR-SAVE');
-    }
+      await window.r3l.apiPost(window.r3l.API_ENDPOINTS.USER.PREFERENCES, { communique: communiqueEditor.innerHTML });
+    } catch (error) { displayError(errorContainer, 'Failed to save communique.', 'FE-DRWR-SAVE'); }
   });
-
   themeSelector.addEventListener('change', async (e) => {
     const newTheme = e.target.value;
     applyTheme(newTheme);
     try {
-      const result = await apiPatch(API_ENDPOINTS.USERS.PREFERENCES(currentUser.id), { theme: newTheme });
-      if (result.error) throw new Error(result.error);
-    } catch (error) {
-      displayError(errorContainer, 'Failed to save theme preference.', 'FE-DRWR-THEME');
-      // Revert UI on failure? For now, we leave it.
-    }
+      await window.r3l.apiPost(window.r3l.API_ENDPOINTS.USER.PREFERENCES, { theme: newTheme });
+    } catch (error) { displayError(errorContainer, 'Failed to save theme preference.', 'FE-DRWR-THEME'); }
   });
-
-  editNameBtn.addEventListener('click', () => {
-    userNameEl.contentEditable = true;
-    userNameEl.focus();
-    editNameBtn.classList.add('hidden');
-    saveNameBtn.classList.remove('hidden');
-  });
-
+  editNameBtn.addEventListener('click', () => { userNameEl.contentEditable = true; userNameEl.focus(); editNameBtn.classList.add('hidden'); saveNameBtn.classList.remove('hidden'); });
   saveNameBtn.addEventListener('click', async () => {
     const newName = userNameEl.textContent;
     userNameEl.contentEditable = false;
     editNameBtn.classList.remove('hidden');
     saveNameBtn.classList.add('hidden');
-
     try {
-      const result = await apiPatch(API_ENDPOINTS.USERS.PROFILE(currentUser.id), { displayName: newName });
-      if (result.error) throw new Error(result.error);
-    } catch (error) {
-      displayError(errorContainer, 'Failed to save display name.', 'FE-DRWR-NAME');
-      // Revert UI on failure
-      userNameEl.textContent = currentUser.display_name;
-    }
+      await window.r3l.apiPost(window.r3l.API_ENDPOINTS.USER.PROFILE, { displayName: newName });
+    } catch (error) { displayError(errorContainer, 'Failed to save display name.', 'FE-DRWR-NAME'); userNameEl.textContent = currentUser.displayName; }
   });
-
+  avatarUploadLabel.addEventListener('click', () => avatarUploadInput.click());
   avatarUploadInput.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('file', file);
-
     try {
-      const uploadResult = await apiUpload('/api/files/avatar', formData);
-      if (uploadResult.error) throw new Error(uploadResult.error);
-
-      const { avatarKey } = uploadResult;
-      const profileUpdateResult = await apiPatch(API_ENDPOINTS.USERS.PROFILE(currentUser.id), { avatarKey });
-      if (profileUpdateResult.error) throw new Error(profileUpdateResult.error);
-
-      // Update the avatar image on the page
+      const uploadResult = await window.r3l.authenticatedFetch(window.r3l.API_ENDPOINTS.FILES.AVATAR, { method: 'POST', body: formData, headers: { 'Content-Type': null } });
+      const { avatarKey } = await uploadResult.json();
+      await window.r3l.apiPost(window.r3l.API_ENDPOINTS.USER.PROFILE, { avatarKey });
       userAvatarEl.src = `/api/files/${avatarKey}`;
-      // Update the currentUser object
-      currentUser.avatar_key = avatarKey;
-
-    } catch (error) {
-      displayError(errorContainer, 'Failed to upload avatar.', 'FE-DRWR-AVATAR');
-    }
+      currentUser.avatarKey = avatarKey;
+    } catch (error) { displayError(errorContainer, 'Failed to upload avatar.', 'FE-DRWR-AVATAR'); }
   });
 
-  // --- Initial Load ---
   init();
 });

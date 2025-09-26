@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Bookmarks - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
+
+  <!-- Load critical auth helper script synchronously -->
+  <script src="/js/utils/api-helper.js"></script>
+
   <script src="js/font-loader.js" defer></script>
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
@@ -33,22 +37,19 @@
   </footer>
 
   <script type="module">
-    import { apiGet, API_ENDPOINTS } from './js/utils/api-helper.js';
     import { escapeHtml } from './js/utils/ui-helpers.js';
-    import { authenticatedFetch, getAuthenticatedUser } from './js/utils/cookie-helper.js';
 
     const bookmarksList = document.getElementById('bookmarks-list');
 
     async function loadBookmarks() {
-      const user = await getAuthenticatedUser();
-      if (!user) {
-        bookmarksList.innerHTML = '<p>You must be logged in to see your bookmarks.</p>';
+      if (!window.r3l || !window.r3l.isAuthenticated()) {
+        bookmarksList.innerHTML = '<p>You must be logged in to see your bookmarks. Please <a href="/login.html">log in</a>.</p>';
         return;
       }
 
       bookmarksList.innerHTML = '<p>Loading bookmarks...</p>';
       try {
-        const bookmarks = await apiGet(API_ENDPOINTS.USERS.BOOKMARKS(user.id));
+        const bookmarks = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.BOOKMARKS);
         if (bookmarks && bookmarks.length > 0) {
           const bookmarksHtml = bookmarks.map(content => `
             <div class="card">
@@ -69,6 +70,8 @@
       }
     }
 
+    // Module scripts are deferred by default, so the DOM will be ready.
+    // The synchronous script in the head ensures window.r3l is available.
     loadBookmarks();
   </script>
 </body>

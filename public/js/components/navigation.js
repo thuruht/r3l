@@ -3,9 +3,8 @@
  * Provides a consistent navigation bar across all pages
  */
 
-import { notificationManager } from './notification.js';
-import { getCookie, isAuthenticated, fixAuthCookies } from '../utils/cookie-helper.js';
-import { apiGet, apiPost, API_ENDPOINTS } from '../utils/api-helper.js';
+// Note: Imports from cookie-helper and the old api-helper are removed.
+// The new api-helper.js attaches its functions to the window.r3l object.
 
 // Define a simple debug log function
 const debugLog = (component, message, data) => {
@@ -20,7 +19,6 @@ export class NavigationBar {
   static init(currentPage) {
     debugLog('NavigationBar', 'Initializing navigation bar', { currentPage });
 
-    // Create the navigation HTML - Organized with dropdown menus for better organization
     const navHtml = `
       <div class="navbar">
         <div class="nav-brand">
@@ -31,7 +29,6 @@ export class NavigationBar {
         </div>
         <nav>
           <ul class="nav-menu">
-            <!-- Main navigation items with focused primary items -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
                 <span class="material-icons" aria-hidden="true">explore</span>
@@ -52,8 +49,6 @@ export class NavigationBar {
                 </a>
               </div>
             </li>
-            
-            <!-- Connect and Collaborate group -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
                 <span class="material-icons" aria-hidden="true">people</span>
@@ -78,8 +73,6 @@ export class NavigationBar {
                 </a>
               </div>
             </li>
-            
-            <!-- Content group -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
                 <span class="material-icons" aria-hidden="true">folder</span>
@@ -100,14 +93,10 @@ export class NavigationBar {
                 </a>
               </div>
             </li>
-            
-            <!-- Keep Search as a main item -->
             <li><a href="/search.html" class="nav-link ${currentPage === 'search' ? 'active' : ''}">
               <span class="material-icons" aria-hidden="true">search</span>
               <span class="nav-label">Search</span>
             </a></li>
-            
-            <!-- Help and About dropdown -->
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
                 <span class="material-icons" aria-hidden="true">help_outline</span>
@@ -128,8 +117,6 @@ export class NavigationBar {
                 </a>
               </div>
             </li>
-            
-            <!-- Login remains a direct link -->
             <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
               <span class="material-icons" aria-hidden="true">login</span>
               <span class="nav-label">Login</span>
@@ -139,70 +126,32 @@ export class NavigationBar {
       </div>
     `;
 
-    // Find the header element
     const header = document.querySelector('header');
-
     if (header) {
-      // Set content of header
       header.innerHTML = `<div class="container">${navHtml}</div>`;
-
-      // Check if user is logged in and update navigation accordingly
       this.updateAuthState();
-
-      // Load notification CSS
-      this.loadNotificationStyles();
     } else {
       debugLog('NavigationBar', 'Error: Header element not found');
     }
   }
 
-
   /**
-   * Load notification CSS
-   */
-  static loadNotificationStyles() {
-    // Check if the notification CSS is already loaded
-    if (!document.querySelector('link[href="/css/notifications.css"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = '/css/notifications.css';
-      document.head.appendChild(link);
-    }
-  }
-
-  /**
-   * Update navigation based on authentication state
+   * Update navigation based on authentication state.
    */
   static updateAuthState() {
     const loginItem = document.getElementById('nav-login-item');
+    if (!loginItem) return;
 
-    console.log('[NavigationBar] Auth state check:', {
-      authCookie: getCookie('r3l_auth_state'),
-      isAuth: isAuthenticated(),
-      allCookies: document.cookie,
-      loginItemFound: !!loginItem,
-    });
-
-    // Directly fetch the profile to check authentication status
-    if (loginItem) {
-      console.log('[NavigationBar] Checking JWT authentication status...');
-
-      // Fetch user data from API
+    if (window.r3l && window.r3l.isAuthenticated()) {
+      debugLog('NavigationBar', 'User is authenticated, fetching profile...');
       this.fetchUserProfile()
         .then(user => {
-          console.log('[NavigationBar] User profile fetched:', user);
           if (user) {
             loginItem.innerHTML = `
               <div class="user-profile-nav">
                 <a href="/profile.html" class="nav-link user-profile-link">
                   <span class="user-avatar">
-                    ${
-                      user.avatarUrl
-                        ? `<img src="${user.avatarUrl}" alt="${user.displayName || user.username}" class="avatar-small" />`
-                        : user.avatar_key
-                          ? `<img src="/api/files/${user.avatar_key}" alt="${user.displayName || user.username}" class="avatar-small" />`
-                          : `<div class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</div>`
-                    }
+                    <div class="avatar-initial">${(user.displayName || user.username || '?').charAt(0).toUpperCase()}</div>
                   </span>
                   <span class="user-name">${user.displayName || user.username}</span>
                 </a>
@@ -222,66 +171,37 @@ export class NavigationBar {
                 </div>
               </div>
             `;
-
-            // Add event listener for logout
             document.getElementById('logout-link')?.addEventListener('click', e => {
               e.preventDefault();
               this.logout();
             });
-
-            // Initialize notification system
-            console.log('[NavigationBar] Initializing notification system');
-            notificationManager.createNotificationElements({ userId: user.id });
-
-            // Trigger connection suggestions
-            apiPost(`/api/suggestions/connections/${user.id}`).catch(err => {
-              console.error('Error triggering connection suggestions:', err);
-            });
           } else {
-            console.log('[NavigationBar] User profile was null, showing login link');
             this.handleAuthError();
           }
         })
         .catch(err => {
           console.error('[NavigationBar] Failed to fetch user profile:', err);
-          // User is not authenticated, show login link
-          console.log('[NavigationBar] No auth, showing login link');
           this.handleAuthError();
         });
+    } else {
+      debugLog('NavigationBar', 'User is not authenticated, showing login link.');
+      this.handleAuthError();
     }
   }
 
   /**
-   * Fetch user profile data
-   * @returns {Promise<Object>} User profile data
+   * Fetch user profile data from the new /api/profile endpoint
+   * @returns {Promise<Object|null>} User profile data or null if an error occurs
    */
   static async fetchUserProfile() {
+    if (!window.r3l || !window.r3l.apiGet) {
+        console.error("R3L API helper not loaded.");
+        return null;
+    }
     try {
-      // Debug cookie info
-      console.log('[NavigationBar] Fetching profile - Current cookies:', {
-        cookieString: document.cookie,
-        cookieLength: document.cookie.length,
-        authState: getCookie('r3l_auth_state'),
-      });
-
-      // Use API helper to fetch profile
-      console.log('[NavigationBar] Fetching profile from', API_ENDPOINTS.AUTH.PROFILE);
-      const startTime = performance.now();
-
-      const data = await apiGet(API_ENDPOINTS.AUTH.PROFILE);
-
-      const endTime = performance.now();
-
-      console.log('[NavigationBar] Profile response:', {
-        data,
-        responseTime: `${(endTime - startTime).toFixed(2)}ms`,
-      });
-
-      if (data.error) {
-        throw new Error(`Invalid session: ${data.error}`);
-      }
-
-      return data;
+      const user = await window.r3l.apiGet('/api/profile');
+      debugLog('NavigationBar', 'Profile response:', user);
+      return user;
     } catch (error) {
       console.error('[NavigationBar] Error fetching user profile:', error);
       return null;
@@ -289,10 +209,9 @@ export class NavigationBar {
   }
 
   /**
-   * Handle authentication errors
+   * Handle authentication errors by resetting the login link.
    */
   static handleAuthError() {
-    // Reset login item
     const loginItem = document.getElementById('nav-login-item');
     if (loginItem) {
       loginItem.innerHTML = `<a href="/auth/login.html" class="nav-link">
@@ -303,25 +222,13 @@ export class NavigationBar {
   }
 
   /**
-   * Log the user out
+   * Log the user out by clearing the token and redirecting.
    */
   static logout() {
-    console.log('Logging out...');
-
-    // Call logout API using our helper
-    apiPost(API_ENDPOINTS.AUTH.LOGOUT)
-      .then(response => {
-        console.log('Logout response:', response);
-        // Reload the page to force a refresh of all components
-        window.location.href =
-          '/auth/login.html?message=' +
-          encodeURIComponent('You have been logged out successfully.');
-      })
-      .catch(error => {
-        console.error('Logout error:', error);
-        // Reload the page to force a refresh of all components
-        window.location.href =
-          '/auth/login.html?message=' + encodeURIComponent('Error during logout.');
-      });
+    debugLog('NavigationBar', 'Logging out...');
+    if (window.r3l) {
+        window.r3l.storeAuthToken(null);
+    }
+    window.location.href = '/login.html?message=' + encodeURIComponent('You have been logged out.');
   }
 }

@@ -1,77 +1,117 @@
 /**
  * API Helper Utility
- * Provides consistent interface for API calls with proper error handling
+ * Provides a consistent interface for API calls using bearer token authentication.
  */
 
-import { isAuthenticated, authenticatedFetch } from './cookie-helper.js';
+/**
+ * Stores the authentication token in localStorage.
+ * @param {string} token - The authentication token to store.
+ */
+function storeAuthToken(token) {
+  if (token) {
+    localStorage.setItem('r3l_auth_token', token);
+  } else {
+    localStorage.removeItem('r3l_auth_token');
+  }
+}
+
+/**
+ * Retrieves the authentication token from localStorage.
+ * @returns {string|null} The authentication token, or null if not found.
+ */
+function getAuthToken() {
+  return localStorage.getItem('r3l_auth_token');
+}
+
+/**
+ * Checks if the user is currently authenticated.
+ * @returns {boolean} True if an auth token exists, false otherwise.
+ */
+function isAuthenticated() {
+  return !!getAuthToken();
+}
+
+/**
+ * A wrapper around the native fetch API that automatically adds the
+ * Authorization header for authenticated requests.
+ *
+ * @param {string} url - The URL to fetch.
+ * @param {object} options - The options to pass to the fetch API.
+ * @returns {Promise<Response>} A promise that resolves to the fetch response.
+ */
+async function authenticatedFetch(url, options = {}) {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const finalOptions = {
+    ...options,
+    headers,
+  };
+
+  try {
+    const response = await fetch(url, finalOptions);
+    if (response.status === 401) {
+      // Unauthorized, token might be expired or invalid.
+      // Clear the token and redirect to the login page.
+      storeAuthToken(null);
+      window.location.href = '/login.html';
+    }
+    return response;
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
+  }
+}
 
 // Define API endpoints centrally to avoid mismatches
 export const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
-    PROFILE: '/api/auth/jwt/profile',
-    LOGIN: '/api/auth/jwt/login',
-    LOGOUT: '/api/auth/jwt/logout',
-    FIX_COOKIES: '/api/auth/fix-cookies',
+    REGISTER: '/api/register',
+    LOGIN: '/api/login',
+    PROFILE: '/api/profile',
   },
+
+  // Bookmarks
+  BOOKMARKS: '/api/bookmarks',
 
   // Content endpoints
   CONTENT: {
-    SEARCH: '/api/search',
     GET: id => `/api/content/${id}`,
     CREATE: '/api/content',
-    UPDATE: id => `/api/content/${id}`,
-    DELETE: id => `/api/content/${id}`,
+    DOWNLOAD: id => `/api/content/${id}/download`,
     VOTE: id => `/api/content/${id}/vote`,
-    TAGS: id => `/api/content/${id}/tags`,
-    FEED: '/api/feed',
+    BOOKMARK: id => `/api/content/${id}/bookmark`,
+    REACT: id => `/api/content/${id}/react`,
     COMMENTS: {
       GET: id => `/api/content/${id}/comments`,
       CREATE: id => `/api/content/${id}/comments`,
-      UPDATE: (id, commentId) => `/api/content/${id}/comments/${commentId}`,
-      DELETE: (id, commentId) => `/api/content/${id}/comments/${commentId}`,
-    },
-    BOOKMARK: {
-      ADD: id => `/api/content/${id}/bookmark`,
-      REMOVE: id => `/api/content/${id}/bookmark`,
-    },
-    REACTIONS: {
-      GET: id => `/api/content/${id}/reactions`,
-      ADD: id => `/api/content/${id}/reactions`,
-      REMOVE: id => `/api/content/${id}/reactions`,
-    },
+    }
   },
 
-  // User endpoints
-  USERS: {
-    LIST: '/api/users',
-    GET: id => `/api/users/${id}`,
-    PROFILE: id => `/api/users/${id}`,
-    PREFERENCES: id => `/api/users/${id}/preferences`,
-    FILES: id => `/api/users/${id}/files`,
-    BOOKMARKS: id => `/api/users/${id}/bookmarks`,
+  // Network endpoints
+  NETWORK: '/api/network',
 
+  // Collaboration endpoints
+  COLLABORATION: id => `/api/collaboration/${id}`,
+
+  // Visualization endpoints
+  VISUALIZATION: {
+      STATS: '/api/visualization/stats',
   },
 
-  // Connection endpoints
-  CONNECTIONS: {
-    LIST: '/api/connections',
-    NETWORK: '/api/connections/network',
-    CREATE: '/api/connections',
-    UPDATE: id => `/api/connections/${id}`,
-    DELETE: id => `/api/connections/${id}`,
-    STATUS: userId => `/api/connections/status/${userId}`,
-    REQUESTS: '/api/connections/requests',
-    ACCEPT: userId => `/api/connections/request/${userId}/accept`,
-    DECLINE: userId => `/api/connections/request/${userId}/decline`,
-    CANCEL: userId => `/api/connections/request/${userId}/cancel`,
-  },
-
-  // Globe/map endpoints
-  GLOBE: {
-    DATA_POINTS: '/api/globe/data-points',
-    POINTS: '/api/globe/points',
-    POINT: id => `/api/globe/points/${id}`,
+  // Messaging endpoints
+  MESSAGES: {
+    CONVERSATIONS: '/api/messages/conversations',
+    GET: otherUserId => `/api/messages/user/${otherUserId}`,
+    SEND: '/api/messages/send',
   },
 
   // Notification endpoints
@@ -83,82 +123,22 @@ export const API_ENDPOINTS = {
     DELETE: id => `/api/notifications/${id}`,
   },
 
-  // Debug endpoints
-  DEBUG: {
-    COOKIE_CHECK: '/api/debug/cookie-check',
-    ENV_CHECK: '/api/debug/env-check',
+  // User specific endpoints
+  USER: {
+      STATS: '/api/user/stats',
+      FILES: '/api/user/files',
+      PREFERENCES: '/api/user/preferences',
+      PROFILE: '/api/user/profile',
   },
+
+  // Feed endpoint
+  FEED: '/api/feed',
+
+  // File uploads
+  FILES: {
+      AVATAR: '/api/files/avatar',
+  }
 };
-
-/**
- * Make an API GET request
- * @param {string} endpoint The API endpoint
- * @param {object} params URL query parameters
- * @returns {Promise<any>} The JSON response
- */
-export async function apiGet(endpoint, params = {}) {
-  // Build URL with query parameters
-  const url = new URL(endpoint, window.location.origin);
-  Object.keys(params).forEach(key => {
-    if (params[key] !== undefined && params[key] !== null) {
-      url.searchParams.append(key, params[key]);
-    }
-  });
-
-  try {
-    const response = await authenticatedFetch(url.toString());
-
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
-    if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error, { endpoint, params });
-    return { error: error.message || 'Network error', status: 0 };
-  }
-}
-
-/**
- * Make a file upload request
- * @param {string} endpoint The API endpoint
- * @param {FormData} formData The form data to send
- * @returns {Promise<any>} The JSON response
- */
-export async function apiUpload(endpoint, formData) {
-  try {
-    const response = await authenticatedFetch(endpoint, {
-      method: 'POST',
-      body: formData,
-      // Note: Do not set Content-Type header for FormData, browser does it with boundary
-    });
-
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
-    if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error, { endpoint });
-    return { error: error.message || 'Network error', status: 0 };
-  }
-}
 
 /**
  * Make an API POST request
@@ -173,115 +153,46 @@ export async function apiPost(endpoint, data = {}) {
       body: JSON.stringify(data),
     });
 
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
     if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
+      const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint, data });
-    return { error: error.message || 'Network error', status: 0 };
+    throw error;
   }
 }
 
 /**
- * Make an API PATCH request
- * @param {string} endpoint The API endpoint
- * @param {object} data The data to send
- * @returns {Promise<any>} The JSON response
- */
-export async function apiPatch(endpoint, data = {}) {
-  try {
-    const response = await authenticatedFetch(endpoint, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
-    if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error, { endpoint, data });
-    return { error: error.message || 'Network error', status: 0 };
-  }
-}
-
-/**
- * Make an API PUT request
- * @param {string} endpoint The API endpoint
- * @param {object} data The data to send
- * @returns {Promise<any>} The JSON response
- */
-export async function apiPut(endpoint, data = {}) {
-  try {
-    const response = await authenticatedFetch(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
-    if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API call failed:', error, { endpoint, data });
-    return { error: error.message || 'Network error', status: 0 };
-  }
-}
-
-/**
- * Make an API DELETE request
+ * Make an API GET request
  * @param {string} endpoint The API endpoint
  * @returns {Promise<any>} The JSON response
  */
-export async function apiDelete(endpoint) {
+export async function apiGet(endpoint) {
   try {
-    const response = await authenticatedFetch(endpoint, {
-      method: 'DELETE',
-    });
+    const response = await authenticatedFetch(endpoint);
 
-    // Check for authentication error
-    if (response.status === 401) {
-      console.warn('Authentication required for API call:', endpoint);
-      return { error: 'Authentication required', status: 401 };
-    }
-
-    // Check for other errors
     if (!response.ok) {
-      console.error('API error:', response.status, await response.text());
-      return { error: `API error: ${response.status}`, status: response.status };
+      const errorData = await response.json().catch(() => ({ error: 'An unknown error occurred' }));
+      throw new Error(errorData.error || `API error: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('API call failed:', error, { endpoint });
-    return { error: error.message || 'Network error', status: 0 };
+    throw error;
   }
 }
+
+// Export functions to be used in other scripts
+window.r3l = {
+  storeAuthToken,
+  getAuthToken,
+  isAuthenticated,
+  authenticatedFetch,
+  apiPost,
+  apiGet,
+  API_ENDPOINTS
+};

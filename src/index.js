@@ -1014,4 +1014,18 @@ function createApp(r2) {
     });
 
     app.route('/api', api);
-    ret
+    return app;
+}
+
+// --- MAIN WORKER ---
+export default {
+    async fetch(request, env, ctx) {
+        const r2 = {
+            createPresignedUrl: async (method, key, options) => {
+                return await env.R3L_CONTENT_BUCKET.createPresignedUrl(method, key, options);
+            }
+        };
+        const app = createApp(r2);
+        return app.fetch(request, env, ctx);
+    }
+};

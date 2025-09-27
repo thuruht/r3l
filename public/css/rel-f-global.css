@@ -1598,6 +1598,23 @@ hr {
   background-color: var(--accent-lavender-hover);
 }
 
+/* Mobile menu toggle */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.mobile-menu-toggle:hover {
+  background-color: rgba(162, 120, 255, 0.1);
+  color: var(--accent-purple);
+}
+
 /* Responsive adjustments - Combined from all sources */
 @media (max-width: 768px) {
   :root {
@@ -1639,14 +1656,96 @@ hr {
     max-width: 100%;
   }
 
+  .mobile-menu-toggle {
+    display: block;
+  }
+
+  .nav-container {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-container);
+    border-top: 1px solid var(--border-primary);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-normal);
+    z-index: var(--z-dropdown);
+  }
+
+  .nav-container.active {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
   .navbar {
-    flex-direction: column;
-    gap: var(--space-3);
+    position: relative;
   }
 
   .nav-menu {
-    flex-wrap: wrap;
-    justify-content: center;
+    flex-direction: column;
+    gap: 0;
+    padding: var(--space-2) 0;
+  }
+
+  .nav-menu > li {
+    width: 100%;
+  }
+
+  .nav-link {
+    padding: var(--space-3) var(--space-4);
+    border-radius: 0;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .dropdown-container {
+    position: static;
+  }
+
+  .nav-dropdown {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    background-color: var(--bg-container-alt);
+    padding: 0;
+    display: none;
+  }
+
+  .dropdown-container:hover .nav-dropdown {
+    display: none;
+  }
+
+  .dropdown-container.mobile-open .nav-dropdown {
+    display: block;
+  }
+
+  .dropdown-item {
+    padding: var(--space-2) var(--space-6);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .user-dropdown {
+    position: static;
+    width: 100%;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+    background-color: var(--bg-container-alt);
+  }
+
+  .user-profile-nav:hover .user-dropdown {
+    display: none;
+  }
+
+  .user-profile-nav.mobile-open .user-dropdown {
+    display: block;
   }
 }
 

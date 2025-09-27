@@ -244,10 +244,26 @@ export class NavigationBar {
     const nav = document.querySelector('.nav-container');
     
     if (toggle && nav) {
-      toggle.addEventListener('click', () => {
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
         nav.classList.toggle('active');
         const icon = toggle.querySelector('.material-icons');
         icon.textContent = nav.classList.contains('active') ? 'close' : 'menu';
+      });
+
+      // Handle dropdown clicks on mobile
+      document.querySelectorAll('.dropdown-toggle').forEach(dropdown => {
+        dropdown.addEventListener('click', (e) => {
+          if (window.innerWidth <= 768) {
+            e.preventDefault();
+            e.stopPropagation();
+            const container = dropdown.closest('.dropdown-container');
+            document.querySelectorAll('.dropdown-container').forEach(d => {
+              if (d !== container) d.classList.remove('mobile-open');
+            });
+            container.classList.toggle('mobile-open');
+          }
+        });
       });
 
       // Close menu when clicking outside
@@ -255,6 +271,7 @@ export class NavigationBar {
         if (!toggle.contains(e.target) && !nav.contains(e.target)) {
           nav.classList.remove('active');
           toggle.querySelector('.material-icons').textContent = 'menu';
+          document.querySelectorAll('.dropdown-container').forEach(d => d.classList.remove('mobile-open'));
         }
       });
     }

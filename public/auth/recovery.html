@@ -6,6 +6,7 @@
   <title>R3L:F Account Recovery</title>
   <link rel="stylesheet" href="/css/rel-f-global.css">
   <script src="/js/font-loader.js" defer></script>
+  <script src="/js/utils/api-helper.js" defer></script>
   <style>
     .recovery-container {
       max-width: 500px;
@@ -133,17 +134,7 @@
 <body>
   <header>
     <div class="container">
-      <nav>
-        <div class="logo">
-          <a href="/">R3L:F</a>
-        </div>
-        <ul class="nav-links">
-          <li><a href="/">Home</a></li>
-          <li><a href="/search.html">Search</a></li>
-          <li><a href="/map.html">Map</a></li>
-          <li><a href="/upload.html">Upload</a></li>
-        </ul>
-      </nav>
+      <!-- Navigation will be inserted by JavaScript -->
     </div>
   </header>
 
@@ -258,8 +249,12 @@
     <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
   </footer>
   
-  <script>
+  <script type="module">
+    import { NavigationBar } from '/js/components/navigation.js';
+    
     document.addEventListener('DOMContentLoaded', function() {
+      // Initialize navigation
+      NavigationBar.init('recovery');
       // Elements
       const errorMessage = document.getElementById('error-message');
       const successMessage = document.getElementById('success-message');

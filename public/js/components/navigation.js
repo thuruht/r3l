@@ -117,7 +117,7 @@ export class NavigationBar {
                 </a>
               </div>
             </li>
-            <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' ? 'active' : ''}">
+            <li id="nav-login-item"><a href="/auth/login.html" class="nav-link ${currentPage === 'login' || currentPage === 'register' || currentPage === 'recovery' ? 'active' : ''}">
               <span class="material-icons" aria-hidden="true">login</span>
               <span class="nav-label">Login</span>
             </a></li>

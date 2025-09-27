@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
         defaultContentVisibility,
       };
 
-      const response = await r3l.authenticatedFetch('/api/user/preferences', {
+      const response = await window.r3l.authenticatedFetch('/api/user/preferences', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const loadProfileData = async () => {
     try {
-      const response = await r3l.authenticatedFetch('/api/profile');
+      const response = await window.r3l.authenticatedFetch('/api/profile');
 
       if (response.status === 401) {
         loadingEl.classList.add('hidden');
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadStats(userId) {
     try {
-      const statsResponse = await r3l.authenticatedFetch('/api/user/stats');
+      const statsResponse = await window.r3l.authenticatedFetch('/api/user/stats');
       if (!statsResponse.ok) throw new Error('Stats fetch failed');
       const stats = await statsResponse.json();
       statContributionsEl.textContent = stats.contributions || 0;
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function () {
     logoutBtn.addEventListener('click', async () => {
       try {
         // Logout by clearing token
-        r3l.storeAuthToken(null);
+        window.r3l.storeAuthToken(null);
         window.location.href = '/auth/login.html?message=You have been logged out.';
       } catch (error) {
         displayError(errorContainerEl, 'Logout failed.', 'FE-PROF-006');

@@ -1,15 +1,5 @@
--- Drop tables if they exist for a clean slate during development
-DROP TABLE IF EXISTS connections;
-DROP TABLE IF EXISTS community_archive_votes;
-DROP TABLE IF EXISTS content_location;
-DROP TABLE IF EXISTS content_lifecycle;
-DROP TABLE IF EXISTS content;
-DROP TABLE IF EXISTS auth_sessions;
-DROP TABLE IF EXISTS profiles;
-DROP TABLE IF EXISTS users;
-
 -- Core user and profile tables
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY, -- Internal unique ID (UUID)
     username TEXT UNIQUE NOT NULL,
     passwordHash TEXT NOT NULL,
@@ -17,7 +7,7 @@ CREATE TABLE users (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
     userId TEXT PRIMARY KEY NOT NULL,
     username TEXT UNIQUE NOT NULL, -- Public, user-chosen, changeable username
     displayName TEXT,
@@ -29,7 +19,7 @@ CREATE TABLE profiles (
 );
 
 -- Authentication and session management
-CREATE TABLE auth_sessions (
+CREATE TABLE IF NOT EXISTS auth_sessions (
     token TEXT PRIMARY KEY, -- The secure, random session token
     userId TEXT NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -39,7 +29,7 @@ CREATE TABLE auth_sessions (
 CREATE INDEX idx_auth_sessions_userId ON auth_sessions(userId);
 
 -- Content-related tables
-CREATE TABLE content (
+CREATE TABLE IF NOT EXISTS content (
     id TEXT PRIMARY KEY, -- UUID for the content
     userId TEXT NOT NULL,
     title TEXT,
@@ -49,7 +39,7 @@ CREATE TABLE content (
 );
 CREATE INDEX idx_content_userId ON content(userId);
 
-CREATE TABLE content_location (
+CREATE TABLE IF NOT EXISTS content_location (
     contentId TEXT PRIMARY KEY NOT NULL,
     storageType TEXT NOT NULL DEFAULT 'R2', -- e.g., 'R2', 'IPFS'
     objectKey TEXT NOT NULL UNIQUE, -- The key for the object in R2
@@ -58,7 +48,7 @@ CREATE TABLE content_location (
     FOREIGN KEY (contentId) REFERENCES content(id) ON DELETE CASCADE
 );
 
-CREATE TABLE content_lifecycle (
+CREATE TABLE IF NOT EXISTS content_lifecycle (
     contentId TEXT PRIMARY KEY NOT NULL,
     status TEXT NOT NULL DEFAULT 'active', -- 'active', 'archived', 'deleted'
     expiresAt TIMESTAMP, -- NULL if archived or permanent
@@ -67,7 +57,7 @@ CREATE TABLE content_lifecycle (
 CREATE INDEX idx_content_lifecycle_expiresAt ON content_lifecycle(status, expiresAt);
 
 -- Community and social features
-CREATE TABLE community_archive_votes (
+CREATE TABLE IF NOT EXISTS community_archive_votes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     contentId TEXT NOT NULL,
     userId TEXT NOT NULL,
@@ -78,7 +68,7 @@ CREATE TABLE community_archive_votes (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE connections (
+CREATE TABLE IF NOT EXISTS connections (
     followerId TEXT NOT NULL,
     followingId TEXT NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -89,7 +79,7 @@ CREATE TABLE connections (
 CREATE INDEX idx_connections_followingId ON connections(followingId);
 
 -- Bookmarks table
-CREATE TABLE bookmarks (
+CREATE TABLE IF NOT EXISTS bookmarks (
     userId TEXT NOT NULL,
     contentId TEXT NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -99,7 +89,7 @@ CREATE TABLE bookmarks (
 );
 
 -- Messages table
-CREATE TABLE messages (
+CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     senderId TEXT NOT NULL,
     recipientId TEXT NOT NULL,
@@ -112,7 +102,7 @@ CREATE TABLE messages (
 CREATE INDEX idx_messages_recipientId_createdAt ON messages(recipientId, createdAt);
 
 -- Notifications table
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
     type TEXT NOT NULL, -- e.g., 'new_message', 'new_follower', 'content_vote'
@@ -126,7 +116,7 @@ CREATE TABLE notifications (
 CREATE INDEX idx_notifications_userId_createdAt ON notifications(userId, createdAt);
 
 -- Comments table
-CREATE TABLE comments (
+CREATE TABLE IF NOT EXISTS comments (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
     contentId TEXT NOT NULL,

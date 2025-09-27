@@ -704,6 +704,39 @@ section:has(h2:contains('Core Concepts')) .file-grid {
   cursor: pointer;
 }
 
+/* Filter styling */
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter-checkbox, .filter-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  cursor: pointer;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  transition: background-color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.filter-checkbox:hover, .filter-radio:hover {
+  background-color: rgba(162, 120, 255, 0.1);
+}
+
+.filter-checkbox input, .filter-radio input {
+  width: auto;
+  margin: 0;
+}
+
+.info-text {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin-top: var(--space-2);
+}
+
 .results-header {
   display: flex;
   justify-content: space-between;

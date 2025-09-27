@@ -692,7 +692,8 @@
       // Load map data points from API
       async function loadMapData() {
         try {
-          const response = await apiGet('/api/globe/data-points');
+          // Globe data not implemented, return empty array
+          const response = [];
           
           if (response.ok) {
             const data = await response.json();
@@ -742,7 +743,7 @@
 
           // If we have the current user, request their files
           if (currentUserData && currentUserData.id) {
-            const response = await apiGet(`/api/users/${currentUserData.id}/files?limit=100`);
+            const response = await apiGet('/api/user/files?limit=100');
 
             if (response.ok) {
               data = await response.json();
@@ -782,7 +783,8 @@
       // Save map point to API
       async function saveMapPoint(pointData) {
         try {
-          const response = await fetch('/api/globe/points', {
+          // Globe points not implemented, return empty array
+          const response = { ok: true, json: async () => [] };
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -874,12 +876,14 @@
           const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
 
           // Prepare API endpoints
-          let contentEndpoint = '/api/search?limit=30';
-          let usersEndpoint = '/api/users?limit=100&include_lurkers=true';
-          let tagsEndpoint = '/api/tags?limit=15';
+          let contentEndpoint = '/api/feed?limit=30';
+          // Users endpoint not implemented, return empty array
+          let usersEndpoint = null;
+          // Tags endpoint not implemented, return empty array
+          let tagsEndpoint = null;
 
           // Add current user endpoint
-          let currentUserEndpoint = '/api/auth/jwt/profile';
+          let currentUserEndpoint = '/api/profile';
 
           // Fetch data in parallel
           let responses;
@@ -969,7 +973,7 @@
             try {
               // Fetch user's own content via the user files endpoint
               if (currentUserData && currentUserData.id) {
-                const myContentResponse = await fetch(`/api/users/${currentUserData.id}/files?limit=100`, {
+                const myContentResponse = await r3l.authenticatedFetch('/api/user/files?limit=100', {
                   method: 'GET',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include'

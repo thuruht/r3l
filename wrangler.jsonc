@@ -53,6 +53,10 @@
         "ConnectionsObject",
         "VisualizationObject"
       ]
+    },
+    {
+      "tag": "final_cleanup",
+      "new_classes": []
     }
   ],
   "vars": {

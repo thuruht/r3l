@@ -27,7 +27,10 @@ export class NavigationBar {
             <span class="text-accent">R3L:F</span>
           </a>
         </div>
-        <nav>
+        <button class="mobile-menu-toggle" aria-label="Toggle navigation">
+          <span class="material-icons">menu</span>
+        </button>
+        <nav class="nav-container">
           <ul class="nav-menu">
             <li class="dropdown-container">
               <a href="#" class="nav-link dropdown-toggle">
@@ -130,6 +133,7 @@ export class NavigationBar {
     if (header) {
       header.innerHTML = `<div class="container">${navHtml}</div>`;
       this.updateAuthState();
+      this.initMobileMenu();
     } else {
       debugLog('NavigationBar', 'Error: Header element not found');
     }
@@ -230,5 +234,29 @@ export class NavigationBar {
         window.r3l.storeAuthToken(null);
     }
     window.location.href = '/login.html?message=' + encodeURIComponent('You have been logged out.');
+  }
+
+  /**
+   * Initialize mobile menu functionality
+   */
+  static initMobileMenu() {
+    const toggle = document.querySelector('.mobile-menu-toggle');
+    const nav = document.querySelector('.nav-container');
+    
+    if (toggle && nav) {
+      toggle.addEventListener('click', () => {
+        nav.classList.toggle('active');
+        const icon = toggle.querySelector('.material-icons');
+        icon.textContent = nav.classList.contains('active') ? 'close' : 'menu';
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!toggle.contains(e.target) && !nav.contains(e.target)) {
+          nav.classList.remove('active');
+          toggle.querySelector('.material-icons').textContent = 'menu';
+        }
+      });
+    }
   }
 }

@@ -894,7 +894,7 @@ section:has(h2:contains('Core Concepts')) .file-grid {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
   padding: var(--space-2) 0;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-modal);
   display: none;
   border: 1px solid var(--border-primary);
 }
@@ -971,7 +971,7 @@ section:has(h2:contains('Core Concepts')) .file-grid {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-medium);
   padding: var(--space-2) 0;
-  z-index: var(--z-dropdown);
+  z-index: var(--z-modal);
   display: none;
   border: 1px solid var(--border-primary);
 }
@@ -1673,7 +1673,7 @@ hr {
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-normal);
-    z-index: var(--z-dropdown);
+    z-index: var(--z-modal);
   }
 
   .nav-container.active {

@@ -1014,4 +1014,13 @@ function createApp(r2) {
     });
 
     app.route('/api', api);
-    ret
+    return app;
+}
+
+export default {
+    async fetch(request, env, ctx) {
+        const r2 = env.R3L_CONTENT_BUCKET;
+        const app = createApp(r2);
+        return app.fetch(request, env, ctx);
+    }
+};

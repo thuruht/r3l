@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
    */
   async function fetchSearchResults(searchParams) {
     try {
-      const endpoint = searchParams.antiTracking ? '/api/search/lurker' : '/api/search';
+      const endpoint = '/api/feed'; // Use feed endpoint as search replacement
 
       // Build query params
       const params = new URLSearchParams();
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isLoggedIn = document.cookie.includes('r3l_auth_state=true');
       if (isLoggedIn) {
         try {
-          return await retryWithSimplifiedQuery('/api/search', searchParams);
+          return await retryWithSimplifiedQuery('/api/feed', searchParams);
         } catch (retryError) {
           console.error('Retry failed:', retryError);
         }

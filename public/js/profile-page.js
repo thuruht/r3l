@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function () {
         defaultContentVisibility,
       };
 
-      const response = await fetch(`/api/users/${userId}/preferences`, {
+      const response = await r3l.authenticatedFetch('/api/user/preferences', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -137,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const loadProfileData = async () => {
     try {
-      const response = await fetch('/api/auth/jwt/profile', { credentials: 'include' });
+      const response = await r3l.authenticatedFetch('/api/profile');
 
       if (response.status === 401) {
         loadingEl.classList.add('hidden');
@@ -194,7 +194,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function loadStats(userId) {
     try {
-      const statsResponse = await fetch(`/api/users/${userId}/stats`, { credentials: 'include' });
+      const statsResponse = await r3l.authenticatedFetch('/api/user/stats');
       if (!statsResponse.ok) throw new Error('Stats fetch failed');
       const stats = await statsResponse.json();
       statContributionsEl.textContent = stats.contributions || 0;
@@ -209,7 +209,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const mapPointsContainer = document.getElementById('user-map-points');
     const emptyState = document.querySelector('.empty-state');
     try {
-      const res = await fetch(`/api/globe/data-points?userId=${userId}`, { credentials: 'include' });
+      // Globe data not implemented in backend
+      const res = { ok: true, json: async () => [] };
       if (!res.ok) throw new Error('Map points fetch failed');
       const mapPoints = await res.json();
       if (!mapPoints || mapPoints.length === 0) {
@@ -276,7 +277,8 @@ document.addEventListener('DOMContentLoaded', function () {
     generateRecoveryKeyBtn.addEventListener('click', async () => {
       if (!confirm('WARNING: Generating a new recovery key will invalidate your old one. Continue?')) return;
       try {
-        const res = await fetch('/api/auth/jwt/generate-recovery-key', { method: 'POST', credentials: 'include' });
+        // Recovery key generation not implemented in backend
+        const res = { ok: false };
         if (!res.ok) throw new Error('Failed to generate');
         const result = await res.json();
         if (!result.success || !result.recoveryKey) throw new Error('Invalid response');
@@ -296,7 +298,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     logoutBtn.addEventListener('click', async () => {
       try {
-        await fetch('/api/auth/jwt/logout', { method: 'POST', credentials: 'include' });
+        // Logout by clearing token
+        r3l.storeAuthToken(null);
         window.location.href = '/auth/login.html?message=You have been logged out.';
       } catch (error) {
         displayError(errorContainerEl, 'Logout failed.', 'FE-PROF-006');

@@ -302,7 +302,7 @@
           errorMessage.style.display = 'none';
           
           // Perform registration with JWT
-          const response = await fetch('/api/auth/jwt/register', {
+          const response = await fetch('/api/register', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

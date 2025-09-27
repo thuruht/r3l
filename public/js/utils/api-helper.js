@@ -71,7 +71,7 @@ async function authenticatedFetch(url, options = {}) {
 }
 
 // Define API endpoints centrally to avoid mismatches
-export const API_ENDPOINTS = {
+const API_ENDPOINTS = {
   // Auth endpoints
   AUTH: {
     REGISTER: '/api/register',
@@ -174,7 +174,7 @@ export const API_ENDPOINTS = {
  * @param {object} data The data to send
  * @returns {Promise<any>} The JSON response
  */
-export async function apiPost(endpoint, data = {}) {
+async function apiPost(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'POST',
@@ -198,7 +198,7 @@ export async function apiPost(endpoint, data = {}) {
  * @param {string} endpoint The API endpoint
  * @returns {Promise<any>} The JSON response
  */
-export async function apiGet(endpoint) {
+async function apiGet(endpoint) {
   try {
     const response = await authenticatedFetch(endpoint);
 
@@ -219,7 +219,7 @@ export async function apiGet(endpoint) {
  * @param {string} endpoint The API endpoint
  * @returns {Promise<any>} The JSON response
  */
-export async function apiDelete(endpoint) {
+async function apiDelete(endpoint) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'DELETE',
@@ -243,7 +243,7 @@ export async function apiDelete(endpoint) {
  * @param {object} data The data to send
  * @returns {Promise<any>} The JSON response
  */
-export async function apiPatch(endpoint, data = {}) {
+async function apiPatch(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
       method: 'PATCH',

@@ -183,12 +183,11 @@ export class VisualizationObject {
 
 // --- ZOD VALIDATION SCHEMAS ---
 const loginSchema = z.object({
-    email: z.string().email('Invalid email address.'),
+    username: z.string(),
     password: z.string(),
 });
 
 const registerSchema = z.object({
-    email: z.string().email('Invalid email address.'),
     password: z.string().min(8, 'Password must be at least 8 characters long.'),
     username: z.string().min(3, 'Username must be at least 3 characters long.'),
     displayName: z.string().min(1, 'Display name is required.').optional(),
@@ -266,18 +265,20 @@ function createApp(r2) {
         const body = c.req.valid('json');
         const userId = crypto.randomUUID();
         const passwordHash = await bcrypt.hash(body.password, 10);
+        const recoveryKey = crypto.randomUUID() + '-' + crypto.randomUUID();
+        const recoveryHash = await bcrypt.hash(recoveryKey, 10);
 
         try {
             await c.env.R3L_DB.batch([
-                c.env.R3L_DB.prepare("INSERT INTO users (id, email, passwordHash) VALUES (?, ?, ?)")
-                          .bind(userId, body.email, passwordHash),
+                c.env.R3L_DB.prepare("INSERT INTO users (id, username, passwordHash, recoveryHash) VALUES (?, ?, ?, ?)")
+                          .bind(userId, body.username, passwordHash, recoveryHash),
                 c.env.R3L_DB.prepare("INSERT INTO profiles (userId, username, displayName) VALUES (?, ?, ?)")
                           .bind(userId, body.username, body.displayName || body.username)
-            ]);
-            return c.json({ success: true, userId: userId }, 201);
+            ])
+            
+            return c.json({ success: true, userId: userId, recoveryKey: recoveryKey }, 201);
         } catch (e) {
              if (e.message && e.message.includes('UNIQUE constraint failed')) {
-                // More specific error based on which constraint failed
                 if (e.message.includes('users.email')) {
                     return c.json({ error: 'An account with this email already exists.' }, 409);
                 }
@@ -324,24 +325,22 @@ function createApp(r2) {
 
     publicApi.post('/login', zValidator('json', loginSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
-        const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE email = ?")
-            .bind(body.email)
+        const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE username = ?")
+            .bind(body.username)
             .first();
 
         if (!user) {
-            console.log(`Login failed: User not found for email ${body.email}`);
-            return c.json({ error: 'Invalid email or password.' }, 401);
+            return c.json({ error: 'Invalid username or password.' }, 401);
         }
 
         const passwordMatch = await bcrypt.compare(body.password, user.passwordHash);
 
         if (!passwordMatch) {
-            console.log(`Login failed: Invalid password for user ${user.id}`);
-            return c.json({ error: 'Invalid email or password.' }, 401);
+            return c.json({ error: 'Invalid username or password.' }, 401);
         }
 
         const sessionToken = crypto.randomUUID();
-        const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+        const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
         await c.env.R3L_DB.prepare(
             "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"

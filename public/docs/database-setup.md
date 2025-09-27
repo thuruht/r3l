@@ -6,7 +6,7 @@ This guide explains how to set up and initialize the database for the R3L:F appl
 
 R3L:F uses Cloudflare D1 as its database. The schema consists of the following core tables:
 
-- **users**: Stores user profiles, including OAuth identifiers
+- **users**: Stores user accounts with username-based authentication and recovery keys
 - **auth_sessions**: Tracks active login sessions
 - **content**: Stores user-generated content
 - **content_location**: Maps content to geographic coordinates
@@ -94,24 +94,13 @@ chmod +x update-content-schema.sh
 
 This script will check for and add missing columns in both the `content` and `users` tables.
 
-### Missing Updated_at Column
+### Schema Updates
 
-If you see an error about `table users has no column named updated_at`, run:
-
-```bash
-npx wrangler d1 execute r3l-db --remote --command "ALTER TABLE users ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (unixepoch())"
-```
-
-### Missing Token Column in Auth_Sessions
-
-If you see an error about `table auth_sessions has no column named token`, run:
+If migrating from an older version, you may need to update the schema to use username-based authentication:
 
 ```bash
-npx wrangler d1 execute r3l-db --remote --command "ALTER TABLE auth_sessions ADD COLUMN token TEXT NOT NULL DEFAULT ''"
-npx wrangler d1 execute r3l-db --remote --command "CREATE INDEX IF NOT EXISTS idx_auth_sessions_token ON auth_sessions(token)"
+npx wrangler d1 execute r3l-db --file=./db/schema.sql
 ```
-
-You can also use the `update-content-schema.sh` script which now handles these issues automatically.
 
 ## Inspecting the Database
 

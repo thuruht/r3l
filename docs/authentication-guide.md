@@ -8,10 +8,10 @@ The R3L:F authentication system is built on a bearer token mechanism. It does no
 
 ### Authentication Flow
 
-1.  **Registration**: A new user registers via the `/api/register` endpoint. A new user record and profile are created in the D1 database, and the password is securely hashed using `bcryptjs`.
-2.  **Login**: The user logs in via the `/api/login` endpoint with their email and password.
+1.  **Registration**: A new user registers via the `/api/register` endpoint with username, password, and display name. A recovery key is generated for account recovery. User record and profile are created in D1, password is hashed using `bcryptjs`.
+2.  **Login**: The user logs in via the `/api/login` endpoint with their username and password.
 3.  **Session Creation**: Upon successful login, a secure, random session token is generated using `crypto.randomUUID()`.
-4.  **Session Storage**: This session token is stored in the `auth_sessions` table in the D1 database, along with the user's ID and the user-agent string of their browser.
+4.  **Session Storage**: This session token is stored in the `auth_sessions` table in the D1 database, along with the user's ID and expiration time.
 5.  **Token Issuance**: The session token is returned to the client in a JSON response. The client-side JavaScript then stores this token in the browser's `localStorage`.
 
 ### Making Authenticated Requests

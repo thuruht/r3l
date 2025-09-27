@@ -14,7 +14,7 @@ R3L:F (Relational Ephemeral Filenet) is an anti-algorithmic, ephemeral, user-con
 *   **Storage**: R2 for file storage.
 *   **Key-Value Storage**: KV for caching and rate limiting.
 *   **State Management**: Durable Objects for real-time features like collaboration and visualizations.
-*   **Authentication**: A custom bearer token system with sessions stored in the D1 database.
+*   **Authentication**: Username-based bearer token system with recovery keys, sessions stored in D1.
 
 ### Frontend
 
@@ -22,9 +22,10 @@ R3L:F (Relational Ephemeral Filenet) is an anti-algorithmic, ephemeral, user-con
 
 ## Key Features
 
-*   **Ephemeral Content**: Content expires after 30 days by default, as configured in `wrangler.jsonc`.
+*   **Ephemeral Content**: Content expires after 7 days by default unless community-archived.
 *   **User-Controlled Discovery**: The platform is free of algorithmic content ranking.
-*   **Secure File Uploads**: Presigned R2 URLs are used for secure and direct file uploads.
+*   **Secure File Uploads**: Presigned R2 URLs for secure uploads.
+*   **Recovery System**: Username-only registration with mandatory recovery key generation.
 
 ## Project Structure
 

@@ -10,9 +10,10 @@ DROP TABLE IF EXISTS users;
 
 -- Core user and profile tables
 CREATE TABLE users (
-    id TEXT PRIMARY KEY, -- Internal unique ID (e.g., from an auth provider or UUID)
-    email TEXT UNIQUE NOT NULL,
+    id TEXT PRIMARY KEY, -- Internal unique ID (UUID)
+    username TEXT UNIQUE NOT NULL,
     passwordHash TEXT NOT NULL,
+    recoveryHash TEXT, -- Hashed recovery key for account recovery
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
@@ -33,7 +34,6 @@ CREATE TABLE auth_sessions (
     userId TEXT NOT NULL,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expiresAt TIMESTAMP NOT NULL,
-    userAgent TEXT,
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_auth_sessions_userId ON auth_sessions(userId);

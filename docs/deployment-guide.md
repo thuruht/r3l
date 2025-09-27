@@ -51,7 +51,7 @@ npx wrangler d1 execute r3l-db --file=./db/schema.sql
 Set these in `wrangler.jsonc` under `vars`:
 
 - `ALLOWED_ORIGINS`: Your domain (e.g., "https://r3l.example.com")
-- `CONTENT_EXPIRATION_DAYS`: Content lifetime (default: 30)
+- `CONTENT_EXPIRATION_DAYS`: Content lifetime (default: 7)
 - `MAX_UPLOAD_SIZE`: Max file size in bytes (default: 10485760 = 10MB)
 - `RATE_LIMIT_REQUESTS`: Requests per window (default: 100)
 - `RATE_LIMIT_WINDOW`: Rate limit window in seconds (default: 60)
@@ -90,7 +90,7 @@ npm run deploy
 ### 3. Security Checklist
 - Verify CORS origins are properly configured
 - Test rate limiting functionality
-- Confirm User-Agent validation in auth
+- Test recovery key generation on registration
 - Check file upload size limits
 
 ## Troubleshooting

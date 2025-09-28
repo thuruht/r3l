@@ -20,8 +20,9 @@ R3L:F is a decentralized, ephemeral, anti-algorithmic social file-sharing platfo
 
 *   **Backend**: Cloudflare Workers, D1, R2, KV, and Durable Objects.
 *   **Routing**: Hono
-*   **Authentication**: Bearer token authentication with database-backed sessions.
-*   **Frontend**: A Single Page Application served from the `/public` directory.
+*   **Authentication**: Secure HttpOnly cookie-based sessions with database storage.
+*   **Frontend**: Modern HTML/CSS/JS with secure API integration.
+*   **Security**: CSRF protection, secure cookies, rate limiting, input validation.
 
 ## Project Structure
 

@@ -276,6 +276,17 @@ function createApp(r2) {
                           .bind(userId, body.username, body.displayName || body.username)
             ])
             
+            // Create session token for immediate login
+            const sessionToken = crypto.randomUUID();
+            const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            
+            await c.env.R3L_DB.prepare(
+                "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"
+            ).bind(sessionToken, userId, sessionExpiry.toISOString()).run();
+            
+            // Set secure HttpOnly cookie
+            c.header('Set-Cookie', `r3l_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+            
             return c.json({ success: true, userId: userId, recoveryKey: recoveryKey }, 201);
         } catch (e) {
              if (e.message && e.message.includes('UNIQUE constraint failed')) {
@@ -323,6 +334,12 @@ function createApp(r2) {
         return c.json(results || []);
     });
 
+    publicApi.post('/logout', async (c) => {
+        // Clear the session cookie
+        c.header('Set-Cookie', 'r3l_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0');
+        return c.json({ success: true, message: 'Logged out successfully' });
+    });
+
     publicApi.post('/login', zValidator('json', loginSchema, validationErrorHandler), async (c) => {
         const body = c.req.valid('json');
         const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE username = ?")
@@ -346,28 +363,45 @@ function createApp(r2) {
             "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"
         ).bind(sessionToken, user.id, sessionExpiry.toISOString()).run();
 
-        return c.json({ token: sessionToken });
+        // Set secure HttpOnly cookie
+        c.header('Set-Cookie', `r3l_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+        
+        return c.json({ success: true });
     });
 
     api.route('/', publicApi);
 
     // --- PROTECTED API ROUTES ---
     const protectedApi = new Hono();
-    protectedApi.use('*', bearerAuth({
-        verifyToken: async (token, c) => {
-            const session = await c.env.R3L_DB.prepare(
-                "SELECT userId FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
-            ).bind(token).first();
-
-            if (!session) {
-                return false;
+    protectedApi.use('*', async (c, next) => {
+        // Extract session token from cookie
+        const cookieHeader = c.req.header('Cookie');
+        let sessionToken = null;
+        
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
+            const sessionCookie = cookies.find(cookie => cookie.startsWith('r3l_session='));
+            if (sessionCookie) {
+                sessionToken = sessionCookie.split('=')[1];
             }
-
-            c.set('userId', session.userId);
-            c.set('subrequestCount', 0);
-            return true;
         }
-    }));
+        
+        if (!sessionToken) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+        
+        const session = await c.env.R3L_DB.prepare(
+            "SELECT userId FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
+        ).bind(sessionToken).first();
+
+        if (!session) {
+            return c.json({ error: 'Invalid or expired session' }, 401);
+        }
+
+        c.set('userId', session.userId);
+        c.set('subrequestCount', 0);
+        await next();
+    });
     
     protectedApi.use('*', async (c, next) => {
         const count = c.get('subrequestCount') || 0;
@@ -902,6 +936,103 @@ function createApp(r2) {
         }
         
         return c.json({ success: true, workspaceId }, 201);
+    });
+
+    // User connections endpoints
+    protectedApi.post('/user/connections', async (c) => {
+        const userId = c.get('userId');
+        const { targetUserId } = await c.req.json();
+        
+        if (!targetUserId) {
+            return c.json({ error: 'Target user ID required' }, 400);
+        }
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "INSERT OR IGNORE INTO connections (followerId, followingId) VALUES (?, ?)"
+            ).bind(userId, targetUserId).run();
+            
+            return c.json({ success: true, message: 'Connection created' });
+        } catch (e) {
+            console.error('Connection creation failed:', e);
+            return c.json({ error: 'Failed to create connection' }, 500);
+        }
+    });
+
+    protectedApi.delete('/user/connections/:targetUserId', async (c) => {
+        const userId = c.get('userId');
+        const targetUserId = c.req.param('targetUserId');
+        
+        try {
+            await c.env.R3L_DB.prepare(
+                "DELETE FROM connections WHERE followerId = ? AND followingId = ?"
+            ).bind(userId, targetUserId).run();
+            
+            return c.json({ success: true, message: 'Connection removed' });
+        } catch (e) {
+            console.error('Connection removal failed:', e);
+            return c.json({ error: 'Failed to remove connection' }, 500);
+        }
+    });
+
+    // User visibility endpoints
+    protectedApi.get('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        
+        try {
+            const user = await c.env.R3L_DB.prepare(
+                "SELECT preferences FROM profiles WHERE userId = ?"
+            ).bind(userId).first();
+            
+            let preferences = {};
+            if (user?.preferences) {
+                try {
+                    preferences = JSON.parse(user.preferences);
+                } catch (e) { /* ignore */ }
+            }
+            
+            return c.json({
+                visibility: preferences.defaultContentVisibility || 'public',
+                showLocation: preferences.showLocationByDefault || false,
+                lurkerMode: preferences.lurkerModeEnabled || false
+            });
+        } catch (e) {
+            console.error('Visibility fetch failed:', e);
+            return c.json({ error: 'Failed to fetch visibility settings' }, 500);
+        }
+    });
+
+    protectedApi.patch('/user/visibility', async (c) => {
+        const userId = c.get('userId');
+        const { visibility, showLocation, lurkerMode } = await c.req.json();
+        
+        try {
+            // Get existing preferences
+            const user = await c.env.R3L_DB.prepare(
+                "SELECT preferences FROM profiles WHERE userId = ?"
+            ).bind(userId).first();
+            
+            let preferences = {};
+            if (user?.preferences) {
+                try {
+                    preferences = JSON.parse(user.preferences);
+                } catch (e) { /* ignore */ }
+            }
+            
+            // Update visibility preferences
+            if (visibility !== undefined) preferences.defaultContentVisibility = visibility;
+            if (showLocation !== undefined) preferences.showLocationByDefault = showLocation;
+            if (lurkerMode !== undefined) preferences.lurkerModeEnabled = lurkerMode;
+            
+            await c.env.R3L_DB.prepare(
+                "UPDATE profiles SET preferences = ? WHERE userId = ?"
+            ).bind(JSON.stringify(preferences), userId).run();
+            
+            return c.json({ success: true, message: 'Visibility settings updated' });
+        } catch (e) {
+            console.error('Visibility update failed:', e);
+            return c.json({ error: 'Failed to update visibility settings' }, 500);
+        }
     });
 
     app.route('/api', api);

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="./css/rel-f-accent.css">
   <link rel="stylesheet" href="./css/responsive-enhancements.css">
   <script src="./js/font-loader.js" defer></script>
-  <script src="./js/utils/api-helper.js" defer></script>
+  <script src="./js/utils/secure-api-helper.js" defer></script>
   <script src="vendor/d3/d3.v7.min.js" defer></script>
   <style>
     .slideshow-container {
@@ -65,12 +65,6 @@
       color: var(--accent-green);
       margin-bottom: var(--space-4);
       font-style: italic;
-    }
-    
-    .slide-subtitle {
-      font-size: var(--fs-2xl);
-      color: var(--accent-green);
-      margin-bottom: var(--space-4);
     }
     
     .slide-overlay p {
@@ -148,24 +142,8 @@
       overflow: hidden;
     }
     
-    .feature-card::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, var(--accent-purple-glow) 0%, transparent 50%);
-      opacity: 0;
-      transition: opacity var(--transition-normal);
-    }
-    
     .feature-card:hover {
       transform: translateY(-5px);
-    }
-    
-    .feature-card:hover::after {
-      opacity: 0.04;
     }
     
     .feature-icon {
@@ -179,22 +157,6 @@
       color: var(--accent-green);
       margin-bottom: var(--space-2);
       font-size: var(--fs-xl);
-    }
-    
-    .alert-ephemeral {
-      display: none;
-      align-items: center;
-      gap: var(--space-4);
-      background-color: rgba(255, 156, 102, 0.1);
-      border-left: 4px solid var(--warning);
-      padding: var(--space-4);
-      margin: var(--space-6) 0;
-      border-radius: var(--radius-md);
-    }
-    
-    .alert-ephemeral .material-icons {
-      font-size: 36px;
-      color: var(--warning);
     }
     
     .cta-section {
@@ -218,27 +180,13 @@
       justify-content: center;
       gap: var(--space-4);
       margin-top: var(--space-6);
+      flex-wrap: wrap;
     }
     
-    /* Animation for the hero visualization */
     @keyframes pulse {
       0% { opacity: 0.7; }
       50% { opacity: 1; }
       100% { opacity: 0.7; }
-    }
-    
-    #hero-visualization {
-      width: 100%;
-      height: 100%;
-      position: relative;
-    }
-    
-    #hero-visualization svg {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
     }
   </style>
 </head>
@@ -286,7 +234,7 @@
             Ephemeral by Design
           </h2>
           <p class="slide-tagline">"the rel is what you make it"</p>
-          <p>Content expires after 7 days unless community-archived, ensuring that the Rel remains fresh and relevant rather than accumulating digital clutter.</p>
+          <p>Content expires after 30 days unless community-archived, ensuring that the Rel remains fresh and relevant rather than accumulating digital clutter.</p>
           <p>This creates a living ecosystem of content that evolves with your community.</p>
           <div class="slide-actions">
             <a href="help.html" class="btn btn-secondary">
@@ -320,36 +268,16 @@
       <div class="slide">
         <div class="slide-overlay">
           <h2 class="slide-title">
-            <span class="material-icons" aria-hidden="true">account_tree</span>
+            <span class="material-icons" aria-hidden="true">hub</span>
             Association Web
           </h2>
           <p class="slide-tagline">"the rel is what you make it"</p>
-          <p>Users are connected visually in an association web through explicit, mutually agreed relationships.</p>
-          <p>See the branching structure of connections with stronger links for frequent interactions, all generated from public contact lists.</p>
+          <p>Build meaningful connections through intentional networking rather than algorithmic suggestions.</p>
+          <p>Your association web grows organically based on shared interests and mutual connections.</p>
           <div class="slide-actions">
-            <a href="network.html" class="btn">
-              <span class="material-icons">hub</span>
-              View Network
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide 5: Join Now -->
-      <div class="slide">
-        <div class="slide-overlay">
-          <h2 class="slide-title">Join the Rel</h2>
-          <p class="slide-subtitle">Experience a different kind of social network</p>
-          <p class="slide-tagline">"the rel is what you make it"</p>
-          <p>Where connections are meaningful, content is ephemeral, and you remain in control of your digital experience.</p>
-          <div class="slide-actions">
-            <a href="/auth/register.html" class="btn glow-accent">
+            <a href="connect.html" class="btn btn-secondary">
               <span class="material-icons">person_add</span>
-              Create Account
-            </a>
-            <a href="help.html" class="btn btn-secondary">
-              <span class="material-icons">help_outline</span>
-              Learn More
+              Find People
             </a>
           </div>
         </div>
@@ -361,16 +289,6 @@
         <div class="nav-dot" data-slide="1"></div>
         <div class="nav-dot" data-slide="2"></div>
         <div class="nav-dot" data-slide="3"></div>
-        <div class="nav-dot" data-slide="4"></div>
-      </div>
-    </div>
-    
-    <!-- Ephemeral Alert -->
-    <div class="alert-ephemeral glow-accent">
-      <span class="material-icons" aria-hidden="true">timer</span>
-      <div>
-        <h3>Ephemeral by Design</h3>
-        <p>Content expires after 7 days unless community-archived, ensuring that the Rel remains fresh and relevant.</p>
       </div>
     </div>
     
@@ -378,19 +296,19 @@
     <h2>Core Features</h2>
     
     <div class="feature-grid">
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">devices_other</div>
         <h3 class="feature-title">Relational</h3>
         <p>Users are connected visually in an association web but only through explicit, mutually agreed relationships.</p>
       </div>
       
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">timer</div>
         <h3 class="feature-title">Ephemeral</h3>
         <p>Content expires unless archived, ensuring that data remains fresh and relevant rather than accumulating indefinitely.</p>
       </div>
       
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">folder_shared</div>
         <h3 class="feature-title">Filenet</h3>
         <p>A social file-sharing system where documents, audio, video, and creative works are the foundation of interaction.</p>
@@ -398,19 +316,19 @@
     </div>
     
     <div class="feature-grid">
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">archive</div>
         <h3 class="feature-title">Personal Archive</h3>
         <p>Each user has a "drawer" (profile) with a customizable communique—a themeable, linkable window into their stored content.</p>
       </div>
       
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">search</div>
         <h3 class="feature-title">Anti-Algorithmic Search</h3>
         <p>No engagement optimization, no ranking - pure chronological ordering and user-controlled filtering by file type, tags, and more.</p>
       </div>
       
-      <div class="feature-card card-accent">
+      <div class="feature-card">
         <div class="feature-icon material-icons" aria-hidden="true">account_tree</div>
         <h3 class="feature-title">Association Web</h3>
         <p>Automatically generated from public contact lists, showing branching structure of connections with stronger links for frequent interactions.</p>
@@ -418,7 +336,7 @@
     </div>
     
     <!-- CTA Section -->
-    <div class="cta-section glow-accent">
+    <div class="cta-section">
       <h2 class="cta-title">Join the Rel</h2>
       <p>Experience a different kind of social network - one where connections are meaningful, content is ephemeral, and you remain in control.</p>
       
@@ -447,15 +365,12 @@
       <a href="about.html">About</a> | 
       <a href="sitemap.html">Site Map</a>
     </div>
-    <p>&copy; 2025 R3L:F Project - Built with Cloudflare</p>
   </footer>
 
-  <!-- Load D3.js for association web visualization -->
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
 
     document.addEventListener('DOMContentLoaded', () => {
-      // Initialize the navigation bar
       NavigationBar.init('home');
       
       // Initialize slideshow
@@ -491,272 +406,80 @@
       startSlideshow();
       
       // Hero visualization
-      const container = document.getElementById('hero-visualization');
-      const width = container.clientWidth;
-      const height = container.clientHeight;
-      
-      // Create SVG
-      const svg = d3.select('#hero-visualization')
-        .append('svg')
-        .attr('width', width)
-        .attr('height', height);
-      
-      // Generate a larger, more complex dataset for the hero visualization
-      const nodeCount = 50;
-      const linkProbability = 0.15;
-      
-      // Generate nodes
-      const nodes = [];
-      
-      // Add user nodes (25% of total)
-      const userCount = Math.floor(nodeCount * 0.25);
-      for (let i = 0; i < userCount; i++) {
-        nodes.push({
-          id: `user-${i}`,
-          type: 'user',
-          size: 8 + Math.random() * 5,
-          color: i === 0 ? '#a278ff' : '#d0efb0', // First user is "you"
+      if (typeof d3 !== 'undefined') {
+        const container = document.getElementById('hero-visualization');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        const svg = d3.select('#hero-visualization')
+          .append('svg')
+          .attr('width', width)
+          .attr('height', height);
+        
+        // Generate nodes for visualization
+        const nodes = d3.range(30).map(i => ({
+          id: i,
           x: Math.random() * width,
-          y: Math.random() * height
-        });
-      }
-      
-      // Add file nodes (60% of total)
-      const fileCount = Math.floor(nodeCount * 0.6);
-      for (let i = 0; i < fileCount; i++) {
-        nodes.push({
-          id: `file-${i}`,
-          type: 'file',
-          size: 5 + Math.random() * 3,
-          color: '#7fd8d8',
-          x: Math.random() * width,
-          y: Math.random() * height
-        });
-      }
-      
-      // Add tag nodes (15% of total)
-      const tagCount = nodeCount - userCount - fileCount;
-      for (let i = 0; i < tagCount; i++) {
-        nodes.push({
-          id: `tag-${i}`,
-          type: 'tag',
-          size: 4 + Math.random() * 2,
-          color: '#ff9c66',
-          x: Math.random() * width,
-          y: Math.random() * height
-        });
-      }
-      
-      // Generate links
-      const links = [];
-      
-      // Each user has some files
-      for (let i = 0; i < userCount; i++) {
-        const userFilesCount = Math.floor(2 + Math.random() * 5); // 2-6 files per user
-        for (let j = 0; j < userFilesCount; j++) {
-          const fileIndex = Math.floor(Math.random() * fileCount);
-          links.push({
-            source: `user-${i}`,
-            target: `file-${fileIndex}`,
-            strength: 2 + Math.random() * 3
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 2,
+          vy: (Math.random() - 0.5) * 2,
+          type: i < 8 ? 'user' : i < 20 ? 'content' : 'tag'
+        }));
+        
+        const links = [];
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            if (Math.random() < 0.1) {
+              links.push({ source: i, target: j });
+            }
+          }
+        }
+        
+        // Draw links
+        const link = svg.selectAll('.link')
+          .data(links)
+          .enter().append('line')
+          .attr('class', 'link')
+          .style('stroke', 'rgba(139, 92, 246, 0.3)')
+          .style('stroke-width', 1);
+        
+        // Draw nodes
+        const node = svg.selectAll('.node')
+          .data(nodes)
+          .enter().append('circle')
+          .attr('class', 'node')
+          .attr('r', d => d.type === 'user' ? 6 : d.type === 'content' ? 4 : 3)
+          .style('fill', d => d.type === 'user' ? '#a278ff' : d.type === 'content' ? '#7fd8d8' : '#ff9c66')
+          .style('opacity', 0.8);
+        
+        // Animation loop
+        function animate() {
+          nodes.forEach(node => {
+            node.x += node.vx;
+            node.y += node.vy;
+            
+            if (node.x < 0 || node.x > width) node.vx *= -1;
+            if (node.y < 0 || node.y > height) node.vy *= -1;
+            
+            node.x = Math.max(0, Math.min(width, node.x));
+            node.y = Math.max(0, Math.min(height, node.y));
           });
+          
+          node
+            .attr('cx', d => d.x)
+            .attr('cy', d => d.y);
+          
+          link
+            .attr('x1', d => nodes[d.source].x)
+            .attr('y1', d => nodes[d.source].y)
+            .attr('x2', d => nodes[d.target].x)
+            .attr('y2', d => nodes[d.target].y);
+          
+          requestAnimationFrame(animate);
         }
+        
+        animate();
       }
-      
-      // Some users are connected to each other
-      for (let i = 0; i < userCount; i++) {
-        for (let j = i + 1; j < userCount; j++) {
-          if (Math.random() < linkProbability) {
-            links.push({
-              source: `user-${i}`,
-              target: `user-${j}`,
-              strength: 1 + Math.random() * 2
-            });
-          }
-        }
-      }
-      
-      // Files are tagged
-      for (let i = 0; i < fileCount; i++) {
-        const tagCount = Math.floor(Math.random() * 3); // 0-2 tags per file
-        for (let j = 0; j < tagCount; j++) {
-          const tagIndex = Math.floor(Math.random() * tagCount);
-          links.push({
-            source: `file-${i}`,
-            target: `tag-${tagIndex}`,
-            strength: 1
-          });
-        }
-      }
-      
-      // Create simulation
-      const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(d => 50 + Math.random() * 50))
-        .force("charge", d3.forceManyBody().strength(-100))
-        .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collision", d3.forceCollide().radius(d => d.size * 1.5));
-        
-      // Add gradients for links
-      const defs = svg.append("defs");
-      
-      // Purple gradient for user links
-      const userLinkGradient = defs.append("linearGradient")
-        .attr("id", "user-link-gradient")
-        .attr("gradientUnits", "userSpaceOnUse");
-        
-      userLinkGradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#a278ff");
-        
-      userLinkGradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#7e5edd");
-        
-      // Teal gradient for file links
-      const fileLinkGradient = defs.append("linearGradient")
-        .attr("id", "file-link-gradient")
-        .attr("gradientUnits", "userSpaceOnUse");
-        
-      fileLinkGradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#7fd8d8");
-        
-      fileLinkGradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#20b2aa");
-        
-      // Orange gradient for tag links
-      const tagLinkGradient = defs.append("linearGradient")
-        .attr("id", "tag-link-gradient")
-        .attr("gradientUnits", "userSpaceOnUse");
-        
-      tagLinkGradient.append("stop")
-        .attr("offset", "0%")
-        .attr("stop-color", "#ff9c66");
-        
-      tagLinkGradient.append("stop")
-        .attr("offset", "100%")
-        .attr("stop-color", "#ff6b6b");
-        
-      // Draw links
-      const link = svg.append("g")
-        .selectAll("line")
-        .data(links)
-        .enter()
-        .append("line")
-        .attr("stroke", d => {
-          // Links between users are purple
-          if (d.source.id.startsWith('user-') && d.target.id.startsWith('user-')) {
-            return "url(#user-link-gradient)";
-          }
-          // Links between files and tags are orange
-          if (d.source.id.startsWith('file-') && d.target.id.startsWith('tag-')) {
-            return "url(#tag-link-gradient)";
-          }
-          // Links between users and files are teal
-          return "url(#file-link-gradient)";
-        })
-        .attr("stroke-width", d => Math.sqrt(d.strength))
-        .attr("opacity", 0.6);
-        
-      // Update gradient coordinates on tick
-      function updateGradients() {
-        links.forEach((d, i) => {
-          // Get the current line element
-          const line = link.nodes()[i];
-          const gradientId = line.getAttribute("stroke").replace("url(#", "").replace(")", "");
-          
-          // Update the corresponding gradient
-          d3.select(`#${gradientId}`)
-            .attr("x1", d.source.x)
-            .attr("y1", d.source.y)
-            .attr("x2", d.target.x)
-            .attr("y2", d.target.y);
-        });
-      }
-        
-      // Draw nodes with glowing effect
-      const nodeGroup = svg.append("g")
-        .selectAll(".node-group")
-        .data(nodes)
-        .enter()
-        .append("g")
-        .attr("class", "node-group")
-        .attr("transform", d => `translate(${d.x}, ${d.y})`)
-        .each(function(d) {
-          // Add shapes based on node type - Keeping consistency with network.html implementation
-          const shape = d3.select(this);
-          const shapeSize = d.size;
-          
-          if (d.type === 'user') {
-            // Circle for users (same as network.html)
-            shape.append("circle")
-              .attr("r", shapeSize)
-              .attr("cx", 0)
-              .attr("cy", 0)
-              .attr("fill", d.color)
-              .attr("stroke", "#182820")
-              .attr("stroke-width", 1)
-              .attr("opacity", 0.9);
-          } else if (d.type === 'file') {
-            // Square for files (same as network.html)
-            shape.append("rect")
-              .attr("width", shapeSize * 2)
-              .attr("height", shapeSize * 2)
-              .attr("x", -shapeSize)
-              .attr("y", -shapeSize)
-              .attr("fill", d.color)
-              .attr("stroke", "#182820")
-              .attr("stroke-width", 1)
-              .attr("opacity", 0.9);
-          } else if (d.type === 'tag') {
-            // Diamond for tags (same as network.html)
-            shape.append("polygon")
-              .attr("points", `0,-${shapeSize} ${shapeSize},0 0,${shapeSize} -${shapeSize},0`)
-              .attr("fill", d.color)
-              .attr("stroke", "#182820")
-              .attr("stroke-width", 1)
-              .attr("opacity", 0.9);
-          }
-          
-          // Add subtle glow effect for certain nodes
-          if (d.id === 'user-0' || Math.random() > 0.7) {
-            const glow = defs.append("filter")
-              .attr("id", `glow-${d.id}`)
-              .attr("width", "300%")
-              .attr("height", "300%")
-              .attr("x", "-100%")
-              .attr("y", "-100%");
-              
-            glow.append("feGaussianBlur")
-              .attr("stdDeviation", "3")
-              .attr("result", "blur");
-              
-            glow.append("feComposite")
-              .attr("in", "SourceGraphic")
-              .attr("in2", "blur")
-              .attr("operator", "over");
-              
-            d3.select(this).attr("filter", `url(#glow-${d.id})`);
-          }
-        });
-        
-      // Subtle pulse animation for nodes
-      nodeGroup.style("animation", () => `pulse ${3 + Math.random() * 4}s infinite`);
-      
-      // Update positions
-      simulation.on("tick", () => {
-        link
-          .attr("x1", d => d.source.x)
-          .attr("y1", d => d.source.y)
-          .attr("x2", d => d.target.x)
-          .attr("y2", d => d.target.y);
-          
-        nodeGroup
-          .attr("transform", d => `translate(${d.x}, ${d.y})`);
-          
-        updateGradients();
-      });
     });
   </script>
 </body>

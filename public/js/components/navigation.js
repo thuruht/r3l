@@ -230,10 +230,13 @@ export class NavigationBar {
    */
   static logout() {
     debugLog('NavigationBar', 'Logging out...');
-    if (window.r3l) {
-        window.r3l.storeAuthToken(null);
+    if (window.r3l && window.r3l.logout) {
+        window.r3l.logout();
+    } else {
+        // Fallback logout
+        document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out.');
     }
-    window.location.href = '/login.html?message=' + encodeURIComponent('You have been logged out.');
   }
 
   /**

@@ -129,3 +129,30 @@ CREATE TABLE IF NOT EXISTS comments (
 );
 CREATE INDEX idx_comments_contentId ON comments(contentId);
 CREATE INDEX idx_comments_parentCommentId ON comments(parentCommentId);
+
+-- Content reactions table
+CREATE TABLE IF NOT EXISTS content_reactions (
+    id TEXT PRIMARY KEY,
+    contentId TEXT NOT NULL,
+    userId TEXT NOT NULL,
+    reaction TEXT NOT NULL, -- 'like', 'love', 'archive', 'bookmark'
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    UNIQUE(contentId, userId, reaction),
+    FOREIGN KEY (contentId) REFERENCES content(id) ON DELETE CASCADE,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_content_reactions_contentId ON content_reactions(contentId);
+CREATE INDEX idx_content_reactions_userId ON content_reactions(userId);
+
+-- Workspaces table
+CREATE TABLE IF NOT EXISTS workspaces (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    ownerId TEXT NOT NULL,
+    isPublic BOOLEAN DEFAULT 0,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    FOREIGN KEY (ownerId) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_workspaces_ownerId ON workspaces(ownerId);

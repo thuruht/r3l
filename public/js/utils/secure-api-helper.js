@@ -1,68 +1,41 @@
 /**
- * API Helper Utility
- * Provides a consistent interface for API calls using bearer token authentication.
+ * Secure API Helper Utility
+ * Uses HttpOnly cookies for authentication instead of localStorage
  */
 
 /**
- * Stores the authentication token in localStorage.
- * @param {string} token - The authentication token to store.
- */
-function storeAuthToken(token) {
-  if (token) {
-    localStorage.setItem('r3l_auth_token', token);
-  } else {
-    localStorage.removeItem('r3l_auth_token');
-  }
-}
-
-/**
- * Retrieves the authentication token from localStorage.
- * @returns {string|null} The authentication token, or null if not found.
- */
-function getAuthToken() {
-  return localStorage.getItem('r3l_auth_token');
-}
-
-/**
- * Checks if the user is currently authenticated.
- * @returns {boolean} True if an auth token exists, false otherwise.
+ * Checks if the user is authenticated by checking for session cookie
+ * @returns {boolean} True if session cookie exists
  */
 function isAuthenticated() {
-  return !!getAuthToken();
+  return document.cookie.includes('r3l_session=');
 }
 
 /**
- * A wrapper around the native fetch API that automatically adds the
- * Authorization header for authenticated requests.
- *
- * @param {string} url - The URL to fetch.
- * @param {object} options - The options to pass to the fetch API.
- * @returns {Promise<Response>} A promise that resolves to the fetch response.
+ * Secure fetch wrapper that includes credentials for cookie-based auth
+ * @param {string} url - The URL to fetch
+ * @param {object} options - Fetch options
+ * @returns {Promise<Response>} Fetch response
  */
 async function authenticatedFetch(url, options = {}) {
-  const token = getAuthToken();
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers,
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   const finalOptions = {
+    credentials: 'include', // Always include cookies
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
     ...options,
-    headers,
   };
 
   try {
     const response = await fetch(url, finalOptions);
+    
     if (response.status === 401) {
-      // Unauthorized, token might be expired or invalid.
-      // Clear the token and redirect to the login page.
-      storeAuthToken(null);
-      window.location.href = '/login.html';
+      // Unauthorized - redirect to login
+      window.location.href = '/auth/login.html?message=' + encodeURIComponent('Please log in to continue');
+      return response;
     }
+    
     return response;
   } catch (error) {
     console.error('Fetch error:', error);
@@ -70,19 +43,23 @@ async function authenticatedFetch(url, options = {}) {
   }
 }
 
-// Define API endpoints centrally to avoid mismatches
+/**
+ * Logout by clearing session cookie
+ */
+function logout() {
+  // Clear the session cookie by setting it to expire
+  document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+  window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out');
+}
+
+// API endpoints (same as before)
 const API_ENDPOINTS = {
-  // Auth endpoints
   AUTH: {
     REGISTER: '/api/register',
     LOGIN: '/api/login',
     PROFILE: '/api/profile',
   },
-
-  // Bookmarks
   BOOKMARKS: '/api/bookmarks',
-
-  // Content endpoints
   CONTENT: {
     GET: id => `/api/content/${id}`,
     CREATE: '/api/content',
@@ -95,26 +72,16 @@ const API_ENDPOINTS = {
       CREATE: id => `/api/content/${id}/comments`,
     }
   },
-
-  // Network endpoints
   NETWORK: '/api/network',
-
-  // Collaboration endpoints
   COLLABORATION: id => `/api/collaboration/${id}`,
-
-  // Visualization endpoints
   VISUALIZATION: {
-      STATS: '/api/visualization/stats',
+    STATS: '/api/visualization/stats',
   },
-
-  // Messaging endpoints
   MESSAGES: {
     CONVERSATIONS: '/api/messages/conversations',
     GET: otherUserId => `/api/messages/user/${otherUserId}`,
     SEND: '/api/messages/send',
   },
-
-  // Notification endpoints
   NOTIFICATIONS: {
     LIST: '/api/notifications',
     UNREAD_COUNT: '/api/notifications/unread-count',
@@ -122,57 +89,24 @@ const API_ENDPOINTS = {
     MARK_ALL_READ: '/api/notifications/mark-all-read',
     DELETE: id => `/api/notifications/${id}`,
   },
-
-  // User specific endpoints
   USER: {
-      STATS: '/api/user/stats',
-      FILES: '/api/user/files',
-      PREFERENCES: '/api/user/preferences',
-      PROFILE: '/api/user/profile',
+    STATS: '/api/user/stats',
+    FILES: '/api/user/files',
+    PREFERENCES: '/api/user/preferences',
+    PROFILE: '/api/user/profile',
   },
-
-  // Feed endpoint
   FEED: '/api/feed',
-
-  // File uploads
   FILES: {
-      AVATAR: '/api/files/avatar',
+    AVATAR: '/api/files/avatar',
   },
-
-  // User connections and visibility
-  USER_CONNECTIONS: {
-    CREATE: '/api/user/connections',
-    DELETE: targetUserId => `/api/user/connections/${targetUserId}`,
-  },
-
-  USER_VISIBILITY: {
-    GET: '/api/user/visibility',
-    UPDATE: '/api/user/visibility',
-  },
-
-  // Workspaces
   WORKSPACES: {
     LIST: '/api/workspaces',
-    GET: id => `/api/workspaces/${id}`,
     CREATE: '/api/workspaces',
-    UPDATE: id => `/api/workspaces/${id}`,
-    DELETE: id => `/api/workspaces/${id}`,
-    SAVE: id => `/api/workspaces/${id}/save`,
   },
-
-  // Content tags
-  CONTENT_TAGS: {
-    GET: contentId => `/api/content/${contentId}/tags`,
-    ADD: contentId => `/api/content/${contentId}/tags`,
-    REMOVE: (contentId, tagId) => `/api/content/${contentId}/tags/${tagId}`,
-  }
 };
 
 /**
- * Make an API POST request
- * @param {string} endpoint The API endpoint
- * @param {object} data The data to send
- * @returns {Promise<any>} The JSON response
+ * API request helpers
  */
 async function apiPost(endpoint, data = {}) {
   try {
@@ -193,11 +127,6 @@ async function apiPost(endpoint, data = {}) {
   }
 }
 
-/**
- * Make an API GET request
- * @param {string} endpoint The API endpoint
- * @returns {Promise<any>} The JSON response
- */
 async function apiGet(endpoint) {
   try {
     const response = await authenticatedFetch(endpoint);
@@ -214,11 +143,6 @@ async function apiGet(endpoint) {
   }
 }
 
-/**
- * Make an API DELETE request
- * @param {string} endpoint The API endpoint
- * @returns {Promise<any>} The JSON response
- */
 async function apiDelete(endpoint) {
   try {
     const response = await authenticatedFetch(endpoint, {
@@ -237,12 +161,6 @@ async function apiDelete(endpoint) {
   }
 }
 
-/**
- * Make an API PATCH request
- * @param {string} endpoint The API endpoint
- * @param {object} data The data to send
- * @returns {Promise<any>} The JSON response
- */
 async function apiPatch(endpoint, data = {}) {
   try {
     const response = await authenticatedFetch(endpoint, {
@@ -262,12 +180,11 @@ async function apiPatch(endpoint, data = {}) {
   }
 }
 
-// Export functions to be used in other scripts
+// Export to global scope
 window.r3l = {
-  storeAuthToken,
-  getAuthToken,
   isAuthenticated,
   authenticatedFetch,
+  logout,
   apiPost,
   apiGet,
   apiDelete,

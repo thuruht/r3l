@@ -298,9 +298,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     logoutBtn.addEventListener('click', async () => {
       try {
-        // Logout by clearing token
-        window.r3l.storeAuthToken(null);
-        window.location.href = '/auth/login.html?message=You have been logged out.';
+        // Use secure logout method
+        if (window.r3l && window.r3l.logout) {
+          window.r3l.logout();
+        } else {
+          // Fallback logout
+          document.cookie = 'r3l_session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+          window.location.href = '/auth/login.html?message=You have been logged out.';
+        }
       } catch (error) {
         displayError(errorContainerEl, 'Logout failed.', 'FE-PROF-006');
       }

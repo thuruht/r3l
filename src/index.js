@@ -975,6 +975,28 @@ function createApp(r2) {
         }
     });
 
+    // File operations endpoints
+    protectedApi.get('/files/:key', async (c) => {
+        const key = c.req.param('key');
+        try {
+            const object = await c.env.R3L_CONTENT_BUCKET.get(key);
+            if (!object) {
+                return c.json({ error: 'File not found' }, 404);
+            }
+            
+            const headers = {
+                'Content-Type': object.httpMetadata?.contentType || 'application/octet-stream',
+                'Content-Length': object.size.toString(),
+                'Cache-Control': 'public, max-age=31536000'
+            };
+            
+            return new Response(object.body, { headers });
+        } catch (e) {
+            console.error('File retrieval failed:', e);
+            return c.json({ error: 'Failed to retrieve file' }, 500);
+        }
+    });
+
     // User visibility endpoints
     protectedApi.get('/user/visibility', async (c) => {
         const userId = c.get('userId');

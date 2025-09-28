@@ -1,4 +1,8 @@
+import { NavigationBar } from './components/navigation.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+    NavigationBar.init('upload');
+    
     const uploadForm = document.getElementById('upload-form');
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
@@ -23,8 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'application/x-ipynb+json': 'code',
         'text/markdown': 'article',
         'text/html': 'html',
-        'application/msword': 'description',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'description',
         'default': 'insert_drive_file'
     };
 
@@ -163,8 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultContent.innerHTML = resultHTML;
 
-        // Since there are multiple links, the "Copy Link" button is less useful.
-        // Let's change it to a "Upload More" button.
         copyLinkBtn.innerHTML = '<span class="material-icons" aria-hidden="true">add</span> Upload More Files';
         copyLinkBtn.onclick = () => window.location.reload();
     });
@@ -172,49 +172,28 @@ document.addEventListener('DOMContentLoaded', () => {
     async function uploadFile(file, index, metadata) {
         const progressEl = document.getElementById(`progress-${index}`);
         try {
-            // 1. Get presigned URL
             progressEl.style.width = '20%';
-            const presignResponse = await fetch('/api/files/upload-url', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+            const contentData = await window.r3l.apiPost(window.r3l.API_ENDPOINTS.CONTENT.CREATE, {
+                filename: file.name,
+                contentType: file.type,
+                fileSize: file.size,
+                title: metadata.title || file.name,
+                description: metadata.description
             });
-            if (!presignResponse.ok) throw new Error('Could not get upload URL.');
-            const { url: presignedUrl, key: fileKey } = await presignResponse.json();
 
-            // 2. Upload to R2
             progressEl.style.width = '60%';
-            const uploadResponse = await fetch(presignedUrl, {
+            const uploadResponse = await fetch(contentData.uploadUrl, {
                 method: 'PUT',
                 body: file,
-                headers: { 'Content-Type': file.type },
+                headers: { 'Content-Type': file.type }
             });
-            if (!uploadResponse.ok) throw new Error('File upload failed.');
-
-            // 3. Register file
-            progressEl.style.width = '80%';
-            const registerResponse = await fetch('/api/files/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    fileKey,
-                    fileName: file.name,
-                    contentType: file.type,
-                    title: file.name,
-                    description: metadata.description,
-                    tags: metadata.tags,
-                    isPublic: metadata.isPublic,
-                }),
-            });
-            if (!registerResponse.ok) throw new Error('Could not register file.');
-            const result = await registerResponse.json();
+            
+            if (!uploadResponse.ok) throw new Error('File upload failed');
 
             progressEl.style.backgroundColor = 'var(--success)';
             progressEl.style.width = '100%';
 
-            return { success: true, id: result.id, fileName: file.name };
+            return { success: true, id: contentData.contentId, fileName: file.name };
 
         } catch (error) {
             console.error(`Failed to upload ${file.name}:`, error);
@@ -222,100 +201,5 @@ document.addEventListener('DOMContentLoaded', () => {
             progressEl.style.width = '100%';
             return { success: false, fileName: file.name, error: error.message };
         }
-=======
-    try {
-      // 1. Get a presigned URL from our API
-      setButtonState('<span class="material-icons">hourglass_top</span> Preparing upload...', true);
-      const presignResponse = await fetch('/api/files/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-        }),
-      });
-
-      if (!presignResponse.ok) {
-        throw new Error('Could not get an upload URL. Please try again.');
-      }
-
-      const { url: presignedUrl, key: fileKey } = await presignResponse.json();
-
-      // 2. Upload the file directly to R2 using the presigned URL
-      setButtonState('<span class="material-icons">cloud_upload</span> Uploading...', true);
-      const uploadResponse = await fetch(presignedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type,
-        },
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('File upload failed. Please check your connection and try again.');
-      }
-
-      // 3. Register the uploaded file with our backend
-      setButtonState('<span class="material-icons">sync</span> Registering file...', true);
-      const tagsInput = document.getElementById('tags');
-      const visibilityInput = document.getElementById('visibility');
-
-      const registerResponse = await fetch('/api/files/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          fileKey,
-          fileName: file.name,
-          contentType: file.type,
-          title: file.name, // Using file name as title, could be a separate field
-          description: window.simplemde.value(),
-          tags: tagsInput.value,
-          isPublic: visibilityInput.checked,
-        }),
-      });
-
-      if (!registerResponse.ok) {
-        throw new Error('Could not register the file after upload.');
-      }
-
-      const result = await registerResponse.json();
-
-      // 4. Display success message
-      uploadForm.classList.add('hidden');
-      uploadResult.classList.remove('hidden');
-
-      const fileInfo = `
-        <div class="flex items-center gap-2 mb-4">
-          <span class="material-icons" style="font-size: 48px;">${getFileIcon(file.type)}</span>
-          <div>
-            <h4>${file.name}</h4>
-            <p>${formatFileSize(file.size)} - ${file.type}</p>
-          </div>
-        </div>
-        <div class="expiry-indicator">
-          <span class="material-icons">timer</span>
-          Expires on ${new Date(result.expiresAt).toLocaleDateString()}
-        </div>
-        <p class="mt-4">Your file is now in the Rel! You can view it in your drawer or share the link below:</p>
-        <input type="text" class="mt-2" value="${window.location.origin}/content.html?id=${result.id}" readonly onclick="this.select()">
-      `;
-      resultContent.innerHTML = fileInfo;
-
-      copyLinkBtn.addEventListener('click', () => {
-        const linkInput = resultContent.querySelector('input');
-        linkInput.select();
-        document.execCommand('copy');
-        copyLinkBtn.innerHTML = '<span class="material-icons">check</span> Copied!';
-        setTimeout(() => {
-          copyLinkBtn.innerHTML = '<span class="material-icons">content_copy</span> Copy Link';
-        }, 2000);
-      });
-
-    } catch (error) {
-      console.error('Upload process failed:', error);
-      alert(`Upload failed: ${error.message}`);
-      setButtonState(originalButtonHtml, false);
     }
 });

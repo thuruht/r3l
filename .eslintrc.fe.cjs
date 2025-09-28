@@ -1,12 +1,24 @@
 module.exports = {
-  root: false,
-  parser: 'espree',
-  env: { browser: true, es6: true },
-  parserOptions: { ecmaVersion: 2022, sourceType: 'module' },
-  extends: ['eslint:recommended', 'prettier'],
-  rules: {
-    'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-    'no-console': 'off',
+  root: true,
+  env: {
+    browser: true,
+    es2022: true
   },
-  ignorePatterns: ['vendor/**'],
+  extends: [
+    'eslint:recommended'
+  ],
+  parserOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module'
+  },
+  globals: {
+    d3: 'readonly',
+    DOMPurify: 'readonly'
+  },
+  rules: {
+    'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    'no-console': 'warn',
+    'prefer-const': 'error',
+    'no-var': 'error'
+  }
 };

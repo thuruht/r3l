@@ -125,13 +125,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const handleOnboarding = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const isNewRegistration = urlParams.get('new') === 'true';
-    const onboardingComplete = localStorage.getItem('onboardingComplete');
-    if (isNewRegistration && !onboardingComplete) {
+    if (isNewRegistration) {
       onboardingModal.classList.remove('hidden');
     }
     dismissOnboardingBtn.addEventListener('click', () => {
       onboardingModal.classList.add('hidden');
-      localStorage.setItem('onboardingComplete', 'true');
     });
   };
 

@@ -436,15 +436,7 @@ function createApp(r2) {
         return c.json({ contentId, uploadUrl: signedUrl }, 201);
     });
 
-    api.get('/content/:id/download', async (c) => {
-        const contentId = c.req.param('id');
-        const location = await c.env.R3L_DB.prepare("SELECT objectKey FROM content_location WHERE contentId = ?").bind(contentId).first();
-        if (!location) return c.json({ error: 'Content not found' }, 404);
-        const signedUrl = await c.env.R3L_CONTENT_BUCKET.createPresignedUrl('GET', location.objectKey, {
-            expiresIn: 300
-        });
-        return c.redirect(signedUrl);
-    });
+
 
     protectedApi.get('/content/:id/download', async (c) => {
         const contentId = c.req.param('id');
@@ -898,7 +890,7 @@ function createApp(r2) {
     
 
 
-    api.route('/', protectedApi);
+    api.route('/auth', protectedApi);
 
     // Workspace endpoints
     protectedApi.get('/workspaces', async (c) => {

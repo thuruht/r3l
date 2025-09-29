@@ -500,7 +500,7 @@ function createApp(r2) {
     protectedApi.get('/profile', async (c) => {
         const userId = c.get('userId');
         const user = await c.env.R3L_DB.prepare(
-            `SELECT u.id, u.email, u.createdAt as created_at, p.username, p.displayName, p.bio, p.avatarKey, p.preferences
+            `SELECT u.id, u.createdAt as created_at, p.username, p.displayName, p.bio, p.avatarKey, p.preferences
              FROM users u JOIN profiles p ON u.id = p.userId WHERE u.id = ?`
         ).bind(userId).first();
 

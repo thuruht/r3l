@@ -13,7 +13,12 @@ module.exports = {
   },
   globals: {
     d3: 'readonly',
-    DOMPurify: 'readonly'
+    DOMPurify: 'readonly',
+    document: 'readonly',
+    window: 'readonly',
+    URL: 'readonly',
+    fetch: 'readonly',
+    console: 'readonly'
   },
   rules: {
     'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

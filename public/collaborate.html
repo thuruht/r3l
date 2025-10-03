@@ -87,6 +87,219 @@
     </main>
 
     <script type="module" src="/js/components/navigation.js"></script>
-    <script type="module" src="/js/collaborate.js"></script>
+    <script type="module">
+        import { NavigationBar } from './js/components/navigation.js';
+        NavigationBar.init('collaborate');
+
+        let currentRoomId = null;
+        let currentUserId = null;
+        let documentVersion = 0;
+        let pollInterval = null;
+
+        async function loadRooms() {
+            if (!window.r3l?.isAuthenticated()) {
+                window.location.href = '/auth/login.html';
+                return;
+            }
+
+            try {
+                const profile = await window.r3l.apiGet('/api/profile');
+                currentUserId = profile.id;
+
+                const rooms = await window.r3l.apiGet('/api/collaboration/rooms');
+                const list = document.getElementById('document-list');
+                
+                if (rooms.length === 0) {
+                    list.innerHTML = '<li class="text-muted">No rooms yet</li>';
+                    return;
+                }
+
+                list.innerHTML = rooms.map(r => `
+                    <li style="cursor:pointer;padding:0.5rem;border-radius:4px;" 
+                        data-room-id="${r.id}"
+                        onmouseover="this.style.background='var(--bg-subtle)'"
+                        onmouseout="this.style.background='transparent'">
+                        <strong>${r.name}</strong>
+                        <br><small class="text-muted">${r.member_count || 0} members</small>
+                    </li>
+                `).join('');
+
+                document.querySelectorAll('[data-room-id]').forEach(item => {
+                    item.addEventListener('click', () => joinRoom(item.dataset.roomId));
+                });
+            } catch (error) {
+                console.error('Failed to load rooms:', error);
+            }
+        }
+
+        async function joinRoom(roomId) {
+            currentRoomId = roomId;
+            
+            try {
+                // Join the room
+                await window.r3l.apiPost(`/api/collaboration/rooms/${roomId}/join`, {});
+                
+                // Load room data
+                await loadRoomData(roomId);
+                await loadMembers(roomId);
+                
+                // Start polling for updates
+                if (pollInterval) clearInterval(pollInterval);
+                pollInterval = setInterval(() => {
+                    loadRoomData(roomId);
+                    loadMembers(roomId);
+                }, 3000);
+                
+                // Notify Durable Object of presence
+                await fetch(`/api/collaboration/${roomId}/users`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId })
+                });
+            } catch (error) {
+                console.error('Failed to join room:', error);
+                alert('Failed to join room');
+            }
+        }
+
+        async function loadRoomData(roomId) {
+            try {
+                const response = await fetch(`/api/collaboration/${roomId}/document`, {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                // Only update if version changed
+                if (data.version > documentVersion) {
+                    documentVersion = data.version;
+                    const editor = document.getElementById('document-editor');
+                    if (document.activeElement !== editor) {
+                        editor.value = data.content || '';
+                    }
+                }
+                
+                // Load messages
+                const msgResponse = await fetch(`/api/collaboration/${roomId}/messages`, {
+                    credentials: 'include'
+                });
+                const messages = await msgResponse.json();
+                displayMessages(messages);
+            } catch (error) {
+                console.error('Failed to load room data:', error);
+            }
+        }
+
+        async function loadMembers(roomId) {
+            try {
+                const members = await window.r3l.apiGet(`/api/collaboration/rooms/${roomId}/members`);
+                const list = document.getElementById('participant-list');
+                
+                list.innerHTML = members.map(m => `
+                    <li style="padding:0.5rem;">
+                        <strong>${m.display_name || m.username}</strong>
+                    </li>
+                `).join('');
+            } catch (error) {
+                console.error('Failed to load members:', error);
+            }
+        }
+
+        function displayMessages(messages) {
+            const container = document.getElementById('chat-messages');
+            container.innerHTML = messages.map(m => `
+                <div style="margin-bottom:1rem;padding:0.5rem;background:var(--bg-subtle);border-radius:4px;">
+                    <strong>${m.user}</strong>: ${m.text}
+                    <br><small class="text-muted">${new Date(m.timestamp).toLocaleTimeString()}</small>
+                </div>
+            `).join('');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Document editor auto-save
+        let saveTimeout = null;
+        document.getElementById('document-editor')?.addEventListener('input', (e) => {
+            if (!currentRoomId) return;
+            
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(async () => {
+                try {
+                    await fetch(`/api/collaboration/${currentRoomId}/document`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            content: e.target.value,
+                            userId: currentUserId
+                        })
+                    });
+                } catch (error) {
+                    console.error('Failed to save document:', error);
+                }
+            }, 1000);
+        });
+
+        // Chat input
+        document.getElementById('chat-input-field')?.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const text = e.target.value.trim();
+                if (!text || !currentRoomId) return;
+                
+                try {
+                    await fetch(`/api/collaboration/${currentRoomId}/messages`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            user: currentUserId,
+                            text: text
+                        })
+                    });
+                    e.target.value = '';
+                    loadRoomData(currentRoomId);
+                } catch (error) {
+                    console.error('Failed to send message:', error);
+                }
+            }
+        });
+
+        // New room button
+        document.getElementById('new-doc-btn')?.addEventListener('click', async () => {
+            const name = prompt('Enter room name:');
+            if (!name) return;
+            
+            try {
+                const result = await window.r3l.apiPost('/api/collaboration/rooms', {
+                    name: name,
+                    description: '',
+                    isPublic: false
+                });
+                
+                if (result.success) {
+                    await loadRooms();
+                    joinRoom(result.roomId);
+                }
+            } catch (error) {
+                alert('Failed to create room');
+            }
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (pollInterval) clearInterval(pollInterval);
+            if (currentRoomId && currentUserId) {
+                fetch(`/api/collaboration/${currentRoomId}/users`, {
+                    method: 'DELETE',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUserId }),
+                    keepalive: true
+                });
+            }
+        });
+
+        loadRooms();
+    </script>
 </body>
 </html>

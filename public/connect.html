@@ -4,1285 +4,197 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Find Users - R3L:F</title>
-  <link rel="stylesheet" href="./css/rel-f-global.css">
-  <link rel="stylesheet" href="./css/rel-f-accent.css">
-  <script src="./js/font-loader.js" defer></script>
+  <link rel="stylesheet" href="css/rel-f-global.css">
   <style>
     .search-container {
-      max-width: 800px;
-      margin: 0 auto var(--space-8);
+      max-width: 1200px;
+      margin: 2rem auto;
     }
-    
-    .search-header {
-      margin-bottom: var(--space-6);
-    }
-    
-    .search-input-wrapper {
-      position: relative;
-      margin-bottom: var(--space-6);
-    }
-    
-    .search-input-wrapper .material-icons {
-      position: absolute;
-      left: 16px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--text-muted);
-    }
-    
-    .search-input {
-      width: 100%;
-      padding: 16px 16px 16px 50px;
-      border: 2px solid var(--border-primary);
-      border-radius: var(--radius-md);
-      background-color: var(--bg-input);
-      color: var(--text-primary);
-      font-size: var(--fs-lg);
-      transition: border-color var(--transition-fast);
-    }
-    
-    .search-input:focus {
-      border-color: var(--accent-purple);
-      outline: none;
-    }
-    
-    .search-filters {
+    .search-bar {
       display: flex;
-      gap: var(--space-4);
-      margin-bottom: var(--space-6);
-      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 2rem;
     }
-    
-    .filter-option {
-      padding: 8px 16px;
-      border-radius: 20px;
-      background-color: var(--bg-secondary);
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: all var(--transition-fast);
+    .search-bar input {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      color: var(--text-primary);
     }
-    
-    .filter-option:hover {
-      background-color: var(--bg-hover);
-    }
-    
-    .filter-option.active {
-      background-color: var(--accent-purple);
-      color: var(--text-inverse);
-    }
-    
-    .search-results {
+    .user-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: var(--space-4);
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
     }
-    
     .user-card {
-      border-radius: var(--radius-lg);
-      background-color: var(--bg-container);
-      overflow: hidden;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-      transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      transition: transform 0.2s;
     }
-    
     .user-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     }
-    
-    .user-card-header {
-      background-color: var(--accent-purple-muted);
-      padding: var(--space-4);
-      color: var(--text-inverse);
+    .user-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
     }
-    
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-    
     .user-avatar {
       width: 60px;
       height: 60px;
       border-radius: 50%;
-      background-color: var(--accent-lavender);
+      background: var(--accent-purple);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      font-size: var(--fs-xl);
       color: white;
-      overflow: hidden;
+      font-size: 1.5rem;
+      font-weight: 600;
     }
-    
     .user-avatar img {
       width: 100%;
       height: 100%;
+      border-radius: 50%;
       object-fit: cover;
     }
-    
-    .user-name-container {
-      display: flex;
-      flex-direction: column;
+    .user-info h3 {
+      margin: 0 0 0.25rem 0;
     }
-    
-    .user-display-name {
-      font-weight: 600;
-      font-size: var(--fs-lg);
-      margin-bottom: 2px;
+    .user-info p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
     }
-    
-    .user-username {
-      font-size: var(--fs-sm);
-      color: rgba(255, 255, 255, 0.8);
-    }
-    
-    .user-card-body {
-      padding: var(--space-4);
-    }
-    
     .user-bio {
+      margin-bottom: 1rem;
       color: var(--text-secondary);
-      margin-bottom: var(--space-4);
-      font-size: var(--fs-sm);
-      line-height: 1.5;
-      display: -webkit-box;
-      -webkit-box-orient: vertical;
-      -webkit-line-clamp: 3;
-      line-clamp: 3; /* Standard property for compatibility */
-      overflow: hidden;
+      font-size: 0.9rem;
     }
-    
     .user-stats {
       display: flex;
-      gap: var(--space-3);
-      margin-bottom: var(--space-4);
-      font-size: var(--fs-sm);
+      gap: 1rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
     }
-    
-    .user-stat {
+    .user-actions {
       display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    
-    .user-card-actions {
-      display: flex;
-      gap: var(--space-2);
-    }
-    
-    .user-action-btn {
-      flex: 1;
-      padding: 8px;
-      border-radius: var(--radius-md);
-      font-size: var(--fs-sm);
-      text-align: center;
-      cursor: pointer;
-      transition: background-color var(--transition-fast);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-    }
-    
-    .user-action-btn.primary {
-      background-color: var(--accent-purple);
-      color: var(--text-inverse);
-    }
-    
-    .user-action-btn.primary:hover {
-      background-color: var(--accent-lavender-hover);
-    }
-    
-    .user-action-btn.secondary {
-      background-color: var(--bg-secondary);
-      color: var(--text-secondary);
-    }
-    
-    .user-action-btn.secondary:hover {
-      background-color: var(--bg-hover);
-    }
-    
-    .material-icons {
-      font-size: 18px;
-    }
-    
-    .user-connection-status {
-      font-size: var(--fs-xs);
-      padding: 4px 8px;
-      border-radius: 10px;
-      margin-top: var(--space-2);
-    }
-    
-    .user-connection-status.mutual {
-      background-color: var(--accent-green-muted);
-      color: var(--accent-green);
-    }
-    
-    .user-connection-status.pending {
-      background-color: var(--accent-yellow-muted);
-      color: var(--accent-yellow);
-    }
-    
-    .user-connection-status.connected {
-      background-color: var(--accent-blue-muted);
-      color: var(--accent-blue);
-    }
-    
-    .empty-state {
-      padding: var(--space-8);
-      text-align: center;
-      color: var(--text-muted);
-      width: 100%;
-      grid-column: 1 / -1;
-    }
-    
-    .empty-state .material-icons {
-      font-size: 48px;
-      margin-bottom: var(--space-4);
-      opacity: 0.6;
-    }
-    
-    .empty-state-title {
-      font-size: var(--fs-xl);
-      color: var(--text-primary);
-      margin-bottom: var(--space-2);
-    }
-    
-    .empty-state-text {
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    
-    /* Connection request modal */
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-      padding: var(--space-4);
-    }
-    
-    .modal-content {
-      width: 100%;
-      max-width: 500px;
-      background-color: var(--bg-container);
-      border-radius: var(--radius-lg);
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    }
-    
-    .modal-header {
-      padding: var(--space-4);
-      border-bottom: 1px solid var(--border-primary);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .modal-title {
-      font-size: var(--fs-lg);
-      margin: 0;
-      color: var(--accent-green);
-    }
-    
-    .modal-close {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .modal-body {
-      padding: var(--space-4);
-    }
-    
-    .modal-footer {
-      padding: var(--space-4);
-      border-top: 1px solid var(--border-primary);
-      display: flex;
-      justify-content: flex-end;
-      gap: var(--space-3);
-    }
-    
-    .connection-types {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-4);
-      margin-bottom: var(--space-4);
-    }
-    
-    .connection-type {
-      display: flex;
-      gap: var(--space-3);
-      padding: var(--space-3);
-      border-radius: var(--radius-md);
-      cursor: pointer;
-      transition: background-color var(--transition-fast);
-    }
-    
-    .connection-type:hover {
-      background-color: var(--bg-secondary);
-    }
-    
-    .connection-type.selected {
-      background-color: var(--accent-purple-muted);
-    }
-    
-    .connection-type-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background-color: var(--accent-purple);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--text-inverse);
-    }
-    
-    .connection-type-info {
-      flex: 1;
-    }
-    
-    .connection-type-title {
-      font-weight: 500;
-      color: var(--text-primary);
-      margin-bottom: 4px;
-    }
-    
-    .connection-type-description {
-      font-size: var(--fs-sm);
-      color: var(--text-secondary);
-    }
-    
-    .connection-type-radio {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid var(--border-primary);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 10px;
-    }
-    
-    .connection-type.selected .connection-type-radio {
-      border-color: var(--accent-purple);
-    }
-    
-    .connection-type.selected .connection-type-radio::after {
-      content: '';
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background-color: var(--accent-purple);
-    }
-    
-    .message-input {
-      width: 100%;
-      padding: var(--space-3);
-      border: 1px solid var(--border-primary);
-      border-radius: var(--radius-md);
-      background-color: var(--bg-input);
-      color: var(--text-primary);
-      resize: vertical;
-      min-height: 80px;
-      margin-bottom: var(--space-3);
-    }
-    
-    .message-input:focus {
-      border-color: var(--accent-purple);
-      outline: none;
-    }
-    
-    .message-label {
-      display: block;
-      margin-bottom: var(--space-2);
-      color: var(--text-secondary);
-      font-size: var(--fs-sm);
-    }
-    
-    .loading-indicator {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--space-8);
-      grid-column: 1 / -1;
-    }
-    
-    .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      border-left-color: var(--accent-purple);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
-    .pagination {
-      display: flex;
-      justify-content: center;
-      gap: var(--space-2);
-      margin-top: var(--space-6);
-    }
-    
-    .pagination-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: var(--bg-secondary);
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: background-color var(--transition-fast);
-    }
-    
-    .pagination-btn:hover:not(.disabled) {
-      background-color: var(--bg-hover);
-    }
-    
-    .pagination-btn.active {
-      background-color: var(--accent-purple);
-      color: var(--text-inverse);
-    }
-    
-    .pagination-btn.disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
-    @media (max-width: 768px) {
-      .search-results {
-        grid-template-columns: 1fr;
-      }
+      gap: 0.5rem;
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="container">
-      <!-- Navigation will be inserted by JavaScript -->
-    </div>
+    <div class="container"></div>
   </header>
-
   <main class="container">
-    <section class="search-container">
-      <div class="search-header">
-        <h1>Find Users</h1>
-        <p>Connect with other users, explore communiques, and build your network.</p>
+    <div class="search-container">
+      <h1>Find People</h1>
+      <p class="text-muted">Connect with other users on the Rel</p>
+      
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Search by username or display name...">
+        <button class="btn btn-primary" id="searchBtn">
+          <span class="material-icons">search</span> Search
+        </button>
       </div>
       
-      <div class="search-input-wrapper">
-        <span class="material-icons">search</span>
-        <input 
-          type="text" 
-          class="search-input" 
-          id="user-search-input" 
-          placeholder="Search by username or display name" 
-          autocomplete="off"
-        />
-      </div>
-      
-      <div class="search-filters">
-        <div class="filter-option active" data-filter="all">All Users</div>
-        <div class="filter-option" data-filter="connected">My Connections</div>
-        <div class="filter-option" data-filter="mutual">Mutual Connections</div>
-        <div class="filter-option" data-filter="pending">Pending Requests</div>
-        <div class="filter-option" data-filter="nearby">Nearby Users</div>
-      </div>
-      
-      <div id="search-results-container">
-        <div class="loading-indicator hidden" id="loading-indicator">
-          <div class="spinner"></div>
-        </div>
-        
-        <div class="search-results" id="search-results">
-          <!-- Search results will be populated here -->
-          <div class="empty-state">
-            <span class="material-icons">person_search</span>
-            <h3 class="empty-state-title">Find Someone</h3>
-            <p class="empty-state-text">
-              Type a username or display name to search, or browse users using the filters above.
-            </p>
-          </div>
-        </div>
-        
-        <div class="pagination hidden" id="pagination">
-          <!-- Pagination will be populated here -->
-        </div>
-      </div>
-    </section>
-    
-    <!-- Connection request modal -->
-    <div class="modal hidden" id="connection-modal">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Connect with <span id="connection-user-name">User</span></h3>
-          <button class="modal-close" id="close-connection-modal">
-            <span class="material-icons">close</span>
-          </button>
-        </div>
-        <div class="modal-body">
-          <div class="connection-types">
-            <div class="connection-type" data-type="mutual">
-              <div class="connection-type-icon">
-                <span class="material-icons">swap_horiz</span>
-              </div>
-              <div class="connection-type-info">
-                <div class="connection-type-title">Mutual Connection</div>
-                <div class="connection-type-description">
-                  Symmetric connection visible to both users and in each other's public networks.
-                </div>
-              </div>
-              <div class="connection-type-radio"></div>
-            </div>
-            
-            <div class="connection-type" data-type="follow">
-              <div class="connection-type-icon">
-                <span class="material-icons">visibility</span>
-              </div>
-              <div class="connection-type-info">
-                <div class="connection-type-title">Follow</div>
-                <div class="connection-type-description">
-                  Asymmetric connection that allows you to see their content in your feed. They will know you follow them.
-                </div>
-              </div>
-              <div class="connection-type-radio"></div>
-            </div>
-            
-            <div class="connection-type" data-type="lurk">
-              <div class="connection-type-icon">
-                <span class="material-icons">visibility_off</span>
-              </div>
-              <div class="connection-type-info">
-                <div class="connection-type-title">Lurker Connection</div>
-                <div class="connection-type-description">
-                  Private asymmetric connection. Follow their content without them knowing. Never appears in public networks.
-                </div>
-              </div>
-              <div class="connection-type-radio"></div>
-            </div>
-          </div>
-          
-          <div class="message-wrapper">
-            <label for="connection-message" class="message-label">Add a message (optional):</label>
-            <textarea 
-              id="connection-message" 
-              class="message-input" 
-              placeholder="Hi, I'd like to connect with you..."
-            ></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-subtle" id="cancel-connection-btn">Cancel</button>
-          <button class="btn" id="send-connection-btn">Send Request</button>
-        </div>
+      <div class="user-grid" id="userGrid">
+        <p class="text-muted">Loading users...</p>
       </div>
     </div>
   </main>
-
-  <script type="module">
-    import { NavigationBar } from './js/components/navigation.js';
-
-    document.addEventListener('DOMContentLoaded', () => {
-      // Initialize the navigation bar
-      NavigationBar.init('search');
-      
-      // DOM elements
-      const userSearchInput = document.getElementById('user-search-input');
-      const searchResultsContainer = document.getElementById('search-results-container');
-      const searchResults = document.getElementById('search-results');
-      const loadingIndicator = document.getElementById('loading-indicator');
-      const pagination = document.getElementById('pagination');
-      const filterOptions = document.querySelectorAll('.filter-option');
-      const connectionModal = document.getElementById('connection-modal');
-      const connectionUserName = document.getElementById('connection-user-name');
-      const connectionTypes = document.querySelectorAll('.connection-type');
-      const connectionMessage = document.getElementById('connection-message');
-      const closeConnectionModalBtn = document.getElementById('close-connection-modal');
-      const cancelConnectionBtn = document.getElementById('cancel-connection-btn');
-      const sendConnectionBtn = document.getElementById('send-connection-btn');
-      
-      // Current state
-      let currentUser = null;
-      let currentFilter = 'all';
-      let currentPage = 1;
-      let totalPages = 1;
-      let searchQuery = '';
-      let selectedConnectionType = 'mutual';
-      let selectedUserId = null;
-      
-      // Initialize
-      initUserSearch();
-      
-      // Set up event listeners
-      userSearchInput.addEventListener('input', debounce(handleSearch, 300));
-      
-      filterOptions.forEach(option => {
-        option.addEventListener('click', () => {
-          filterOptions.forEach(opt => opt.classList.remove('active'));
-          option.classList.add('active');
-          currentFilter = option.dataset.filter;
-          currentPage = 1;
-          performSearch();
-        });
-      });
-      
-      connectionTypes.forEach(type => {
-        type.addEventListener('click', () => {
-          connectionTypes.forEach(t => t.classList.remove('selected'));
-          type.classList.add('selected');
-          selectedConnectionType = type.dataset.type;
-        });
-      });
-      
-      closeConnectionModalBtn.addEventListener('click', hideConnectionModal);
-      cancelConnectionBtn.addEventListener('click', hideConnectionModal);
-      sendConnectionBtn.addEventListener('click', sendConnectionRequest);
-      
-      // Close modal when clicking outside
-      connectionModal.addEventListener('click', (e) => {
-        if (e.target === connectionModal) {
-          hideConnectionModal();
-        }
-      });
-      
-      // Initialize user search
-      async function initUserSearch() {
-        try {
-          // First, get the current user
-          currentUser = await fetchCurrentUser();
-          
-          if (!currentUser) {
-            showAuthError();
-            return;
-          }
-          
-          // Check for query param in URL
-          const urlParams = new URLSearchParams(window.location.search);
-          const queryParam = urlParams.get('q');
-          
-          if (queryParam) {
-            userSearchInput.value = queryParam;
-            searchQuery = queryParam;
-            performSearch();
-          }
-          
-          // Check if we should load all users by default
-          if (currentFilter === 'all' && !searchQuery) {
-            loadAllUsers();
-          }
-        } catch (error) {
-          console.error('Error initializing user search:', error);
-          showError('Could not initialize user search. Please try refreshing the page.');
-        }
-      }
-      
-      // Fetch current user details
-      async function fetchCurrentUser() {
-        try {
-          const response = await fetch('/api/auth/jwt/profile', {
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            return null;
-          }
-          
-          return await response.json();
-        } catch (error) {
-          console.error('Error fetching current user:', error);
-          return null;
-        }
-      }
-      
-      // Handle search input
-      function handleSearch() {
-        searchQuery = userSearchInput.value.trim();
-        currentPage = 1;
-        
-        if (searchQuery.length === 0 && currentFilter === 'all') {
-          loadAllUsers();
-          return;
-        }
-        
-        if (searchQuery.length < 2) {
-          searchResults.innerHTML = `
-            <div class="empty-state">
-              <span class="material-icons">person_search</span>
-              <h3 class="empty-state-title">Start Typing</h3>
-              <p class="empty-state-text">
-                Type at least 2 characters to search for users.
-              </p>
-            </div>
-          `;
-          pagination.classList.add('hidden');
-          return;
-        }
-        
-        performSearch();
-      }
-      
-      // Load all users
-      async function loadAllUsers() {
-        searchResults.innerHTML = '';
-        loadingIndicator.classList.remove('hidden');
-        
-        try {
-          const response = await fetch(`/api/users?page=${currentPage}&limit=12`, {
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to load users');
-          }
-          
-          const data = await response.json();
-          
-          renderSearchResults(data.users);
-          renderPagination(data.page, data.totalPages);
-        } catch (error) {
-          console.error('Error loading users:', error);
-          showError('Failed to load users. Please try again.');
-          searchResults.innerHTML = `
-            <div class="empty-state">
-              <span class="material-icons">error_outline</span>
-              <h3 class="empty-state-title">Error</h3>
-              <p class="empty-state-text">
-                Failed to load users. Please try again later.
-              </p>
-            </div>
-          `;
-        } finally {
-          loadingIndicator.classList.add('hidden');
-        }
-      }
-      
-      // Perform search
-      async function performSearch() {
-        searchResults.innerHTML = '';
-        loadingIndicator.classList.remove('hidden');
-        
-        try {
-          let url = '/api/users/search?';
-          
-          if (searchQuery) {
-            url += `query=${encodeURIComponent(searchQuery)}&`;
-          }
-          
-          url += `filter=${currentFilter}&page=${currentPage}&limit=12`;
-          
-          const response = await fetch(url, {
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to search users');
-          }
-          
-          const data = await response.json();
-          
-          renderSearchResults(data.users);
-          renderPagination(data.page, data.totalPages);
-        } catch (error) {
-          console.error('Error searching users:', error);
-          showError('Failed to search users. Please try again.');
-          searchResults.innerHTML = `
-            <div class="empty-state">
-              <span class="material-icons">error_outline</span>
-              <h3 class="empty-state-title">Error</h3>
-              <p class="empty-state-text">
-                Failed to search users. Please try again later.
-              </p>
-            </div>
-          `;
-        } finally {
-          loadingIndicator.classList.add('hidden');
-        }
-      }
-      
-      // Render search results
-      function renderSearchResults(users) {
-        searchResults.innerHTML = '';
-        
-        if (!users || users.length === 0) {
-          searchResults.innerHTML = `
-            <div class="empty-state">
-              <span class="material-icons">person_off</span>
-              <h3 class="empty-state-title">No Users Found</h3>
-              <p class="empty-state-text">
-                No users match your search criteria. Try a different search term or filter.
-              </p>
-            </div>
-          `;
-          pagination.classList.add('hidden');
-          return;
-        }
-        
-        users.forEach(user => {
-          if (user.id === currentUser.id) return; // Skip current user
-          
-          const userEl = document.createElement('div');
-          userEl.className = 'user-card';
-          
-          // Get initial letter for avatar
-          const initial = (user.username || 'U')[0].toUpperCase();
-          
-          // Determine connection status
-          let connectionStatusHtml = '';
-          let actionButtonsHtml = '';
-          
-          if (user.connectionStatus === 'mutual') {
-            connectionStatusHtml = `
-              <div class="user-connection-status mutual">
-                <span class="material-icons">swap_horiz</span> Mutual Connection
-              </div>
-            `;
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="message" data-user-id="${user.id}">
-                <span class="material-icons">chat</span> Message
-              </div>
-              <div class="user-action-btn secondary" data-action="disconnect" data-user-id="${user.id}">
-                <span class="material-icons">link_off</span> Disconnect
-              </div>
-            `;
-          } else if (user.connectionStatus === 'following') {
-            connectionStatusHtml = `
-              <div class="user-connection-status connected">
-                <span class="material-icons">visibility</span> Following
-              </div>
-            `;
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="unfollow" data-user-id="${user.id}">
-                <span class="material-icons">visibility_off</span> Unfollow
-              </div>
-              <div class="user-action-btn secondary" data-action="connect" data-user-id="${user.id}" data-user-name="${user.display_name || user.username}">
-                <span class="material-icons">swap_horiz</span> Request Mutual
-              </div>
-            `;
-          } else if (user.connectionStatus === 'lurking') {
-            connectionStatusHtml = `
-              <div class="user-connection-status connected">
-                <span class="material-icons">visibility_off</span> Lurker Connection
-              </div>
-            `;
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="unlurk" data-user-id="${user.id}">
-                <span class="material-icons">cancel</span> Remove Connection
-              </div>
-              <div class="user-action-btn secondary" data-action="connect" data-user-id="${user.id}" data-user-name="${user.display_name || user.username}">
-                <span class="material-icons">swap_horiz</span> Request Mutual
-              </div>
-            `;
-          } else if (user.connectionStatus === 'pending_outgoing') {
-            connectionStatusHtml = `
-              <div class="user-connection-status pending">
-                <span class="material-icons">hourglass_empty</span> Request Pending
-              </div>
-            `;
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="cancel" data-user-id="${user.id}">
-                <span class="material-icons">cancel</span> Cancel Request
-              </div>
-              <div class="user-action-btn secondary" data-action="drawer" data-user-id="${user.id}">
-                <span class="material-icons">view_carousel</span> View Drawer
-              </div>
-            `;
-          } else if (user.connectionStatus === 'pending_incoming') {
-            connectionStatusHtml = `
-              <div class="user-connection-status pending">
-                <span class="material-icons">schedule</span> Incoming Request
-              </div>
-            `;
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="accept" data-user-id="${user.id}">
-                <span class="material-icons">check</span> Accept
-              </div>
-              <div class="user-action-btn secondary" data-action="decline" data-user-id="${user.id}">
-                <span class="material-icons">close</span> Decline
-              </div>
-            `;
-          } else {
-            // No connection
-            actionButtonsHtml = `
-              <div class="user-action-btn primary" data-action="connect" data-user-id="${user.id}" data-user-name="${user.display_name || user.username}">
-                <span class="material-icons">add</span> Connect
-              </div>
-              <div class="user-action-btn secondary" data-action="drawer" data-user-id="${user.id}">
-                <span class="material-icons">view_carousel</span> View Drawer
-              </div>
-            `;
-          }
-          
-          userEl.innerHTML = `
-            <div class="user-card-header">
-              <div class="user-info">
-                <div class="user-avatar">
-                  ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.username}">` : initial}
-                </div>
-                <div class="user-name-container">
-                  <div class="user-display-name">${user.display_name || user.username}</div>
-                  <div class="user-username">@${user.username}</div>
-                </div>
-              </div>
-            </div>
-            <div class="user-card-body">
-              <div class="user-bio">${user.bio || 'No bio provided.'}</div>
-              <div class="user-stats">
-                <div class="user-stat">
-                  <span class="material-icons">content_copy</span>
-                  ${user.contentCount || 0} items
-                </div>
-                <div class="user-stat">
-                  <span class="material-icons">swap_horiz</span>
-                  ${user.connectionCount || 0} connections
-                </div>
-              </div>
-              ${connectionStatusHtml}
-              <div class="user-card-actions">
-                ${actionButtonsHtml}
-              </div>
-            </div>
-          `;
-          
-          // Add event listeners to action buttons
-          userEl.querySelectorAll('.user-action-btn').forEach(btn => {
-            btn.addEventListener('click', handleActionButtonClick);
-          });
-          
-          searchResults.appendChild(userEl);
-        });
-      }
-      
-      // Render pagination
-      function renderPagination(currentPage, totalPages) {
-        if (totalPages <= 1) {
-          pagination.classList.add('hidden');
-          return;
-        }
-        
-        pagination.innerHTML = '';
-        pagination.classList.remove('hidden');
-        
-        // Previous button
-        const prevBtn = document.createElement('div');
-        prevBtn.className = `pagination-btn ${currentPage === 1 ? 'disabled' : ''}`;
-        prevBtn.innerHTML = `<span class="material-icons">chevron_left</span>`;
-        
-        if (currentPage > 1) {
-          prevBtn.addEventListener('click', () => {
-            currentPage--;
-            performSearch();
-          });
-        }
-        
-        pagination.appendChild(prevBtn);
-        
-        // Page buttons
-        const maxButtons = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
-        let endPage = Math.min(totalPages, startPage + maxButtons - 1);
-        
-        if (endPage - startPage + 1 < maxButtons) {
-          startPage = Math.max(1, endPage - maxButtons + 1);
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-          const pageBtn = document.createElement('div');
-          pageBtn.className = `pagination-btn ${i === currentPage ? 'active' : ''}`;
-          pageBtn.textContent = i;
-          
-          if (i !== currentPage) {
-            pageBtn.addEventListener('click', () => {
-              currentPage = i;
-              performSearch();
-            });
-          }
-          
-          pagination.appendChild(pageBtn);
-        }
-        
-        // Next button
-        const nextBtn = document.createElement('div');
-        nextBtn.className = `pagination-btn ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextBtn.innerHTML = `<span class="material-icons">chevron_right</span>`;
-        
-        if (currentPage < totalPages) {
-          nextBtn.addEventListener('click', () => {
-            currentPage++;
-            performSearch();
-          });
-        }
-        
-        pagination.appendChild(nextBtn);
-      }
-      
-      // Handle action button click
-      function handleActionButtonClick(e) {
-        const button = e.currentTarget;
-        const action = button.dataset.action;
-        const userId = button.dataset.userId;
-        
-        if (!userId) return;
-        
-        switch (action) {
-          case 'connect':
-            showConnectionModal(userId, button.dataset.userName);
-            break;
-          case 'message':
-            window.location.href = `/messages.html?user=${userId}`;
-            break;
-          case 'drawer':
-            window.location.href = `/drawer.html?user=${userId}`;
-            break;
-          case 'disconnect':
-          case 'unfollow':
-          case 'unlurk':
-            removeConnection(userId);
-            break;
-          case 'accept':
-            acceptConnectionRequest(userId);
-            break;
-          case 'decline':
-          case 'cancel':
-            declineConnectionRequest(userId);
-            break;
-          default:
-            console.warn('Unknown action:', action);
-        }
-      }
-      
-      // Show connection modal
-      function showConnectionModal(userId, userName) {
-        selectedUserId = userId;
-        connectionUserName.textContent = userName || 'User';
-        
-        // Reset modal state
-        connectionTypes.forEach(type => {
-          type.classList.toggle('selected', type.dataset.type === 'mutual');
-        });
-        selectedConnectionType = 'mutual';
-        connectionMessage.value = '';
-        
-        connectionModal.classList.remove('hidden');
-      }
-      
-      // Hide connection modal
-      function hideConnectionModal() {
-        connectionModal.classList.add('hidden');
-        selectedUserId = null;
-      }
-      
-      // Send connection request
-      async function sendConnectionRequest() {
-        if (!selectedUserId) return;
-        
-        try {
-          sendConnectionBtn.disabled = true;
-          sendConnectionBtn.textContent = 'Sending...';
-          
-          const response = await fetch('/api/connections/request', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify({
-              userId: selectedUserId,
-              connectionType: selectedConnectionType,
-              message: connectionMessage.value.trim()
-            })
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to send connection request');
-          }
-          
-          hideConnectionModal();
-          showSuccess('Connection request sent successfully!');
-          
-          // Refresh results
-          setTimeout(() => {
-            performSearch();
-          }, 1000);
-        } catch (error) {
-          console.error('Error sending connection request:', error);
-          showError('Failed to send connection request. Please try again.');
-        } finally {
-          sendConnectionBtn.disabled = false;
-          sendConnectionBtn.textContent = 'Send Request';
-        }
-      }
-      
-      // Remove connection
-      async function removeConnection(userId) {
-        try {
-          const response = await fetch(`/api/connections/${userId}`, {
-            method: 'DELETE',
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to remove connection');
-          }
-          
-          showSuccess('Connection removed successfully!');
-          
-          // Refresh results
-          setTimeout(() => {
-            performSearch();
-          }, 1000);
-        } catch (error) {
-          console.error('Error removing connection:', error);
-          showError('Failed to remove connection. Please try again.');
-        }
-      }
-      
-      // Accept connection request
-      async function acceptConnectionRequest(userId) {
-        try {
-          const response = await fetch(`/api/connections/request/${userId}/accept`, {
-            method: 'POST',
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to accept connection request');
-          }
-          
-          showSuccess('Connection request accepted!');
-          
-          // Refresh results
-          setTimeout(() => {
-            performSearch();
-          }, 1000);
-        } catch (error) {
-          console.error('Error accepting connection request:', error);
-          showError('Failed to accept connection request. Please try again.');
-        }
-      }
-      
-      // Decline connection request
-      async function declineConnectionRequest(userId) {
-        try {
-          const response = await fetch(`/api/connections/request/${userId}/decline`, {
-            method: 'POST',
-            credentials: 'include'
-          });
-          
-          if (!response.ok) {
-            throw new Error('Failed to decline connection request');
-          }
-          
-          showSuccess('Connection request declined.');
-          
-          // Refresh results
-          setTimeout(() => {
-            performSearch();
-          }, 1000);
-        } catch (error) {
-          console.error('Error declining connection request:', error);
-          showError('Failed to decline connection request. Please try again.');
-        }
-      }
-      
-      // Show auth error
-      function showAuthError() {
-        const container = document.querySelector('main.container');
-        container.innerHTML = `
-          <div class="alert alert-error">
-            <span class="material-icons">error_outline</span>
-            <div>
-              <h3>Authentication Required</h3>
-              <p>Please <a href="/auth/login.html">log in</a> to search and connect with users.</p>
-            </div>
-          </div>
-        `;
-      }
-      
-      // Show error message
-      function showError(message) {
-        const errorEl = document.createElement('div');
-        errorEl.className = 'alert alert-error';
-        errorEl.innerHTML = `
-          <span class="material-icons">error_outline</span>
-          <div>${message}</div>
-        `;
-        
-        document.querySelector('main.container').prepend(errorEl);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-          errorEl.remove();
-        }, 5000);
-      }
-      
-      // Show success message
-      function showSuccess(message) {
-        const successEl = document.createElement('div');
-        successEl.className = 'alert alert-success';
-        successEl.innerHTML = `
-          <span class="material-icons">check_circle</span>
-          <div>${message}</div>
-        `;
-        
-        document.querySelector('main.container').prepend(successEl);
-        
-        // Remove after 5 seconds
-        setTimeout(() => {
-          successEl.remove();
-        }, 5000);
-      }
-      
-      // Helper: Debounce function
-      function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-          const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-          };
-          clearTimeout(timeout);
-          timeout = setTimeout(later, wait);
-        };
-      }
-    });
-  </script>
-
   <footer class="footer">
     <p class="footer-motto text-accent">"the rel is what you make it"</p>
-    <div class="footer-links">
-      <a href="index.html">Home</a> | 
-      <a href="help.html">Help</a> | 
-      <a href="about.html">About</a> | 
-      <a href="sitemap.html">Site Map</a>
-    </div>
   </footer>
+  <script type="module">
+    import { NavigationBar } from './js/components/navigation.js';
+    NavigationBar.init('connect');
+
+    let searchQuery = '';
+
+    async function loadUsers() {
+      if (!window.r3l?.isAuthenticated()) {
+        document.getElementById('userGrid').innerHTML = '<p>Please log in to find people</p>';
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({ query: searchQuery, limit: 20 });
+        const users = await window.r3l.apiGet(`/api/users/search?${params}`);
+        
+        const grid = document.getElementById('userGrid');
+        if (users.length === 0) {
+          grid.innerHTML = '<p class="text-muted">No users found</p>';
+          return;
+        }
+
+        grid.innerHTML = users.map(user => {
+          const initial = (user.username || 'U')[0].toUpperCase();
+          const avatarHtml = user.avatar_key 
+            ? `<img src="/api/files/${user.avatar_key}" alt="${user.username}">`
+            : initial;
+          
+          return `
+            <div class="user-card">
+              <div class="user-header">
+                <div class="user-avatar">${avatarHtml}</div>
+                <div class="user-info">
+                  <h3>${user.display_name || user.username}</h3>
+                  <p>@${user.username}</p>
+                </div>
+              </div>
+              <div class="user-bio">${user.bio || 'No bio provided'}</div>
+              <div class="user-stats">
+                <span><span class="material-icons" style="font-size:1em;vertical-align:middle;">description</span> ${user.content_count || 0} items</span>
+                <span><span class="material-icons" style="font-size:1em;vertical-align:middle;">people</span> ${user.connection_count || 0} connections</span>
+              </div>
+              <div class="user-actions">
+                <button class="btn btn-primary btn-sm" onclick="followUser('${user.id}')">
+                  <span class="material-icons">person_add</span> Follow
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="viewProfile('${user.id}')">
+                  <span class="material-icons">visibility</span> View
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        document.getElementById('userGrid').innerHTML = '<p>Error loading users</p>';
+      }
+    }
+
+    window.followUser = async (userId) => {
+      try {
+        await window.r3l.apiPost('/api/user/connections', { targetUserId: userId });
+        alert('Following user!');
+      } catch (error) {
+        alert('Failed to follow user');
+      }
+    };
+
+    window.viewProfile = (userId) => {
+      window.location.href = `/profile.html?user=${userId}`;
+    };
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      searchQuery = document.getElementById('searchInput').value;
+      loadUsers();
+    });
+
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        searchQuery = e.target.value;
+        loadUsers();
+      }
+    });
+
+    loadUsers();
+  </script>
 </body>
 </html>

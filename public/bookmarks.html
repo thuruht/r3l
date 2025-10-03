@@ -3,80 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Bookmarks - R3L:F</title>
+  <title>Bookmarks - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
-
-  <!-- Load critical auth helper script synchronously -->
-  <script src="/js/utils/secure-api-helper.js"></script>
-
-  <script src="js/font-loader.js" defer></script>
-  <script type="module">
-    import { NavigationBar } from './js/components/navigation.js';
-    document.addEventListener('DOMContentLoaded', () => {
-      NavigationBar.init('bookmarks');
-    });
-  </script>
+  <style>
+    .bookmarks-container {
+      max-width: 1000px;
+      margin: 2rem auto;
+    }
+    .bookmark-card {
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .bookmark-card:hover {
+      transform: translateX(4px);
+    }
+    .bookmark-info {
+      flex: 1;
+    }
+    .bookmark-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+  </style>
 </head>
 <body>
   <header>
-    <div class="container">
-      <!-- Navigation will be inserted by JavaScript -->
-    </div>
+    <div class="container"></div>
   </header>
-
   <main class="container">
-    <h1>My Bookmarks</h1>
-    <div id="bookmarks-list" class="card-grid">
-      <!-- Bookmarks will be rendered here -->
+    <div class="bookmarks-container">
+      <h1>Your Bookmarks</h1>
+      <p class="text-muted">Content you've saved for later</p>
+      <div id="bookmarksList"></div>
     </div>
   </main>
-
   <footer class="footer">
     <p class="footer-motto text-accent">"the rel is what you make it"</p>
-    <div class="footer-links">
-      <a href="index.html">Home</a> | 
-      <a href="help.html">Help</a> | 
-      <a href="about.html">About</a> | 
-      <a href="sitemap.html">Site Map</a>
-    </div>
   </footer>
-
   <script type="module">
-    import { escapeHtml } from './js/utils/ui-helpers.js';
-
-    const bookmarksList = document.getElementById('bookmarks-list');
+    import { NavigationBar } from './js/components/navigation.js';
+    NavigationBar.init('bookmarks');
 
     async function loadBookmarks() {
-      if (!window.r3l || !window.r3l.isAuthenticated()) {
-        bookmarksList.innerHTML = '<p>You must be logged in to see your bookmarks. Please <a href="/login.html">log in</a>.</p>';
+      if (!window.r3l?.isAuthenticated()) {
+        document.getElementById('bookmarksList').innerHTML = '<p>Please log in to view bookmarks</p>';
         return;
       }
 
-      bookmarksList.innerHTML = '<p>Loading bookmarks...</p>';
       try {
-        const bookmarks = await window.r3l.apiGet(window.r3l.API_ENDPOINTS.BOOKMARKS);
-        if (bookmarks && bookmarks.length > 0) {
-          const bookmarksHtml = bookmarks.map(content => `
-            <div class="card">
-              <div class="card-body">
-                <h3><a href="/content.html?id=${content.id}">${escapeHtml(content.title)}</a></h3>
-                <p>${escapeHtml(content.description)}</p>
-                <div class="text-muted">By ${escapeHtml(content.display_name || content.username)}</div>
-              </div>
-            </div>
-          `).join('');
-          bookmarksList.innerHTML = bookmarksHtml;
-        } else {
-          bookmarksList.innerHTML = '<p>You have no bookmarks yet.</p>';
+        const bookmarks = await window.r3l.apiGet('/api/bookmarks');
+        const list = document.getElementById('bookmarksList');
+        
+        if (bookmarks.length === 0) {
+          list.innerHTML = '<p class="text-muted">No bookmarks yet</p>';
+          return;
         }
+
+        list.innerHTML = bookmarks.map(b => `
+          <div class="bookmark-card" data-id="${b.id}">
+            <div class="bookmark-info">
+              <h3>${b.title}</h3>
+              <p class="text-muted">${b.description || ''}</p>
+              <small class="text-muted">by ${b.display_name || b.username}</small>
+            </div>
+            <div class="bookmark-actions">
+              <button class="btn btn-secondary btn-sm remove-bookmark" data-id="${b.id}">
+                <span class="material-icons">bookmark_remove</span>
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        document.querySelectorAll('.bookmark-card').forEach(card => {
+          card.addEventListener('click', (e) => {
+            if (!e.target.closest('.remove-bookmark')) {
+              window.location.href = `/content.html?id=${card.dataset.id}`;
+            }
+          });
+        });
+
+        document.querySelectorAll('.remove-bookmark').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            try {
+              await window.r3l.apiDelete(`/api/content/${id}/bookmark`);
+              loadBookmarks();
+            } catch (error) {
+              alert('Failed to remove bookmark');
+            }
+          });
+        });
       } catch (error) {
-        bookmarksList.innerHTML = '<p class="text-error">Failed to load bookmarks.</p>';
-        console.error('Error loading bookmarks:', error);
+        document.getElementById('bookmarksList').innerHTML = `<p>Error loading bookmarks: ${error.message}</p>`;
       }
     }
 
-    // Module scripts are deferred by default, so the DOM will be ready.
-    // The synchronous script in the head ensures window.r3l is available.
     loadBookmarks();
   </script>
 </body>

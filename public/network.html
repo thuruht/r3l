@@ -3,1556 +3,238 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Association Web - R3L:F</title>
+  <title>Network - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
-  <link rel="stylesheet" href="css/responsive-enhancements.css">
-  <script src="js/font-loader.js" defer></script>
-  <script src="js/utils/secure-api-helper.js" defer></script>
   <script src="vendor/d3/d3.v7.min.js"></script>
-  <script type="module">
-    import { NavigationBar } from './js/components/navigation.js';
-    document.addEventListener('DOMContentLoaded', () => {
-      NavigationBar.init('network');
-    });
-  </script>
   <style>
-    .view-mode-toggle {
-      display: flex;
-      margin-bottom: 1rem;
-      gap: 1rem;
-    }
-    
-    .view-mode-btn {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      border: 1px solid var(--accent);
-      background-color: var(--bg-medium);
-      color: var(--text-light);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .view-mode-btn:hover {
-      background-color: var(--bg-lighter);
-    }
-    
-    .view-mode-btn.active {
-      background-color: var(--accent);
-      color: white;
-    }
-    
-    .map-container {
-      width: 100%;
-      height: 80vh;
-      background-color: var(--bg-darker);
-      border-radius: 8px;
-      position: relative;
-      overflow: hidden;
-      display: none;
-    }
-    
     .network-container {
       width: 100%;
       height: 80vh;
-      background-color: var(--bg-darker);
-      border-radius: 8px;
+      background: var(--bg-container);
+      border-radius: var(--radius-md);
       position: relative;
-      overflow: hidden;
     }
-    
-    .map-controls {
+    .controls {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    
-    .map-control-btn {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 8px 12px;
-      background-color: var(--bg-darker);
-      border: 1px solid var(--accent);
-      border-radius: 4px;
-      color: var(--text-light);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .map-control-btn:hover {
-      background-color: var(--accent);
-      color: white;
-    }
-    
-    .map-panel {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: var(--bg-medium);
-      border-radius: 8px;
-      padding: 20px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-      z-index: 1001;
-      width: 80%;
-      max-width: 500px;
-    }
-    
-    .map-form {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-    
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    
-    .form-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .network-controls {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 8px;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0,0,0,0.7);
+      padding: 1rem;
+      border-radius: var(--radius-md);
       z-index: 10;
     }
-
-    .network-tooltip {
-      position: absolute;
-      background-color: var(--bg-darker);
-      border: 1px solid var(--accent);
-      padding: 10px;
-      border-radius: 4px;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity 0.2s;
-      max-width: 300px;
-      z-index: 20;
-    }
-    
-    .loading-indicator {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0, 0, 0, 0.7);
+    .controls label {
+      display: block;
+      margin-bottom: 0.5rem;
       color: white;
-      padding: 20px;
-      border-radius: 8px;
-      text-align: center;
-      z-index: 100;
     }
-
-    .node {
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .node:hover {
-      stroke-width: 3;
-    }
-    
-    /* Compact header styles */
-    .network-title {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
-      gap: 0.5rem;
-    }
-    .network-title h1 {
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .network-title p {
-      margin: 0;
-      font-size: var(--fs-lg);
-      color: var(--text-secondary);
-    }
-
-    .link {
-      stroke-opacity: 0.6;
-      transition: all 0.2s;
-    }
-
-    .link:hover {
-      stroke-opacity: 1;
-    }
-
     .legend {
       position: absolute;
-      bottom: 20px;
-      left: 20px;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 8px;
+      bottom: 1rem;
+      left: 1rem;
+      background: rgba(0,0,0,0.7);
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      color: white;
       z-index: 10;
     }
-
     .legend-item {
       display: flex;
       align-items: center;
-      margin-bottom: 5px;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
     }
-
-    .legend-icon {
+    .legend-color {
       width: 20px;
       height: 20px;
-      margin-right: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .legend-icon svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    .zoom-controls {
-      position: absolute;
-      bottom: 20px;
-      right: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      z-index: 10;
-    }
-
-    .zoom-btn {
-      width: 40px;
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: var(--accent);
-      color: var(--text-light);
-      border: none;
       border-radius: 50%;
+    }
+    .node {
       cursor: pointer;
-      font-size: 24px;
+      stroke: #fff;
+      stroke-width: 1.5px;
     }
-
-    .zoom-btn:hover {
-      background-color: var(--accent-hover);
+    .link {
+      stroke: var(--accent-purple);
+      stroke-opacity: 0.6;
     }
-
-    .time-slider-container {
-      position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 50%;
-      background-color: rgba(0, 0, 0, 0.7);
-      padding: 10px;
-      border-radius: 8px;
-      z-index: 10;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .time-slider-label {
-      margin-bottom: 5px;
-      color: var(--text-light);
-    }
-
-    .time-slider {
-      width: 100%;
-      cursor: pointer;
-    }
-
-    .filter-section {
-      margin-top: 20px;
-      background-color: var(--bg-medium);
-      padding: 15px;
-      border-radius: 8px;
-    }
-
-    .filter-options {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .filter-chip {
-      background-color: var(--bg-darker);
-      color: var(--text-light);
-      padding: 5px 10px;
-      border-radius: 16px;
-      cursor: pointer;
-      -webkit-user-select: none;
-      user-select: none;
-      transition: background-color 0.2s;
-    }
-
-    .filter-chip.active {
-      background-color: var(--accent);
+    .node-label {
+      font-size: 10px;
+      pointer-events: none;
+      fill: var(--text-primary);
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="container">
-      <!-- Navigation will be inserted by JavaScript -->
-    </div>
+    <div class="container"></div>
   </header>
-
   <main class="container">
-    <div class="network-title">
-      <h1>
-        <span class="material-icons" aria-hidden="true">hub</span>
-        Association Web
-      </h1>
-      <p>Explore the emergent connections between files, users, and topics in the Rel</p>
-    </div>
-
-    <div class="view-mode-toggle">
-      <button id="network-view-btn" class="view-mode-btn active">
-        <span class="material-icons">hub</span>
-        Network View
-      </button>
-      <button id="map-view-btn" class="view-mode-btn">
-        <span class="material-icons">map</span>
-        Map View
-      </button>
-    </div>
-
-    <div class="filter-section">
-      <h3>Filter View</h3>
-      <div class="filter-options">
-        <div class="filter-chip active" data-filter="all">All Connections</div>
-        <div class="filter-chip" data-filter="users">Users</div>
-        <div class="filter-chip" data-filter="files">Files</div>
-        <div class="filter-chip" data-filter="tags">Tags</div>
-        <div class="filter-chip" data-filter="my-connections">My Connections</div>
-        <div class="filter-chip" data-filter="popular">Popular</div>
-        <div class="filter-chip" data-filter="recent">Recent</div>
-        <div class="filter-chip" data-filter="expiring">Expiring Soon</div>
+    <h1>Association Web</h1>
+    <p class="text-muted">Explore connections between users and content</p>
+    <div class="network-container">
+      <svg id="networkSvg"></svg>
+      <div class="controls">
+        <label>
+          <input type="checkbox" id="showLabels" checked> Show Labels
+        </label>
       </div>
-    </div>
-
-    <div class="network-container mt-4">
-      <div class="network-tooltip"></div>
-
-      <div class="network-controls">
-        <div class="flex items-center gap-2 mb-2">
-          <label for="layout-select">Layout:</label>
-          <select id="layout-select" class="r3l-input">
-            <option value="force">Force-Directed</option>
-            <option value="radial">Radial</option>
-            <option value="cluster">Cluster</option>
-          </select>
-        </div>
-        <div class="flex items-center gap-2">
-          <label for="show-labels">Show Labels:</label>
-          <input type="checkbox" id="show-labels" checked>
-        </div>
-      </div>
-
       <div class="legend">
-        <h4>Legend</h4>
+        <h4 style="margin-top:0;">Legend</h4>
         <div class="legend-item">
-          <div class="legend-icon">
-            <svg viewBox="-10 -10 20 20">
-              <circle r="8" fill="#9C27B0" stroke="#fff" stroke-width="1"></circle>
-            </svg>
-          </div>
+          <div class="legend-color" style="background:#a278ff;"></div>
           <span>Users</span>
         </div>
         <div class="legend-item">
-          <div class="legend-icon">
-            <svg viewBox="-10 -10 20 20">
-              <rect x="-8" y="-8" width="16" height="16" fill="#2196F3" stroke="#fff" stroke-width="1"></rect>
-            </svg>
-          </div>
-          <span>Files</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-icon">
-            <svg viewBox="-10 -10 20 20">
-              <polygon points="0,-8 8,0 0,8 -8,0" fill="#4CAF50" stroke="#fff" stroke-width="1"></polygon>
-            </svg>
-          </div>
-          <span>Tags</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-icon">
-            <svg viewBox="-10 -10 20 20">
-              <circle r="8" fill="#FF5722" stroke="#fff" stroke-width="1"></circle>
-            </svg>
-          </div>
-          <span>Your Content</span>
-        </div>
-      </div>
-
-      <div class="zoom-controls">
-        <button class="zoom-btn" id="zoom-in">+</button>
-        <button class="zoom-btn" id="zoom-reset">●</button>
-        <button class="zoom-btn" id="zoom-out">-</button>
-      </div>
-
-      <div class="time-slider-container">
-        <label for="time-slider" class="time-slider-label">Time Window: <span id="time-value">Last 7 days</span></label>
-        <input type="range" id="time-slider" class="time-slider" min="1" max="30" value="7" title="Adjust time window from 1 to 30 days">
-      </div>
-
-      <svg id="network-svg" width="100%" height="100%"></svg>
-    </div>
-    
-    <div class="map-container mt-4">
-      <div id="map-view" style="width: 100%; height: 100%;"></div>
-      <div class="map-controls">
-        <button id="view-all-points" class="map-control-btn">
-          <span class="material-icons">public</span>
-          View All
-        </button>
-        <button id="add-map-point" class="map-control-btn">
-          <span class="material-icons">add_location</span>
-          Add Point
-        </button>
-      </div>
-      
-      <!-- Map point form panel -->
-      <div id="add-point-panel" class="map-panel" style="display: none;">
-        <h3>Add Map Point</h3>
-        <form id="add-point-form" class="map-form">
-          <div class="form-group">
-            <label for="point-title">Title</label>
-            <input type="text" id="point-title" class="r3l-input" required>
-          </div>
-          <div class="form-group">
-            <label for="point-description">Description</label>
-            <textarea id="point-description" class="r3l-input" rows="3"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="point-type">Type</label>
-            <select id="point-type" class="r3l-input">
-              <option value="personal">Personal</option>
-              <option value="content">Content</option>
-              <option value="event">Event</option>
-              <option value="location">Location</option>
-            </select>
-          </div>
-          <div class="form-group" id="content-association-group" style="display: none;">
-            <label for="associated-content">Associated Content</label>
-            <select id="associated-content" class="r3l-input">
-              <option value="">Select content...</option>
-              <!-- Will be populated dynamically -->
-            </select>
-          </div>
-          <div class="form-group">
-            <p id="coordinates-display">Click on map to set location</p>
-            <input type="hidden" id="latitude" name="latitude">
-            <input type="hidden" id="longitude" name="longitude">
-          </div>
-          <div class="form-group form-actions">
-            <button type="button" id="cancel-add-point" class="btn btn-secondary">Cancel</button>
-            <button type="submit" id="save-point" class="btn" disabled>Save Point</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <div class="node-details mt-4" id="node-details" style="display: none;">
-      <h2 id="details-title">Node Details</h2>
-      <div class="card p-4">
-        <div id="details-content"></div>
-        <div class="flex justify-end mt-4">
-          <button id="close-details" class="btn btn-secondary">
-            <span class="material-icons">close</span>
-            Close
-          </button>
-          <button id="view-item" class="btn ml-2">
-            <span class="material-icons">visibility</span>
-            View
-          </button>
+          <div class="legend-color" style="background:#7fd8d8;"></div>
+          <span>Content</span>
         </div>
       </div>
     </div>
   </main>
-
   <footer class="footer">
     <p class="footer-motto text-accent">"the rel is what you make it"</p>
-    <div class="footer-links">
-      <a href="index.html">Home</a> | 
-      <a href="help.html">Help</a> | 
-      <a href="about.html">About</a> | 
-      <a href="sitemap.html">Site Map</a>
-    </div>
   </footer>
-
   <script type="module">
     import { NavigationBar } from './js/components/navigation.js';
-    import { GlobeVisualizer } from './js/globe/globe-visualizer.js';
+    NavigationBar.init('network');
 
-    document.addEventListener('DOMContentLoaded', () => {
-      // Initialize the navigation bar
-      NavigationBar.init('network');
-      
-      // DOM Elements
-      const networkSvg = document.getElementById('network-svg');
-      const tooltip = document.querySelector('.network-tooltip');
-      const layoutSelect = document.getElementById('layout-select');
-      const showLabelsCheckbox = document.getElementById('show-labels');
-      const zoomIn = document.getElementById('zoom-in');
-      const zoomOut = document.getElementById('zoom-out');
-      const zoomReset = document.getElementById('zoom-reset');
-      const timeSlider = document.getElementById('time-slider');
-      const timeValue = document.getElementById('time-value');
-      const filterChips = document.querySelectorAll('.filter-chip');
-      const nodeDetails = document.getElementById('node-details');
-      const detailsTitle = document.getElementById('details-title');
-      const detailsContent = document.getElementById('details-content');
-      const closeDetails = document.getElementById('close-details');
-      const viewItem = document.getElementById('view-item');
-      
-      // View switching elements
-      const networkViewBtn = document.getElementById('network-view-btn');
-      const mapViewBtn = document.getElementById('map-view-btn');
-      const networkContainer = document.querySelector('.network-container');
-      const mapContainer = document.querySelector('.map-container');
-      
-      // Map elements
-      const mapView = document.getElementById('map-view');
-      const addMapPoint = document.getElementById('add-map-point');
-      const viewAllPoints = document.getElementById('view-all-points');
-      const addPointPanel = document.getElementById('add-point-panel');
-      const addPointForm = document.getElementById('add-point-form');
-      const cancelAddPoint = document.getElementById('cancel-add-point');
-      const savePoint = document.getElementById('save-point');
-      const pointTitle = document.getElementById('point-title');
-      const pointDescription = document.getElementById('point-description');
-      const pointType = document.getElementById('point-type');
-      const associatedContent = document.getElementById('associated-content');
-      const contentAssociationGroup = document.getElementById('content-association-group');
-      const coordinatesDisplay = document.getElementById('coordinates-display');
-      const latitudeInput = document.getElementById('latitude');
-      const longitudeInput = document.getElementById('longitude');
-      
-      // Map variables
-      let globe;
-      let mapInitialized = false;
-      let tempMarker = null;
-      
-      // View switching functionality
-      networkViewBtn.addEventListener('click', () => {
-        networkViewBtn.classList.add('active');
-        mapViewBtn.classList.remove('active');
-        networkContainer.style.display = 'block';
-        mapContainer.style.display = 'none';
-      });
-      
-      mapViewBtn.addEventListener('click', () => {
-        networkViewBtn.classList.remove('active');
-        mapViewBtn.classList.add('active');
-        networkContainer.style.display = 'none';
-        mapContainer.style.display = 'block';
-        
-        // Initialize map if it hasn't been yet
-        if (!mapInitialized) {
-          initMap();
-          mapInitialized = true;
-        }
-      });
-      
-      // Initialize the map
-      function initMap() {
-        // Initialize the globe visualizer
-        globe = new GlobeVisualizer('map-view');
-        
-        // Setup map click handler for adding points
-        globe.onMapClick((e) => {
-          if (addPointPanel.style.display === 'block') {
-            // Update marker position and form values
-            const { lat, lng } = e.latlng;
-            
-            // Update hidden form inputs
-            latitudeInput.value = lat.toFixed(6);
-            longitudeInput.value = lng.toFixed(6);
-            
-            // Update display text
-            coordinatesDisplay.textContent = `Location: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-            
-            // Add or move temporary marker
-            if (tempMarker) {
-              globe.removeMarker(tempMarker);
-            }
-            tempMarker = globe.addTempMarker(lat, lng);
-            
-            // Enable the save button
-            savePoint.disabled = false;
-          }
-        });
-        
-        // Load data points from API
-        loadMapData();
-        
-        // Setup add point button
-        addMapPoint.addEventListener('click', () => {
-          // Show the add point panel
-          addPointPanel.style.display = 'block';
-          
-          // Show message on map
-          globe.setMessage('Click on the map to set a location');
-          
-          // Reset form
-          addPointForm.reset();
-          latitudeInput.value = '';
-          longitudeInput.value = '';
-          coordinatesDisplay.textContent = 'Click on map to set location';
-          savePoint.disabled = true;
-          
-          // Remove any existing temporary marker
-          if (tempMarker) {
-            globe.removeMarker(tempMarker);
-            tempMarker = null;
-          }
-          
-          // Load user's content for the dropdown
-          loadUserContent();
-        });
-        
-        // Point type change handler
-        pointType.addEventListener('change', () => {
-          if (pointType.value === 'content') {
-            contentAssociationGroup.style.display = 'block';
-          } else {
-            contentAssociationGroup.style.display = 'none';
-          }
-        });
-        
-        // Cancel button handler
-        cancelAddPoint.addEventListener('click', () => {
-          // Hide the panel
-          addPointPanel.style.display = 'none';
-          
-          // Clear message
-          globe.clearMessage();
-          
-          // Remove temporary marker
-          if (tempMarker) {
-            globe.removeMarker(tempMarker);
-            tempMarker = null;
-          }
-        });
-        
-        // Form submission handler
-        addPointForm.addEventListener('submit', (event) => {
-          event.preventDefault();
-          
-          // Validate form
-          if (!latitudeInput.value || !longitudeInput.value) {
-            alert('Please click on the map to set a location');
-            return;
-          }
-          
-          if (!pointTitle.value) {
-            alert('Please enter a title');
-            return;
-          }
-          
-          // Prepare data
-          const pointData = {
-            title: pointTitle.value,
-            description: pointDescription.value,
-            type: pointType.value,
-            latitude: parseFloat(latitudeInput.value),
-            longitude: parseFloat(longitudeInput.value)
-          };
-          
-          // Add content ID if this is a content point
-          if (pointType.value === 'content' && associatedContent.value) {
-            pointData.content_id = associatedContent.value;
-          }
-          
-          // Submit data to API
-          saveMapPoint(pointData);
-        });
-        
-        // View all points button
-        viewAllPoints.addEventListener('click', () => {
-          // Reset view to show all points
-          globe.resetView();
+    async function loadNetwork() {
+      if (!window.r3l?.isAuthenticated()) {
+        return;
+      }
+
+      try {
+        const data = await window.r3l.apiGet('/api/network');
+        renderNetwork(data);
+      } catch (error) {
+        console.error('Failed to load network:', error);
+        // Render sample data
+        renderNetwork({
+          nodes: d3.range(20).map(i => ({
+            id: `node-${i}`,
+            label: `Node ${i}`,
+            type: i < 5 ? 'user' : 'content'
+          })),
+          links: []
         });
       }
-      
-      // Load map data points from API
-      async function loadMapData() {
-        try {
-          // Globe data not implemented, return empty array
-          const response = [];
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            if (data.points && data.points.length > 0) {
-              // Add markers to the map
-              data.points.forEach(point => {
-                const markerOptions = {
-                  title: point.title,
-                  description: point.description,
-                  id: point.id,
-                  type: point.type,
-                  content_id: point.content_id
-                };
-                
-                globe.addMarker(point.latitude, point.longitude, markerOptions);
+    }
+
+    function renderNetwork(data) {
+      const svg = d3.select('#networkSvg');
+      const container = document.querySelector('.network-container');
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      svg.attr('viewBox', [0, 0, width, height]);
+      svg.selectAll('*').remove();
+
+      const g = svg.append('g');
+
+      // Create links if they don't exist
+      if (!data.links || data.links.length === 0) {
+        data.links = [];
+        for (let i = 0; i < data.nodes.length; i++) {
+          for (let j = i + 1; j < data.nodes.length; j++) {
+            if (Math.random() < 0.15) {
+              data.links.push({
+                source: data.nodes[i].id,
+                target: data.nodes[j].id
               });
-              
-              // Center the map on the points
-              globe.resetView();
-            } else {
-              // Show a message if no points
-              globe.setMessage('No map points found. Add some by clicking the "Add Point" button!');
-            }
-          } else {
-            // Show error message
-            globe.setMessage('Error loading map data. Try refreshing the page.');
-            console.error('Error loading map data:', await response.text());
-          }
-        } catch (error) {
-          console.error('Error fetching map data:', error);
-          globe.setMessage('Error loading map data. Try refreshing the page.');
-        }
-      }
-      
-      // Load user's content for the dropdown
-      async function loadUserContent() {
-        try {
-          // Check if user is authenticated
-          if (!document.cookie.includes('r3l_auth_state=true')) {
-            contentAssociationGroup.style.display = 'none';
-            return;
-          }
-
-          // Default empty data
-          let data = { content: [] };
-
-          // If we have the current user, request their files
-          if (currentUserData && currentUserData.id) {
-            const response = await apiGet('/api/user/files?limit=100');
-
-            if (response.ok) {
-              data = await response.json();
-            } else {
-              console.error('Error loading user content:', response.status);
-              contentAssociationGroup.style.display = 'none';
-              return;
             }
           }
-
-          // Clear existing options except the first one
-          while (associatedContent.options.length > 1) {
-            associatedContent.remove(1);
-          }
-
-          // Add content items to dropdown
-          if (data.content && data.content.length > 0) {
-            data.content.forEach(item => {
-              const option = document.createElement('option');
-              option.value = item.id;
-              option.textContent = item.title || 'Untitled';
-              associatedContent.appendChild(option);
-            });
-
-            // Show the content association group
-            contentAssociationGroup.style.display = pointType.value === 'content' ? 'block' : 'none';
-          } else {
-            // Hide the content association group if no content
-            contentAssociationGroup.style.display = 'none';
-          }
-        } catch (error) {
-          console.error('Error fetching user content:', error);
-          contentAssociationGroup.style.display = 'none';
         }
       }
-      
-      // Save map point to API
-      async function saveMapPoint(pointData) {
-        try {
-          // Globe points not implemented, return empty array
-          const response = { ok: true, json: async () => [] };
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(pointData)
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            
-            // Hide the panel
-            addPointPanel.style.display = 'none';
-            
-            // Clear message
-            globe.clearMessage();
-            
-            // Remove temporary marker
-            if (tempMarker) {
-              globe.removeMarker(tempMarker);
-              tempMarker = null;
-            }
-            
-            // Add the new point as a permanent marker
-            const markerOptions = {
-              title: pointData.title,
-              description: pointData.description,
-              id: data.id,
-              type: pointData.type,
-              content_id: pointData.content_id
-            };
-            
-            globe.addMarker(pointData.latitude, pointData.longitude, markerOptions);
-            
-            // Show success message
-            globe.setMessage('Point added successfully!', 3000); // Auto-hide after 3 seconds
-          } else {
-            console.error('Error saving map point:', await response.text());
-            alert('Error saving map point. Please try again.');
-          }
-        } catch (error) {
-          console.error('Error saving map point:', error);
-          alert('Error saving map point. Please try again.');
-        }
-      }
-      
-      // Set initial dimensions
-      const width = networkSvg.clientWidth;
-      const height = networkSvg.clientHeight;
-      
-      // Color scale for different node types
-      const colorScale = {
-        user: '#9C27B0',   // Purple
-        file: '#2196F3',   // Blue
-        tag: '#4CAF50',    // Green
-        self: '#FF5722'    // Orange (your own content)
-      };
-      
-      // Create SVG and append to container
-      const svg = d3.select('#network-svg');
-      
-      // Create zoom behavior
+
+      const simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(data.links).id(d => d.id).distance(100))
+        .force('charge', d3.forceManyBody().strength(-300))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(30));
+
+      const link = g.append('g')
+        .selectAll('line')
+        .data(data.links)
+        .join('line')
+        .attr('class', 'link')
+        .attr('stroke-width', 2);
+
+      const node = g.append('g')
+        .selectAll('circle')
+        .data(data.nodes)
+        .join('circle')
+        .attr('class', 'node')
+        .attr('r', d => d.type === 'user' ? 8 : 6)
+        .attr('fill', d => d.type === 'user' ? '#a278ff' : '#7fd8d8')
+        .call(d3.drag()
+          .on('start', dragstarted)
+          .on('drag', dragged)
+          .on('end', dragended))
+        .on('click', (event, d) => {
+          console.log('Clicked:', d);
+        });
+
+      const label = g.append('g')
+        .selectAll('text')
+        .data(data.nodes)
+        .join('text')
+        .attr('class', 'node-label')
+        .attr('text-anchor', 'middle')
+        .attr('dy', -12)
+        .text(d => d.label);
+
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+
+        node
+          .attr('cx', d => d.x)
+          .attr('cy', d => d.y);
+
+        label
+          .attr('x', d => d.x)
+          .attr('y', d => d.y);
+      });
+
+      // Zoom
       const zoom = d3.zoom()
-        .scaleExtent([0.1, 5])
+        .scaleExtent([0.1, 4])
         .on('zoom', (event) => {
-          container.attr('transform', event.transform);
+          g.attr('transform', event.transform);
         });
-      
-      // Apply zoom to SVG
+
       svg.call(zoom);
-      
-      // Create container for graph elements
-      const container = svg.append('g');
-      
-      // Create a container for loading state
-      const loadingIndicator = document.createElement('div');
-      loadingIndicator.className = 'loading-indicator';
-      loadingIndicator.innerHTML = `
-        <span class="material-icons" style="font-size: 48px;">hourglass_top</span>
-        <p>Loading network data...</p>
-      `;
-      document.querySelector('.network-container').prepend(loadingIndicator);
-      
-      // Function to fetch network data from API
-      async function fetchNetworkData() {
-        try {
-          // Show loading indicator
-          loadingIndicator.style.display = 'block';
 
-          // Check if user is authenticated
-          const isAuthenticated = document.cookie.includes('r3l_auth_state=true');
+      // Show/hide labels
+      document.getElementById('showLabels').addEventListener('change', (e) => {
+        label.style('display', e.target.checked ? 'block' : 'none');
+      });
 
-          // Prepare API endpoints
-          let contentEndpoint = '/api/feed?limit=30';
-          // Users endpoint not implemented, return empty array
-          let usersEndpoint = null;
-          // Tags endpoint not implemented, return empty array
-          let tagsEndpoint = null;
-
-          // Add current user endpoint
-          let currentUserEndpoint = '/api/profile';
-
-          // Fetch data in parallel
-          let responses;
-          try {
-            responses = await Promise.all([
-              fetch(contentEndpoint, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              }),
-              fetch(usersEndpoint, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              }),
-              fetch(tagsEndpoint, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              }),
-              isAuthenticated ? fetch(currentUserEndpoint, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              }) : Promise.resolve(null)
-            ]);
-          } catch (error) {
-            console.error('Error fetching API data:', error);
-            throw new Error('API request failed');
-          }
-
-          const [contentResponse, usersResponse, tagsResponse, currentUserResponse] = responses;
-
-          // Check if essential responses are OK
-          if (!contentResponse.ok || !tagsResponse.ok) {
-            console.error('Essential API responses failed:', {
-              content: contentResponse.status,
-              tags: tagsResponse.status
-            });
-            throw new Error('Essential API request failed');
-          }
-
-          // Parse JSON responses
-          let contentData, userData, tagsData, currentUserData;
-
-          try {
-            contentData = await contentResponse.json();
-
-            if (usersResponse && usersResponse.ok) {
-              userData = await usersResponse.json();
-            } else {
-              userData = { users: [] };
-            }
-
-            tagsData = await tagsResponse.json();
-
-            if (currentUserResponse && currentUserResponse.ok) {
-              currentUserData = await currentUserResponse.json();
-            } else {
-              currentUserData = null;
-            }
-          } catch (error) {
-            console.error('Error parsing API response:', error);
-            throw new Error('Failed to parse API response');
-          }
-
-          // Create network data structure
-          const networkData = {
-            nodes: [],
-            links: []
-          };
-
-          // Process content/files
-          let content = [];
-
-          // Handle different response formats
-          if (contentData.results && Array.isArray(contentData.results)) {
-            content = contentData.results;
-          } else if (Array.isArray(contentData)) {
-            content = contentData;
-          } else if (contentData.content && Array.isArray(contentData.content)) {
-            content = contentData.content;
-          }
-
-          // If we have no content, try one more approach
-          if (content.length === 0 && isAuthenticated) {
-            try {
-              // Fetch user's own content via the user files endpoint
-              if (currentUserData && currentUserData.id) {
-                const myContentResponse = await r3l.authenticatedFetch('/api/user/files?limit=100', {
-                  method: 'GET',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include'
-                });
-
-                if (myContentResponse && myContentResponse.ok) {
-                  const myContentData = await myContentResponse.json();
-                  if (myContentData.files && Array.isArray(myContentData.files)) {
-                    content = myContentData.files;
-                  }
-                }
-              }
-
-              if (myContentResponse.ok) {
-                const myContentData = await myContentResponse.json();
-                if (myContentData.content && Array.isArray(myContentData.content)) {
-                  content = myContentData.content;
-                }
-              }
-            } catch (error) {
-              console.error('Error fetching personal content:', error);
-            }
-          }
-
-          // Map content to file nodes
-          const files = content.map(item => ({
-            id: item.id || item.content_id,
-            label: item.title || item.name || 'Untitled',
-            type: 'file',
-            creator: item.user_id || item.creator_id,
-            created: item.created_at || item.created || Date.now(),
-            expires: item.expires_at || item.expires,
-            isArchived: item.is_archived || item.archived || false,
-            isSelf: isAuthenticated && currentUserData && item.user_id === currentUserData.id
-          }));
-
-          // Add files to nodes
-          networkData.nodes.push(...files);
-
-          // Process tags
-          let tags = [];
-
-          // Handle different response formats
-          if (tagsData.tags && Array.isArray(tagsData.tags)) {
-            tags = tagsData.tags;
-          } else if (Array.isArray(tagsData)) {
-            tags = tagsData;
-          }
-
-          // Map tags to nodes
-          const tagNodes = tags.map(tag => ({
-            id: `tag-${tag.id || tag.name}`,
-            label: tag.name,
-            type: 'tag',
-            count: tag.count || tag.usage_count || 1
-          }));
-
-          // Add tags to nodes
-          networkData.nodes.push(...tagNodes);
-
-          // Process users
-          let users = [];
-
-          // Handle different response formats
-          if (userData.users && Array.isArray(userData.users)) {
-            users = userData.users;
-          } else if (Array.isArray(userData)) {
-            users = userData;
-          }
-
-          // Map users to nodes
-          const userNodes = users.map(user => ({
-            id: user.id,
-            label: user.display_name || user.username,
-            type: 'user',
-            bio: user.bio,
-            avatar: user.avatar_url,
-            connectionCount: user.connection_count,
-            contentCount: user.content_count,
-            connectionStatus: user.connectionStatus,
-            is_lurker: user.is_lurker,
-            isSelf: isAuthenticated && currentUserData && user.id === currentUserData.id
-          }));
-
-          // Add current user if available
-          if (isAuthenticated && currentUserData) {
-            const currentUser = {
-              id: currentUserData.id,
-              label: currentUserData.display_name || currentUserData.username,
-              type: 'user',
-              bio: currentUserData.bio,
-              avatar: currentUserData.avatar_url,
-              connectionCount: currentUserData.connection_count,
-              contentCount: currentUserData.content_count,
-              isSelf: true
-            };
-            
-            // Add current user to nodes if not already present
-            if (!userNodes.some(u => u.id === currentUser.id)) {
-              networkData.nodes.push(currentUser);
-            }
-          }
-
-          // Add user nodes
-          networkData.nodes.push(...userNodes);
-
-          // Create links between files and their creators
-          files.forEach(file => {
-            const creatorNode = userNodes.find(u => u.id === file.creator);
-            if (file.creator && (!creatorNode || !creatorNode.is_lurker)) {
-              networkData.links.push({
-                source: file.id,
-                target: file.creator,
-                type: 'creator',
-                weight: 3
-              });
-            }
-          });
-
-          // Create links between files and tags
-          // Fetch content-tag associations or create random ones if not available
-          try {
-            for (const file of files) {
-                const fileTagsResponse = await fetch(`/api/content/${file.id}/tags`, {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-
-              if (fileTagsResponse.ok) {
-                const fileTagsData = await fileTagsResponse.json();
-                const fileTags = fileTagsData.tags || [];
-
-                fileTags.forEach(tag => {
-                  const tagNode = tagNodes.find(t => t.label === tag.name);
-                  if (tagNode) {
-                    networkData.links.push({
-                      source: file.id,
-                      target: tagNode.id,
-                      type: 'tag',
-                      weight: 1
-                    });
-                  }
-                });
-              } else {
-                // If content doesn't have tags endpoint, check if it has tags field
-                const contentItem = content.find(c => c.id === file.id);
-                if (contentItem && contentItem.tags) {
-                  const tagsList = typeof contentItem.tags === 'string'
-                    ? contentItem.tags.split(',').map(t => t.trim())
-                    : contentItem.tags;
-
-                  tagsList.forEach(tagName => {
-                    const tagNode = tagNodes.find(t => t.label === tagName);
-                    if (tagNode) {
-                      networkData.links.push({
-                        source: file.id,
-                        target: tagNode.id,
-                        type: 'tag',
-                        weight: 1
-                      });
-                    }
-                  });
-                } else {
-                  // Fallback to random tags if no tag data available
-                  const numTags = Math.floor(Math.random() * 3) + 1;
-                  const randomTags = tagNodes
-                    .sort(() => 0.5 - Math.random())
-                    .slice(0, numTags);
-
-                  randomTags.forEach(tag => {
-                    networkData.links.push({
-                      source: file.id,
-                      target: tag.id,
-                      type: 'tag',
-                      weight: 1
-                    });
-                  });
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Error creating file-tag links:', error);
-
-            // Fallback to some tag connections
-            files.forEach(file => {
-              const numTags = Math.floor(Math.random() * 3) + 1;
-              const randomTags = tagNodes
-                .sort(() => 0.5 - Math.random())
-                .slice(0, numTags);
-
-              randomTags.forEach(tag => {
-                networkData.links.push({
-                  source: file.id,
-                  target: tag.id,
-                  type: 'tag',
-                  weight: 1
-                });
-              });
-            });
-          }
-
-          // Create connections between users
-          if (isAuthenticated && currentUserData) {
-            try {
-              // Try to get user connections
-              const connectionsResponse = await fetch('/api/connections', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-
-              if (connectionsResponse.ok) {
-                const connectionsData = await connectionsResponse.json();
-                const connections = connectionsData.connections || [];
-
-                connections.forEach(conn => {
-                  if (conn.status === 'accepted') {
-                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
-                    const targetNode = userNodes.find(u => u.id === conn.user_id);
-                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
-                      networkData.links.push({
-                        source: currentUserData.id,
-                        target: conn.user_id,
-                        type: 'connection',
-                        weight: 2
-                      });
-                    }
-                  }
-                });
-              } else {
-                // Fallback to user statuses from user data
-                userNodes.forEach(user => {
-                  if (user.connectionStatus === 'accepted') {
-                    const sourceNode = userNodes.find(u => u.id === currentUserData.id);
-                    const targetNode = userNodes.find(u => u.id === user.id);
-                    if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
-                      networkData.links.push({
-                        source: currentUserData.id,
-                        target: user.id,
-                        type: 'connection',
-                        weight: 2
-                      });
-                    }
-                  }
-                });
-              }
-
-              // Try to get connections between other users
-              const networkConnectionsResponse = await fetch('/api/connections/network', {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include'
-              });
-
-              if (networkConnectionsResponse.ok) {
-                const networkConnectionsData = await networkConnectionsResponse.json();
-                const networkConnections = networkConnectionsData.connections || [];
-
-                networkConnections.forEach(conn => {
-                  const sourceNode = userNodes.find(u => u.id === conn.user_id);
-                  const targetNode = userNodes.find(u => u.id === conn.connected_user_id);
-                  if (sourceNode && !sourceNode.is_lurker && targetNode && !targetNode.is_lurker) {
-                    networkData.links.push({
-                      source: conn.user_id,
-                      target: conn.connected_user_id,
-                      type: 'connection',
-                      weight: 2
-                    });
-                  }
-                });
-              } else {
-                // Create some random connections if network endpoint fails
-                for (let i = 0; i < userNodes.length; i++) {
-                  for (let j = i + 1; j < userNodes.length; j++) {
-                    // Skip connections to self
-                    if (userNodes[i].id === currentUserData.id || userNodes[j].id === currentUserData.id) {
-                      continue;
-                    }
-
-                    if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
-                      networkData.links.push({
-                        source: userNodes[i].id,
-                        target: userNodes[j].id,
-                        type: 'connection',
-                        weight: 2
-                      });
-                    }
-                  }
-                }
-              }
-            } catch (error) {
-              console.error('Error fetching connections:', error);
-
-              // Fallback to random connections
-              for (let i = 0; i < userNodes.length; i++) {
-                for (let j = i + 1; j < userNodes.length; j++) {
-                  if (!userNodes[i].is_lurker && !userNodes[j].is_lurker && Math.random() < 0.2) {
-                    networkData.links.push({
-                      source: userNodes[i].id,
-                      target: userNodes[j].id,
-                      type: 'connection',
-                      weight: 2
-                    });
-                  }
-                }
-              }
-            }
-          } else {
-            // For non-authenticated users, create random connections
-            const allUsers = [...userNodes];
-            for (let i = 0; i < allUsers.length; i++) {
-              for (let j = i + 1; j < allUsers.length; j++) {
-                if (!allUsers[i].is_lurker && !allUsers[j].is_lurker && Math.random() < 0.2) {
-                  networkData.links.push({
-                    source: allUsers[i].id,
-                    target: allUsers[j].id,
-                    type: 'connection',
-                    weight: 2
-                  });
-                }
-              }
-            }
-          }
-
-          // Hide loading indicator
-          loadingIndicator.style.display = 'none';
-
-          return networkData;
-        } catch (error) {
-          console.error('Error fetching network data:', error);
-
-          // Hide loading indicator
-          loadingIndicator.style.display = 'none';
-
-          // Return mock data as fallback
-          return createMockData();
-        }
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
       }
-      
-      // Initialize the network
-      async function initNetwork() {
-        // Fetch data from API or fallback to mock data
-        const networkData = await fetchNetworkData();
-        
-        // Set as global data
-        let currentData = JSON.parse(JSON.stringify(networkData));
-        let selectedNodeId = null;
-        
-        // Create initial graph
-        renderGraph(currentData, 'force');
-        
-        // Update graph when layout changes
-        layoutSelect.addEventListener('change', () => {
-          renderGraph(currentData, layoutSelect.value);
-        });
-        
-        // Toggle labels
-        showLabelsCheckbox.addEventListener('change', () => {
-          container.selectAll('.node-label')
-            .style('display', showLabelsCheckbox.checked ? 'block' : 'none');
-        });
-        
-        // Zoom controls
-        zoomIn.addEventListener('click', () => {
-          svg.transition().duration(300).call(zoom.scaleBy, 1.5);
-        });
-        
-        zoomOut.addEventListener('click', () => {
-          svg.transition().duration(300).call(zoom.scaleBy, 0.75);
-        });
-        
-        zoomReset.addEventListener('click', () => {
-          svg.transition().duration(300).call(
-            zoom.transform,
-            d3.zoomIdentity.translate(width / 2, height / 2).scale(0.8)
-          );
-        });
-        
-        // Time slider
-        timeSlider.addEventListener('input', () => {
-          const days = timeSlider.value;
-          timeValue.textContent = days === '1' ? 'Last 24 hours' : `Last ${days} days`;
-          
-          // Filter data based on time window
-          filterDataByTime(days);
-        });
-        
-        // Filter chips
-        filterChips.forEach(chip => {
-          chip.addEventListener('click', () => {
-            // Toggle active class
-            filterChips.forEach(c => c.classList.remove('active'));
-            chip.classList.add('active');
-            
-            // Apply filter
-            const filter = chip.dataset.filter;
-            filterDataByType(filter);
-          });
-        });
-        
-        // Node details
-        closeDetails.addEventListener('click', () => {
-          nodeDetails.style.display = 'none';
-          selectedNodeId = null;
-          
-          // Reset node styles
-          container.selectAll('.node')
-            .attr('stroke-width', 1.5);
-        });
-        
-        viewItem.addEventListener('click', () => {
-          if (!selectedNodeId) return;
-          
-          const selectedNode = currentData.nodes.find(n => n.id === selectedNodeId);
-          if (!selectedNode) return;
-          
-          if (selectedNode.type === 'file') {
-            window.location.href = `content/${selectedNodeId}`;
-          } else if (selectedNode.type === 'user') {
-            window.location.href = `user/${selectedNodeId}`;
-          } else if (selectedNode.type === 'tag') {
-            window.location.href = `search?q=${selectedNode.label}`;
-          }
-        });
-        
-        // Filter data by time window
-        function filterDataByTime(days) {
-          const timeLimit = Date.now() - (days * 24 * 60 * 60 * 1000);
-          let filteredData = JSON.parse(JSON.stringify(networkData));
 
-          // Filter files based on creation date
-          const filteredFiles = filteredData.nodes.filter(node => {
-            if (node.type !== 'file') return true;
-            return new Date(node.created).getTime() >= timeLimit;
-          });
-          
-          // Get IDs of filtered files
-          const filteredFileIds = filteredFiles
-            .filter(node => node.type === 'file')
-            .map(node => node.id);
-          
-          // Filter links to only include connections to filtered files
-          const filteredLinks = filteredData.links.filter(link => {
-            const sourceId = link.source.id || link.source;
-            const targetId = link.target.id || link.target;
-
-            const sourceNode = filteredData.nodes.find(n => n.id === sourceId);
-            const targetNode = filteredData.nodes.find(n => n.id === targetId);
-
-            if (!sourceNode || !targetNode) return false;
-
-            // Keep user-user connections
-            if (sourceNode.type !== 'file' && targetNode.type !== 'file') return true;
-            
-            // Keep links connected to filtered files
-            if (sourceNode.type === 'file' && !filteredFileIds.includes(sourceId)) return false;
-            if (targetNode.type === 'file' && !filteredFileIds.includes(targetId)) return false;
-            
-            return true;
-          });
-          
-          const nodeIdsInFilteredLinks = new Set();
-          filteredLinks.forEach(link => {
-            nodeIdsInFilteredLinks.add(link.source.id || link.source);
-            nodeIdsInFilteredLinks.add(link.target.id || link.target);
-          });
-
-          // Update current data and redraw
-          currentData = {
-            nodes: filteredData.nodes.filter(node => nodeIdsInFilteredLinks.has(node.id)),
-            links: filteredLinks
-          };
-          
-          renderGraph(currentData, layoutSelect.value);
-        }
-        
-        // Filter data by type
-        function filterDataByType(filter) {
-          let filteredData = JSON.parse(JSON.stringify(networkData));
-          
-          const getNodeId = (node) => typeof node === 'string' ? node : node.id;
-
-          if (filter !== 'all') {
-            switch (filter) {
-              case 'users':
-                filteredData.links = filteredData.links.filter(link => {
-                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
-                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
-                  return sourceNode?.type === 'user' && targetNode?.type === 'user';
-                });
-                break;
-              
-              case 'files':
-                filteredData.links = filteredData.links.filter(link => {
-                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
-                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
-                  return sourceNode?.type === 'file' || targetNode?.type === 'file';
-                });
-                break;
-                
-              case 'tags':
-                filteredData.links = filteredData.links.filter(link => {
-                  const sourceNode = filteredData.nodes.find(n => n.id === getNodeId(link.source));
-                  const targetNode = filteredData.nodes.find(n => n.id === getNodeId(link.target));
-                  return sourceNode?.type === 'tag' || targetNode?.type === 'tag';
-                });
-                break;
-                
-              case 'my-connections':
-                const selfUserId = filteredData.nodes.find(n => n.isSelf && n.type === 'user')?.id;
-                if (selfUserId) {
-                  filteredData.links = filteredData.links.filter(link => {
-                    const sourceId = getNodeId(link.source);
-                    const targetId = getNodeId(link.target);
-                    return sourceId === selfUserId || targetId === selfUserId;
-                  });
-                } else {
-                  filteredData.links = [];
-                }
-                break;
-                
-              case 'popular':
-                filteredData.links = filteredData.links.filter(link => link.weight >= 2);
-                break;
-
-              case 'recent':
-                const recentTimeLimit = Date.now() - (3 * 24 * 60 * 60 * 1000);
-                const recentFileIds = new Set(
-                  filteredData.nodes
-                    .filter(node => node.type === 'file' && new Date(node.created).getTime() >= recentTimeLimit)
-                    .map(node => node.id)
-                );
-                filteredData.links = filteredData.links.filter(link => {
-                  const sourceId = getNodeId(link.source);
-                  const targetId = getNodeId(link.target);
-                  return recentFileIds.has(sourceId) || recentFileIds.has(targetId);
-                });
-                break;
-
-              case 'expiring':
-                const expiryTimeLimit = Date.now() + (2 * 24 * 60 * 60 * 1000);
-                const expiringFileIds = new Set(
-                  filteredData.nodes
-                    .filter(node => node.type === 'file' && node.expires && new Date(node.expires).getTime() <= expiryTimeLimit)
-                    .map(node => node.id)
-                );
-                filteredData.links = filteredData.links.filter(link => {
-                  const sourceId = getNodeId(link.source);
-                  const targetId = getNodeId(link.target);
-                  return expiringFileIds.has(sourceId) || expiringFileIds.has(targetId);
-                });
-                break;
-            }
-          }
-          
-          const nodeIdsInFilteredLinks = new Set();
-          filteredData.links.forEach(link => {
-            nodeIdsInFilteredLinks.add(getNodeId(link.source));
-            nodeIdsInFilteredLinks.add(getNodeId(link.target));
-          });
-          
-          filteredData.nodes = filteredData.nodes.filter(node => nodeIdsInFilteredLinks.has(node.id));
-          
-          currentData = filteredData;
-          renderGraph(currentData, layoutSelect.value);
-        }
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
       }
-      
-      // Initialize the network
-      initNetwork();
-    });
+
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+    }
+
+    if (typeof d3 !== 'undefined') {
+      loadNetwork();
+    }
   </script>
 </body>
 </html>

@@ -56,8 +56,7 @@ protectedContentRoutes.post('/', zValidator('json', contentCreateSchema, validat
         c.env.R3L_DB.prepare("INSERT INTO content_lifecycle (contentId, status, expiresAt) VALUES (?, 'active', ?)").bind(contentId, expiresAt.toISOString())
     ]);
 
-    const r2 = c.get('r2');
-    const signedUrl = await r2.createPresignedUrl('PUT', objectKey, {
+    const signedUrl = await c.env.R3L_CONTENT_BUCKET.createPresignedUrl('PUT', objectKey, {
         httpMetadata: { contentType: body.contentType },
         expiresIn: 600
     });

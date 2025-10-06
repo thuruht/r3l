@@ -1,6 +1,6 @@
 {
   "name": "r3l",
-  "main": "./src/index.js",
+  "main": "./src/index-monolith.js",
   "compatibility_date": "2025-09-01",
   "workers_dev": false,
   "assets": {

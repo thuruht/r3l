@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { authRoutes } from './routes/auth.js';
-import { contentRoutes, protectedContentRoutes } from './routes/content.js';
-import { authMiddleware, rateLimitMiddleware } from './middleware/auth.js';
+import { z } from 'zod';
+import { zValidator } from '@hono/zod-validator';
+import bcrypt from 'bcryptjs';
 
 // Durable Objects (kept in main file for now due to export requirements)
 export class CollaborationRoom {
@@ -166,25 +166,82 @@ function createApp(r2) {
         await next();
     });
 
-    // Public API routes
-    app.route('/api', authRoutes);
-    app.route('/api/content', contentRoutes);
-
-    // Protected API routes
-    const protectedApi = new Hono();
-    protectedApi.use('*', authMiddleware);
-    protectedApi.use('*', rateLimitMiddleware);
+    // Auth routes
+    app.post('/api/register', async (c) => {
+        const { username, password, displayName } = await c.req.json();
+        const userId = crypto.randomUUID();
+        const passwordHash = await bcrypt.hash(password, 10);
+        const recoveryKey = crypto.randomUUID();
+        const recoveryHash = await bcrypt.hash(recoveryKey, 10);
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO users (id, username, passwordHash, recoveryHash, display_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, unixepoch(), unixepoch())"
+        ).bind(userId, username, passwordHash, recoveryHash, displayName || username).run();
+        
+        const sessionToken = crypto.randomUUID();
+        const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"
+        ).bind(sessionToken, userId, sessionExpiry.toISOString()).run();
+        
+        c.header('Set-Cookie', `r3l_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+        
+        return c.json({ success: true, userId, recoveryKey }, 201);
+    });
     
-    // Add r2 to context for content routes
+    app.post('/api/login', async (c) => {
+        const { username, password } = await c.req.json();
+        const user = await c.env.R3L_DB.prepare("SELECT id, passwordHash FROM users WHERE username = ?")
+            .bind(username).first();
+        
+        if (!user || !await bcrypt.compare(password, user.passwordHash)) {
+            return c.json({ error: 'Invalid credentials' }, 401);
+        }
+        
+        const sessionToken = crypto.randomUUID();
+        const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO auth_sessions (token, userId, expiresAt) VALUES (?, ?, ?)"
+        ).bind(sessionToken, user.id, sessionExpiry.toISOString()).run();
+        
+        c.header('Set-Cookie', `r3l_session=${sessionToken}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${30 * 24 * 60 * 60}`);
+        
+        return c.json({ success: true });
+    });
+    
+    // Protected routes
+    const protectedApi = new Hono();
     protectedApi.use('*', async (c, next) => {
-        c.set('r2', r2);
+        const cookieHeader = c.req.header('Cookie');
+        let sessionToken = null;
+        
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
+            const sessionCookie = cookies.find(cookie => cookie.startsWith('r3l_session='));
+            if (sessionCookie) {
+                sessionToken = sessionCookie.split('=')[1];
+            }
+        }
+        
+        if (!sessionToken) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+        
+        const session = await c.env.R3L_DB.prepare(
+            "SELECT userId FROM auth_sessions WHERE token = ? AND expiresAt > datetime('now')"
+        ).bind(sessionToken).first();
+
+        if (!session) {
+            return c.json({ error: 'Invalid or expired session' }, 401);
+        }
+
+        c.set('userId', session.userId);
         await next();
     });
 
-    protectedApi.route('/content', protectedContentRoutes);
-
-    // Essential protected routes (condensed)
-    protectedApi.get('/auth/profile', async (c) => {
+    protectedApi.get('/profile', async (c) => {
         const userId = c.get('userId');
         const user = await c.env.R3L_DB.prepare(
             `SELECT id, created_at, username, display_name, bio, avatar_key, preferences FROM users WHERE id = ?`
@@ -203,6 +260,26 @@ function createApp(r2) {
         }
 
         return c.json(user);
+    });
+    
+    protectedApi.get('/workspaces', async (c) => {
+        const userId = c.get('userId');
+        const { results } = await c.env.R3L_DB.prepare(
+            `SELECT id, name, description FROM workspaces WHERE ownerId = ?`
+        ).bind(userId).all();
+        return c.json(results || []);
+    });
+    
+    protectedApi.post('/workspaces', async (c) => {
+        const userId = c.get('userId');
+        const { name, description } = await c.req.json();
+        const workspaceId = crypto.randomUUID();
+        
+        await c.env.R3L_DB.prepare(
+            "INSERT INTO workspaces (id, name, description, ownerId) VALUES (?, ?, ?, ?)"
+        ).bind(workspaceId, name, description || '', userId).run();
+        
+        return c.json({ success: true, workspaceId }, 201);
     });
 
     protectedApi.get('/feed', async (c) => {
@@ -260,7 +337,7 @@ function createApp(r2) {
         });
     });
 
-    app.route('/api/auth', protectedApi);
+    app.route('/api', protectedApi);
     return app;
 }
 

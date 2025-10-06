@@ -58,21 +58,26 @@ const API_ENDPOINTS = {
     REGISTER: '/api/register',
     LOGIN: '/api/login',
     LOGOUT: '/api/logout',
-    PROFILE: '/api/auth/profile',
+    PROFILE: '/api/profile',
   },
   CONTENT: {
     GET: id => `/api/content/${id}`,
-    CREATE: '/api/auth/content',
-    DOWNLOAD: id => `/api/auth/content/${id}/download`,
-    VOTE: id => `/api/auth/content/${id}/vote`,
-    BOOKMARK: id => `/api/auth/content/${id}/bookmark`,
+    CREATE: '/api/content',
+    DOWNLOAD: id => `/api/content/${id}/download`,
+    VOTE: id => `/api/content/${id}/vote`,
+    BOOKMARK: id => `/api/content/${id}/bookmark`,
     COMMENTS: {
       GET: id => `/api/content/${id}/comments`,
-      CREATE: id => `/api/auth/content/${id}/comments`,
+      CREATE: id => `/api/content/${id}/comments`,
     }
   },
-  FEED: '/api/auth/feed',
-  SEARCH: '/api/auth/search',
+  FEED: '/api/feed',
+  SEARCH: '/api/search',
+  MESSAGES: {
+    CONVERSATIONS: '/api/messages/conversations',
+    GET: userId => `/api/messages/user/${userId}`,
+    SEND: '/api/messages/send'
+  }
 };
 
 /**

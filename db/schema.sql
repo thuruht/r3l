@@ -3,17 +3,13 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     passwordHash TEXT NOT NULL,
-    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS profiles (
-    userId TEXT PRIMARY KEY NOT NULL,
-    username TEXT UNIQUE NOT NULL,
-    displayName TEXT,
+    recoveryHash TEXT,
+    display_name TEXT,
     bio TEXT,
-    avatarKey TEXT,
+    avatar_key TEXT,
     preferences TEXT,
-    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    created_at INTEGER DEFAULT (unixepoch()) NOT NULL,
+    updated_at INTEGER DEFAULT (unixepoch()) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS auth_sessions (

@@ -578,7 +578,7 @@ function createApp(r2) {
         }
     });
 
-    protectedApi.get('/auth/profile', async (c) => {
+    protectedApi.get('/profile', async (c) => {
         const userId = c.get('userId');
         const user = await c.env.R3L_DB.prepare(
             `SELECT id, created_at, username, display_name, bio, avatar_key, preferences FROM users WHERE id = ?`
@@ -1016,7 +1016,7 @@ function createApp(r2) {
     
 
 
-    api.route('/auth', protectedApi);
+    api.route('/', protectedApi);
 
     // Workspace endpoints
     protectedApi.get('/workspaces', async (c) => {

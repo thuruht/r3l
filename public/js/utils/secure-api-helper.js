@@ -52,57 +52,27 @@ function logout() {
   window.location.href = '/auth/login.html?message=' + encodeURIComponent('You have been logged out');
 }
 
-// API endpoints (same as before)
+// API endpoints for modular backend
 const API_ENDPOINTS = {
   AUTH: {
     REGISTER: '/api/register',
     LOGIN: '/api/login',
-    PROFILE: '/api/profile',
+    LOGOUT: '/api/logout',
+    PROFILE: '/api/auth/profile',
   },
-  BOOKMARKS: '/api/bookmarks',
   CONTENT: {
     GET: id => `/api/content/${id}`,
-    CREATE: '/api/content',
-    DOWNLOAD: id => `/api/content/${id}/download`,
-    VOTE: id => `/api/content/${id}/vote`,
-    BOOKMARK: id => `/api/content/${id}/bookmark`,
-    REACT: id => `/api/content/${id}/react`,
+    CREATE: '/api/auth/content',
+    DOWNLOAD: id => `/api/auth/content/${id}/download`,
+    VOTE: id => `/api/auth/content/${id}/vote`,
+    BOOKMARK: id => `/api/auth/content/${id}/bookmark`,
     COMMENTS: {
       GET: id => `/api/content/${id}/comments`,
-      CREATE: id => `/api/content/${id}/comments`,
+      CREATE: id => `/api/auth/content/${id}/comments`,
     }
   },
-  NETWORK: '/api/network',
-  COLLABORATION: id => `/api/collaboration/${id}`,
-  VISUALIZATION: {
-    STATS: '/api/visualization/stats',
-  },
-  MESSAGES: {
-    CONVERSATIONS: '/api/messages/conversations',
-    GET: otherUserId => `/api/messages/user/${otherUserId}`,
-    SEND: '/api/messages/send',
-  },
-  NOTIFICATIONS: {
-    LIST: '/api/notifications',
-    UNREAD_COUNT: '/api/notifications/unread-count',
-    MARK_READ: '/api/notifications/mark-read',
-    MARK_ALL_READ: '/api/notifications/mark-all-read',
-    DELETE: id => `/api/notifications/${id}`,
-  },
-  USER: {
-    STATS: '/api/user/stats',
-    FILES: '/api/user/files',
-    PREFERENCES: '/api/user/preferences',
-    PROFILE: '/api/user/profile',
-  },
-  FEED: '/api/feed',
-  FILES: {
-    AVATAR: '/api/files/avatar',
-  },
-  WORKSPACES: {
-    LIST: '/api/workspaces',
-    CREATE: '/api/workspaces',
-  },
+  FEED: '/api/auth/feed',
+  SEARCH: '/api/auth/search',
 };
 
 /**

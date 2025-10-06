@@ -168,7 +168,7 @@
         alert('Please log in to download');
         return;
       }
-      window.location.href = `/api/content/${contentId}/download`;
+      window.location.href = `/api/auth/content/${contentId}/download`;
     });
 
     document.getElementById('bookmarkBtn')?.addEventListener('click', async () => {
@@ -177,7 +177,7 @@
         return;
       }
       try {
-        await window.r3l.apiPost(`/api/content/${contentId}/bookmark`);
+        await window.r3l.apiPost(`/api/auth/content/${contentId}/bookmark`);
         alert('Bookmarked!');
       } catch (error) {
         alert('Failed to bookmark: ' + error.message);
@@ -190,7 +190,7 @@
         return;
       }
       try {
-        await window.r3l.apiPost(`/api/content/${contentId}/vote`, { voteType: 'archive' });
+        await window.r3l.apiPost(`/api/auth/content/${contentId}/vote`, { voteType: 'archive' });
         alert('Vote recorded!');
       } catch (error) {
         alert('Failed to vote: ' + error.message);
@@ -201,7 +201,7 @@
       const text = document.getElementById('commentText').value.trim();
       if (!text) return;
       try {
-        await window.r3l.apiPost(`/api/content/${contentId}/comments`, { comment: text });
+        await window.r3l.apiPost(`/api/auth/content/${contentId}/comments`, { comment: text });
         document.getElementById('commentText').value = '';
         loadComments();
       } catch (error) {

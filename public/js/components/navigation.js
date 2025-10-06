@@ -194,7 +194,7 @@ export class NavigationBar {
   }
 
   /**
-   * Fetch user profile data from the new /api/profile endpoint
+   * Fetch user profile data from the /api/auth/profile endpoint
    * @returns {Promise<Object|null>} User profile data or null if an error occurs
    */
   static async fetchUserProfile() {
@@ -203,7 +203,7 @@ export class NavigationBar {
         return null;
     }
     try {
-      const user = await window.r3l.apiGet('/api/profile');
+      const user = await window.r3l.apiGet('/api/auth/profile');
       debugLog('NavigationBar', 'Profile response:', user);
       return user;
     } catch (error) {

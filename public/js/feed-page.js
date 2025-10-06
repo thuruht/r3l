@@ -98,7 +98,7 @@ async function load() {
 
   try {
     const params = new URLSearchParams({ limit, offset });
-    const data = await window.r3l.apiGet(`${window.r3l.API_ENDPOINTS.FEED}?${params}`);
+    const data = await window.r3l.apiGet(`/api/auth/feed?${params}`);
 
     if (offset === 0 && data.items.length === 0) {
       showEmptyState();

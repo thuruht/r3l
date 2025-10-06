@@ -3,690 +3,324 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>R3L:F - Your Profile</title>
+  <title>Profile Customization - R3L:F</title>
   <link rel="stylesheet" href="css/rel-f-global.css">
-  <link rel="stylesheet" href="css/responsive-enhancements.css">
-  <script src="js/font-loader.js" defer></script>
-  <script src="js/utils/secure-api-helper.js" defer></script>
   <style>
-    .profile-container {
-      max-width: 800px;
-      margin: var(--space-8) auto;
-      padding: var(--space-8);
-      background-color: var(--bg-container);
+    .customization-container {
+      max-width: 900px;
+      margin: 2rem auto;
+    }
+    .section {
+      background: var(--bg-container);
       border-radius: var(--radius-md);
-      box-shadow: var(--shadow-medium);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
     }
-    
-    .profile-header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-6);
-      margin-bottom: var(--space-8);
-      padding-bottom: var(--space-6);
-      border-bottom: 1px solid var(--border-primary);
-    }
-    
-    .profile-avatar {
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      object-fit: cover;
-      background-color: var(--accent-color-light);
-      display: block;
-    }
-    
-    .profile-avatar-container {
-      position: relative;
-      width: 100px;
-      height: 100px;
-    }
-    
-    .avatar-upload-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-    
-    .profile-avatar-container:hover .avatar-upload-overlay {
-      opacity: 1;
-    }
-    
-    .avatar-upload-button {
-      color: white;
-      cursor: pointer;
-    }
-    
-    .avatar-upload-button .material-icons {
-      font-size: 28px;
-    }
-    
-    .profile-info {
-      flex-grow: 1;
-    }
-    
-    .profile-name {
-      margin: 0 0 0.5rem 0;
-      font-size: 1.5rem;
-    }
-    
-    .profile-username {
-      margin: 0;
-      color: var(--text-secondary);
-      font-size: 1rem;
-    }
-    
-    .profile-joined {
-      margin: 0.5rem 0 0 0;
-      font-size: 0.9rem;
-      color: var(--text-secondary);
-    }
-    
-    .profile-stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem;
-      margin-bottom: 2rem;
-    }
-    
-    .stat-card {
-      padding: 1rem;
-      background-color: var(--background-color);
-      border-radius: 6px;
-      text-align: center;
-    }
-    
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin: 0;
-      color: var(--accent-color);
-    }
-    
-    .stat-label {
-      font-size: 0.9rem;
-      margin: 0.25rem 0 0 0;
-      color: var(--text-secondary);
-    }
-    
-    .profile-section {
-      margin-bottom: 2rem;
-    }
-    
     .section-title {
       font-size: 1.25rem;
       margin: 0 0 1rem 0;
-      padding-bottom: 0.5rem;
-      border-bottom: 1px solid var(--border-color);
+      color: var(--accent-purple);
     }
-    
-    .auth-providers {
-      display: flex;
-      flex-wrap: wrap;
+    .communique-editor {
+      width: 100%;
+      min-height: 150px;
+      padding: 1rem;
+      border: 1px solid var(--border-primary);
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      color: var(--text-primary);
+      font-family: inherit;
+      resize: vertical;
+    }
+    .theme-selector {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
       gap: 1rem;
       margin-top: 1rem;
     }
-    
-    .auth-provider {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background-color: var(--background-color);
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-    }
-    
-    .auth-provider img {
-      width: 20px;
-      height: 20px;
-    }
-    
-    .action-buttons {
-      display: flex;
-      gap: 1rem;
-      margin-top: 2rem;
-    }
-    
-    .edit-profile-btn {
-      padding: 0.5rem 1rem;
-      background-color: var(--accent-color);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    .recovery-key-btn {
-      padding: 0.5rem 1rem;
-      background-color: var(--warning-color, #f97316);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    .logout-btn {
-      padding: 0.5rem 1rem;
-      background-color: transparent;
-      color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    
-    .not-authenticated {
-      text-align: center;
-      padding: 3rem;
-    }
-    
-    .not-authenticated p {
-      margin-bottom: 2rem;
-    }
-    
-    /* Modal Styles */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0, 0, 0, 0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 1000;
-    }
-    
-    .modal {
-      background-color: var(--surface-color);
-      border-radius: 8px;
-      padding: 2rem;
-      max-width: 500px;
-      width: 90%;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-    }
-    
-    .modal-title {
-      margin-top: 0;
-      margin-bottom: 1rem;
-      color: var(--accent-color);
-    }
-    
-    .modal-content {
-      margin-bottom: 1.5rem;
-    }
-    
-    .recovery-key-display {
-      background-color: var(--background-color);
+    .theme-option {
       padding: 1rem;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 1.2rem;
-      text-align: center;
-      margin: 1rem 0;
-      -webkit-user-select: all;
-      user-select: all;
-      border: 1px dashed var(--border-color);
-    }
-    
-    .modal-actions {
-      display: flex;
-      justify-content: space-between;
-    }
-    
-    .modal-warning {
-      color: var(--warning-color, #f97316);
-      font-weight: bold;
-      margin-bottom: 1rem;
-    }
-    
-    .copy-btn {
-      background-color: var(--accent-color);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-    }
-    
-    .close-btn {
-      background-color: var(--text-secondary);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-    }
-    
-    .hidden {
-      display: none;
-    }
-    
-    /* Map Points Section */
-    .map-points-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 1rem;
-      margin: 1rem 0;
-    }
-    
-    .map-point-card {
-      background-color: var(--bg-container);
+      border: 2px solid var(--border-primary);
       border-radius: var(--radius-md);
-      padding: 1rem;
-      border: 1px solid var(--border-primary);
-      transition: all var(--transition-fast);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
     }
-    
-    .map-point-card:hover {
+    .theme-option:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-medium);
     }
-    
-    .map-point-title {
-      font-weight: 600;
-      margin: 0 0 0.5rem 0;
-      color: var(--accent-green);
+    .theme-option.active {
+      border-color: var(--accent-purple);
+      background: var(--accent-purple);
+      color: white;
     }
-    
-    .map-point-coords {
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-bottom: 0.5rem;
+    .theme-preview {
+      width: 80px;
+      height: 50px;
+      border-radius: 4px;
+      margin: 0 auto 0.5rem;
     }
-    
-    .map-point-desc {
-      font-size: 0.9rem;
-      margin: 0;
-      color: var(--text-primary);
-    }
-    
-    .map-point-actions {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 0.75rem;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--border-subtle);
-    }
-    
-    .map-point-actions button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--text-muted);
-      transition: color var(--transition-fast);
-      padding: 0.25rem;
-    }
-    
-    .map-point-actions button:hover {
-      color: var(--accent-lavender);
-    }
-    
-    .map-actions {
+    .color-picker-group {
       display: flex;
       gap: 1rem;
-      margin-top: 1.5rem;
-    }
-    
-    .empty-state {
-      color: var(--text-muted);
-      text-align: center;
-      padding: 1rem;
-      font-style: italic;
-    }
-    
-    /* Settings Styles */
-    .settings-grid {
-      display: grid;
-      gap: 1.5rem;
-    }
-    
-    .setting-group {
-      background-color: var(--bg-container);
-      border-radius: var(--radius-md);
-      padding: 1.25rem;
-      border: 1px solid var(--border-primary);
-    }
-    
-    .setting-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-    }
-    
-    .setting-title {
-      margin: 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-    
-    .setting-description {
-      margin: 0 0 1rem 0;
-      color: var(--text-secondary);
-      font-size: 0.95rem;
-    }
-    
-    .setting-note {
-      margin: 0.5rem 0 0 0;
-      color: var(--text-muted);
-      font-size: 0.85rem;
-      font-style: italic;
-    }
-    
-    .setting-control {
-      margin: 1rem 0;
-    }
-    
-    .setting-actions {
-      display: flex;
-      justify-content: flex-end;
+      flex-wrap: wrap;
       margin-top: 1rem;
     }
-    
-    /* Toggle Switch */
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 50px;
-      height: 24px;
+    .color-picker-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
-    
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-    
-    .toggle-slider {
-      position: absolute;
+    .color-picker-item input[type="color"] {
+      width: 60px;
+      height: 40px;
+      border: none;
+      border-radius: var(--radius-sm);
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: var(--bg-subtle);
-      transition: .4s;
-      border-radius: 34px;
     }
-    
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 18px;
-      width: 18px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-    
-    input:checked + .toggle-slider {
-      background-color: var(--accent-color);
-    }
-    
-    input:focus + .toggle-slider {
-      box-shadow: 0 0 1px var(--accent-color);
-    }
-    
-    input:checked + .toggle-slider:before {
-      transform: translateX(26px);
-    }
-    
-    /* Slider with value */
-    .slider-with-value {
+    .banner-upload {
+      width: 100%;
+      height: 200px;
+      border: 2px dashed var(--border-primary);
+      border-radius: var(--radius-md);
       display: flex;
       align-items: center;
-      gap: 1rem;
-    }
-    
-    .slider-with-value input[type="range"] {
-      flex: 1;
-    }
-    
-    /* Radio Group */
-    .radio-group {
-      display: flex;
-      gap: 1rem;
-    }
-    
-    .radio-group label {
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
+      justify-content: center;
       cursor: pointer;
+      background-size: cover;
+      background-position: center;
+      transition: all 0.2s;
+    }
+    .banner-upload:hover {
+      border-color: var(--accent-purple);
+    }
+    .save-section {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
     }
   </style>
-  <script src="/js/utils/debug-logger.js" defer></script>
 </head>
 <body>
   <header>
-    <div class="container">
-      <!-- Navigation will be inserted by JavaScript -->
-    </div>
+    <div class="container"></div>
   </header>
-
-  <main>
-    <div class="container">
-      <h1>Your Profile</h1>
+  <main class="container">
+    <div class="customization-container">
+      <h1>Customize Your Profile</h1>
       
-      <!-- Loading state -->
-      <div id="loading" class="profile-container">
-        <p>Loading profile data...</p>
-      </div>
-      
-      <!-- Not authenticated state -->
-      <div id="not-authenticated" class="profile-container not-authenticated hidden">
-        <h2>Not Authenticated</h2>
-        <p>You need to log in to view your profile.</p>
-        <div class="auth-buttons">
-          <a href="/auth/login.html" class="primary-button">Log In</a>
-          <a href="/auth/register.html" class="secondary-button">Create Account</a>
+      <!-- Communique Section -->
+      <div class="section">
+        <h3 class="section-title">Your Communique</h3>
+        <p class="text-muted">Express yourself to visitors of your profile</p>
+        <textarea id="communique" class="communique-editor" placeholder="Write your personal message, philosophy, or whatever you want others to know about you..."></textarea>
+        <div style="margin-top:1rem;">
+          <label>
+            <input type="checkbox" id="communique-public">
+            Make communique public
+          </label>
         </div>
       </div>
       
-      <!-- Authenticated state -->
-      <div id="profile-data" class="profile-container hidden">
-        <div id="error-container"></div>
-        <div class="profile-header">
-          <div id="profile-avatar-container" class="profile-avatar-container">
-            <img id="profile-avatar" class="profile-avatar" alt="Profile Avatar">
-            <div class="avatar-upload-overlay hidden" id="avatar-upload-overlay">
-              <label for="avatar-upload" class="avatar-upload-button">
-                <span class="material-icons" aria-hidden="true">photo_camera</span>
-              </label>
-              <input type="file" id="avatar-upload" accept="image/*" class="hidden">
-            </div>
+      <!-- Theme Customization -->
+      <div class="section">
+        <h3 class="section-title">Profile Theme</h3>
+        <p class="text-muted">Choose a visual theme for your profile</p>
+        <div class="theme-selector">
+          <div class="theme-option active" data-theme="default">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #a278ff 0%, #7fd8d8 100%);"></div>
+            <span>Default</span>
           </div>
-          <div class="profile-info">
-            <h2 id="profile-name" class="profile-name">User Name</h2>
-            <p id="profile-username" class="profile-username">@username</p>
-            <p id="profile-joined" class="profile-joined">Joined on Jan 1, 2025</p>
+          <div class="theme-option" data-theme="dark">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #1a1a1a 0%, #4a4a4a 100%);"></div>
+            <span>Dark</span>
           </div>
-        </div>
-        
-        <div class="profile-stats">
-          <div class="stat-card">
-            <p id="stat-contributions" class="stat-value">0</p>
-            <p class="stat-label">Content Items</p>
+          <div class="theme-option" data-theme="nature">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);"></div>
+            <span>Nature</span>
           </div>
-          <div class="stat-card">
-            <p id="stat-drawers" class="stat-value">0</p>
-            <p class="stat-label">Drawers</p>
+          <div class="theme-option" data-theme="sunset">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #ff6b6b 0%, #feca57 100%);"></div>
+            <span>Sunset</span>
           </div>
-          <div class="stat-card">
-            <p id="stat-connections" class="stat-value">0</p>
-            <p class="stat-label">Connections</p>
+          <div class="theme-option" data-theme="ocean">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);"></div>
+            <span>Ocean</span>
+          </div>
+          <div class="theme-option" data-theme="custom">
+            <div class="theme-preview" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);"></div>
+            <span>Custom</span>
           </div>
         </div>
         
-        <div class="profile-section">
-          <h3 class="section-title">Authentication Providers</h3>
-          <div id="auth-providers" class="auth-providers">
-            <!-- Will be populated by JavaScript -->
-          </div>
-        </div>
-        
-        <!-- Visibility & Privacy Settings Section -->
-        <div class="profile-section">
-          <h3 class="section-title">Visibility & Privacy Settings</h3>
-          <div class="settings-grid">
-            <!-- Lurker in the Mist Mode -->
-            <div class="setting-group">
-              <div class="setting-header">
-                <h4 class="setting-title">Lurker in the Mist Mode</h4>
-                <label class="toggle-switch">
-                  <input type="checkbox" id="lurker-mode-toggle">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <p class="setting-description">Low-visibility status for privacy-conscious browsing. Appears muted in the association web with no clear associations.</p>
-              
-              <div class="setting-control">
-                <label for="lurker-randomness">Search Randomness Level:</label>
-                <div class="slider-with-value">
-                  <input type="range" id="lurker-randomness" min="0" max="100" step="5" value="50">
-                  <span id="lurker-randomness-value">50%</span>
-                </div>
-              </div>
-              <p class="setting-note">Higher randomness means more diverse but less relevant search results.</p>
+        <div id="custom-colors" style="display:none; margin-top:1.5rem;">
+          <h4>Custom Colors</h4>
+          <div class="color-picker-group">
+            <div class="color-picker-item">
+              <label>Primary</label>
+              <input type="color" id="color-primary" value="#a278ff">
             </div>
-            
-            <!-- Location Visibility -->
-            <div class="setting-group">
-              <div class="setting-header">
-                <h4 class="setting-title">Show Location by Default</h4>
-                <label class="toggle-switch">
-                  <input type="checkbox" id="location-visibility-toggle">
-                  <span class="toggle-slider"></span>
-                </label>
-              </div>
-              <p class="setting-description">When enabled, your location will be visible on the map to other users by default.</p>
+            <div class="color-picker-item">
+              <label>Secondary</label>
+              <input type="color" id="color-secondary" value="#7fd8d8">
             </div>
-            
-            <!-- Default Content Visibility -->
-            <div class="setting-group">
-              <div class="setting-header">
-                <h4 class="setting-title">Default Content Visibility</h4>
-                <div class="radio-group">
-                  <label>
-                    <input type="radio" name="default-visibility" value="public" checked>
-                    <span>Public</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="default-visibility" value="private">
-                    <span>Private</span>
-                  </label>
-                </div>
-              </div>
-              <p class="setting-description">Choose whether your new content is public or private by default.</p>
-            </div>
-            
-            <div class="setting-actions">
-              <button id="save-privacy-settings" class="btn btn-accent">Save Settings</button>
+            <div class="color-picker-item">
+              <label>Accent</label>
+              <input type="color" id="color-accent" value="#ff6b9d">
             </div>
           </div>
-        </div>
-        
-        <!-- Map Points Section -->
-        <div class="profile-section">
-          <h3 class="section-title">Your Map Points</h3>
-          <div id="map-points-container">
-            <p class="empty-state">You haven't added any map points yet.</p>
-            <div id="user-map-points" class="map-points-grid"></div>
-            <div class="map-actions">
-              <a href="/map.html?action=add-point" class="btn btn-accent">
-                <span class="material-icons" aria-hidden="true">add_location</span>
-                Add Map Point
-              </a>
-              <a href="/map.html" class="btn btn-secondary">
-                <span class="material-icons" aria-hidden="true">map</span>
-                View Map
-              </a>
-            </div>
-          </div>
-        </div>
-        
-        <div class="action-buttons">
-          <button id="edit-profile-btn" class="edit-profile-btn">Edit Profile</button>
-          <button id="generate-recovery-key-btn" class="recovery-key-btn">Generate Recovery Key</button>
-          <button id="logout-btn" class="logout-btn">Log Out</button>
         </div>
       </div>
       
-      <!-- Recovery Key Modal -->
-      <div id="recovery-key-modal" class="modal-overlay hidden">
-        <div class="modal">
-          <h2 class="modal-title">Your New Recovery Key</h2>
-          <div class="modal-content">
-            <p class="modal-warning">IMPORTANT: Save this recovery key in a secure location. It will only be shown once!</p>
-            <p>If you forget your password, you will need this key to recover your account.</p>
-            <div id="recovery-key-display" class="recovery-key-display">
-              Loading...
-            </div>
-            <p>Please copy this key and store it securely. It cannot be retrieved later.</p>
-          </div>
-          <div class="modal-actions">
-            <button id="copy-recovery-key-btn" class="copy-btn">Copy to Clipboard</button>
-            <button id="close-modal-btn" class="close-btn">I've Saved It</button>
-          </div>
+      <!-- Banner Image -->
+      <div class="section">
+        <h3 class="section-title">Profile Banner</h3>
+        <p class="text-muted">Upload a banner image for your profile</p>
+        <div class="banner-upload" id="banner-upload">
+          <span>Click to upload banner image</span>
         </div>
+        <input type="file" id="banner-file" accept="image/*" style="display:none;">
+      </div>
+      
+      <!-- Bio & Links -->
+      <div class="section">
+        <h3 class="section-title">Bio & Links</h3>
+        <div style="margin-bottom:1rem;">
+          <label>Bio</label>
+          <textarea id="bio" style="width:100%;padding:0.75rem;border:1px solid var(--border-primary);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text-primary);" rows="3" placeholder="Tell others about yourself..."></textarea>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label>Website</label>
+          <input type="url" id="website" style="width:100%;padding:0.75rem;border:1px solid var(--border-primary);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text-primary);" placeholder="https://...">
+        </div>
+        <div>
+          <label>Location</label>
+          <input type="text" id="location" style="width:100%;padding:0.75rem;border:1px solid var(--border-primary);border-radius:var(--radius-md);background:var(--bg-input);color:var(--text-primary);" placeholder="City, Country">
+        </div>
+      </div>
+      
+      <div class="save-section">
+        <button class="btn btn-secondary" onclick="window.location.href='/profile.html'">Cancel</button>
+        <button class="btn btn-accent" id="save-btn">Save Changes</button>
       </div>
     </div>
   </main>
-
-  <!-- Onboarding Modal -->
-  <div id="onboarding-modal" class="modal-overlay hidden">
-    <div class="modal">
-      <h2 class="modal-title">Welcome to R3L:F!</h2>
-      <div class="modal-content">
-        <p>Here are a few key concepts to get you started:</p>
-        <ul>
-          <li><strong>Ephemeral Content:</strong> Files you upload will disappear after 7 days unless the community archives them.</li>
-          <li><strong>Chronological Feed:</strong> Your feed is a simple, time-ordered list of content from your connections. No algorithms.</li>
-          <li><strong>Your Drawer:</strong> This page is your personal space. Customize your "Communique" to express yourself to others who visit.</li>
-        </ul>
-        <p>Ready to explore? Make connections and see what you discover.</p>
-      </div>
-      <div class="modal-actions" style="justify-content: flex-end;">
-        <button id="dismiss-onboarding-btn" class="btn btn-primary">Let's Go</button>
-      </div>
-    </div>
-  </div>
-
   <footer class="footer">
     <p class="footer-motto text-accent">"the rel is what you make it"</p>
-    <div class="footer-links">
-      <a href="index.html">Home</a> | 
-      <a href="help.html">Help</a> | 
-      <a href="about.html">About</a> | 
-      <a href="sitemap.html">Site Map</a>
-    </div>
   </footer>
-
   <script type="module">
-    import { initAccessibility, initResponsiveImages } from './js/utils/ui-helpers.js';
-    
-    document.addEventListener('DOMContentLoaded', () => {
-      initAccessibility();
-      initResponsiveImages();
+    import { NavigationBar } from './js/components/navigation.js';
+    NavigationBar.init('profile');
+
+    let selectedTheme = 'default';
+    let bannerFile = null;
+
+    async function loadProfile() {
+      if (!window.r3l?.isAuthenticated()) {
+        window.location.href = '/auth/login.html';
+        return;
+      }
+
+      try {
+        const profile = await window.r3l.apiGet('/api/profile');
+        
+        if (profile.preferences) {
+          document.getElementById('communique').value = profile.preferences.communique || '';
+          document.getElementById('communique-public').checked = profile.preferences.communiquePublic || false;
+          selectedTheme = profile.preferences.theme || 'default';
+          
+          document.querySelectorAll('.theme-option').forEach(opt => {
+            opt.classList.toggle('active', opt.dataset.theme === selectedTheme);
+          });
+          
+          if (selectedTheme === 'custom' && profile.preferences.customColors) {
+            document.getElementById('custom-colors').style.display = 'block';
+            document.getElementById('color-primary').value = profile.preferences.customColors.primary || '#a278ff';
+            document.getElementById('color-secondary').value = profile.preferences.customColors.secondary || '#7fd8d8';
+            document.getElementById('color-accent').value = profile.preferences.customColors.accent || '#ff6b9d';
+          }
+        }
+        
+        document.getElementById('bio').value = profile.bio || '';
+        
+        if (profile.preferences?.website) {
+          document.getElementById('website').value = profile.preferences.website;
+        }
+        if (profile.preferences?.location) {
+          document.getElementById('location').value = profile.preferences.location;
+        }
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+      }
+    }
+
+    // Theme selection
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        document.querySelectorAll('.theme-option').forEach(o => o.classList.remove('active'));
+        opt.classList.add('active');
+        selectedTheme = opt.dataset.theme;
+        
+        document.getElementById('custom-colors').style.display = 
+          selectedTheme === 'custom' ? 'block' : 'none';
+      });
     });
+
+    // Banner upload
+    document.getElementById('banner-upload').addEventListener('click', () => {
+      document.getElementById('banner-file').click();
+    });
+
+    document.getElementById('banner-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        bannerFile = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('banner-upload').style.backgroundImage = `url(${e.target.result})`;
+          document.getElementById('banner-upload').innerHTML = '';
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // Save changes
+    document.getElementById('save-btn').addEventListener('click', async () => {
+      try {
+        const preferences = {
+          communique: document.getElementById('communique').value,
+          communiquePublic: document.getElementById('communique-public').checked,
+          theme: selectedTheme,
+          website: document.getElementById('website').value,
+          location: document.getElementById('location').value
+        };
+
+        if (selectedTheme === 'custom') {
+          preferences.customColors = {
+            primary: document.getElementById('color-primary').value,
+            secondary: document.getElementById('color-secondary').value,
+            accent: document.getElementById('color-accent').value
+          };
+        }
+
+        await window.r3l.apiPatch('/api/user/preferences', preferences);
+        
+        const bio = document.getElementById('bio').value;
+        if (bio) {
+          await window.r3l.apiPatch('/api/user/profile', { bio });
+        }
+
+        alert('Profile updated successfully!');
+        window.location.href = '/profile.html';
+      } catch (error) {
+        console.error('Failed to save profile:', error);
+        alert('Failed to save changes');
+      }
+    });
+
+    loadProfile();
   </script>
-  <script type="module" src="./js/profile-page.js"></script>
 </body>
 </html>

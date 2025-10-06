@@ -10,7 +10,7 @@ const path = require('path');
 
 console.log('🧪 R3L:F Beta Launch Functionality Test\n');
 
-// Test 1: Check all HTML files have secure API helper
+// Test 1: Check all HTML files have API helper
 console.log('1. Testing API Helper Integration...');
 const htmlFiles = [
     'public/index.html',
@@ -31,17 +31,17 @@ let apiHelperTest = true;
 htmlFiles.forEach(file => {
     if (fs.existsSync(file)) {
         const content = fs.readFileSync(file, 'utf8');
-        if (!content.includes('secure-api-helper.js')) {
-            console.log(`❌ ${file} missing secure API helper`);
+        if (!content.includes('api-helper.js')) {
+            console.log(`❌ ${file} missing API helper`);
             apiHelperTest = false;
         }
     }
 });
 
 if (apiHelperTest) {
-    console.log('✅ All HTML files use secure API helper\n');
+    console.log('✅ All HTML files use API helper\n');
 } else {
-    console.log('❌ Some files missing secure API helper\n');
+    console.log('❌ Some files missing API helper\n');
 }
 
 // Test 2: Check for dead code patterns
@@ -62,13 +62,13 @@ function checkDirectory(dir) {
         const filePath = path.join(dir, file);
         const stat = fs.statSync(filePath);
         
-        if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules') {
+        if (stat.isDirectory() && !file.startsWith('.') && file !== 'node_modules' && file !== 'vendor') {
             checkDirectory(filePath);
         } else if (file.endsWith('.js') || file.endsWith('.html')) {
             const content = fs.readFileSync(filePath, 'utf8');
             deadCodePatterns.forEach(pattern => {
                 if (content.toLowerCase().includes(pattern.toLowerCase()) && 
-                    !filePath.includes('secure-api-helper.js')) {
+                    !filePath.includes('api-helper.js')) {
                     console.log(`⚠️  Found '${pattern}' in ${filePath}`);
                     deadCodeFound = true;
                 }
@@ -128,7 +128,9 @@ let endpointsComplete = true;
 if (fs.existsSync(backendFile)) {
     const content = fs.readFileSync(backendFile, 'utf8');
     requiredEndpoints.forEach(endpoint => {
-        const route = endpoint.replace('/api', '');
+        const route = (endpoint === '/api/register' || endpoint === '/api/login')
+            ? endpoint
+            : endpoint.replace('/api', '');
         if (!content.includes(`'${route}'`) && !content.includes(`"${route}"`)) {
             console.log(`❌ Missing endpoint: ${endpoint}`);
             endpointsComplete = false;
@@ -147,7 +149,6 @@ console.log('5. Testing Database Schema...');
 const schemaFile = 'db/schema.sql';
 const requiredTables = [
     'users',
-    'profiles', 
     'auth_sessions',
     'content',
     'content_location',

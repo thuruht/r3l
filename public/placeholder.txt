@@ -1,0 +1,1 @@
+This directory is intentionally left empty as a workaround for a wrangler dev server issue. The application now serves assets from the 'dist' directory after the build process.

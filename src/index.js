@@ -4,6 +4,31 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import bcrypt from 'bcryptjs';
 
+// SPA HTML Shell
+const spaHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>r3l</title>
+    <!-- We will consolidate all necessary CSS into a single entry point later -->
+    <link rel="stylesheet" href="/css/rel-f-global.css" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <!-- The navigation and other persistent UI will go here -->
+    <header id="main-header"></header>
+
+    <!-- All page content will be dynamically rendered inside this main element -->
+    <main id="app-root">
+      <h1>Loading...</h1>
+    </main>
+
+    <!-- This is the single entry point for all our application's JavaScript -->
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>`;
+
 // Durable Objects (kept in main file for now due to export requirements)
 export class CollaborationRoom {
     constructor(state, env) {
@@ -362,7 +387,6 @@ function createApp(r2) {
         const content = await c.env.R3L_DB.prepare(`
             SELECT c.id, c.title, c.description, c.createdAt as created_at,
                    u.username, u.display_name, u.avatar_key,
-                   cl.expiresAt as content_expires_at,
                    (SELECT 1 FROM bookmarks WHERE contentId = c.id AND userId = ?) as is_bookmarked
             FROM content c
             JOIN users u ON c.userId = u.id
@@ -518,6 +542,10 @@ function createApp(r2) {
     protectedApi.get('/files/avatar', (c) => c.json({error: 'Not implemented'}, 501));
 
     app.route('/api', protectedApi);
+
+    // SPA Fallback
+    app.get('*', (c) => c.html(spaHtml));
+
     return app;
 }
 

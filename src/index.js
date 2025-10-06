@@ -508,6 +508,14 @@ function createApp(r2) {
             headers,
         });
     });
+    protectedApi.get('/content', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/bookmarks', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/messages', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/notifications', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/network', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/user/stats', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/user/files', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/files/avatar', (c) => c.json({error: 'Not implemented'}, 501));
 
     app.route('/api', protectedApi);
     return app;

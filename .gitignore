@@ -99,3 +99,7 @@ public/js/globe-fallback.js
 rollup.globe.js
 public/js/globe-demo.js
 public/globe-test.html
+
+# Jules' scratch directory
+jules-scratch/
+*.png

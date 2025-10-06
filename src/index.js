@@ -337,6 +337,32 @@ function createApp(r2) {
         });
     });
 
+    protectedApi.post('/logout', async (c) => {
+        const cookieHeader = c.req.header('Cookie');
+        let sessionToken = null;
+        if (cookieHeader) {
+            const cookies = cookieHeader.split(';').map(cookie => cookie.trim());
+            const sessionCookie = cookies.find(cookie => cookie.startsWith('r3l_session='));
+            if (sessionCookie) {
+                sessionToken = sessionCookie.split('=')[1];
+            }
+        }
+        if(sessionToken) {
+            await c.env.R3L_DB.prepare("DELETE FROM auth_sessions WHERE token = ?").bind(sessionToken).run();
+        }
+        c.header('Set-Cookie', `r3l_session=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0`);
+        return c.json({ success: true });
+    });
+
+    protectedApi.get('/content', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/bookmarks', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/messages', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/notifications', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/network', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/user/stats', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/user/files', (c) => c.json({error: 'Not implemented'}, 501));
+    protectedApi.get('/files/avatar', (c) => c.json({error: 'Not implemented'}, 501));
+
     app.route('/api', protectedApi);
     return app;
 }

@@ -1,8 +1,5 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { z } from 'zod';
-import { zValidator } from '@hono/zod-validator';
-import bcrypt from 'bcryptjs';
 
 // SPA HTML Shell
 const spaHtml = `<!DOCTYPE html>
@@ -306,22 +303,19 @@ function createApp(r2) {
         
         return c.json({ success: true, workspaceId }, 201);
     });
+import { CollaborationRoom } from './durable-objects/collaboration-room.js';
+import { ConnectionsObject } from './durable-objects/connections-object.js';
+import { VisualizationObject } from './durable-objects/visualization-object.js';
 
-    protectedApi.get('/feed', async (c) => {
-        const userId = c.get('userId');
-        const { limit = 20, offset = 0 } = c.req.query();
+import { authMiddleware } from './middleware/auth.js';
+import { rateLimiter } from './middleware/rate-limiter.js';
 
-        const { results } = await c.env.R3L_DB.prepare(`
-            SELECT c.id, c.title, c.description, c.createdAt as created_at,
-                   u.username, u.display_name, u.avatar_key,
-                   cl.expiresAt as content_expires_at
-            FROM content c
-            JOIN users u ON c.userId = u.id
-            JOIN content_lifecycle cl ON c.id = cl.contentId
-            WHERE c.userId IN (SELECT followingId FROM connections WHERE followerId = ?)
-            ORDER BY c.createdAt DESC
-            LIMIT ? OFFSET ?
-        `).bind(userId, limit, offset).all();
+import authRoutes from './routes/auth.js';
+import contentRoutes from './routes/content.js';
+import filesRoutes from './routes/files.js';
+import socialRoutes from './routes/social.js';
+import userRoutes from './routes/user.js';
+import workspaceRoutes from './routes/workspace.js';
 
         return c.json({
             items: results || [],
@@ -421,125 +415,42 @@ function createApp(r2) {
     protectedApi.get('/bookmarks', async (c) => {
         const userId = c.get('userId');
         const { limit = 20, offset = 0 } = c.req.query();
+export { CollaborationRoom, ConnectionsObject, VisualizationObject };
 
-        const { results } = await c.env.R3L_DB.prepare(`
-            SELECT c.id, c.title, c.description, c.createdAt as created_at,
-                   u.username, u.display_name, u.avatar_key
-            FROM bookmarks b
-            JOIN content c ON b.contentId = c.id
-            JOIN users u ON c.userId = u.id
-            WHERE b.userId = ?
-            ORDER BY b.createdAt DESC
-            LIMIT ? OFFSET ?
-        `).bind(userId, limit, offset).all();
+const app = new Hono();
 
-        return c.json(results || []);
+app.onError((err, c) => {
+    console.error(`Hono App Error: ${err}`, err.stack);
+    return c.json({ error: 'Internal Server Error' }, 500);
+});
+
+// Common middleware
+app.use('*', async (c, next) => {
+    const allowedOrigins = (c.env.ALLOWED_ORIGINS || "").split(',');
+    const corsMiddleware = cors({
+        origin: (origin) => (allowedOrigins.includes(origin) ? origin : allowedOrigins[0]),
+        allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+        maxAge: 600,
     });
+    return corsMiddleware(c, next);
+});
 
-    protectedApi.get('/user/files', async (c) => {
-        const userId = c.get('userId');
-        const { limit = 20, offset = 0 } = c.req.query();
+// Rate limiting
+app.use('*', rateLimiter);
 
-        const { results } = await c.env.R3L_DB.prepare(`
-            SELECT c.id, c.title, c.description, c.createdAt as created_at,
-                   cl.status, cl.expiresAt
-            FROM content c
-            LEFT JOIN content_lifecycle cl ON c.id = cl.contentId
-            WHERE c.userId = ?
-            ORDER BY c.createdAt DESC
-            LIMIT ? OFFSET ?
-        `).bind(userId, limit, offset).all();
+// Auth routes
+app.route('/api', authRoutes);
 
-        return c.json({
-            items: results || [],
-            pagination: { hasMore: results?.length === parseInt(limit) }
-        });
-    });
+// Protected routes
+const protectedApi = new Hono();
+protectedApi.use('*', authMiddleware);
 
-    // Implemented Social and Notification Endpoints
-    protectedApi.get('/messages', async (c) => {
-        const userId = c.get('userId');
-        const { limit = 20, offset = 0 } = c.req.query();
-
-        const { results } = await c.env.R3L_DB.prepare(`
-            SELECT m.id, m.content, m.createdAt, m.isRead,
-                   s.username as sender_username, s.display_name as sender_display_name
-            FROM messages m
-            JOIN users s ON m.senderId = s.id
-            WHERE m.recipientId = ?
-            ORDER BY m.createdAt DESC
-            LIMIT ? OFFSET ?
-        `).bind(userId, limit, offset).all();
-
-        return c.json(results || []);
-    });
-
-    protectedApi.get('/notifications', async (c) => {
-        const userId = c.get('userId');
-        const { limit = 20, offset = 0 } = c.req.query();
-
-        const { results } = await c.env.R3L_DB.prepare(`
-            SELECT id, type, title, content, actionUrl, isRead, createdAt
-            FROM notifications
-            WHERE userId = ?
-            ORDER BY createdAt DESC
-            LIMIT ? OFFSET ?
-        `).bind(userId, limit, offset).all();
-
-        return c.json(results || []);
-    });
-
-    protectedApi.get('/network', async (c) => {
-        const doId = c.env.R3L_CONNECTIONS.idFromName('network-graph');
-        const stub = c.env.R3L_CONNECTIONS.get(doId);
-        const url = new URL(c.req.url);
-        url.pathname = '/network';
-        const doRequest = new Request(url, c.req.raw);
-        return stub.fetch(doRequest);
-    });
-
-    // Implemented User-Specific Endpoints
-    protectedApi.get('/user/stats', async (c) => {
-        const doId = c.env.R3L_VISUALIZATION.idFromName('global-stats');
-        const stub = c.env.R3L_VISUALIZATION.get(doId);
-        const url = new URL(c.req.url);
-        url.pathname = '/stats';
-        const doRequest = new Request(url, c.req.raw);
-        return stub.fetch(doRequest);
-    });
-
-    protectedApi.get('/files/avatar', async (c) => {
-        const userId = c.get('userId');
-        const user = await c.env.R3L_DB.prepare(
-            `SELECT avatar_key FROM users WHERE id = ?`
-        ).bind(userId).first();
-
-        if (!user || !user.avatar_key) {
-            return c.json({ error: 'Avatar not found' }, 404);
-        }
-
-        const object = await c.env.R3L_CONTENT_BUCKET.get(user.avatar_key);
-
-        if (object === null) {
-            return c.json({ error: 'Avatar not found in storage' }, 404);
-        }
-
-        const headers = new Headers();
-        object.writeHttpMetadata(headers);
-        headers.set('etag', object.httpEtag);
-
-        return new Response(object.body, {
-            headers,
-        });
-    });
-    protectedApi.get('/content', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/bookmarks', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/messages', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/notifications', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/network', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/user/stats', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/user/files', (c) => c.json({error: 'Not implemented'}, 501));
-    protectedApi.get('/files/avatar', (c) => c.json({error: 'Not implemented'}, 501));
+protectedApi.route('/content', contentRoutes);
+protectedApi.route('/user', userRoutes);
+protectedApi.route('/social', socialRoutes);
+protectedApi.route('/workspaces', workspaceRoutes);
+protectedApi.route('/files', filesRoutes);
 
     app.route('/api', protectedApi);
 
@@ -548,15 +459,10 @@ function createApp(r2) {
 
     return app;
 }
+app.route('/api', protectedApi);
 
 export default {
     async fetch(request, env, ctx) {
-        const r2 = {
-            createPresignedUrl: async (method, key, options) => {
-                return await env.R3L_CONTENT_BUCKET.createPresignedUrl(method, key, options);
-            }
-        };
-        const app = createApp(r2);
         return app.fetch(request, env, ctx);
     }
 };

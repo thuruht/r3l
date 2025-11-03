@@ -1,9 +1,11 @@
 module.exports = {
-  root: true,
   env: {
     es2022: true,
     node: true,
     worker: true
+  },
+  globals: {
+    WebSocketPair: 'readonly'
   },
   extends: [
     'eslint:recommended'

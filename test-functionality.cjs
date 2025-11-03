@@ -107,35 +107,29 @@ if (expirationConsistent) {
 
 // Test 4: Check backend API endpoints
 console.log('4. Testing Backend API Completeness...');
-const backendFile = 'src/index.js';
-const requiredEndpoints = [
-    '/api/register',
-    '/api/login', 
-    '/api/logout',
-    '/api/profile',
-    '/api/content',
-    '/api/feed',
-    '/api/bookmarks',
-    '/api/messages',
-    '/api/notifications',
-    '/api/network',
-    '/api/user/stats',
-    '/api/user/files',
-    '/api/files/avatar'
-];
+const routeFiles = {
+    'src/routes/auth.js': ['/register', '/login', '/logout'],
+    'src/routes/user.js': ['/profile', '/files', '/stats', '/bookmarks'],
+    'src/routes/content.js': ['/feed', '/search', '/:id', '/'],
+    'src/routes/social.js': ['/messages', '/notifications', '/network'],
+    'src/routes/workspace.js': ['/'],
+    'src/routes/files.js': ['/avatar']
+};
 
 let endpointsComplete = true;
-if (fs.existsSync(backendFile)) {
-    const content = fs.readFileSync(backendFile, 'utf8');
-    requiredEndpoints.forEach(endpoint => {
-        const route = (endpoint === '/api/register' || endpoint === '/api/login')
-            ? endpoint
-            : endpoint.replace('/api', '');
-        if (!content.includes(`'${route}'`) && !content.includes(`"${route}"`)) {
-            console.log(`❌ Missing endpoint: ${endpoint}`);
-            endpointsComplete = false;
-        }
-    });
+for (const file in routeFiles) {
+    if (fs.existsSync(file)) {
+        const content = fs.readFileSync(file, 'utf8');
+        routeFiles[file].forEach(endpoint => {
+            if (!content.includes(`'${endpoint}'`) && !content.includes(`"${endpoint}"`)) {
+                console.log(`❌ Missing endpoint: ${endpoint} in ${file}`);
+                endpointsComplete = false;
+            }
+        });
+    } else {
+        console.log(`❌ Missing route file: ${file}`);
+        endpointsComplete = false;
+    }
 }
 
 if (endpointsComplete) {

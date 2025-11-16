@@ -256,22 +256,11 @@ wrangler d1 execute r3l-db --remote --command="CREATE TABLE..."
 6. **CORS**: Configurable allowed origins
 7. **Content Size Limits**: 10MB max upload size
 
-## Frontend Pages
+## Frontend
 
-- `index.html` - Landing page
-- `feed.html` - Chronological content feed
-- `upload.html` - File upload with preview
-- `content.html` - Content detail view
-- `search.html` - Content discovery
-- `bookmarks.html` - Saved content
-- `messages.html` - Enhanced messaging
-- `notifications.html` - Notification center
-- `connect.html` - User discovery
-- `network.html` - Network visualization
-- `map.html` - Geo-location map
-- `collaborate.html` - Real-time collaboration
-- `profile.html` - User profile
-- `profile-enhanced.html` - Profile customization
+The frontend is a Single-Page Application (SPA) built with Vite. The source code is located in the `src/client` directory, and the production build is output to the `dist` directory.
+
+**Note:** The frontend is currently under construction and is not yet functional.
 
 ## Notes
 

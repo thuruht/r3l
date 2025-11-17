@@ -8,3 +8,4 @@ The full documentation for this project can be found in the `docs` directory.
 
 - [**Project README**](./docs/README.md)
 - [**Problem Overview**](./docs/problem-overview.md)
+- [**Frontend Evaluation**](./docs/frontend-evaluation.md)

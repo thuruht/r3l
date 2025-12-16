@@ -26,6 +26,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false); // Added missing state
   
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);

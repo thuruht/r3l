@@ -40,6 +40,8 @@ function Main() {
 
   const { nodes, links, refresh: refreshNetwork } = useNetworkData({
     currentUserId: currentUser?.id || null,
+    meUsername: currentUser?.username,
+    meAvatarUrl: currentUser?.avatar_url,
     isDrifting,
     driftData
   });

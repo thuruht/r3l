@@ -180,7 +180,7 @@ app.post('/api/login', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
       } 
     });
 
@@ -240,13 +240,37 @@ app.get('/api/users/me', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
       } 
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
   }
 });
+
+// --- Authentication Middleware ---
+const authMiddleware = async (c: any, next: any) => {
+  const token = getCookie(c, 'auth_token');
+  if (!token) {
+    return c.json({ error: 'Unauthorized: No token provided' }, 401);
+  }
+
+  try {
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
+
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
+    }
+
+    // Attach user ID to context variables for downstream routes
+    c.set('user_id', payload.id as number);
+    await next();
+  } catch (e) {
+    console.error("JWT verification failed:", e);
+    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+  }
+};
 
 // Durable Object WebSocket endpoint
 app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
@@ -273,30 +297,6 @@ app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
   }
 }));
 
-// --- Authentication Middleware ---
-
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-    
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-    
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // Apply middleware to protected routes
 app.use('/api/drift', authMiddleware);

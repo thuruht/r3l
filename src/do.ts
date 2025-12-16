@@ -4,6 +4,18 @@
 // In a production app, you would have logic here to manage WebSocket connections,
 // send messages to connected clients, and potentially interact with D1 or KV.
 
+interface Env {
+  ASSETS: Fetcher;
+  KV: KVNamespace;
+  DB: D1Database;
+  BUCKET: R2Bucket;
+  DO_NAMESPACE: DurableObjectNamespace;
+  JWT_SECRET: string;
+  RESEND_API_KEY: string;
+  R2_ACCOUNT_ID: string;
+  R2_PUBLIC_DOMAIN?: string;
+}
+
 interface Session {
   ws: WebSocket;
   userId: number; // The ID of the user connected to this session
@@ -37,16 +49,21 @@ export class RelfDO {
         }
 
         const pair = new WebSocketPair();
-        this.handleSession(pair.server, userId);
+        // The server socket is at index 1, client at index 0 for WebSocketPair
+        // But WebSocketPair properties are actually '0' and '1' in Cloudflare Workers Types
+        const [client, server] = Object.values(pair);
+        this.handleSession(server, userId);
 
-        return new Response(null, { status: 101, webSocket: pair.client });
+        return new Response(null, { status: 101, webSocket: client });
 
       case '/notify': // Endpoint for the Worker to send notifications to the DO
         if (request.method !== 'POST') {
           return new Response("Method Not Allowed", { status: 405 });
         }
         try {
-          const { userId: targetUserId, message } = await request.json();
+          // Explicitly cast JSON body to unknown first, then to expected type
+          const body = await request.json() as unknown as { userId: number; message: any };
+          const { userId: targetUserId, message } = body;
           this.notifyUser(targetUserId, message);
           return new Response("Notification sent", { status: 200 });
         } catch (err: any) {

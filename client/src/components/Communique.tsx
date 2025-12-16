@@ -6,10 +6,8 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
 
 interface CommuniqueProps {
-  userId: string;
-  isOwner: boolean;
-  currentUser: { id: number; username: string; avatar_url?: string } | null;
-  onUpdateUser: (user: { id: number; username: string; avatar_url?: string }) => void; // Added
+  userId: number; // Changed to number to match typical usage, though strict string/number handling is good
+  onClose?: () => void; // Optional now if we use routes
 }
 
 interface CommuniqueData {
@@ -18,7 +16,7 @@ interface CommuniqueData {
   updated_at: string | null;
 }
 
-const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser }) => {
+const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [data, setData] = useState<CommuniqueData>({ content: '', theme_prefs: '{}', updated_at: null });
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -26,11 +24,29 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
+  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; avatar_url?: string } | null>(null);
   
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const avatarInputRef = useRef<HTMLInputElement>(null); // Added
-  const { showToast } = useToast(); // Added
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { showToast } = useToast();
+
+  const isOwner = currentUser?.id === userId;
+
+  useEffect(() => {
+    const fetchMe = async () => {
+        try {
+            const res = await fetch('/api/users/me');
+            if (res.ok) {
+                const json = await res.json();
+                setCurrentUser(json.user);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    fetchMe();
+  }, []);
 
   useEffect(() => {
     fetchCommunique();
@@ -49,7 +65,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
         if (res.ok) {
           const { outgoing, incoming, mutual } = await res.json();
           
-          const targetId = parseInt(userId);
+          const targetId = userId;
 
           // Check if currentUser follows this userId
           const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow');
@@ -145,8 +161,9 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
         if (res.ok) {
             const data = await res.json();
             showToast('Avatar uploaded successfully!', 'success');
-            // Update the currentUser state in App.tsx
-            onUpdateUser({ ...currentUser, avatar_url: data.avatar_url });
+            // Optimistically update current user state if we had a global store,
+            // but here we just update local state which might not reflect everywhere until reload.
+            setCurrentUser(prev => prev ? ({ ...prev, avatar_url: data.avatar_url }) : null);
         } else {
             const err = await res.json();
             showToast(err.error || 'Failed to upload avatar', 'error');
@@ -191,7 +208,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
   
     const performRelationshipAction = async (endpoint: string, method: string = 'POST', body?: any) => {
       if (!currentUser || !userId) return;
-      const targetUserId = parseInt(userId);
+      const targetUserId = userId;
   
       try {
         const res = await fetch(endpoint.replace(':target_user_id', targetUserId.toString()), {
@@ -214,7 +231,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
     };
   
     const handleFollow = async () => {
-      if (await performRelationshipAction('/api/relationships/follow', 'POST', { target_user_id: parseInt(userId) })) {
+      if (await performRelationshipAction('/api/relationships/follow', 'POST', { target_user_id: userId })) {
         setRelationshipStatus('following');
       }
     };
@@ -226,7 +243,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
     };
   
     const handleSymRequest = async () => {
-      if (await performRelationshipAction('/api/relationships/sym-request', 'POST', { target_user_id: parseInt(userId) })) {
+      if (await performRelationshipAction('/api/relationships/sym-request', 'POST', { target_user_id: userId })) {
         setRelationshipStatus('sym_requested');
       }
     };
@@ -238,7 +255,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
     };
   
     const handleAcceptSymRequest = async () => {
-      if (await performRelationshipAction('/api/relationships/accept-sym-request', 'POST', { source_user_id: parseInt(userId) })) {
+      if (await performRelationshipAction('/api/relationships/accept-sym-request', 'POST', { source_user_id: userId })) {
         setRelationshipStatus('sym_accepted');
       }
     };
@@ -249,7 +266,8 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
       }
     };
   
-    // Helper to safely extract CSS for rendering  const getRenderCSS = () => {
+    // Helper to safely extract CSS for rendering
+    const getRenderCSS = () => {
       try {
           const prefs = JSON.parse(data.theme_prefs || '{}');
           return prefs.custom_css || '';
@@ -269,7 +287,8 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
   }
 
   return (
-    <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>      {/* Inject Scoped Styles */}
+    <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>
+      {/* Inject Scoped Styles */}
       <style>{getRenderCSS()}</style>
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -422,7 +441,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser })
         </div>
       )}
       
-      <Artifacts userId={userId} isOwner={isOwner} />
+      <Artifacts userId={userId.toString()} isOwner={isOwner} />
     </div>
   );
 };

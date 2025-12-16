@@ -23,6 +23,7 @@ interface Env {
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   R2_ACCOUNT_ID: string; // Added
+  R2_PUBLIC_DOMAIN?: string; // Optional: Custom domain for R2
 }
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
@@ -76,11 +77,13 @@ async function checkRateLimit(c: any, key: string, limit: number, windowSeconds:
 
 // --- R2 Helper ---
 function getR2PublicUrl(c: any, r2_key: string): string {
-    // This assumes a public R2 bucket, or a custom domain setup.
-    // The bucket name and R2_ACCOUNT_ID should be available in the environment.
-    // Example: https://pub-{bucket_name}.{account_id}.r2.dev/{key}
-    // Or if a custom domain is set up: https://{custom_domain}/{key}
-    // For now, using the pub- R2.dev domain.
+    // If a custom R2 public domain is configured (e.g., via wrangler.toml vars or secrets), use it.
+    if (c.env.R2_PUBLIC_DOMAIN) {
+      return `https://${c.env.R2_PUBLIC_DOMAIN}/${r2_key}`;
+    }
+
+    // Fallback to the standard Cloudflare R2.dev URL format if no custom domain is set.
+    // Note: Public access must be enabled on the bucket for this to work.
     return `https://pub-${c.env.BUCKET.name}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
 
@@ -177,7 +180,7 @@ app.post('/api/login', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
       } 
     });
 
@@ -237,13 +240,37 @@ app.get('/api/users/me', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
       } 
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
   }
 });
+
+// --- Authentication Middleware ---
+const authMiddleware = async (c: any, next: any) => {
+  const token = getCookie(c, 'auth_token');
+  if (!token) {
+    return c.json({ error: 'Unauthorized: No token provided' }, 401);
+  }
+
+  try {
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
+
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
+    }
+
+    // Attach user ID to context variables for downstream routes
+    c.set('user_id', payload.id as number);
+    await next();
+  } catch (e) {
+    console.error("JWT verification failed:", e);
+    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+  }
+};
 
 // Durable Object WebSocket endpoint
 app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
@@ -270,30 +297,6 @@ app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
   }
 }));
 
-// --- Authentication Middleware ---
-
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-    
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-    
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // Apply middleware to protected routes
 app.use('/api/drift', authMiddleware);
@@ -673,6 +676,10 @@ app.get('/api/drift', async (c) => {
     const user_id = c.get('user_id');
 
     try {
+        // Optimization Note: ORDER BY RANDOM() can be slow on very large tables.
+        // For the current scale of Rel F, this is acceptable.
+        // If performance degrades, consider fetching a random ID range or using a reservoir sampling strategy implemented in the application layer.
+
         const driftUsers = await c.env.DB.prepare(
             `SELECT u.id, u.username, u.avatar_url 
              FROM users u

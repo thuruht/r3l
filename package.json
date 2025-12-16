@@ -1,0 +1,32 @@
+{
+  "name": "relf",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy --minify",
+    "build:client": "vite build --outDir dist",
+    "build": "npm run build:client",
+    "rollback": "wrangler deployments rollback"
+  },
+  "dependencies": {
+    "@tabler/icons-react": "^3.36.0",
+    "d3": "^7.0.0",
+    "gsap": "^3.12.0",
+    "hono": "^4.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "resend": "^6.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251213.0",
+    "@hono/vite-dev-server": "^0.0.9",
+    "@types/d3": "^7.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.0.0",
+    "vite": "^5.0.0",
+    "wrangler": "^3.0.0"
+  }
+}

@@ -566,18 +566,32 @@ app.get('/api/relationships', async (c) => {
   try {
     // Relationships where current user is the source (following, sent sym requests)
     const outgoing = await c.env.DB.prepare(
-      `SELECT target_user_id as user_id, type, status FROM relationships WHERE source_user_id = ?`
+      `SELECT r.target_user_id as user_id, r.type, r.status, u.username, u.avatar_url 
+       FROM relationships r
+       JOIN users u ON r.target_user_id = u.id
+       WHERE r.source_user_id = ?`
     ).bind(user_id).all();
 
     // Relationships where current user is the target (followers, received sym requests)
     const incoming = await c.env.DB.prepare(
-      `SELECT source_user_id as user_id, type, status FROM relationships WHERE target_user_id = ?`
+      `SELECT r.source_user_id as user_id, r.type, r.status, u.username, u.avatar_url 
+       FROM relationships r
+       JOIN users u ON r.source_user_id = u.id
+       WHERE r.target_user_id = ?`
     ).bind(user_id).all();
 
-    // Mutual connections
+    // Mutual connections (We need to find the "other" user)
+    // Case 1: user_id is A, we want B. Case 2: user_id is B, we want A.
+    // We can do this with a UNION or by fetching and post-processing.
+    // Let's do a smarter query.
     const mutual = await c.env.DB.prepare(
-      `SELECT user_a_id, user_b_id FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?`
-    ).bind(user_id, user_id).all();
+      `SELECT 
+         CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END as user_id,
+         u.username, u.avatar_url
+       FROM mutual_connections mc
+       JOIN users u ON (u.id = CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END)
+       WHERE mc.user_a_id = ? OR mc.user_b_id = ?`
+    ).bind(user_id, user_id, user_id, user_id).all();
 
     return c.json({
       outgoing: outgoing.results,
@@ -708,15 +722,6 @@ app.post('/api/kv/:key', async (c) => {
   const { value } = await c.req.json();
   await c.env.KV.put(key, value);
   return c.json({ message: `Key '${key}' set with value '${value}'` });
-});
-
-app.get('/api/d1/users', async (c) => {
-  try {
-    const { results } = await c.env.DB.prepare('SELECT * FROM users').all();
-    return c.json(results);
-  } catch (e: any) {
-    return c.json({ error: e.message }, 500);
-  }
 });
 
 

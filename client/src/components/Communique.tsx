@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconEdit, IconDeviceFloppy, IconX } from '@tabler/icons-react';
 import Artifacts from './Artifacts';
+import Skeleton from './Skeleton';
 
 interface CommuniqueProps {
   userId: string;
@@ -72,11 +73,11 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
       });
       if (res.ok) {
         setSaveStatus('saved');
-        setData(prev => ({ 
-            ...prev, 
-            content: editContent, 
+        setData(prev => ({
+            ...prev,
+            content: editContent,
             theme_prefs: JSON.stringify(themePrefs),
-            updated_at: new Date().toISOString() 
+            updated_at: new Date().toISOString()
         }));
         setIsEditing(false);
         setTimeout(() => setSaveStatus('idle'), 2000);
@@ -97,12 +98,19 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
   };
 
   if (loading) {
-    return <div style={{ color: 'var(--text-secondary)', padding: '20px' }}>Drifting through the mist...</div>;
+    return (
+        <div style={{ padding: '20px' }}>
+            <Skeleton height="30px" width="50%" marginBottom="20px" />
+            <Skeleton height="15px" width="100%" marginBottom="10px" />
+            <Skeleton height="15px" width="90%" marginBottom="10px" />
+            <Skeleton height="15px" width="95%" marginBottom="30px" />
+            <Skeleton height="100px" />
+        </div>
+    );
   }
 
   return (
-    <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>
-      {/* Inject Scoped Styles */}
+    <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>      {/* Inject Scoped Styles */}
       <style>{getRenderCSS()}</style>
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

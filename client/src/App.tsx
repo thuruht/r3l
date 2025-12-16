@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { IconRadar2 } from '@tabler/icons-react';
+import { IconRadar2, IconHelp, IconList, IconChartCircles } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
+import NetworkList from './components/NetworkList';
 import Drawer from './components/Drawer';
 import Communique from './components/Communique';
 import Inbox from './components/Inbox';
+import FAQ from './components/FAQ';
+import { ToastProvider, useToast } from './context/ToastContext';
+import { useNetworkData } from './hooks/useNetworkData';
 import './styles/global.css';
 
 interface User {
@@ -12,13 +16,15 @@ interface User {
   avatar_url?: string;
 }
 
-function App() {
+function Main() {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
+  const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -27,6 +33,14 @@ function App() {
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
+
+  const { showToast } = useToast();
+
+  const { nodes, links, refresh: refreshNetwork } = useNetworkData({
+    currentUserId: currentUser?.id || null,
+    isDrifting,
+    driftData
+  });
 
   // Poll for notifications
   useEffect(() => {
@@ -38,6 +52,10 @@ function App() {
         if (res.ok) {
           const data = await res.json();
           const unread = data.notifications.filter((n: any) => n.is_read === 0).length;
+          if (unread > unreadCount) {
+             showToast(`New signal received (${unread - unreadCount})`, 'info');
+             refreshNetwork(); // Refresh graph on new notification/connection
+          }
           setUnreadCount(unread);
         }
       } catch (e) {
@@ -48,7 +66,7 @@ function App() {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000); // Poll every 30s
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, unreadCount, refreshNetwork, showToast]);
 
   useEffect(() => {
     // Check if user is already logged in (e.g., via existing cookie)
@@ -80,9 +98,16 @@ function App() {
           if (response.ok) {
             const data = await response.json();
             setDriftData(data);
+            showToast('Drift radar active. Scanning...', 'info');
+          } else {
+             const err = await response.json();
+             showToast(err.error || 'Drift failed', 'error');
+             setIsDrifting(false);
           }
         } catch (error) {
           console.error('Failed to fetch drift data:', error);
+          showToast('Drift signal lost', 'error');
+          setIsDrifting(false);
         }
       };
       fetchDriftData();
@@ -104,12 +129,15 @@ function App() {
         const data = await response.json();
         setCurrentUser(data.user);
         setIsAuthenticated(true);
+        showToast(`Welcome back, ${data.user.username}`, 'success');
       } else {
         const errorData = await response.json();
         setAuthError(errorData.error || 'Login failed');
+        showToast(errorData.error || 'Login failed', 'error');
       }
     } catch (error) {
       setAuthError('Network error during login');
+      showToast('Network error during login', 'error');
       console.error('Login error:', error);
     }
   };
@@ -124,15 +152,17 @@ function App() {
         body: JSON.stringify({ username, password, email }),
       });
       if (response.ok) {
-        alert('Registration successful! Please log in.');
+        showToast('Registration successful! Please log in.', 'success');
         setIsRegistering(false); // Switch to login form
         setAuthError(null);
       } else {
         const errorData = await response.json();
         setAuthError(errorData.error || 'Registration failed');
+        showToast(errorData.error || 'Registration failed', 'error');
       }
     } catch (error) {
       setAuthError('Network error during registration');
+      showToast('Network error during registration', 'error');
       console.error('Register error:', error);
     }
   };
@@ -142,6 +172,7 @@ function App() {
       await fetch('/api/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentUser(null);
+      showToast('Logged out', 'info');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -211,6 +242,9 @@ function App() {
         {currentUser && (
           <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center' }}>
             <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username}</span>
+            <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ marginRight: '10px' }}>
+              {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
+            </button>
             <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ marginRight: '10px' }}>
               <IconRadar2 size={18} />
             </button>
@@ -235,20 +269,31 @@ function App() {
                 </span>
               )}
             </button>
+            <button onClick={() => setIsFAQOpen(true)} title="Help" style={{ marginRight: '10px', padding: '5px 10px' }}>
+              <IconHelp size={18} />
+            </button>
             <button onClick={handleLogout}>Logout</button>
           </div>
         )}
       </div>
 
+      {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
       {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={openCommunique} />}
 
-      {/* The Main Visualization */}
-      <AssociationWeb 
-        onNodeClick={openCommunique} 
-        currentUserId={currentUser?.id}
-        isDrifting={isDrifting}
-        driftData={driftData}
-      />
+      {/* The Main Visualization or List */}
+      {viewMode === 'graph' ? (
+        <AssociationWeb 
+          onNodeClick={openCommunique} 
+          nodes={nodes}
+          links={links}
+          isDrifting={isDrifting}
+        />
+      ) : (
+        <NetworkList 
+          nodes={nodes} 
+          onNodeClick={openCommunique} 
+        />
+      )}
 
       {/* The Slide-out Profile Drawer */}
       <Drawer 
@@ -265,6 +310,14 @@ function App() {
       </Drawer>
     </>
   );
+}
+
+function App() {
+    return (
+        <ToastProvider>
+            <Main />
+        </ToastProvider>
+    );
 }
 
 export default App;

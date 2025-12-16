@@ -1,148 +1,37 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
+import { NetworkNode, NetworkLink } from '../hooks/useNetworkData';
 
-interface D3Node extends d3.SimulationNodeDatum {
-  id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file';
-  name: string;
-  avatar_url?: string;
+interface AssociationWebProps {
+  nodes: NetworkNode[];
+  links: NetworkLink[];
+  onNodeClick: (nodeId: string) => void;
+  isDrifting: boolean;
 }
 
+// Map NetworkNode/Link to D3 types
+interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
 interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   source: string | D3Node;
   target: string | D3Node;
   type: 'sym' | 'asym' | 'drift';
 }
 
-interface AssociationWebProps {
-  onNodeClick: (nodeId: string) => void;
-  currentUserId: number | null;
-  isDrifting: boolean;
-  driftData: { users: any[], files: any[] };
-}
-
-interface APIUser {
-  id: number;
-  username: string;
-  avatar_url?: string;
-  created_at: string;
-}
-
-interface APIRelationship {
-  user_id: number;
-  type: 'asym_follow' | 'sym_request' | 'sym_accepted';
-  status: 'pending' | 'accepted' | 'rejected' | 'blocked';
-}
-
-interface APIMutualConnection {
-  user_a_id: number;
-  user_b_id: number;
-}
-
-const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUserId, isDrifting, driftData }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
 
   useEffect(() => {
-    if (!svgRef.current || currentUserId === null) {
+    if (!svgRef.current || nodes.length === 0) {
       d3.select(svgRef.current).selectAll('*').remove();
-      return;
+      // If we have no nodes but are drifting, we might still want the radar effect?
+      // But usually we have at least "Me".
+      // If nodes empty, return (or render empty state).
+      if (nodes.length === 0 && !isDrifting) return;
     }
 
-    const fetchData = async () => {
-      try {
-        const [usersRes, relationshipsRes] = await Promise.all([
-          fetch('/api/d1/users'),
-          fetch('/api/relationships'),
-        ]);
-
-        if (!usersRes.ok || !relationshipsRes.ok) throw new Error('Failed to fetch data');
-
-        const allUsers: APIUser[] = await usersRes.json();
-        const userRelationships = await relationshipsRes.json();
-
-        const d3Nodes: D3Node[] = allUsers.map(user => {
-          let group: D3Node['group'] = 'lurker';
-          if (user.id === currentUserId) {
-            group = 'me';
-          } else {
-            const isSym = userRelationships.mutual.some(
-              (m: APIMutualConnection) =>
-                (m.user_a_id === currentUserId && m.user_b_id === user.id) ||
-                (m.user_b_id === currentUserId && m.user_a_id === user.id)
-            );
-
-            if (isSym) {
-              group = 'sym';
-            } else {
-              const isAsym = 
-                userRelationships.outgoing.some(
-                  (r: APIRelationship) => r.user_id === user.id && r.type === 'asym_follow' && r.status === 'accepted'
-                ) ||
-                userRelationships.incoming.some(
-                  (r: APIRelationship) => r.user_id === user.id && r.type === 'asym_follow' && r.status === 'accepted'
-                );
-
-              if (isAsym) group = 'asym';
-            }
-          }
-          return { id: user.id.toString(), group, name: user.username, avatar_url: user.avatar_url };
-        });
-
-        const d3Links: D3Link[] = [];
-        userRelationships.outgoing.forEach((rel: APIRelationship) => {
-          if (rel.type === 'asym_follow' && rel.status === 'accepted') {
-            d3Links.push({ source: currentUserId.toString(), target: rel.user_id.toString(), type: 'asym' });
-          }
-        });
-        userRelationships.incoming.forEach((rel: APIRelationship) => {
-          if (rel.type === 'asym_follow' && rel.status === 'accepted') {
-             d3Links.push({ source: rel.user_id.toString(), target: currentUserId.toString(), type: 'asym' });
-          }
-        });
-        userRelationships.mutual.forEach((m: APIMutualConnection) => {
-          d3Links.push({ source: m.user_a_id.toString(), target: m.user_b_id.toString(), type: 'sym' });
-        });
-
-        // --- Drift Logic ---
-        if (isDrifting && driftData) {
-            driftData.users.forEach((u: any) => {
-                if (!d3Nodes.find(n => n.id === u.id.toString())) {
-                    d3Nodes.push({
-                        id: u.id.toString(),
-                        group: 'drift_user',
-                        name: u.username,
-                        avatar_url: u.avatar_url
-                    });
-                }
-            });
-            driftData.files.forEach((f: any) => {
-                const fileNodeId = `file-${f.id}`;
-                if (!d3Nodes.find(n => n.id === fileNodeId)) {
-                    d3Nodes.push({
-                        id: fileNodeId,
-                        group: 'drift_file',
-                        name: f.filename
-                    });
-                    // Link file to its owner
-                    d3Links.push({
-                        source: fileNodeId,
-                        target: f.user_id.toString(),
-                        type: 'drift'
-                    });
-                }
-            });
-        }
-
-        drawGraph(d3Nodes, d3Links);
-
-      } catch (error) {
-        console.error('Error fetching graph data:', error);
-      }
-    };
-
-    const drawGraph = (nodes: D3Node[], links: D3Link[]) => {
+    const drawGraph = () => {
       const width = wrapperRef.current?.clientWidth || window.innerWidth;
       const height = wrapperRef.current?.clientHeight || window.innerHeight;
 
@@ -155,6 +44,19 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
         .style('height', '100%')
         .style('background', 'radial-gradient(circle at center, #1a1c24ff 0%, var(--bg-color) 80%)');
 
+      // Add radar scan effect layer if drifting
+      if (isDrifting) {
+          svg.append('circle')
+             .attr('cx', width / 2)
+             .attr('cy', height / 2)
+             .attr('r', 0)
+             .attr('fill', 'none')
+             .attr('stroke', 'var(--accent-sym)')
+             .attr('stroke-width', 2)
+             .attr('opacity', 0.5)
+             .classed('radar-scan', true);
+      }
+
       const g = svg.append('g');
 
       const zoom = d3.zoom<SVGSVGElement, unknown>()
@@ -165,8 +67,12 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
 
       svg.call(zoom);
 
-      const simulation = d3.forceSimulation<D3Node, D3Link>(nodes)
-        .force('link', d3.forceLink<D3Node, D3Link>(links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : 120))
+      // Clone nodes/links because d3 mutates them
+      const d3Nodes: D3Node[] = nodes.map(n => ({ ...n }));
+      const d3Links: D3Link[] = links.map(l => ({ ...l }));
+
+      const simulation = d3.forceSimulation<D3Node, D3Link>(d3Nodes)
+        .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : 120))
         .force('charge', d3.forceManyBody().strength(-400))
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collide', d3.forceCollide(25));
@@ -183,7 +89,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
       feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
       // Avatar Patterns
-      nodes.forEach(d => {
+      d3Nodes.forEach(d => {
         if (d.avatar_url) {
             defs.append('pattern')
                 .attr('id', `avatar-${d.id}`)
@@ -214,7 +120,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
 
       const link = g.append('g')
         .selectAll('line')
-        .data(links)
+        .data(d3Links)
         .join('line')
         .attr('stroke', (d) => d.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)')
         .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1)
@@ -225,7 +131,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
 
       const node = g.append('g')
         .selectAll('g')
-        .data(nodes)
+        .data(d3Nodes)
         .join('g')
         .call(drag(simulation) as any)
         .on('click', (event, d) => {
@@ -240,7 +146,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
           });
           link.attr('opacity', l => (l.source === d || l.target === d) ? 1 : 0.1);
           node.attr('opacity', n => {
-            const isConnected = links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
+            const isConnected = d3Links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
             return (n === d || isConnected) ? 1 : 0.2;
           });
         })
@@ -310,8 +216,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ onNodeClick, currentUse
       return () => simulation.stop();
     };
 
-    fetchData();
-  }, [currentUserId, onNodeClick, isDrifting, driftData]);
+    drawGraph();
+  }, [nodes, links, onNodeClick, isDrifting]);
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {

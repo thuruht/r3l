@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconX, IconCheck } from '@tabler/icons-react';
+import Skeleton from './Skeleton';
 
 interface InboxProps {
   onClose: () => void;
@@ -121,14 +122,20 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         </button>
       </div>
 
-      {loading && <div style={{ fontSize: '0.8em', color: '#666' }}>Scanning frequencies...</div>}
+      {loading && (
+        <div style={{ padding: '10px' }}>
+            <Skeleton height="20px" width="90%" marginBottom="10px" />
+            <Skeleton height="20px" width="80%" marginBottom="10px" />
+            <Skeleton height="20px" width="95%" marginBottom="10px" />
+        </div>
+      )}
 
       <div ref={listRef} style={{ maxHeight: '300px', overflowY: 'auto' }}>
         {notifications.length === 0 && !loading && (
           <div style={{ padding: '10px', textAlign: 'center', color: '#444', fontSize: '0.8em' }}>Silence...</div>
         )}
         
-        {notifications.map(n => (
+        {!loading && notifications.map(n => (
           <div key={n.id} style={{ 
             padding: '10px', 
             marginBottom: '8px', 

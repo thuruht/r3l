@@ -115,3 +115,20 @@ input:focus, textarea:focus {
   gap: 0.5rem;
   width: 300px;
 }
+@keyframes radar-pulse {
+  0% { r: 0; opacity: 0.8; stroke-width: 2px; }
+  100% { r: 500; opacity: 0; stroke-width: 0px; }
+}
+.radar-scan {
+  animation: radar-pulse 4s infinite linear;
+  transform-origin: center;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+.skeleton-pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}

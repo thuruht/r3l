@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IconRadar2, IconHelp, IconList, IconChartCircles } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
@@ -35,6 +35,7 @@ function Main() {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const { showToast } = useToast();
+  const wsRef = useRef<WebSocket | null>(null);
 
   const { nodes, links, refresh: refreshNetwork } = useNetworkData({
     currentUserId: currentUser?.id || null,
@@ -42,31 +43,60 @@ function Main() {
     driftData
   });
 
-  // Poll for notifications
+  // WebSocket Connection and Handler
   useEffect(() => {
-    if (!isAuthenticated) return;
-    
-    const fetchUnread = async () => {
-      try {
-        const res = await fetch('/api/notifications');
-        if (res.ok) {
-          const data = await res.json();
-          const unread = data.notifications.filter((n: any) => n.is_read === 0).length;
-          if (unread > unreadCount) {
-             showToast(`New signal received (${unread - unreadCount})`, 'info');
-             refreshNetwork(); // Refresh graph on new notification/connection
-          }
-          setUnreadCount(unread);
-        }
-      } catch (e) {
-        console.error("Bg fetch error", e);
-      }
-    };
+    if (isAuthenticated && currentUser) {
+      // Determine WebSocket URL
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/do-websocket`;
+      
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [isAuthenticated, unreadCount, refreshNetwork, showToast]);
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+      };
+
+      ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
+
+        if (message.type === 'new_notification') {
+          setUnreadCount(prev => prev + 1);
+          showToast('New signal received!', 'info');
+          // Refresh network data if it might be a new connection
+          if (message.notificationType === 'sym_request' || message.notificationType === 'sym_accepted') {
+            refreshNetwork();
+          }
+        }
+      };
+
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        wsRef.current = null;
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        showToast('WebSocket connection error', 'error');
+      };
+
+      return () => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.close();
+        }
+      };
+    } else {
+      // Close WebSocket if not authenticated
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    }
+  }, [isAuthenticated, currentUser, showToast, refreshNetwork]); // Depend on isAuthenticated and currentUser
+
+  // Remove polling:
+  // The polling useEffect was here, but now it's removed since we have WebSockets.
 
   useEffect(() => {
     // Check if user is already logged in (e.g., via existing cookie)
@@ -173,6 +203,10 @@ function Main() {
       setIsAuthenticated(false);
       setCurrentUser(null);
       showToast('Logged out', 'info');
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     } catch (error) {
       console.error('Logout error:', error);
     }

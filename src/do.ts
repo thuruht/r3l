@@ -1,88 +1,115 @@
-import { DurableObject } from "cloudflare:workers";
+// This is the Durable Object (DO) code.
+// It is separate from the Worker code and runs in its own isolated environment.
 
-interface Env {
-  // Bindings will be added here by the runtime from wrangler.jsonc
-  // For example, KV, D1, R2, and other Durable Objects.
-  DO_NAMESPACE: DurableObjectNamespace;
+// In a production app, you would have logic here to manage WebSocket connections,
+// send messages to connected clients, and potentially interact with D1 or KV.
+
+interface Session {
+  ws: WebSocket;
+  userId: number; // The ID of the user connected to this session
 }
 
-// RelfDO for real-time collaboration (DMs, shared edits)
-export class RelfDO extends DurableObject {
-  private connectedSockets: WebSocket[] = [];
+export class RelfDO {
+  state: DurableObjectState;
+  sessions: Session[]; 
 
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    // You can access storage here if needed: this.ctx.storage
+  constructor(state: DurableObjectState, env: Env) {
+    this.state = state;
+    this.sessions = [];
   }
 
-  async fetch(request: Request): Promise<Response> {
+  async fetch(request: Request) {
     const url = new URL(request.url);
 
     switch (url.pathname) {
-      case "/websocket":
-        if (request.headers.get("Upgrade") !== "websocket") {
+      case '/websocket': 
+        if (request.headers.get("Upgrade") != "websocket") {
           return new Response("Expected Upgrade: websocket", { status: 426 });
         }
 
-        const webSocketPair = new WebSocketPair();
-        const [client, server] = Object.values(webSocketPair);
+        const userIdHeader = request.headers.get('X-User-ID');
+        if (!userIdHeader) {
+            return new Response("User ID missing from WebSocket upgrade request", { status: 400 });
+        }
+        const userId = parseInt(userIdHeader);
+        if (isNaN(userId)) {
+            return new Response("Invalid User ID from WebSocket upgrade request", { status: 400 });
+        }
 
-        this.ctx.acceptWebSocket(server);
-        this.connectedSockets.push(server); // Keep track of connected sockets
+        const pair = new WebSocketPair();
+        this.handleSession(pair.server, userId);
 
-        return new Response(null, {
-          status: 101,
-          webSocket: client,
-        });
+        return new Response(null, { status: 101, webSocket: pair.client });
 
-      case "/broadcast":
-        const message = await request.text();
-        this.broadcast(message);
-        return new Response("Broadcasted message", { status: 200 });
+      case '/notify': // Endpoint for the Worker to send notifications to the DO
+        if (request.method !== 'POST') {
+          return new Response("Method Not Allowed", { status: 405 });
+        }
+        try {
+          const { userId: targetUserId, message } = await request.json();
+          this.notifyUser(targetUserId, message);
+          return new Response("Notification sent", { status: 200 });
+        } catch (err: any) {
+          console.error("Error processing notify request:", err);
+          return new Response(`Error: ${err.message}`, { status: 500 });
+        }
 
       default:
-        return new Response("Not Found", { status: 404 });
+        return new Response("Not found", { status: 404 });
     }
   }
 
-  // Handle messages from connected WebSockets
-  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    // For now, just echo the message back and broadcast to others
-    if (typeof message === 'string') {
-      ws.send(`[You said]: ${message}`);
-      this.broadcast(`[Someone else said]: ${message}`, ws);
-    } else {
-      // Handle ArrayBuffer messages if necessary
-      ws.send("Binary messages not yet supported.");
-    }
+  handleSession(webSocket: WebSocket, userId: number) {
+    webSocket.accept();
+    this.sessions.push({ ws: webSocket, userId });
+
+    webSocket.addEventListener("message", async msg => {
+      try {
+        const data = JSON.parse(msg.data as string);
+        // Client can send messages, e.g., to confirm receipt or update state
+        // For now, let's echo or ignore client messages
+        // webSocket.send(JSON.stringify({ type: 'echo', data: data }));
+      } catch (err: any) {
+        webSocket.send(JSON.stringify({ error: err.message }));
+      }
+    });
+
+    webSocket.addEventListener("close", async evt => {
+      console.log(`WebSocket closed for user ${userId}: ${evt.code} ${evt.reason}`);
+      this.sessions = this.sessions.filter(s => s.ws !== webSocket);
+    });
+
+    webSocket.addEventListener("error", async err => {
+      console.error(`WebSocket error for user ${userId}:`, err);
+    });
   }
 
-  // Handle WebSocket closure
-  async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean): Promise<void> {
-    console.log(`WebSocket closed: ${code} ${reason} ${wasClean}`);
-    this.connectedSockets = this.connectedSockets.filter(socket => socket !== ws);
-    this.broadcast(`A user disconnected. Total users: ${this.connectedSockets.length}`);
-  }
-
-  // Handle WebSocket errors
-  async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-    console.error("WebSocket error:", error);
-    this.connectedSockets = this.connectedSockets.filter(socket => socket !== ws);
-    this.broadcast(`A user disconnected due to error. Total users: ${this.connectedSockets.length}`);
-    ws.close(1011, "WebSocket error");
-  }
-
-  // Broadcast a message to all connected WebSockets, excluding the sender if provided
-  private broadcast(message: string, sender?: WebSocket): void {
-    this.connectedSockets.forEach(socket => {
-      if (socket !== sender) {
+  // Method to send messages to all connected sessions for a specific user
+  notifyUser(targetUserId: number, message: any) {
+    const jsonMessage = JSON.stringify(message);
+    this.sessions = this.sessions.filter(session => {
+      if (session.userId === targetUserId) {
         try {
-          socket.send(message);
+          session.ws.send(jsonMessage);
+          return true;
         } catch (err) {
-          console.error("Failed to send message to socket:", err);
-          // Handle broken connections, e.g., remove them from the list
-          this.connectedSockets = this.connectedSockets.filter(s => s !== socket);
+          // This session is no longer active, remove it
+          return false;
         }
+      }
+      return true; // Keep sessions for other users
+    });
+  }
+
+  // The original broadcast method, modified to only send to other users
+  broadcast(message: any) {
+    const jsonMessage = JSON.stringify(message);
+    this.sessions = this.sessions.filter(session => {
+      try {
+        session.ws.send(jsonMessage);
+        return true;
+      } catch (err) {
+        return false;
       }
     });
   }

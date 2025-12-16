@@ -224,15 +224,24 @@ app.get('/api/users/me', async (c) => {
 });
 
 // Durable Object WebSocket endpoint
-app.get('/api/do-websocket', upgradeWebSocket((c) => {
+app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
   try {
     // Get a Durable Object instance
     const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
     const doStub = c.env.DO_NAMESPACE.get(doId);
 
+    // Pass user_id to DO in a custom header
+    const newRequest = new Request(c.req.url, {
+        headers: c.req.raw.headers, // Copy existing headers
+        method: c.req.raw.method,
+        body: c.req.raw.body,
+        // ... and other properties of c.req.raw as needed
+    });
+    newRequest.headers.set('X-User-ID', c.get('user_id').toString());
+
     // Forward the WebSocket request to the Durable Object
     // The DO's fetch method will handle the websocket upgrade
-    return doStub.fetch(c.req.raw);
+    return doStub.fetch(newRequest);
   } catch (error) {
     console.error("Error upgrading WebSocket to DO:", error);
     return c.text('WebSocket upgrade failed', 500);
@@ -276,6 +285,7 @@ app.use('/api/communiques/*', authMiddleware);
 // --- Notification Helpers ---
 
 async function createNotification(
+  env: Env, // Pass env to access DO_NAMESPACE
   db: D1Database, 
   user_id: number, 
   type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert', 
@@ -286,8 +296,22 @@ async function createNotification(
     await db.prepare(
       'INSERT INTO notifications (user_id, actor_id, type, payload) VALUES (?, ?, ?, ?)'
     ).bind(user_id, actor_id || null, type, JSON.stringify(payload)).run();
+
+    // Notify the user via Durable Object WebSocket
+    const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
+    const doStub = env.DO_NAMESPACE.get(doId);
+    
+    await doStub.fetch('http://do-stub/notify', { // URL is arbitrary, DO fetch uses path
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        userId: user_id, 
+        message: { type: 'new_notification', notificationType: type, actorId: actor_id, payload } 
+      }),
+    });
+
   } catch (e) {
-    console.error("Failed to create notification:", e);
+    console.error("Failed to create notification or notify via DO:", e);
   }
 }
 
@@ -407,7 +431,7 @@ app.post('/api/relationships/sym-request', async (c) => {
 
     if (success) {
       // Trigger notification for target
-      await createNotification(c.env.DB, target_user_id, 'sym_request', source_user_id);
+      await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id);
       return c.json({ message: 'Sym request sent successfully' });
     } else {
       return c.json({ error: 'Failed to send sym request' }, 500);
@@ -475,7 +499,7 @@ app.post('/api/relationships/accept-sym-request', async (c) => {
 
     await c.env.DB.prepare('COMMIT;').run();
     // Trigger notification for the source user (who sent the request originally)
-    await createNotification(c.env.DB, source_user_id, 'sym_accepted', target_user_id);
+    await createNotification(c.env, c.env.DB, source_user_id, 'sym_accepted', target_user_id);
     
     return c.json({ message: 'Sym request accepted and mutual connection established' });
 
@@ -923,7 +947,7 @@ app.post('/api/files/:id/share', async (c) => {
     }
 
     // 4. Send Notification
-    await createNotification(c.env.DB, target_user_id, 'file_shared', user_id, {
+    await createNotification(c.env, c.env.DB, target_user_id, 'file_shared', user_id, {
       file_id: file.id,
       filename: file.filename
     });

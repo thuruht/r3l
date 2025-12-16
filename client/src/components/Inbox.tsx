@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconX, IconCheck } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChecklist } from '@tabler/icons-react'; // Added IconChecklist
 import Skeleton from './Skeleton';
+import { useToast } from '../context/ToastContext'; // Added
 
 interface InboxProps {
   onClose: () => void;
@@ -22,6 +23,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast(); // Added
 
   useEffect(() => {
     fetchNotifications();
@@ -60,6 +62,20 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     }
   };
 
+  const handleMarkAllRead = async () => {
+    try {
+      const res = await fetch('/api/notifications/read-all', { method: 'PUT' });
+      if (res.ok) {
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+        showToast('All notifications marked as read.', 'success');
+      } else {
+        showToast('Failed to mark all as read.', 'error');
+      }
+    } catch (err) {
+      showToast('Error marking all as read.', 'error');
+    }
+  };
+
   const handleAction = async (notif: Notification, action: 'accept' | 'decline') => {
     if (notif.type === 'sym_request' && action === 'accept' && notif.actor_id) {
       try {
@@ -69,14 +85,14 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
           body: JSON.stringify({ source_user_id: notif.actor_id })
         });
         if (res.ok) {
-           alert('Connection established.');
+           showToast('Connection established.', 'success');
            markAsRead(notif.id);
         } else {
            const err = await res.json();
-           alert(err.error || 'Failed to accept');
+           showToast(err.error || 'Failed to accept', 'error');
         }
       } catch (err) {
-        alert('Error processing request');
+        showToast('Error processing request', 'error');
       }
     }
   };
@@ -117,9 +133,14 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
         <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Inbox</h4>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex' }}>
-            <IconX size={18} />
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }} title="Mark all as read">
+                <IconChecklist size={18} />
+            </button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', padding: '4px', display: 'flex' }}>
+                <IconX size={18} />
+            </button>
+        </div>
       </div>
 
       {loading && (

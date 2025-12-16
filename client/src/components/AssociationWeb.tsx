@@ -144,16 +144,46 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
             y: event.clientY,
             content: d.name
           });
-          link.attr('opacity', l => (l.source === d || l.target === d) ? 1 : 0.1);
-          node.attr('opacity', n => {
-            const isConnected = d3Links.some(l => (l.source === d && l.target === n) || (l.target === d && l.source === n));
-            return (n === d || isConnected) ? 1 : 0.2;
+
+          // Highlight the hovered node and its direct neighbors
+          const neighbors = new Set<string>();
+          const relatedLinks = new Set<D3Link>();
+
+          d3Links.forEach(l => {
+            if ((l.source as D3Node).id === d.id) {
+              neighbors.add((l.target as D3Node).id);
+              relatedLinks.add(l);
+            } else if ((l.target as D3Node).id === d.id) {
+              neighbors.add((l.source as D3Node).id);
+              relatedLinks.add(l);
+            }
           });
+          neighbors.add(d.id); // Add self to neighbors
+
+          node.attr('opacity', n => neighbors.has(n.id) ? 1 : 0.1)
+              .select('circle:nth-child(2)') // The stroke circle
+              .attr('stroke', n => (n.id === d.id || neighbors.has(n.id)) ? 'var(--accent-sym)' : (n.group === 'me' ? '#ffffffcc' : 'var(--text-secondary)'))
+              .attr('stroke-width', n => (n.id === d.id || neighbors.has(n.id)) ? 2.5 : 1.5);
+
+          link.attr('opacity', l => relatedLinks.has(l) ? 1 : 0.05)
+              .attr('stroke', l => relatedLinks.has(l) ? 'var(--accent-sym-bright)' : (l.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)'))
+              .attr('stroke-width', l => relatedLinks.has(l) ? 2.5 : (l.type === 'sym' ? 2 : 1));
         })
         .on('mouseout', () => {
           setTooltip(prev => ({ ...prev, content: null }));
-          link.attr('opacity', (d) => d.type === 'sym' ? 0.8 : (d.type === 'drift' ? 0.2 : 0.4));
-          node.attr('opacity', d => d.group.startsWith('drift') ? 0.6 : 1);
+          node.attr('opacity', d => d.group.startsWith('drift') ? 0.6 : 1)
+              .select('circle:nth-child(2)')
+              .attr('stroke', (d) => {
+                 if (d.group === 'me') return '#ffffffcc';
+                 if (d.group === 'sym') return 'var(--accent-sym)';
+                 if (d.group === 'drift_file') return 'transparent';
+                 if (d.group === 'drift_user') return '#777';
+                 return 'var(--text-secondary)';
+              })
+              .attr('stroke-width', 1.5);
+          link.attr('opacity', (d) => d.type === 'sym' ? 0.8 : (d.type === 'drift' ? 0.2 : 0.4))
+              .attr('stroke', (d) => d.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)')
+              .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1);
         });
 
       // Initial Opacity for drift nodes

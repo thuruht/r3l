@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconEdit, IconDeviceFloppy, IconX } from '@tabler/icons-react';
+import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation } from '@tabler/icons-react'; // Added icons
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
+import { useToast } from '../context/ToastContext'; // Added
 
 interface CommuniqueProps {
   userId: string;
   isOwner: boolean;
+  currentUser: { id: number; username: string; avatar_url?: string } | null;
+  onUpdateUser: (user: { id: number; username: string; avatar_url?: string }) => void; // Added
 }
 
 interface CommuniqueData {
@@ -15,20 +18,81 @@ interface CommuniqueData {
   updated_at: string | null;
 }
 
-const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
+const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser }) => {
   const [data, setData] = useState<CommuniqueData>({ content: '', theme_prefs: '{}', updated_at: null });
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
   
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null); // Added
+  const { showToast } = useToast(); // Added
 
   useEffect(() => {
     fetchCommunique();
   }, [userId]);
+
+  // Fetch relationship status
+  useEffect(() => {
+    const fetchRelationshipStatus = async () => {
+      if (!currentUser || !userId || isOwner) { // No relationship to fetch if it's our own communique
+        setRelationshipStatus(null);
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/relationships');
+        if (res.ok) {
+          const { outgoing, incoming, mutual } = await res.json();
+          
+          const targetId = parseInt(userId);
+
+          // Check if currentUser follows this userId
+          const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow');
+          if (isFollowing) {
+            setRelationshipStatus('following');
+            return;
+          }
+
+          // Check for pending sym request from currentUser to this userId
+          const symRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
+          if (symRequested) {
+            setRelationshipStatus('sym_requested');
+            return;
+          }
+
+          // Check for incoming sym request from this userId to currentUser
+          const incomingSymRequest = incoming.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
+          if (incomingSymRequest) {
+            setRelationshipStatus('incoming_sym_request');
+            return;
+          }
+
+          // Check for mutual (sym) connection
+          const isMutual = mutual.some((r: any) => r.user_id === targetId);
+          if (isMutual) {
+            setRelationshipStatus('sym_accepted');
+            return;
+          }
+          
+          setRelationshipStatus('none'); // No specific relationship found
+        } else {
+          showToast('Failed to load relationship status.', 'error');
+          setRelationshipStatus(null);
+        }
+      } catch (err) {
+        console.error("Failed to load relationship status", err);
+        showToast('Error loading relationship status.', 'error');
+        setRelationshipStatus(null);
+      }
+    };
+
+    fetchRelationshipStatus();
+  }, [userId, currentUser, isOwner, showToast]);
 
   useEffect(() => {
     if (isEditing && editorRef.current) {
@@ -62,35 +126,130 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
     }
   };
 
-  const handleSave = async () => {
-    setSaveStatus('saving');
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+        return;
+    }
+    const file = event.target.files[0];
+    if (!currentUser) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
     try {
-      const themePrefs = { custom_css: editCSS };
-      const res = await fetch('/api/communiques', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editContent, theme_prefs: JSON.stringify(themePrefs) })
-      });
-      if (res.ok) {
-        setSaveStatus('saved');
-        setData(prev => ({
-            ...prev,
-            content: editContent,
-            theme_prefs: JSON.stringify(themePrefs),
-            updated_at: new Date().toISOString()
-        }));
-        setIsEditing(false);
-        setTimeout(() => setSaveStatus('idle'), 2000);
-      } else {
-        setSaveStatus('error');
-      }
+        const res = await fetch('/api/users/me/avatar', {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast('Avatar uploaded successfully!', 'success');
+            // Update the currentUser state in App.tsx
+            onUpdateUser({ ...currentUser, avatar_url: data.avatar_url });
+        } else {
+            const err = await res.json();
+            showToast(err.error || 'Failed to upload avatar', 'error');
+        }
     } catch (err) {
-      setSaveStatus('error');
+        showToast('Network error during avatar upload', 'error');
+    } finally {
+        // Clear the file input
+        event.target.value = '';
     }
   };
 
-  // Helper to safely extract CSS for rendering
-  const getRenderCSS = () => {
+    const handleSave = async () => {
+      setSaveStatus('saving');
+      try {
+        const themePrefs = { custom_css: editCSS };
+        const res = await fetch('/api/communiques', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: editContent, theme_prefs: JSON.stringify(themePrefs) })
+        });
+        if (res.ok) {
+          setSaveStatus('saved');
+          setData(prev => ({ 
+              ...prev, 
+              content: editContent, 
+              theme_prefs: JSON.stringify(themePrefs),
+              updated_at: new Date().toISOString() 
+          }));
+          setIsEditing(false);
+          showToast('Communique updated!', 'success');
+          setTimeout(() => setSaveStatus('idle'), 2000);
+        } else {
+          setSaveStatus('error');
+          showToast('Failed to update communique.', 'error');
+        }
+      } catch (err) {
+        setSaveStatus('error');
+        showToast('Error updating communique.', 'error');
+      }
+    };
+  
+    const performRelationshipAction = async (endpoint: string, method: string = 'POST', body?: any) => {
+      if (!currentUser || !userId) return;
+      const targetUserId = parseInt(userId);
+  
+      try {
+        const res = await fetch(endpoint.replace(':target_user_id', targetUserId.toString()), {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: body ? JSON.stringify(body) : undefined
+        });
+        if (res.ok) {
+          showToast('Relationship updated!', 'success');
+          return true;
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to update relationship.', 'error');
+          return false;
+        }
+      } catch (err) {
+        showToast('Network error updating relationship.', 'error');
+        return false;
+      }
+    };
+  
+    const handleFollow = async () => {
+      if (await performRelationshipAction('/api/relationships/follow', 'POST', { target_user_id: parseInt(userId) })) {
+        setRelationshipStatus('following');
+      }
+    };
+  
+    const handleUnfollow = async () => {
+      if (await performRelationshipAction('/api/relationships/:target_user_id', 'DELETE')) {
+        setRelationshipStatus('none');
+      }
+    };
+  
+    const handleSymRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/sym-request', 'POST', { target_user_id: parseInt(userId) })) {
+        setRelationshipStatus('sym_requested');
+      }
+    };
+  
+    const handleCancelSymRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/:target_user_id', 'DELETE')) {
+        setRelationshipStatus('none');
+      }
+    };
+  
+    const handleAcceptSymRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/accept-sym-request', 'POST', { source_user_id: parseInt(userId) })) {
+        setRelationshipStatus('sym_accepted');
+      }
+    };
+  
+    const handleRemoveSym = async () => {
+      if (await performRelationshipAction('/api/relationships/:target_user_id', 'DELETE')) {
+        setRelationshipStatus('none');
+      }
+    };
+  
+    // Helper to safely extract CSS for rendering  const getRenderCSS = () => {
       try {
           const prefs = JSON.parse(data.theme_prefs || '{}');
           return prefs.custom_css || '';
@@ -115,6 +274,30 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>Communique</h4>
+        {isOwner && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    ref={avatarInputRef} 
+                    style={{ display: 'none' }} 
+                    onChange={handleAvatarUpload}
+                />
+                {currentUser?.avatar_url && (
+                  <img 
+                    src={currentUser.avatar_url} 
+                    alt="Avatar" 
+                    style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                  />
+                )}
+                <button 
+                    onClick={() => avatarInputRef.current?.click()} 
+                    style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                    <IconUserPlus size={14} /> Upload Avatar
+                </button>
+            </div>
+        )}
         {data.updated_at && (
           <small style={{ color: 'var(--text-secondary)', fontSize: '0.7em' }}>
             Last signal: {new Date(data.updated_at).toLocaleDateString()}
@@ -192,6 +375,51 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner }) => {
         <button onClick={() => setIsEditing(true)} style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
           <IconEdit size={14} /> Edit Signal
         </button>
+      )}
+      
+      {!isOwner && currentUser && ( // Show relationship buttons only if not owner and logged in
+        <div style={{ marginTop: '15px', display: 'flex', gap: '10px' }}>
+          {relationshipStatus === 'none' && (
+            <>
+              <button onClick={handleFollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <IconUserPlus size={14} /> Follow
+              </button>
+              <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <IconLink size={14} /> Request Sym
+              </button>
+            </>
+          )}
+          {relationshipStatus === 'following' && (
+            <>
+              <button onClick={handleUnfollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <IconUserMinus size={14} /> Unfollow
+              </button>
+              <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <IconLink size={14} /> Request Sym
+              </button>
+            </>
+          )}
+          {relationshipStatus === 'sym_requested' && (
+            <button onClick={handleCancelSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <IconLinkOff size={14} /> Cancel Sym Request
+            </button>
+          )}
+          {relationshipStatus === 'incoming_sym_request' && (
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <button onClick={handleAcceptSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-sym)' }}>
+                <IconCheck size={14} /> Accept Sym
+              </button>
+              <button onClick={handleCancelSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <IconX size={14} /> Decline Sym
+              </button>
+            </div>
+          )}
+          {relationshipStatus === 'sym_accepted' && (
+            <button onClick={handleRemoveSym} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+              <IconCirclesRelation size={14} /> Remove Sym
+            </button>
+          )}
+        </div>
       )}
       
       <Artifacts userId={userId} isOwner={isOwner} />

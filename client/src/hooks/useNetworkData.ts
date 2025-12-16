@@ -17,11 +17,13 @@ export interface NetworkLink {
 
 interface UseNetworkDataProps {
   currentUserId: number | null;
+  meUsername: string | undefined; // Added
+  meAvatarUrl: string | undefined; // Added
   isDrifting: boolean;
   driftData: { users: any[], files: any[] };
 }
 
-export const useNetworkData = ({ currentUserId, isDrifting, driftData }: UseNetworkDataProps) => {
+export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrifting, driftData }: UseNetworkDataProps) => {
   const [nodes, setNodes] = useState<NetworkNode[]>([]);
   const [links, setLinks] = useState<NetworkLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -43,8 +45,8 @@ export const useNetworkData = ({ currentUserId, isDrifting, driftData }: UseNetw
       nodeMap.set(currentUserId.toString(), {
         id: currentUserId.toString(),
         group: 'me',
-        name: 'Me', 
-        avatar_url: undefined // TODO: Pass user avatar from App
+        name: meUsername || 'Me', 
+        avatar_url: meAvatarUrl
       });
 
       const processNode = (r: any, group: NetworkNode['group']) => {

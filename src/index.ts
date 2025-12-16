@@ -22,6 +22,7 @@ interface Env {
   DO_NAMESPACE: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
+  R2_ACCOUNT_ID: string; // Added
 }
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
@@ -73,6 +74,16 @@ async function checkRateLimit(c: any, key: string, limit: number, windowSeconds:
   }
 }
 
+// --- R2 Helper ---
+function getR2PublicUrl(c: any, r2_key: string): string {
+    // This assumes a public R2 bucket, or a custom domain setup.
+    // The bucket name and R2_ACCOUNT_ID should be available in the environment.
+    // Example: https://pub-{bucket_name}.{account_id}.r2.dev/{key}
+    // Or if a custom domain is set up: https://{custom_domain}/{key}
+    // For now, using the pub- R2.dev domain.
+    return `https://pub-${c.env.BUCKET.name}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
+}
+
 // --- Auth Routes ---
 
 app.post('/api/register', async (c) => {
@@ -87,9 +98,10 @@ app.post('/api/register', async (c) => {
     const verificationToken = crypto.randomUUID();
     
     // Store the hash, salt, email, and verification token
+    // Store the hash, salt, email, and verification token
     const { success } = await c.env.DB.prepare(
       'INSERT INTO users (username, password, salt, email, verification_token, avatar_url) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(username, hash, salt, email, verificationToken, avatar_url || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiB2aWV3Qm94PSIwIDAgMTUwIDE1MCI+PHJlY3Qgd2lkdGg9IjE1MCIgaGVpZ2h0PSIxNTAiIGZpbGw9IiMzMzMiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9ImFyaWFsIiBmb250LXNpemU9IjUwIiBmaWxsPSIjNzc3IiBkeT0iLjNlbSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+PzwvdGV4dD48L3N2Zz4=').run();
+    ).bind(username, hash, salt, email, verificationToken, avatar_url || 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg').run();
     
     if (success) {
       // Send verification email
@@ -162,7 +174,11 @@ app.post('/api/login', async (c) => {
     });
 
     return c.json({ 
-      user: { id: user.id, username: user.username, avatar_url: user.avatar_url } 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+      } 
     });
 
   } catch (e: any) {
@@ -217,7 +233,13 @@ app.get('/api/users/me', async (c) => {
 
     if (!user) return c.json({ error: 'User not found' }, 404);
 
-    return c.json({ user });
+    return c.json({ 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        avatar_url: user.avatar_url && user.avatar_url.startsWith('avatars/') ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url 
+      } 
+    });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
   }
@@ -351,6 +373,21 @@ app.put('/api/notifications/:id/read', async (c) => {
     return c.json({ success: true });
   } catch (e) {
     return c.json({ error: 'Failed to update notification' }, 500);
+  }
+});
+
+// PUT /api/notifications/read-all: Mark all notifications as read
+app.put('/api/notifications/read-all', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    await c.env.DB.prepare(
+      'UPDATE notifications SET is_read = 1 WHERE user_id = ?'
+    ).bind(user_id).run();
+    return c.json({ success: true });
+  } catch (e) {
+    console.error("Error marking all notifications as read:", e);
+    return c.json({ error: 'Failed to mark all notifications as read' }, 500);
   }
 });
 
@@ -1050,6 +1087,50 @@ app.post('/api/files/:id/archive', async (c) => {
   } catch (e: any) {
     console.error("Error archiving file:", e);
     return c.json({ error: 'Failed to archive file' }, 500);
+  }
+});
+
+// POST /api/users/me/avatar: Upload user avatar to R2
+app.post('/api/users/me/avatar', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    const formData = await c.req.parseBody();
+    const avatarFile = formData['avatar'] as File;
+
+    if (!avatarFile) {
+      return c.json({ error: 'No avatar file uploaded' }, 400);
+    }
+
+    // Generate a unique key for R2 for avatars
+    const r2_key = `avatars/${user_id}/${crypto.randomUUID()}-${avatarFile.name}`;
+    
+    // Upload to R2
+    await c.env.BUCKET.put(r2_key, avatarFile.stream(), {
+      httpMetadata: {
+        contentType: avatarFile.type,
+      },
+      customMetadata: {
+        originalName: avatarFile.name,
+        userId: String(user_id)
+      }
+    });
+
+    // Update user's avatar_url in D1
+    const { success } = await c.env.DB.prepare(
+      'UPDATE users SET avatar_url = ? WHERE id = ?'
+    ).bind(r2_key, user_id).run(); // Store R2 key as avatar_url
+
+    if (success) {
+      const public_avatar_url = getR2PublicUrl(c, r2_key);
+      return c.json({ message: 'Avatar uploaded successfully', avatar_url: public_avatar_url }); 
+    } else {
+      return c.json({ error: 'Failed to update avatar URL in database' }, 500);
+    }
+
+  } catch (e: any) {
+    console.error("Error uploading avatar:", e);
+    return c.json({ error: 'Avatar upload failed' }, 500);
   }
 });
 

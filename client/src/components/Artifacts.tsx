@@ -3,6 +3,8 @@ import gsap from 'gsap';
 import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
+import ConfirmModal from './ConfirmModal'; // Added
+import { useToast } from '../context/ToastContext'; // Added
 
 interface ArtifactsProps {
   userId: string;
@@ -28,8 +30,10 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null); // Added
   
   const listRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast(); // Added
 
   useEffect(() => {
     fetchFiles();
@@ -66,6 +70,14 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
   };
 
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUpload({ target: { files: e.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+    }
+  };
+
   const fetchMutuals = async () => {
     try {
         const res = await fetch('/api/relationships');
@@ -88,6 +100,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         }
     } catch(e) {
         console.error("Failed to fetch mutuals", e);
+        showToast('Failed to load mutual connections.', 'error');
     }
   }
 
@@ -99,14 +112,14 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (res.ok) {
-            alert('Artifact shared.');
+            showToast('Artifact shared.', 'success');
             setSharingFileId(null);
         } else {
             const err = await res.json();
-            alert(err.error || 'Failed to share');
+            showToast(err.error || 'Failed to share', 'error');
         }
     } catch(e) {
-        alert('Error sharing file');
+        showToast('Error sharing artifact', 'error');
     }
   }
 
@@ -129,12 +142,15 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       if (res.ok) {
         await fetchFiles(); // Refresh list
+        showToast('Artifact uploaded successfully!', 'success');
       } else {
         const err = await res.json();
         setError(err.error || 'Upload failed');
+        showToast(err.error || 'Upload failed', 'error');
       }
     } catch (err) {
       setError('Upload failed');
+      showToast('Upload failed', 'error');
     }
     finally {
       setUploading(false);
@@ -142,20 +158,23 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
   };
 
-  const handleDelete = async (fileId: number) => {
-    if (!confirm('Dissolve this artifact?')) return;
+  const handleDelete = async () => {
+    if (confirmDeleteFileId === null) return;
 
     try {
-      const res = await fetch(`/api/files/${fileId}`, {
+      const res = await fetch(`/api/files/${confirmDeleteFileId}`, {
         method: 'DELETE'
       });
       if (res.ok) {
-        setFiles(prev => prev.filter(f => f.id !== fileId));
+        setFiles(prev => prev.filter(f => f.id !== confirmDeleteFileId));
+        showToast('Artifact dissolved.', 'success');
       } else {
-        alert('Failed to delete');
+        showToast('Failed to dissolve artifact', 'error');
       }
     } catch (err) {
-      alert('Error deleting file');
+      showToast('Error dissolving artifact', 'error');
+    } finally {
+        setConfirmDeleteFileId(null);
     }
   };
 
@@ -292,7 +311,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                     <IconShare size={14} />
                 </button>
                 <button 
-                  onClick={(e) => { e.stopPropagation(); handleDelete(file.id); }}
+                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
                   style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
                   title="Delete"
                 >
@@ -325,12 +344,16 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       {isOwner && (
         <div style={{ marginTop: '15px' }}>
           <label 
+            htmlFor="artifact-file-upload" // Added htmlFor
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} // Added
+            onDragLeave={() => setIsDragOver(false)} // Added
+            onDrop={handleDrop} // Added
             style={{ 
               display: 'inline-flex',
               alignItems: 'center',
               gap: '5px',
               padding: '6px 12px', 
-              border: '1px dashed var(--accent-sym)', 
+              border: `1px dashed ${isDragOver ? 'var(--accent-alert)' : 'var(--accent-sym)'}`, // Conditional style
               color: 'var(--accent-sym)',
               cursor: 'pointer',
               fontSize: '0.8em',
@@ -338,8 +361,9 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               opacity: uploading ? 0.5 : 1
             }}
           >
-            {uploading ? 'Uploading...' : <><IconUpload size={14} /> Upload Artifact</>}
+            {uploading ? 'Uploading...' : <><IconUpload size={14} /> {isDragOver ? 'Drop file here!' : 'Upload Artifact (or drag & drop)'}</>}
             <input 
+              id="artifact-file-upload" // Added id
               type="file" 
               onChange={handleUpload} 
               style={{ display: 'none' }} 
@@ -358,6 +382,14 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             onDownload={() => handleDownload(previewFile.id, previewFile.filename)}
         />
       )}
+      <ConfirmModal
+        isOpen={confirmDeleteFileId !== null}
+        onClose={() => setConfirmDeleteFileId(null)}
+        onConfirm={handleDelete}
+        title="Dissolve Artifact"
+        message="Are you sure you want to permanently dissolve this artifact? This action cannot be undone."
+        confirmText="Dissolve"
+      />
     </div>
   );
 };

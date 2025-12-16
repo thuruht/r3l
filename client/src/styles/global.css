@@ -5,6 +5,7 @@
   --text-secondary: #7f8a96ff;
   --accent-me: #ffffffff;
   --accent-sym: #4deeea00;
+  --accent-sym-bright: #4deeea; /* Added for highlighting */
   --accent-asym: #5b6670ff;
   --accent-alert: #ff4b4bff;
   --drawer-bg: #101217f2;
@@ -14,8 +15,24 @@
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: dark;
 }
+
+/* Dusk Theme */
+html.theme-dusk {
+  --bg-color: #1a1a2e; /* Slightly lighter dark */
+  --bg-mist: #2c2c54; /* Complementary mist */
+  --text-primary: #e0e0e0;
+  --text-secondary: #aaaaaa;
+  --accent-sym: #f7b73100; /* Orange-ish yellow */
+  --accent-sym-bright: #f7b731;
+  --accent-asym: #6a82fb; /* Purple-blue */
+  --accent-alert: #ff6b6b;
+  --drawer-bg: #1c1c38;
+  --border-color: #3f3f6e;
+  --glow-sym: 0 0 10px #f7b73166;
+  --glow-me: 0 0 15px #e0e0e080;
+}
+
 h1, h2, h3, h4, h5, h6, button, .font-heading {
   font-family: 'Rajdhani', sans-serif;
   text-transform: uppercase;

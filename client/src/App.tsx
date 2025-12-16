@@ -1,11 +1,11 @@
 // App.tsx
 
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { IconRadar2, IconHelp, IconList, IconChartCircles } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
-import Drawer from './components/Drawer';
-import Communique from './components/Communique';
+import CommuniquePage from './components/CommuniquePage';
 import Inbox from './components/Inbox';
 import FAQ from './components/FAQ';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -19,8 +19,6 @@ interface User {
 }
 
 function Main() {
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -37,6 +35,8 @@ function Main() {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const { showToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const { nodes, links, refresh: refreshNetwork } = useNetworkData({
     currentUserId: currentUser?.id || null,
@@ -44,31 +44,71 @@ function Main() {
     driftData
   });
 
-  // Poll for notifications
+  // Setup WebSocket for real-time notifications
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // Use current host, upgrade to wss:// if https://
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/api/do-websocket`;
+
+    let ws: WebSocket;
+    let reconnectTimer: any;
+
+    const connect = () => {
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        // Optionally send auth or init message if needed (though we rely on cookie)
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'new_notification') {
+            showToast(`New signal: ${data.notificationType}`, 'info');
+            setUnreadCount(prev => prev + 1);
+            refreshNetwork();
+          }
+        } catch (e) {
+          console.error("WS message parse error", e);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected, reconnecting...');
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error", err);
+        ws.close();
+      };
+    };
+
+    connect();
+
+    // Initial fetch of unread count
     const fetchUnread = async () => {
       try {
         const res = await fetch('/api/notifications');
         if (res.ok) {
           const data = await res.json();
           const unread = data.notifications.filter((n: any) => n.is_read === 0).length;
-          if (unread > unreadCount) {
-            showToast(`New signal received (${unread - unreadCount})`, 'info');
-            refreshNetwork(); // Refresh graph on new notification/connection
-          }
           setUnreadCount(unread);
         }
       } catch (e) {
         console.error("Bg fetch error", e);
       }
     };
-
     fetchUnread();
-    const interval = setInterval(fetchUnread, 30000); // Poll every 30s
-    return () => clearInterval(interval);
-  }, [isAuthenticated, unreadCount, refreshNetwork, showToast]);
+
+    return () => {
+      if (ws) ws.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+    };
+  }, [isAuthenticated, refreshNetwork, showToast]);
 
   useEffect(() => {
     // Check if user is already logged in (e.g., via existing cookie)
@@ -180,14 +220,8 @@ function Main() {
     }
   };
 
-  const openCommunique = (userId: string) => {
-    setSelectedNode(userId);
-    setIsDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setIsDrawerOpen(false);
-    setTimeout(() => setSelectedNode(null), 500); // Clear after animation
+  const onNodeClick = (userId: string) => {
+    navigate(`/communique/${userId}`);
   };
 
   const toggleDrift = () => {
@@ -233,69 +267,78 @@ function Main() {
     );
   }
 
+  // Hide UI overlays if on Communique page?
+  const isCommuniquePage = location.pathname.startsWith('/communique');
+
   return (
     <>
-      {/* UI Overlay for global controls */}
-      <div className="overlay-ui">
-        <h1>Rel F</h1>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          System Date: {new Date().toLocaleDateString()}
-        </p>
-        {currentUser && (
-          <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username}</span>
-            <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ marginRight: '10px' }}>
-              {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
-            </button>
-            <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ marginRight: '10px' }}>
-              <IconRadar2 size={18} />
-            </button>
-            <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ marginRight: '10px', position: 'relative' }}>
-              Inbox
-              {unreadCount > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: '-5px',
-                  right: '-5px',
-                  background: 'var(--accent-alert)',
-                  color: 'white',
-                  borderRadius: '50%',
-                  width: '18px',
-                  height: '18px',
-                  fontSize: '0.7rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-            <button onClick={() => setIsFAQOpen(true)} title="Help" style={{ marginRight: '10px', padding: '5px 10px' }}>
-              <IconHelp size={18} />
-            </button>
-            <button onClick={handleLogout}>Logout</button>
-          </div>
-        )}
-      </div>
+      {/* UI Overlay for global controls (Visible everywhere or just on home? Let's keep it visible for navigation) */}
+      {!isCommuniquePage && (
+        <div className="overlay-ui">
+            <h1>Rel F</h1>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            System Date: {new Date().toLocaleDateString()}
+            </p>
+            {currentUser && (
+            <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center' }}>
+                <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username}</span>
+                <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ marginRight: '10px' }}>
+                {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
+                </button>
+                <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ marginRight: '10px' }}>
+                <IconRadar2 size={18} />
+                </button>
+                <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ marginRight: '10px', position: 'relative' }}>
+                Inbox
+                {unreadCount > 0 && (
+                    <span style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    background: 'var(--accent-alert)',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '18px',
+                    height: '18px',
+                    fontSize: '0.7rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                    }}>
+                    {unreadCount}
+                    </span>
+                )}
+                </button>
+                <button onClick={() => setIsFAQOpen(true)} title="Help" style={{ marginRight: '10px', padding: '5px 10px' }}>
+                <IconHelp size={18} />
+                </button>
+                <button onClick={handleLogout}>Logout</button>
+            </div>
+            )}
+        </div>
+      )}
 
       {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
-      {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={openCommunique} />}
+      {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
 
-      {/* The Main Visualization or List */}
-      {viewMode === 'graph' ? (
-        <AssociationWeb
-          onNodeClick={onNodeClick} 
-          nodes={nodes}
-          links={links}
-          isDrifting={isDrifting}
-        />
-      ) : (
-        <NetworkList
-          nodes={nodes}
-          onNodeClick={onNodeClick} 
-          />
-        )}
+      <Routes>
+        <Route path="/" element={
+          viewMode === 'graph' ? (
+            <AssociationWeb
+              onNodeClick={onNodeClick}
+              nodes={nodes}
+              links={links}
+              isDrifting={isDrifting}
+            />
+          ) : (
+            <NetworkList
+              nodes={nodes}
+              onNodeClick={onNodeClick}
+              />
+          )
+        } />
+        <Route path="/communique/:userId" element={<CommuniquePage />} />
+      </Routes>
     </>
   );
 }

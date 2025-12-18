@@ -6,7 +6,8 @@
   "compatibility_flags": ["nodejs_compat"],
   "vars": {
     "R2_ACCOUNT_ID": "829921384c97e0dbbb34430e307d6b52",
-    "R2_BUCKET_NAME": "rr33ll-bucket"
+    "R2_BUCKET_NAME": "rr33ll-bucket",
+    "R2_PUBLIC_DOMAIN": "r3l-r2.distorted.work"
   },
   "observability": {
     "enabled": true,

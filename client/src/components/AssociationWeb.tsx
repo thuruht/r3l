@@ -7,6 +7,7 @@ interface AssociationWebProps {
   links: NetworkLink[];
   onNodeClick: (nodeId: string) => void;
   isDrifting: boolean;
+  onlineUserIds: Set<number>; // New prop
 }
 
 // Map NetworkNode/Link to D3 types
@@ -17,7 +18,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
@@ -34,11 +35,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
   }, []);
 
   useEffect(() => {
-    if (!svgRef.current || nodes.length === 0) {
+    if (!svgRef.current) {
       d3.select(svgRef.current).selectAll('*').remove();
-      // If we have no nodes but are drifting, we might still want the radar effect?
-      // But usually we have at least "Me".
-      // If nodes empty, return (or render empty state).
       if (nodes.length === 0 && !isDrifting) return;
     }
 
@@ -98,6 +96,16 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
       const feMerge = filter.append("feMerge");
       feMerge.append("feMergeNode").attr("in", "coloredBlur");
       feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+      const onlineGlow = defs.append("filter")
+          .attr("id", "online-glow");
+      onlineGlow.append("feGaussianBlur")
+          .attr("stdDeviation", "3")
+          .attr("result", "coloredBlur");
+      const onlineFeMerge = onlineGlow.append("feMerge");
+      onlineFeMerge.append("feMergeNode").attr("in", "coloredBlur");
+      onlineFeMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
 
       // Avatar Patterns
       d3Nodes.forEach(d => {
@@ -174,8 +182,16 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
           node.attr('opacity', n => neighbors.has(n.id) ? 1 : 0.1)
               .select('circle:nth-child(2)') // The stroke circle
-              .attr('stroke', n => (n.id === d.id || neighbors.has(n.id)) ? 'var(--accent-sym)' : (n.group === 'me' ? '#ffffffcc' : 'var(--text-secondary)'))
-              .attr('stroke-width', n => (n.id === d.id || neighbors.has(n.id)) ? 2.5 : 1.5);
+              .attr('stroke', n => {
+                if (n.id === d.id || neighbors.has(n.id)) return 'var(--accent-sym)';
+                if (n.online) return 'var(--accent-online)'; // Online but not hovered
+                if (n.group === 'me') return '#ffffffcc';
+                if (n.group === 'sym') return 'var(--accent-sym)';
+                if (n.group === 'drift_file') return 'transparent';
+                if (n.group === 'drift_user') return '#777';
+                return 'var(--text-secondary)';
+              })
+              .attr('stroke-width', n => (n.id === d.id || neighbors.has(n.id)) ? 2.5 : (n.online ? 2.0 : 1.5));
 
           link.attr('opacity', l => relatedLinks.has(l) ? 1 : 0.05)
               .attr('stroke', l => relatedLinks.has(l) ? 'var(--accent-sym-bright)' : (l.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)'))
@@ -186,13 +202,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
           node.attr('opacity', d => d.group.startsWith('drift') ? 0.6 : 1)
               .select('circle:nth-child(2)')
               .attr('stroke', (d) => {
+                 if (d.online) return 'var(--accent-online)';
                  if (d.group === 'me') return '#ffffffcc';
                  if (d.group === 'sym') return 'var(--accent-sym)';
                  if (d.group === 'drift_file') return 'transparent';
                  if (d.group === 'drift_user') return '#777';
                  return 'var(--text-secondary)';
               })
-              .attr('stroke-width', 1.5);
+              .attr('stroke-width', d => d.online ? 2.0 : 1.5);
           link.attr('opacity', (d) => d.type === 'sym' ? 0.8 : (d.type === 'drift' ? 0.2 : 0.4))
               .attr('stroke', (d) => d.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)')
               .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1);
@@ -218,7 +235,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
         })
         .attr('stroke', 'transparent')
         .attr('stroke-width', 20)
-        .style('filter', (d) => (d.group === 'sym' || d.group === 'me') ? 'url(#glow)' : 'none');
+        .style('filter', (d) => (d.group === 'sym' || d.group === 'me') ? 'url(#glow)' : (d.online ? 'url(#online-glow)' : 'none'));
 
       node.append('circle')
         .attr('r', (d) => {
@@ -228,13 +245,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
         })
         .attr('fill', 'transparent')
         .attr('stroke', (d) => {
+           if (d.online) return 'var(--accent-online)';
            if (d.group === 'me') return '#ffffffcc';
            if (d.group === 'sym') return 'var(--accent-sym)';
            if (d.group === 'drift_file') return 'transparent';
            if (d.group === 'drift_user') return '#777';
            return 'var(--text-secondary)';
         })
-        .attr('stroke-width', 1.5);
+        .attr('stroke-width', d => d.online ? 2.0 : 1.5);
 
       node.append('text')
         .text(d => d.name)
@@ -259,7 +277,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     };
 
     drawGraph();
-  }, [nodes, links, onNodeClick, isDrifting, dimensions]);
+  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions]); // Added onlineUserIds to dependencies
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {

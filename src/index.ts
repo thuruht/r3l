@@ -441,6 +441,30 @@ async function createNotification(
   }
 }
 
+async function broadcastSignal(
+  env: Env,
+  type: 'signal_communique' | 'signal_artifact',
+  userId: number,
+  payload: any = {}
+) {
+  try {
+    const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
+    const doStub = env.DO_NAMESPACE.get(doId);
+    
+    await doStub.fetch('http://do-stub/broadcast-signal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        type, 
+        userId, 
+        payload 
+      }),
+    });
+  } catch (e) {
+    console.error("Failed to broadcast signal:", e);
+  }
+}
+
 // --- Notification Routes ---
 
 // GET /api/notifications: List notifications
@@ -925,6 +949,10 @@ app.put('/api/communiques', async (c) => {
     ).bind(user_id, content, themePrefsStr).run();
 
     if (success) {
+      // Trigger Pulse Signal
+      await broadcastSignal(c.env, 'signal_communique', user_id, {
+          updated_at: new Date().toISOString()
+      });
       return c.json({ message: 'Communique updated successfully' });
     } else {
       return c.json({ error: 'Failed to update communique' }, 500);
@@ -1036,6 +1064,14 @@ app.post('/api/files', async (c) => {
     ).bind(user_id, r2_key, file.name, file.size, file.type, visibility, expires_at, parent_id).run();
 
     if (success) {
+      // Trigger Pulse Signal if public or sym
+      if (visibility === 'public' || visibility === 'sym') {
+         await broadcastSignal(c.env, 'signal_artifact', user_id, {
+             filename: file.name,
+             mime_type: file.type,
+             visibility
+         });
+      }
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });
     } else {
       // If DB insert fails, we might want to delete the orphan file from R2

@@ -35,6 +35,7 @@ function Main() {
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [previewFile, setPreviewFile] = useState<any | null>(null);
+  const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -54,7 +55,8 @@ function Main() {
     meUsername: currentUser?.username,
     meAvatarUrl: currentUser?.avatar_url,
     isDrifting,
-    driftData
+    driftData,
+    onlineUserIds
   });
 
   // Use a ref for refreshNetwork to prevent WebSocket reconnection when network data updates
@@ -105,18 +107,39 @@ function Main() {
 
       ws.onopen = () => {
         console.log('WebSocket connected');
-        // Optionally send auth or init message if needed (though we rely on cookie)
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          
           if (data.type === 'new_notification') {
             showToast(`New signal: ${data.notificationType}`, 'info');
             playNotificationSound();
             setUnreadCount(prev => prev + 1);
             if (refreshNetworkRef.current) refreshNetworkRef.current();
+          } 
+          else if (data.type === 'presence_sync') {
+             setOnlineUserIds(new Set(data.onlineUserIds));
           }
+          else if (data.type === 'presence_update') {
+             setOnlineUserIds(prev => {
+                 const next = new Set(prev);
+                 if (data.status === 'online') next.add(data.userId);
+                 else next.delete(data.userId);
+                 return next;
+             });
+             // showToast(`User ${data.userId} is ${data.status}`, 'info'); // Optional: too noisy?
+          }
+          else if (data.type === 'signal_communique') {
+              // Trigger a visual pulse? For now, just a subtle toast if it's a friend
+              // Ideally we pass this signal to AssociationWeb to trigger D3 pulse
+              // We can rely on refreshNetwork or just visual
+          }
+          else if (data.type === 'signal_artifact') {
+              showToast('New artifact signal detected', 'info');
+          }
+
         } catch (e) {
           console.error("WS message parse error", e);
         }
@@ -463,6 +486,7 @@ function Main() {
               nodes={nodes}
               links={links}
               isDrifting={isDrifting}
+              onlineUserIds={onlineUserIds}
             />
           ) : (
             <NetworkList

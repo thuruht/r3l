@@ -71,6 +71,19 @@ export class RelfDO {
           return new Response(`Error: ${err.message}`, { status: 500 });
         }
 
+      case '/broadcast-signal': // Endpoint for the Worker to broadcast global signals (pulses)
+        if (request.method !== 'POST') {
+          return new Response("Method Not Allowed", { status: 405 });
+        }
+        try {
+          const body = await request.json() as unknown as any;
+          this.broadcast(body); // Broadcast raw body as the message
+          return new Response("Signal broadcasted", { status: 200 });
+        } catch (err: any) {
+           console.error("Error processing signal broadcast:", err);
+           return new Response(`Error: ${err.message}`, { status: 500 });
+        }
+
       default:
         return new Response("Not found", { status: 404 });
     }
@@ -79,6 +92,20 @@ export class RelfDO {
   handleSession(webSocket: WebSocket, userId: number) {
     webSocket.accept();
     this.sessions.push({ ws: webSocket, userId });
+
+    // 1. Send current online users to the new client
+    const onlineUserIds = Array.from(new Set(this.sessions.map(s => s.userId)));
+    webSocket.send(JSON.stringify({ 
+      type: 'presence_sync', 
+      onlineUserIds 
+    }));
+
+    // 2. Broadcast 'online' status to everyone else
+    this.broadcast({ 
+        type: 'presence_update', 
+        status: 'online', 
+        userId 
+    }, userId); // Exclude self from broadcast (optional, but cleaner)
 
     webSocket.addEventListener("message", async msg => {
       try {
@@ -94,6 +121,16 @@ export class RelfDO {
     webSocket.addEventListener("close", async evt => {
       console.log(`WebSocket closed for user ${userId}: ${evt.code} ${evt.reason}`);
       this.sessions = this.sessions.filter(s => s.ws !== webSocket);
+      
+      // Check if user is completely offline (no other sessions)
+      const stillOnline = this.sessions.some(s => s.userId === userId);
+      if (!stillOnline) {
+          this.broadcast({ 
+              type: 'presence_update', 
+              status: 'offline', 
+              userId 
+          });
+      }
     });
 
     webSocket.addEventListener("error", async err => {
@@ -118,10 +155,11 @@ export class RelfDO {
     });
   }
 
-  // The original broadcast method, modified to only send to other users
-  broadcast(message: any) {
+  // Broadcast to all, optionally excluding a specific user ID
+  broadcast(message: any, excludeUserId?: number) {
     const jsonMessage = JSON.stringify(message);
     this.sessions = this.sessions.filter(session => {
+      if (excludeUserId && session.userId === excludeUserId) return true; // Skip sending, keep session
       try {
         session.ws.send(jsonMessage);
         return true;

@@ -6,7 +6,8 @@ export interface NetworkNode {
   group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file';
   name: string;
   avatar_url?: string;
-  data?: any; // Extra data like file metadata
+  online?: boolean; // New property
+  data?: any; 
 }
 
 export interface NetworkLink {
@@ -17,13 +18,14 @@ export interface NetworkLink {
 
 interface UseNetworkDataProps {
   currentUserId: number | null;
-  meUsername: string | undefined; // Added
-  meAvatarUrl: string | undefined; // Added
+  meUsername: string | undefined; 
+  meAvatarUrl: string | undefined; 
   isDrifting: boolean;
   driftData: { users: any[], files: any[] };
+  onlineUserIds: Set<number>; // New prop
 }
 
-export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrifting, driftData }: UseNetworkDataProps) => {
+export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds }: UseNetworkDataProps) => {
   const [nodes, setNodes] = useState<NetworkNode[]>([]);
   const [links, setLinks] = useState<NetworkLink[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,7 +48,8 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
         id: currentUserId.toString(),
         group: 'me',
         name: meUsername || 'Me', 
-        avatar_url: meAvatarUrl
+        avatar_url: meAvatarUrl,
+        online: true
       });
 
       const processNode = (r: any, group: NetworkNode['group']) => {
@@ -55,7 +58,8 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
             id: r.user_id.toString(),
             group,
             name: r.username,
-            avatar_url: r.avatar_url
+            avatar_url: r.avatar_url,
+            online: onlineUserIds.has(r.user_id)
           });
         }
       };
@@ -91,7 +95,8 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
               id: uid,
               group: 'drift_user',
               name: u.username,
-              avatar_url: u.avatar_url
+              avatar_url: u.avatar_url,
+              online: onlineUserIds.has(u.id)
             });
           }
         });
@@ -103,9 +108,10 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
           if (!nodeMap.has(ownerId)) {
              nodeMap.set(ownerId, {
                  id: ownerId,
-                 group: 'drift_user', // Treat implicit owners as drift users
+                 group: 'drift_user', 
                  name: f.owner_username || 'Unknown Signal',
-                 avatar_url: undefined // We might not have avatar if not fetched explicitly
+                 avatar_url: undefined,
+                 online: onlineUserIds.has(f.user_id)
              });
           }
 
@@ -131,7 +137,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, isDrifting, driftData, showToast]);
+  }, [currentUserId, isDrifting, driftData, onlineUserIds, showToast]); // Added onlineUserIds dependency
 
   useEffect(() => {
     fetchData();

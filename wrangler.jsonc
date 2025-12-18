@@ -1,5 +1,5 @@
 {
-  "name": "rr33ll",
+  "name": "r3l",
   "account_id": "829921384c97e0dbbb34430e307d6b52",
   "main": "src/index.ts",
   "compatibility_date": "2025-12-15",
@@ -52,12 +52,6 @@
     {
       "pattern": "r3l.distorted.work",
       "custom_domain": true
-    }
-  ],
-  "migrations": [
-    {
-      "tag": "v1",
-      "new_classes": ["RelfDO"]
     }
   ]
 }

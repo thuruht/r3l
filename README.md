@@ -1,4 +1,4 @@
-b# R3L:F (Relational Relativity & Random Ephemerality File-net)
+# R3L:F (Relational Relativity & Random Ephemerality File-net)
 
 **Rel F** is an experiment in serendipitous social networking. The platform enables users to discover connections with others through guided randomness rather than algorithmic matching, creating opportunities for unexpected but valuable relationships and knowledge exchange.
 
@@ -22,8 +22,6 @@ Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platf
 ### 📂 File & Archive System
 *   Users can upload and share any file format (zines, code, music, books, documents).
 *   **Expiration System**:
-    *   1 Week active → 1 Week Marked for deletion → Auto-deleted (unless archived).
-    *   Non-archived content is **appended to the most recent communique version before true deletion**, as a final safeguard - the user must then choose to either archive or re-share the content to their communique or they will automatically be switched into "Lurker in the mist" mode.
     *   **24 Hours active** (Current Pilot Configuration) → Auto-deleted (unless archived or boosted).
     *   *Planned:* Non-archived content will be appended to the most recent communique version before true deletion as a final safeguard.
 *   **Community Archiving**: Content exceeding reaction/share thresholds can be flagged by the user for permanent community storage.
@@ -35,7 +33,6 @@ Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platf
 *   Low-visibility users appear muted and have no clear associations.
 
 ### 📢 Posting & Engagement
-*   Markdown/WYSIWYG editor for long-form posts, thoughts, and creative work.
 *   HTML/Text editor for long-form posts, thoughts, and creative work (CSS styling supported).
 *   Threaded comments (minimal, non-disruptive).
 *   Bookmarking for content discovery (public count only, no user tracking).
@@ -45,7 +42,6 @@ Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platf
 *   Contacts are private or public:
     *   Public contacts appear in the association web. Either (*1)"sym" or (*2)"a-sym".
     *   Private contacts remain hidden. (*1)(*2)or(*3).
-*   Collaborative Workspaces (agreed upon between users, likely tied to DMs).
 *   “Lurker in the Mist” mode (low-visibility status for users who prefer minimal presence).
 
 ### ✉️ Inbox & Notifications
@@ -55,12 +51,8 @@ Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platf
     *   Frequent viewing of the same user’s content.
     *   Repeated engagement with the same group or files.
     *   Co-archiving 5 or 10 shared files.
-*   **Undo Window for History Wipes**:
-    *   24-hour recovery before deletion is final.
-    *   Final notification sent in the last hour.
 
 ### 🔍 Search & Discovery
-*   Global Community Archive for browsing community-archived content.
 *   **The Drift**: Random sampling of public signals and artifacts.
 *   Filtering by:
     *   File type (MIME/extension)
@@ -72,7 +64,6 @@ Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platf
 *   **Mutual Contributor Opt-Out**: Users can hide their name from shared files.
 *   **No Unwanted Labels**: All mutual relationships must be explicitly agreed upon "sym"(*1).
 *   **Permanent Hide List for the Association Web**: Users can ignore specific connections indefinitely unless manually revisited.
-*   **Manual Clearing of History**: Multi-step confirmation required (including text input like “Type DELETE”).
 *   **Anonymous Profiles Are Not Supported**: Pseudonymous users fully participate. Unconfigured drawers remain limited (only a communique, no web presence).
 
 ---

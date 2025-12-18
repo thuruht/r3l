@@ -1,3 +1,5 @@
+// index.ts
+
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { upgradeWebSocket } from 'hono/cloudflare-workers';
@@ -293,11 +295,7 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
     const url = new URL(c.req.url);
     url.pathname = '/websocket';
 
-    const newRequest = new Request(url.toString(), {
-        headers: c.req.raw.headers,
-        method: c.req.raw.method,
-        body: c.req.raw.body,
-    });
+    const newRequest = new Request(url.toString(), c.req.raw);
     newRequest.headers.set('X-User-ID', c.get('user_id').toString());
 
     return doStub.fetch(newRequest);
@@ -307,6 +305,99 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   }
 });
 
+// GET /api/admin/stats: System statistics (Admin only)
+app.get('/api/admin/stats', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  // Simple admin check: assume user ID 1 is the admin
+  if (user_id !== 1) {
+    return c.json({ error: 'Unauthorized' }, 403);
+  }
+
+  try {
+    const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first('count');
+    const fileCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM files').first('count');
+    const activeFiles = await c.env.DB.prepare('SELECT COUNT(*) as count FROM files WHERE is_archived = 0').first('count');
+    const archivedFiles = await c.env.DB.prepare('SELECT COUNT(*) as count FROM files WHERE is_archived = 1').first('count');
+
+    return c.json({
+      users: userCount,
+      total_files: fileCount,
+      active_files: activeFiles,
+      archived_files: archivedFiles
+    });
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch stats' }, 500);
+  }
+});
+
+// --- User Discovery Routes ---
+
+// GET /api/users/search: Search users by username
+app.get('/api/users/search', authMiddleware, async (c) => {
+  const query = c.req.query('q');
+  if (!query || query.length < 2) return c.json({ users: [] });
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url FROM users WHERE username LIKE ? LIMIT 10'
+    ).bind(`%${query}%`).all();
+
+    const users = results.map((u: any) => ({
+      ...u,
+      avatar_url: (u.avatar_url && typeof u.avatar_url === 'string' && u.avatar_url.startsWith('avatars/')) 
+        ? getR2PublicUrl(c, u.avatar_url) 
+        : u.avatar_url
+    }));
+
+    return c.json({ users });
+  } catch (e) {
+    console.error("Search error:", e);
+    return c.json({ error: 'Search failed' }, 500);
+  }
+});
+
+// GET /api/users/random: Get a random user profile
+app.get('/api/users/random', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url FROM users WHERE id != ? ORDER BY RANDOM() LIMIT 1'
+    ).bind(user_id).first();
+
+    if (!user) return c.json({ error: 'No other users found' }, 404);
+
+    const avatarUrl = (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) 
+      ? getR2PublicUrl(c, user.avatar_url as string) 
+      : user.avatar_url;
+
+    return c.json({ user: { id: user.id, username: user.username, avatar_url: avatarUrl } });
+  } catch (e) {
+    console.error("Random user error:", e);
+    return c.json({ error: 'Failed to fetch random user' }, 500);
+  }
+});
+
+// GET /api/users/:id: Get public user profile
+app.get('/api/users/:id', authMiddleware, async (c) => {
+  const id = Number(c.req.param('id'));
+  if (isNaN(id)) return c.json({ error: 'Invalid ID' }, 400);
+
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url FROM users WHERE id = ?'
+    ).bind(id).first();
+
+    if (!user) return c.json({ error: 'User not found' }, 404);
+
+    const avatarUrl = (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) 
+      ? getR2PublicUrl(c, user.avatar_url as string) 
+      : user.avatar_url;
+
+    return c.json({ user: { id: user.id, username: user.username, avatar_url: avatarUrl } });
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch user' }, 500);
+  }
+});
 
 // Apply middleware to protected routes
 app.use('/api/drift', authMiddleware);
@@ -1202,4 +1293,3 @@ export default {
     }
   }
 };
-

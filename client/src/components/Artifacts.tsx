@@ -84,14 +84,6 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         const res = await fetch('/api/relationships');
         if (res.ok) {
             const data = await res.json();
-            // ... (rest of mutuals logic simplified or assumed available, 
-            // for brevity in this replace, preserving logic)
-            // Actually I need to keep the full logic or it breaks.
-            // Let's assume fetching users is needed as per original.
-             // Re-implementing logic:
-             // Note: The original code fetched /api/d1/users which I deleted. 
-             // I should rely on the enriched relationship data now!
-             // `data.mutual` now contains username/avatar_url directly.
              const enrichedMutuals = data.mutual.map((m: any) => ({
                  id: m.user_id,
                  username: m.username,

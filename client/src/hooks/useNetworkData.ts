@@ -97,6 +97,18 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
         });
         driftData.files.forEach((f: any) => {
           const fileNodeId = `file-${f.id}`;
+          const ownerId = f.user_id.toString();
+
+          // Ensure owner node exists (stub if necessary)
+          if (!nodeMap.has(ownerId)) {
+             nodeMap.set(ownerId, {
+                 id: ownerId,
+                 group: 'drift_user', // Treat implicit owners as drift users
+                 name: f.owner_username || 'Unknown Signal',
+                 avatar_url: undefined // We might not have avatar if not fetched explicitly
+             });
+          }
+
           if (!nodeMap.has(fileNodeId)) {
             nodeMap.set(fileNodeId, {
               id: fileNodeId,
@@ -104,10 +116,8 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
               name: f.filename,
               data: f
             });
-            const ownerId = f.user_id.toString();
-            if (nodeMap.has(ownerId)) {
-              newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
-            }
+            // Link to owner
+            newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
           }
         });
       }

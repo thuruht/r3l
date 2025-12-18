@@ -21,6 +21,17 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
+  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (wrapperRef.current) {
+        setDimensions({ width: wrapperRef.current.clientWidth, height: wrapperRef.current.clientHeight });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current || nodes.length === 0) {
@@ -32,8 +43,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     }
 
     const drawGraph = () => {
-      const width = wrapperRef.current?.clientWidth || window.innerWidth;
-      const height = wrapperRef.current?.clientHeight || window.innerHeight;
+      const width = dimensions.width;
+      const height = dimensions.height;
 
       const svgSelection = d3.select(svgRef.current);
       svgSelection.selectAll('*').remove();
@@ -247,7 +258,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     };
 
     drawGraph();
-  }, [nodes, links, onNodeClick, isDrifting]);
+  }, [nodes, links, onNodeClick, isDrifting, dimensions]);
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {

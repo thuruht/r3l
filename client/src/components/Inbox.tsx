@@ -1,3 +1,5 @@
+// Inbox.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconX, IconCheck, IconChecklist } from '@tabler/icons-react'; // Added IconChecklist
@@ -130,7 +132,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
   return (
     <div className="inbox-overlay fade-in" style={{
-      position: 'absolute', top: '60px', right: '20px', width: '300px',
+      position: 'absolute', top: '60px', right: '20px', width: 'min(360px, 90vw)',
       background: '#000000dd', border: '1px solid var(--border-color)', 
       backdropFilter: 'blur(10px)', padding: '15px', borderRadius: '8px',
       zIndex: 1000

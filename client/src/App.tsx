@@ -1,15 +1,19 @@
 // App.tsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { IconRadar2, IconHelp, IconList, IconChartCircles } from '@tabler/icons-react';
+import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import CommuniquePage from './components/CommuniquePage';
 import Inbox from './components/Inbox';
 import FAQ from './components/FAQ';
+import About from './components/About';
 import { ToastProvider, useToast } from './context/ToastContext';
+import AdminDashboard from './components/AdminDashboard';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { useNetworkData } from './hooks/useNetworkData';
+import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import './styles/global.css';
 
 interface User {
@@ -21,6 +25,8 @@ interface User {
 function Main() {
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
@@ -35,16 +41,23 @@ function Main() {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
 
   const { showToast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { nodes, links, refresh: refreshNetwork } = useNetworkData({
+  const { nodes, links, refresh: refreshNetwork, loading } = useNetworkData({
     currentUserId: currentUser?.id || null,
     meUsername: currentUser?.username,
     meAvatarUrl: currentUser?.avatar_url,
     isDrifting,
     driftData
   });
+
+  // Use a ref for refreshNetwork to prevent WebSocket reconnection when network data updates
+  const refreshNetworkRef = useRef(refreshNetwork);
+  useEffect(() => {
+    refreshNetworkRef.current = refreshNetwork;
+  }, [refreshNetwork]);
 
   // Setup WebSocket for real-time notifications
   useEffect(() => {
@@ -71,7 +84,7 @@ function Main() {
           if (data.type === 'new_notification') {
             showToast(`New signal: ${data.notificationType}`, 'info');
             setUnreadCount(prev => prev + 1);
-            refreshNetwork();
+            if (refreshNetworkRef.current) refreshNetworkRef.current();
           }
         } catch (e) {
           console.error("WS message parse error", e);
@@ -110,7 +123,7 @@ function Main() {
       if (ws) ws.close();
       if (reconnectTimer) clearTimeout(reconnectTimer);
     };
-  }, [isAuthenticated, refreshNetwork, showToast]);
+  }, [isAuthenticated, showToast]);
 
   useEffect(() => {
     // Check if user is already logged in (e.g., via existing cookie)
@@ -276,13 +289,18 @@ function Main() {
     <>
       {/* UI Overlay for global controls (Visible everywhere or just on home? Let's keep it visible for navigation) */}
       {!isCommuniquePage && (
-        <div className="overlay-ui">
-            <h1>Rel F</h1>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-            System Date: {new Date().toLocaleDateString()}
-            </p>
+        <div className="overlay-ui" style={{ display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', pointerEvents: 'auto' }}>
+                <div>
+                    <h1 style={{ margin: 0 }}>Rel F</h1>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    System Date: {new Date().toLocaleDateString()}
+                    </p>
+                </div>
             {currentUser && (
-            <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                <SearchBar />
+                <RandomUserButton />
                 <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username}</span>
                 <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ marginRight: '10px' }}>
                 {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
@@ -314,13 +332,25 @@ function Main() {
                 <button onClick={() => setIsFAQOpen(true)} title="Help" style={{ marginRight: '10px', padding: '5px 10px' }}>
                 <IconHelp size={18} />
                 </button>
+                <button onClick={() => setIsAboutOpen(true)} title="About" style={{ marginRight: '10px', padding: '5px 10px' }}>
+                  <IconInfoCircle size={18} />
+                </button>
+                {currentUser.id === 1 && (
+                  <button onClick={() => setIsAdminOpen(true)} title="Admin Dashboard" style={{ marginRight: '10px', padding: '5px 10px', borderColor: 'var(--accent-alert)', color: 'var(--accent-alert)' }}><IconDashboard size={18} /></button>
+                )}
+                <button onClick={toggleTheme} title={`Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`} style={{ marginRight: '10px', padding: '5px 10px' }}>
+                  <IconPalette size={18} />
+                </button>
                 <button onClick={handleLogout}>Logout</button>
             </div>
             )}
+            </div>
         </div>
       )}
 
       {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
+      {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
+      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
       {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
 
       <Routes>
@@ -336,6 +366,7 @@ function Main() {
             <NetworkList
               nodes={nodes}
               onNodeClick={onNodeClick}
+              loading={loading}
               />
           )
         } />
@@ -347,9 +378,11 @@ function Main() {
 
 function App() {
   return (
-    <ToastProvider>
-      <Main />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <Main />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 

@@ -1,13 +1,15 @@
 import React from 'react';
 import { NetworkNode } from '../hooks/useNetworkData';
 import { IconUser, IconFile } from '@tabler/icons-react';
+import Skeleton from './Skeleton';
 
 interface NetworkListProps {
   nodes: NetworkNode[];
   onNodeClick: (nodeId: string) => void;
+  loading?: boolean;
 }
 
-const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick }) => {
+const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }) => {
   // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
     const order = { me: 0, sym: 1, asym: 2, drift_user: 3, drift_file: 4, lurker: 5 };
@@ -23,6 +25,16 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick }) => {
     }}>
       <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Network Directory</h3>
       
+      {loading && (
+        <div style={{ marginTop: '20px' }}>
+          <Skeleton height="60px" marginBottom="10px" />
+          <Skeleton height="60px" marginBottom="10px" />
+          <Skeleton height="60px" marginBottom="10px" />
+          <Skeleton height="60px" marginBottom="10px" />
+        </div>
+      )}
+
+      {!loading && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
         {sortedNodes.map(node => (
           <div 
@@ -67,6 +79,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick }) => {
           </div>
         ))}
       </div>
+      )}
     </div>
   );
 };

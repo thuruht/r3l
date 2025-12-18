@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-type Theme = 'mist' | 'dusk';
+type Theme = 'mist' | 'dusk' | 'dawn';
 
 interface ThemeContextType {
   theme: Theme;
@@ -23,7 +23,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     document.documentElement.classList.add(`theme-${currentTheme}`);
     localStorage.setItem('theme', currentTheme);
     // Also update color-scheme for browser
-    document.documentElement.style.colorScheme = currentTheme === 'mist' ? 'dark' : 'dark'; // Both are dark variations
+    document.documentElement.style.colorScheme = currentTheme === 'dawn' ? 'light' : 'dark';
   }, []);
 
   useEffect(() => {
@@ -31,7 +31,11 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [theme, applyTheme]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prevTheme) => (prevTheme === 'mist' ? 'dusk' : 'mist'));
+    setTheme((prevTheme) => {
+      if (prevTheme === 'mist') return 'dusk';
+      if (prevTheme === 'dusk') return 'dawn';
+      return 'mist';
+    });
   }, []);
 
   return (

@@ -12,25 +12,46 @@
   --border-color: #2a2f3aff;
   --glow-sym: 0 0 10px #4deeea66;
   --glow-me: 0 0 15px #ffffff80;
+  --hover-bg: #ffffff11;
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
 
-/* Dusk Theme */
+/* Dusk Theme - Solarized Dark Inspired */
 html.theme-dusk {
-  --bg-color: #1a1a2e; /* Slightly lighter dark */
-  --bg-mist: #2c2c54; /* Complementary mist */
-  --text-primary: #e0e0e0;
-  --text-secondary: #aaaaaa;
-  --accent-sym: #f7b73100; /* Orange-ish yellow */
-  --accent-sym-bright: #f7b731;
-  --accent-asym: #6a82fb; /* Purple-blue */
-  --accent-alert: #ff6b6b;
-  --drawer-bg: #1c1c38;
-  --border-color: #3f3f6e;
-  --glow-sym: 0 0 10px #f7b73166;
-  --glow-me: 0 0 15px #e0e0e080;
+  --bg-color: #002b36;
+  --bg-mist: #073642;
+  --text-primary: #93a1a1;
+  --text-secondary: #586e75;
+  --accent-me: #fdf6e3;
+  --accent-sym: #b58900; /* Yellow */
+  --accent-sym-bright: #b58900;
+  --accent-asym: #657b83;
+  --accent-alert: #dc322f; /* Red */
+  --drawer-bg: #073642f2;
+  --border-color: #586e75;
+  --glow-sym: 0 0 10px #b5890066;
+  --glow-me: 0 0 15px #fdf6e380;
+  --hover-bg: #ffffff0d;
+}
+
+/* Dawn Theme - Solarized Light Inspired */
+html.theme-dawn {
+  --bg-color: #fdf6e3;
+  --bg-mist: #eee8d5;
+  --text-primary: #657b83;
+  --text-secondary: #93a1a1;
+  --accent-me: #002b36;
+  --accent-sym: #2aa198; /* Cyan */
+  --accent-sym-bright: #2aa198;
+  --accent-asym: #93a1a1;
+  --accent-alert: #cb4b16; /* Orange */
+  --drawer-bg: #eee8d5f2;
+  --border-color: #93a1a1;
+  --glow-sym: 0 0 10px #2aa19866;
+  --glow-me: 0 0 15px #002b3680;
+  --hover-bg: #0000000d;
 }
 
 h1, h2, h3, h4, h5, h6, button, .font-heading {

@@ -1,6 +1,8 @@
+// Artifacts.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal'; // Added
@@ -31,6 +33,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
+  const [remixTarget, setRemixTarget] = useState<FileData | null>(null);
   const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null); // Added
   
   const listRef = useRef<HTMLDivElement>(null);
@@ -126,6 +129,9 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('visibility', 'me'); // 'me' maps to private in DB schema
+    if (remixTarget) {
+      formData.append('parent_id', remixTarget.id.toString());
+    }
 
     try {
       const res = await fetch('/api/files', {
@@ -147,6 +153,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
     finally {
       setUploading(false);
+      setRemixTarget(null);
       e.target.value = '';
     }
   };
@@ -303,6 +310,15 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               >
                 <IconDownload size={14} aria-hidden="true" />
               </button>
+              
+              <button
+                onClick={(e) => { e.stopPropagation(); setRemixTarget(file); }}
+                style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
+                title="Remix this artifact"
+              >
+                <IconArrowsShuffle size={14} />
+              </button>
+
               {isOwner && (
                 <>
                 <button
@@ -355,6 +371,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       {isOwner && (
         <div style={{ marginTop: '15px' }}>
+          {remixTarget && (
+            <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span>Remixing: <strong>{remixTarget.filename}</strong></span>
+              <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={12} /> Cancel</button>
+            </div>
+          )}
           <label 
             htmlFor="artifact-file-upload" // Added htmlFor
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} // Added
@@ -373,7 +395,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               opacity: uploading ? 0.5 : 1
             }}
           >
-            {uploading ? 'Uploading...' : <><IconUpload size={14} /> {isDragOver ? 'Drop file here!' : 'Upload Artifact (or drag & drop)'}</>}
+            {uploading ? 'Uploading...' : <><IconUpload size={14} /> {isDragOver ? 'Drop file here!' : (remixTarget ? 'Upload Remix' : 'Upload Artifact (or drag & drop)')}</>}
             <input 
               id="artifact-file-upload" // Added id
               type="file" 

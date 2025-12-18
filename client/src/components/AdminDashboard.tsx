@@ -1,3 +1,5 @@
+// AdminDashboard.tsx
+
 import React, { useEffect, useState } from 'react';
 import { IconX, IconServer, IconUsers, IconFiles, IconArchive } from '@tabler/icons-react';
 
@@ -62,7 +64,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           <div style={{ padding: '20px', textAlign: 'center' }}>Loading telemetry...</div>
         ) : stats ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '30px' }}>
-            <StatCard icon={IconUsers} label="Total Users" value={stats.users} color="#4deeea" />
+            <StatCard icon={IconUsers} label="Total Users" value={stats.users} color="#26de81" />
             <StatCard icon={IconFiles} label="Total Artifacts" value={stats.total_files} color="#f7b731" />
             <StatCard icon={IconFiles} label="Active Signals" value={stats.active_files} color="#26de81" />
             <StatCard icon={IconArchive} label="Archived" value={stats.archived_files} color="#a55eea" />

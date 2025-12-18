@@ -58,7 +58,7 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                 <p>
                     <em>"We are but signals in the noise."</em>
                 </p>
-                <a href="https://github.com/jellix/r3l" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none' }}>
+                <a href="https://github.com/thuruht/r3l" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none' }}>
                     <IconBrandGithub size={16} /> Source Code
                 </a>
             </div>

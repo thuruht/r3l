@@ -4,13 +4,13 @@
   --text-primary: #e0e4e8ff;
   --text-secondary: #7f8a96ff;
   --accent-me: #ffffffff;
-  --accent-sym: #4deeea00;
-  --accent-sym-bright: #4deeea; /* Added for highlighting */
+  --accent-sym: #26de8100;
+  --accent-sym-bright: #26de81; /* Added for highlighting */
   --accent-asym: #5b6670ff;
   --accent-alert: #ff4b4bff;
   --drawer-bg: #101217f2;
   --border-color: #2a2f3aff;
-  --glow-sym: 0 0 10px #4deeea66;
+  --glow-sym: 0 0 10px #26de8166;
   --glow-me: 0 0 15px #ffffff80;
   --hover-bg: #ffffff11;
   font-family: 'Inter', system-ui, sans-serif;
@@ -25,13 +25,13 @@ html.theme-dusk {
   --text-primary: #93a1a1;
   --text-secondary: #586e75;
   --accent-me: #fdf6e3;
-  --accent-sym: #b58900; /* Yellow */
-  --accent-sym-bright: #b58900;
+  --accent-sym: #859900; /* Solarized Green */
+  --accent-sym-bright: #859900;
   --accent-asym: #657b83;
   --accent-alert: #dc322f; /* Red */
   --drawer-bg: #073642f2;
   --border-color: #586e75;
-  --glow-sym: 0 0 10px #b5890066;
+  --glow-sym: 0 0 10px #85990066;
   --glow-me: 0 0 15px #fdf6e380;
   --hover-bg: #ffffff0d;
 }
@@ -43,13 +43,13 @@ html.theme-dawn {
   --text-primary: #657b83;
   --text-secondary: #93a1a1;
   --accent-me: #002b36;
-  --accent-sym: #2aa198; /* Cyan */
-  --accent-sym-bright: #2aa198;
+  --accent-sym: #859900; /* Solarized Green */
+  --accent-sym-bright: #859900;
   --accent-asym: #93a1a1;
   --accent-alert: #cb4b16; /* Orange */
   --drawer-bg: #eee8d5f2;
   --border-color: #93a1a1;
-  --glow-sym: 0 0 10px #2aa19866;
+  --glow-sym: 0 0 10px #85990066;
   --glow-me: 0 0 15px #002b3680;
   --hover-bg: #0000000d;
 }
@@ -90,7 +90,7 @@ button:hover {
 }
 button:focus,
 button:focus-visible {
-  outline: 4px auto #4deeea66;
+  outline: 4px auto #26de8166;
 }
 input, textarea {
   background: var(--bg-mist);
@@ -103,7 +103,7 @@ input, textarea {
 input:focus, textarea:focus {
   outline: none;
   border-color: var(--accent-sym);
-  box-shadow: 0 0 5px #4deeea33;
+  box-shadow: 0 0 5px #26de8133;
 }
 ::-webkit-scrollbar {
   width: 8px;

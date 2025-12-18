@@ -985,6 +985,7 @@ app.post('/api/files', async (c) => {
     const formData = await c.req.parseBody();
     const file = formData['file'] as File;
     const visibility = (formData['visibility'] as string) || 'private';
+    const parent_id = formData['parent_id'] ? Number(formData['parent_id']) : null;
 
     if (!file) {
       return c.json({ error: 'No file uploaded' }, 400);
@@ -1007,9 +1008,9 @@ app.post('/api/files', async (c) => {
     // Record in D1
     const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // Default 24h life
     const { success } = await c.env.DB.prepare(
-      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, file.name, file.size, file.type, visibility, expires_at).run();
+      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(user_id, r2_key, file.name, file.size, file.type, visibility, expires_at, parent_id).run();
 
     if (success) {
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });

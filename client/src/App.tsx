@@ -59,6 +59,32 @@ function Main() {
     refreshNetworkRef.current = refreshNetwork;
   }, [refreshNetwork]);
 
+  const playNotificationSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1); // Drop to A4
+      
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+
+      osc.start();
+      osc.stop(ctx.currentTime + 0.1);
+    } catch (e) {
+      console.error("Audio play failed", e);
+    }
+  };
+
   // Setup WebSocket for real-time notifications
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -83,6 +109,7 @@ function Main() {
           const data = JSON.parse(event.data);
           if (data.type === 'new_notification') {
             showToast(`New signal: ${data.notificationType}`, 'info');
+            playNotificationSound();
             setUnreadCount(prev => prev + 1);
             if (refreshNetworkRef.current) refreshNetworkRef.current();
           }

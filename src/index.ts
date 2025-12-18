@@ -825,7 +825,7 @@ app.get('/api/drift', async (c) => {
         ).bind(user_id, user_id, user_id).all();
 
         const driftFiles = await c.env.DB.prepare(
-            `SELECT f.id, f.filename, f.user_id, u.username as owner_username
+            `SELECT f.id, f.filename, f.mime_type, f.user_id, u.username as owner_username
              FROM files f
              JOIN users u ON f.user_id = u.id
              LEFT JOIN mutual_connections mc ON (f.user_id = mc.user_a_id AND mc.user_b_id = ?) OR (f.user_id = mc.user_b_id AND mc.user_a_id = ?)

@@ -144,6 +144,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
         .selectAll('g')
         .data(d3Nodes)
         .join('g')
+        .classed('drift-pulse', d => d.group.startsWith('drift'))
         .call(drag(simulation) as any)
         .on('click', (event, d) => {
           event.stopPropagation();

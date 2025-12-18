@@ -162,6 +162,16 @@ input:focus, textarea:focus {
   transform-origin: center;
 }
 
+@keyframes drift-pulse-opacity {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}
+
+.drift-pulse {
+  animation: drift-pulse-opacity 3s infinite ease-in-out;
+}
+
 @keyframes pulse {
   0% { opacity: 0.3; }
   50% { opacity: 0.6; }

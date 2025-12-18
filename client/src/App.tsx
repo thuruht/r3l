@@ -9,6 +9,7 @@ import CommuniquePage from './components/CommuniquePage';
 import Inbox from './components/Inbox';
 import FAQ from './components/FAQ';
 import About from './components/About';
+import FilePreviewModal from './components/FilePreviewModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -31,6 +32,7 @@ function Main() {
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
+  const [previewFile, setPreviewFile] = useState<any | null>(null);
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -262,8 +264,15 @@ function Main() {
     }
   };
 
-  const onNodeClick = (userId: string) => {
-    navigate(`/communique/${userId}`);
+  const onNodeClick = (nodeId: string) => {
+    if (nodeId.startsWith('file-')) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node && node.data) {
+        setPreviewFile(node.data);
+      }
+    } else {
+      navigate(`/communique/${nodeId}`);
+    }
   };
 
   const toggleDrift = () => {
@@ -379,6 +388,23 @@ function Main() {
       {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
       {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
       {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
+      
+      {previewFile && (
+        <FilePreviewModal
+            fileId={previewFile.id}
+            filename={previewFile.filename}
+            mimeType={previewFile.mime_type}
+            onClose={() => setPreviewFile(null)}
+            onDownload={() => {
+                const link = document.createElement('a');
+                link.href = `/api/files/${previewFile.id}/content`;
+                link.download = previewFile.filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }}
+        />
+      )}
 
       <Routes>
         <Route path="/" element={

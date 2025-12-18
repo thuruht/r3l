@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { IconX, IconDownload } from '@tabler/icons-react';
+import { IconX, IconDownload, IconBolt } from '@tabler/icons-react';
+import { useToast } from '../context/ToastContext';
 
 interface FilePreviewModalProps {
   fileId: number;
@@ -13,9 +14,29 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [boosted, setBoosted] = useState(false);
+  const { showToast } = useToast();
 
   const isImage = mimeType.startsWith('image/');
   const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js');
+
+  const handleBoost = async () => {
+    try {
+        const res = await fetch(`/api/files/${fileId}/vitality`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: 1 })
+        });
+        if (res.ok) {
+            setBoosted(true);
+            showToast('Signal boosted!', 'success');
+        } else {
+            showToast('Failed to boost', 'error');
+        }
+    } catch(e) {
+        showToast('Error boosting signal', 'error');
+    }
+  };
 
   useEffect(() => {
     if (isText) {
@@ -48,6 +69,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             {filename}
           </h3>
           <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleBoost} title="Boost Signal" disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)' }}>
+               <IconBolt size={18} />
+            </button>
             <button onClick={onDownload} title="Download Original">
                <IconDownload size={18} />
             </button>

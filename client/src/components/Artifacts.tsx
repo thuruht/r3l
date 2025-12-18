@@ -133,7 +133,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('visibility', 'private'); // Default to private for now
+    formData.append('visibility', 'me'); // 'me' maps to private in DB schema
 
     try {
       const res = await fetch('/api/files', {
@@ -253,14 +253,28 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             fontSize: '0.9em',
             cursor: 'pointer'
           }} onClick={() => setPreviewFile(file)}>
-            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+            <div
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', outline: 'none' }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Preview ${file.filename}`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPreviewFile(file);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()} /* Prevent double firing if clicking directly on text */
+              onClickCapture={() => setPreviewFile(file)} /* Handle click explicitly */
+            >
               <div style={{ color: 'var(--text-primary)' }}>{file.filename}</div>
               <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '2px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
-                 <IconBolt size={14} />
-                 <span style={{ fontSize: '0.8em' }}>{file.vitality || 0}</span>
+                 <IconBolt size={14} aria-hidden="true" />
+                 <span style={{ fontSize: '0.8em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
                  <button 
                    onClick={() => handleBoost(file.id)} 
                    style={{ 
@@ -274,6 +288,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                      marginLeft: '4px'
                    }}
                    title="Boost Signal"
+                   aria-label="Boost Signal"
                  >
                    +
                  </button>
@@ -283,16 +298,18 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
                 style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
                 title="Preview"
+                aria-label="Preview file"
               >
-                <IconEye size={14} />
+                <IconEye size={14} aria-hidden="true" />
               </button>
 
               <button 
                 onClick={(e) => { e.stopPropagation(); handleDownload(file.id, file.filename); }}
                 style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
                 title="Download"
+                aria-label={`Download ${file.filename}`}
               >
-                <IconDownload size={14} />
+                <IconDownload size={14} aria-hidden="true" />
               </button>
               {isOwner && (
                 <>
@@ -308,15 +325,17 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                     }}
                     style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
                     title="Share"
+                    aria-label="Share file"
                 >
-                    <IconShare size={14} />
+                    <IconShare size={14} aria-hidden="true" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
                   style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
                   title="Delete"
+                  aria-label="Delete file"
                 >
-                  <IconTrash size={14} />
+                  <IconTrash size={14} aria-hidden="true" />
                 </button>
                 </>
               )}

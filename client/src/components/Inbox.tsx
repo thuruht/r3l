@@ -77,19 +77,23 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   };
 
   const handleAction = async (notif: Notification, action: 'accept' | 'decline') => {
-    if (notif.type === 'sym_request' && action === 'accept' && notif.actor_id) {
+    if (notif.type === 'sym_request' && notif.actor_id) {
+        const endpoint = action === 'accept' 
+            ? '/api/relationships/accept-sym-request' 
+            : '/api/relationships/decline-sym-request';
+            
       try {
-        const res = await fetch('/api/relationships/accept-sym-request', {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ source_user_id: notif.actor_id })
         });
         if (res.ok) {
-           showToast('Connection established.', 'success');
+           showToast(action === 'accept' ? 'Connection established.' : 'Request declined.', 'success');
            markAsRead(notif.id);
         } else {
            const err = await res.json();
-           showToast(err.error || 'Failed to accept', 'error');
+           showToast(err.error || `Failed to ${action}`, 'error');
         }
       } catch (err) {
         showToast('Error processing request', 'error');
@@ -176,6 +180,9 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
               <div style={{ marginTop: '5px', display: 'flex', gap: '5px' }}>
                 <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'accept'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <IconCheck size={12} /> Accept
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'decline'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', background: '#330000', borderColor: 'var(--accent-alert)', color: 'var(--accent-alert)' }}>
+                    <IconX size={12} /> Decline
                 </button>
               </div>
             )}

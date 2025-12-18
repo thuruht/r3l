@@ -570,6 +570,39 @@ app.post('/api/relationships/accept-sym-request', async (c) => {
   }
 });
 
+// POST /api/relationships/decline-sym-request: Decline a sym_request
+app.post('/api/relationships/decline-sym-request', async (c) => {
+  const target_user_id = c.get('user_id'); // Current user is the target
+  const { source_user_id } = await c.req.json(); // User who sent the request
+
+  if (!source_user_id) {
+    return c.json({ error: 'Missing source_user_id' }, 400);
+  }
+
+  try {
+    const request = await c.env.DB.prepare(
+      'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ? AND status = ?'
+    ).bind(source_user_id, target_user_id, 'sym_request', 'pending').first();
+
+    if (!request) {
+      return c.json({ error: 'Sym request not found or not pending' }, 404);
+    }
+
+    const { success } = await c.env.DB.prepare(
+      'UPDATE relationships SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind('rejected', request.id).run();
+
+    if (success) {
+      return c.json({ message: 'Sym request declined' });
+    } else {
+      return c.json({ error: 'Failed to decline sym request' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error declining sym request:", e);
+    return c.json({ error: 'Failed to decline sym request' }, 500);
+  }
+});
+
 // DELETE /api/relationships/:target_user_id: Remove a relationship
 app.delete('/api/relationships/:target_user_id', async (c) => {
   const source_user_id = c.get('user_id');
@@ -580,8 +613,6 @@ app.delete('/api/relationships/:target_user_id', async (c) => {
   }
 
   try {
-    await c.env.DB.prepare('BEGIN;').run();
-
     // Check if it's an asym_follow
     const asymFollow = await c.env.DB.prepare(
       'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ?'
@@ -591,7 +622,6 @@ app.delete('/api/relationships/:target_user_id', async (c) => {
       await c.env.DB.prepare(
         'DELETE FROM relationships WHERE id = ?'
       ).bind(asymFollow.id).run();
-      await c.env.DB.prepare('COMMIT;').run();
       return c.json({ message: 'User unfollowed successfully' });
     }
 
@@ -604,18 +634,16 @@ app.delete('/api/relationships/:target_user_id', async (c) => {
     ).bind(target_user_id, source_user_id, 'sym_accepted').first();
 
     if (symRel1 && symRel2) { // Mutual 'sym_accepted' relationship exists
-      // Delete both directed relationships
-      await c.env.DB.prepare('DELETE FROM relationships WHERE id = ?').bind(symRel1.id).run();
-      await c.env.DB.prepare('DELETE FROM relationships WHERE id = ?').bind(symRel2.id).run();
-
-      // Delete from mutual_connections
       const userA = Math.min(source_user_id, target_user_id);
       const userB = Math.max(source_user_id, target_user_id);
-      await c.env.DB.prepare(
-        'DELETE FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?'
-      ).bind(userA, userB).run();
+      
+      // Use batch for atomicity
+      await c.env.DB.batch([
+          c.env.DB.prepare('DELETE FROM relationships WHERE id = ?').bind(symRel1.id),
+          c.env.DB.prepare('DELETE FROM relationships WHERE id = ?').bind(symRel2.id),
+          c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB)
+      ]);
 
-      await c.env.DB.prepare('COMMIT;').run();
       return c.json({ message: 'Mutual (sym) connection removed successfully' });
     }
     
@@ -628,16 +656,12 @@ app.delete('/api/relationships/:target_user_id', async (c) => {
         await c.env.DB.prepare(
             'DELETE FROM relationships WHERE id = ?'
         ).bind(pendingSymRequest.id).run();
-        await c.env.DB.prepare('COMMIT;').run();
         return c.json({ message: 'Pending sym request cancelled successfully' });
     }
 
-
-    await c.env.DB.prepare('ROLLBACK;').run();
     return c.json({ error: 'Relationship not found or not removable by current user' }, 404);
 
   } catch (e: any) {
-    await c.env.DB.prepare('ROLLBACK;').run();
     console.error("Error removing relationship:", e);
     return c.json({ error: 'Failed to remove relationship' }, 500);
   }

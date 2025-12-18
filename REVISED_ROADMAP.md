@@ -2,18 +2,22 @@
 
 Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are expanding the roadmap to emphasize **serendipity**, **randomness**, and **real-time presence**.
 
-## Phase 4: Social & Inbox (Current - Near Complete)
-- [x] **Inbox UI:** Notification list, Read status, Accept/Decline actions.
-- [x] **Badge System:** Real-time polling for unread counts.
-- [x] **File Sharing:** Direct sharing with mutual connections.
-- [x] **Vitality:** "Vote" mechanic to extend file lifespan.
-- [ ] **Verification:** Robust testing of the full social loop (Request -> Accept -> Share -> Notification).
+## Phase 4: Social Loop & Notifications (Completed)
 
-## Phase 5: The Drift (Discovery & Randomness)
-*Goal: Implement "Anti-algorithmic" discovery.*
-- [ ] **"Drift" Endpoint:** `GET /api/drift` - Returns a random set of users/artifacts outside the user's current graph.
-- [ ] **Visualizer Update:** Add a "Drift" mode to the Association Web to float unconnected nodes into view.
-- [ ] **Geo-Cues (Optional):** Add rough location metadata (e.g., "Signal from [Region]") to artifacts to ground them in reality without doxxing.
+- [x] **Relationships**
+    - [x] `relationships` table (`asym_follow`, `sym_request`, `sym_accepted`).
+    - [x] `mutual_connections` table for optimized graph queries.
+    - [x] Backend API for Follow/Unfollow/Request/Accept/Decline.
+- [x] **Notifications**
+    - [x] `notifications` table (types: `sym_request`, `sym_accepted`, `file_shared`, `system_alert`).
+    - [x] Backend API to list, mark as read.
+    - [x] Real-time delivery via Durable Object WebSocket (`RelfDO`).
+- [x] **Inbox UI**
+    - [x] `Inbox.tsx` overlay component.
+    - [x] Real-time updates (toast + badge count).
+    - [x] Action buttons (Accept/Decline Sym Request).
+
+## Phase 5: The Drift (Next)
 
 ## Phase 6: The Pulse (Real-time Presence)
 *Goal: Make the network feel alive.*

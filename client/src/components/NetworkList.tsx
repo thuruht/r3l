@@ -17,8 +17,10 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
   });
 
   return (
-    <div className="network-list fade-in" style={{
-      padding: '80px 20px 20px 20px',
+    <div className="network-list fade-in page-content-spacer" style={{
+      paddingRight: '20px',
+      paddingBottom: '20px',
+      paddingLeft: '20px',
       height: '100vh',
       overflowY: 'auto',
       boxSizing: 'border-box'

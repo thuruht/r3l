@@ -126,18 +126,37 @@ input:focus, textarea:focus {
   animation: fadeIn 0.5s ease-in;
 }
 .overlay-ui {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
-  padding: 1rem;
-  pointer-events: none;
-  z-index: 10;
-  background: linear-gradient(to bottom, #0a0b10cc, #00000000);
+  padding: 0.5rem 1rem;
+  z-index: 1000;
+  background: rgba(10, 11, 16, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  pointer-events: none; /* Allow clicks to pass through empty areas */
+  transition: all 0.3s ease-in-out;
 }
+
 .overlay-ui > * {
   pointer-events: auto;
 }
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.page-content-spacer {
+  padding-top: 80px; /* Adjust based on header height */
+}
+
 .auth-container {
   display: flex;
   flex-direction: column;
@@ -153,6 +172,16 @@ input:focus, textarea:focus {
   gap: 0.5rem;
   width: 300px;
 }
+
+@media (max-width: 600px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .overlay-ui h1 {
+    font-size: 1rem;
+  }
+}
+
 @keyframes radar-pulse {
   0% { r: 0; opacity: 0.8; stroke-width: 2px; }
   100% { r: 500; opacity: 0; stroke-width: 0px; }

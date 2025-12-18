@@ -5,8 +5,9 @@ import gsap from 'gsap';
 import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
-import ConfirmModal from './ConfirmModal'; // Added
-import { useToast } from '../context/ToastContext'; // Added
+import ConfirmModal from './ConfirmModal';
+import UploadModal from './UploadModal'; // Added
+import { useToast } from '../context/ToastContext';
 
 interface ArtifactsProps {
   userId: string;
@@ -28,7 +29,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false); // Added missing state
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false); // Added
   
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);
@@ -377,34 +379,19 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={12} /> Cancel</button>
             </div>
           )}
-          <label 
-            htmlFor="artifact-file-upload" // Added htmlFor
-            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }} // Added
-            onDragLeave={() => setIsDragOver(false)} // Added
-            onDrop={handleDrop} // Added
-            style={{ 
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              padding: '6px 12px', 
-              border: `1px dashed ${isDragOver ? 'var(--accent-alert)' : 'var(--accent-sym)'}`, // Conditional style
-              color: 'var(--accent-sym)',
-              cursor: 'pointer',
-              fontSize: '0.8em',
-              borderRadius: '4px',
-              opacity: uploading ? 0.5 : 1
-            }}
-          >
-            {uploading ? 'Uploading...' : <><IconUpload size={14} /> {isDragOver ? 'Drop file here!' : (remixTarget ? 'Upload Remix' : 'Upload Artifact (or drag & drop)')}</>}
-            <input 
-              id="artifact-file-upload" // Added id
-              type="file" 
-              onChange={handleUpload} 
-              style={{ display: 'none' }} 
-              disabled={uploading}
-            />
-          </label>
+          
+          <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <IconUpload size={16} /> Upload Artifacts
+          </button>
         </div>
+      )}
+
+      {showUploadModal && (
+        <UploadModal 
+            onClose={() => setShowUploadModal(false)}
+            onUploadComplete={fetchFiles}
+            parentId={remixTarget?.id}
+        />
       )}
 
       {previewFile && (

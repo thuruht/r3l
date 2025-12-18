@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconX, IconCheck, IconChecklist } from '@tabler/icons-react'; // Added IconChecklist
+import { IconX, IconCheck, IconChecklist, IconTrash } from '@tabler/icons-react'; // Added IconChecklist
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
 
@@ -103,6 +103,20 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+      try {
+          const res = await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
+          if (res.ok) {
+              setNotifications(prev => prev.filter(n => n.id !== id));
+              showToast('Notification removed.', 'info');
+          } else {
+              showToast('Failed to remove notification.', 'error');
+          }
+      } catch (e) {
+          showToast('Error removing notification.', 'error');
+      }
+  };
+
   const renderMessage = (n: Notification) => {
     const actorLink = n.actor_id ? (
         <span 
@@ -174,8 +188,11 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
             <div style={{ color: 'var(--text-primary)', marginBottom: '5px' }}>
               {renderMessage(n)}
             </div>
-            <div style={{ fontSize: '0.7em', color: '#666' }}>
-              {new Date(n.created_at).toLocaleTimeString()}
+            <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{new Date(n.created_at).toLocaleTimeString()}</span>
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ background: 'none', border: 'none', color: '#666', cursor: 'pointer', padding: '0 4px' }} title="Remove">
+                  <IconTrash size={12} />
+              </button>
             </div>
             
             {n.type === 'sym_request' && (

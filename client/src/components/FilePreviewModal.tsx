@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IconX, IconDownload, IconBolt } from '@tabler/icons-react';
+import { IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy, IconRefresh } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 
 interface FilePreviewModalProps {
@@ -15,6 +15,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [boosted, setBoosted] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
   const { showToast } = useToast();
 
   const isImage = mimeType.startsWith('image/');
@@ -46,11 +48,46 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             if (!res.ok) throw new Error('Failed to load content');
             return res.text();
         })
-        .then(text => setContent(text))
+        .then(text => {
+            setContent(text);
+            setEditContent(text);
+        })
         .catch(e => setError('Preview unavailable'))
         .finally(() => setLoading(false));
     }
   }, [fileId, isText]);
+
+  const handleSave = async () => {
+      try {
+          const res = await fetch(`/api/files/${fileId}/content`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: editContent })
+          });
+          if (res.ok) {
+              setContent(editContent);
+              setIsEditing(false);
+              showToast('Changes saved.', 'success');
+          } else {
+              showToast('Failed to save changes.', 'error');
+          }
+      } catch(e) {
+          showToast('Error saving changes.', 'error');
+      }
+  };
+
+  const handleRefresh = async () => {
+    try {
+        const res = await fetch(`/api/files/${fileId}/refresh`, { method: 'POST' });
+        if (res.ok) {
+            showToast('Expiration reset to 7 days.', 'success');
+        } else {
+            showToast('Failed to refresh.', 'error');
+        }
+    } catch(e) {
+        showToast('Error refreshing artifact.', 'error');
+    }
+  };
 
   return (
     <div className="preview-overlay fade-in" style={{
@@ -69,9 +106,29 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             {filename}
           </h3>
           <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={handleRefresh} title="Keep Alive (Reset Expiration)">
+               <IconRefresh size={18} />
+            </button>
             <button onClick={handleBoost} title="Boost Signal" disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)' }}>
                <IconBolt size={18} />
             </button>
+            
+            {isText && !isEditing && (
+                <button onClick={() => setIsEditing(true)} title="Edit">
+                    <IconEdit size={18} />
+                </button>
+            )}
+            {isText && isEditing && (
+                <>
+                    <button onClick={handleSave} title="Save Changes" style={{ color: 'var(--accent-sym)', borderColor: 'var(--accent-sym)' }}>
+                        <IconDeviceFloppy size={18} />
+                    </button>
+                    <button onClick={() => { setIsEditing(false); setEditContent(content || ''); }} title="Cancel Edit">
+                        <IconX size={18} />
+                    </button>
+                </>
+            )}
+
             <button onClick={onDownload} title="Download Original">
                <IconDownload size={18} />
             </button>
@@ -94,7 +151,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
                  />
                )}
-               {isText && content && (
+               {isText && content && !isEditing && (
                  <pre style={{ 
                     whiteSpace: 'pre-wrap', 
                     width: '100%', 
@@ -104,10 +161,28 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
                     textAlign: 'left', 
                     fontFamily: 'monospace', 
                     fontSize: '0.9em', 
-                    color: '#f8f8f2' 
+                    color: '#f8f8f2',
+                    overflow: 'auto'
                  }}>
                     {content}
                  </pre>
+               )}
+               {isText && isEditing && (
+                   <textarea
+                       value={editContent}
+                       onChange={(e) => setEditContent(e.target.value)}
+                       style={{
+                           width: '100%',
+                           height: '100%',
+                           background: 'transparent',
+                           color: '#f8f8f2',
+                           border: 'none',
+                           padding: '20px',
+                           fontFamily: 'monospace',
+                           fontSize: '0.9em',
+                           resize: 'none'
+                       }}
+                   />
                )}
                {!isImage && !isText && (
                    <div style={{ textAlign: 'center' }}>

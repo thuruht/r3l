@@ -495,6 +495,29 @@ app.put('/api/notifications/read-all', authMiddleware, async (c) => {
   }
 });
 
+// DELETE /api/notifications/:id: Delete a notification
+app.delete('/api/notifications/:id', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const notification_id = Number(c.req.param('id'));
+
+  if (isNaN(notification_id)) return c.json({ error: 'Invalid ID' }, 400);
+
+  try {
+    const { success } = await c.env.DB.prepare(
+      'DELETE FROM notifications WHERE id = ? AND user_id = ?'
+    ).bind(notification_id, user_id).run();
+
+    if (success) {
+        return c.json({ message: 'Notification deleted' });
+    } else {
+        return c.json({ error: 'Failed to delete notification' }, 500);
+    }
+  } catch (e) {
+    console.error("Error deleting notification:", e);
+    return c.json({ error: 'Failed to delete notification' }, 500);
+  }
+});
+
 // --- Relationship Routes ---
 
 // POST /api/relationships/follow: Create an asym_follow relationship
@@ -1006,7 +1029,7 @@ app.post('/api/files', async (c) => {
     });
 
     // Record in D1
-    const expires_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(); // Default 24h life
+    const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
     const { success } = await c.env.DB.prepare(
       `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -1080,6 +1103,44 @@ app.get('/api/files/:id/content', async (c) => {
   } catch (e: any) {
     console.error("Error downloading file:", e);
     return c.json({ error: 'Failed to download file' }, 500);
+  }
+});
+
+// PUT /api/files/:id/content: Update file content (Text only)
+app.put('/api/files/:id/content', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+  const { content } = await c.req.json();
+
+  if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
+  if (typeof content !== 'string') return c.json({ error: 'Content must be string' }, 400);
+
+  try {
+    const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    // Update R2
+    await c.env.BUCKET.put(file.r2_key as string, content, {
+        httpMetadata: { contentType: file.mime_type as string } // Preserve mime type
+    });
+
+    // Update D1 (size, updated_at if exists, or just ensure vitality bumps?)
+    // Let's bump vitality slightly on edit to keep it alive
+    await c.env.DB.prepare(
+        'UPDATE files SET size = ?, vitality = vitality + 1 WHERE id = ?'
+    ).bind(content.length, file_id).run();
+
+    // Notify via DO (Optimization: broadcast to anyone watching this file?)
+    // For now, we just notify the user themselves as confirmation, or maybe collaborators later.
+    // Ideally we broadcast to a "file room". Since we don't have file rooms yet, we skip broadcasting
+    // specific file updates to others unless we track "subscribers".
+    
+    return c.json({ message: 'File updated successfully' });
+
+  } catch (e: any) {
+    console.error("Error updating file:", e);
+    return c.json({ error: 'Failed to update file' }, 500);
   }
 });
 
@@ -1157,6 +1218,39 @@ app.delete('/api/files/:id', async (c) => {
   }
 });
 
+
+// POST /api/files/:id/refresh: Reset expiration timer (Keep Alive)
+app.post('/api/files/:id/refresh', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+
+  if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
+
+  try {
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    
+    // Allow owner or mutuals (if we checked mutuals) to refresh? 
+    // For now, let's allow owner only, or anyone with access if public/sym.
+    // Simplest: Check if user has access.
+    
+    // Update expires_at to 7 days from now
+    const new_expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
+    
+    const { success } = await c.env.DB.prepare(
+      'UPDATE files SET expires_at = ? WHERE id = ?'
+    ).bind(new_expires_at, file_id).run();
+
+    if (success) {
+      return c.json({ message: 'File expiration reset to 7 days.', expires_at: new_expires_at });
+    } else {
+      return c.json({ error: 'Failed to refresh file' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error refreshing file:", e);
+    return c.json({ error: 'Failed to refresh file' }, 500);
+  }
+});
 
 // POST /api/files/:id/vitality: Vote on a file (increase vitality)
 app.post('/api/files/:id/vitality', async (c) => {

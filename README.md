@@ -1,111 +1,79 @@
 # R3L:F (Relational Relativity & Random Ephemerality File-net)
 
-**Rel F** is an experiment in serendipitous social networking. The platform enables users to discover connections with others through guided randomness rather than algorithmic matching, creating opportunities for unexpected but valuable relationships and knowledge exchange.
+**Rel F** is an experiment in serendipitous social networking. It fosters connections through guided randomness and ephemeral artifact sharing rather than algorithmic feed matching.
 
 ## Overview
 
-Rel F is a decentralized, ephemeral, Cloudflare-native social file-sharing platform that prioritizes user control, organic discovery, and community-driven archiving. It is non-corporate, minimalist, and free of algorithmic engagement farming, focusing instead on peer-to-peer interaction, temporary content, and personal archives.
+Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, organic discovery, and "digital drift." It stands as a counter-concept to permanent, corporate social media: here, data is temporary, connections are consensual or random, and the primary unit of interaction is the **Artifact** (file).
 
 ## Core Concepts
 
-*   **Relational** – Users are connected visually in an association web that shows or alludes to (or not) explicit, mutually agreed relationships "sym"(*1).
-*   **Ephemeral** – Content expires unless archived, ensuring that data remains fresh and relevant rather than accumulating indefinitely.
-*   **Filenet** – A social file-sharing system where documents, audio, video, and creative works are the foundation of interaction.
+*   **Sym vs. A-Sym**:
+    *   **Sym (Symmetric)**: Explicit, mutual relationships. Both parties agree to connect.
+    *   **A-Sym (Asymmetric)**: One-way follows or proximity-based connections.
+*   **Ephemerality**: Content expires by default (7 days). "Vitality" can extend this life, or users can "Refresh" to reset the clock.
+*   **The Drift**: A radar-like discovery mode that samples random public artifacts and users from the network, visualized as pulsating "ghost nodes."
 
 ## Features
 
-### 🗃 Personal Archive ("Drawer") & Communique
-*   Each user has a "drawer" (profile) with a customizable communique—a themeable, linkable window into their stored content.
-*   Content expires after one week unless archived by user, or designated as community content.
-*   Unconfigured drawers only show an indistinguishable generic avatar & their display name and cannot join the association web.
+### 🗃 The Communique (Profile)
+*   **Drawer UI**: A personal archive containing your "Communique" (manifesto/bio) and Artifacts.
+*   **Customization**: Themeable via JSON preferences (colors, fonts).
 
-### 📂 File & Archive System
-*   Users can upload and share any file format (zines, code, music, books, documents).
-*   **Expiration System**:
-    *   **24 Hours active** (Current Pilot Configuration) → Auto-deleted (unless archived or boosted).
-    *   *Planned:* Non-archived content will be appended to the most recent communique version before true deletion as a final safeguard.
-*   **Community Archiving**: Content exceeding reaction/share thresholds can be flagged by the user for permanent community storage.
+### 📂 Artifacts & File System
+*   **Universal Uploads**: Share any file type (images, text, code, audio).
+*   **New Upload Modal**: Drag-and-drop support for multiple files with progress tracking.
+*   **Expiration**:
+    *   **Default Lifespan**: 7 Days (168 Hours).
+    *   **Refresh**: Instantly reset the 7-day timer to keep content alive.
+    *   **Vitality**: Boost a file's signal to increase visibility (and slightly extend life).
+*   **In-Place Editing**: Text-based artifacts (Markdown, Code, JSON) can be edited directly in the browser.
 
-### 🔗 Association Web (D3.js Visualization)
-*   Automatically generated from public contact lists "a-sym" (*2).
-*   Branching structure shows degrees of connection (stronger links for frequent interactions).
-*   Clicking a node opens the user’s profile.
-*   Low-visibility users appear muted and have no clear associations.
-
-### 📢 Posting & Engagement
-*   HTML/Text editor for long-form posts, thoughts, and creative work (CSS styling supported).
-*   Threaded comments (minimal, non-disruptive).
-*   Bookmarking for content discovery (public count only, no user tracking).
-*   Voting/Reactions only count toward community archiving eligibility.
-
-### 👥 Contacts & Social Features
-*   Contacts are private or public:
-    *   Public contacts appear in the association web. Either (*1)"sym" or (*2)"a-sym".
-    *   Private contacts remain hidden. (*1)(*2)or(*3).
-*   “Lurker in the Mist” mode (low-visibility status for users who prefer minimal presence).
+### 🔗 Association Web
+*   **Interactive Graph**: A D3.js visualization of your social world.
+    *   **Me**: Center node.
+    *   **Sym**: Glowing, strong connections.
+    *   **A-Sym**: Dashed, weaker connections.
+    *   **Drift**: Pulsating nodes representing random discoveries.
+*   **Navigation**: Persistent top-nav with glassmorphism for easy access to tools.
 
 ### ✉️ Inbox & Notifications
-*   All notifications sent via inbox (no pop-ups).
-*   Real-time alerts via WebSocket.
-*   Mutual connection prompts are triggered by:
-    *   Frequent viewing of the same user’s content.
-    *   Repeated engagement with the same group or files.
-    *   Co-archiving 5 or 10 shared files.
+*   **Unified Comms**: All signals—connection requests, file shares, system alerts—arrive here.
+*   **Real-Time**: WebSocket integration ensures instant delivery.
+*   **Control**: Accept/Decline connection requests or simply delete old notifications.
 
-### 🔍 Search & Discovery
-*   **The Drift**: Random sampling of public signals and artifacts.
-*   Filtering by:
-    *   File type (MIME/extension)
-    *   User-defined tags/categories
-    *   Match “all” or “any” criteria
-*   **No Algorithmic Feed**: Everything is searchable but not ranked.
-
-### 🛑 Privacy & Moderation
-*   **Mutual Contributor Opt-Out**: Users can hide their name from shared files.
-*   **No Unwanted Labels**: All mutual relationships must be explicitly agreed upon "sym"(*1).
-*   **Permanent Hide List for the Association Web**: Users can ignore specific connections indefinitely unless manually revisited.
-*   **Anonymous Profiles Are Not Supported**: Pseudonymous users fully participate. Unconfigured drawers remain limited (only a communique, no web presence).
+### 🔍 Discovery
+*   **The Drift**: Toggle "Drift Mode" to scan the network for random public artifacts.
+*   **Search**: Find users by name.
+*   **Serendipity**: No algorithmic feed. You find what you look for, or what looks for you.
 
 ---
 
 ## Technical Stack
 
-This project is built entirely on Cloudflare-native technologies:
+Built entirely on the **Cloudflare Developer Platform**:
 
-*   **Cloudflare Pages** → Frontend hosting (HTML/CSS/JS)
-*   **Cloudflare Workers** → API logic & processing
-*   **Cloudflare KV** → Fast lookups (sessions, visibility settings)
-*   **Cloudflare R2** → File storage (archives, shared content)
-*   **Cloudflare D1** → SQL database (profiles, posts, associations)
-*   **Cloudflare Durable Objects** → Real-time collaboration (DMs, shared edits)
-*   **D3.js** → Association web visualization
-*   **Inbox & Messaging System** → Built within Workers & Durable Objects
+*   **Cloudflare Pages** (React/Vite)
+*   **Cloudflare Workers** (Hono API)
+*   **Cloudflare D1** (Relational Database)
+*   **Cloudflare R2** (Object Storage)
+*   **Cloudflare Durable Objects** (WebSockets/Real-time State)
+*   **Cloudflare KV** (Session/Rate Limiting)
 
-## Development Roadmap
+## Development Status
 
-### 🔹 Backend (Cloudflare Workers + D1/KV/R2)
-1.  **User Profiles & Authentication**: Worker-based JWT authentication, D1 for user profile storage, KV for sessions.
-2.  **File Storage & Archiving**: R2 for user-uploaded content, D1 for metadata, Workers handle archival logic.
-3.  **Inbox & Notifications**: D1 for messages, KV for fast access, Workers to expire ignored prompts.
-4.  **Association Web & Mutual Connections**: D1 for public contact lists, Workers generate graph data.
-5.  **Planned Features**:
-    *   Collaborative Workspaces.
-    *   Undo Window for History Wipes.
-    *   Global Community Archive Browser.
-    *   Safeguard Append (Content appended to communique before deletion).
+**Current Phase: Refinement & Polish**
+*   ✅ **Auth**: Complete (JWT, Email Verification flow).
+*   ✅ **Graph**: Complete (D3.js, Drift Pulse).
+*   ✅ **Files**: Advanced (Modals, Editing, Expiration Logic).
+*   ✅ **Social**: Functional (Sym/A-Sym, Inbox, Sharing).
+*   🚧 **Next Steps**: Collaborative Workspaces, Audio/Video Streaming support.
 
-### 🔹 Frontend (Cloudflare Pages + HTML/CSS/JS)
-1.  **User “Drawer” UI**: Profiles as modular, themeable containers.
-2.  **Association Web (D3.js)**: Interactive visualization of connections.
-3.  **Inbox & Notifications**: UI for DMs, mutual connection requests.
-4.  **File & Archive System**: UI for uploads, archival selection, & expiration tracking.
+## Getting Started (Dev)
 
-## Contributing
+1.  **Install Dependencies**: `npm install`
+2.  **Run Development Server**: `npm run dev` (Starts Vite + Wrangler)
+3.  **Database Setup**: Ensure local D1 migrations are applied.
 
-This project is heavily conceptual and focused on DIY ethos. Contributions are welcome if they align with the guiding principles:
-*   No engagement optimization
-*   No corporate/capitalist manipulation
-*   Minimalist, user-controlled interactions
-*   Privacy-first, ephemeral but intentional
-
-*1- Explicitly allowed, cultivated relationships are sym, *2- Non-disallowed relationships through proximity, etc. are a-sym.*
+---
+*“We are adrift in mist.”*

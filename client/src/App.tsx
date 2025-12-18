@@ -1,8 +1,9 @@
 // App.tsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard } from '@tabler/icons-react';
+import gsap from 'gsap';
+import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import CommuniquePage from './components/CommuniquePage';
@@ -28,6 +29,7 @@ function Main() {
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
@@ -321,42 +323,64 @@ function Main() {
   // Hide UI overlays if on Communique page?
   const isCommuniquePage = location.pathname.startsWith('/communique');
 
+  const navRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    if (navRef.current) {
+      gsap.fromTo(navRef.current, 
+        { y: -50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }
+      );
+      
+      const buttons = navRef.current.querySelectorAll('button');
+      gsap.fromTo(buttons, 
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, delay: 0.3, ease: 'power2.out' }
+      );
+    }
+  }, []);
+
   return (
     <>
-      {/* UI Overlay for global controls (Visible everywhere or just on home? Let's keep it visible for navigation) */}
-      {!isCommuniquePage && (
-        <div className="overlay-ui" style={{ display: 'flex', flexDirection: 'column', pointerEvents: 'none' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', pointerEvents: 'auto' }}>
-                <div>
-                    <h1 style={{ margin: 0 }}>Rel F</h1>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    System Date: {new Date().toLocaleDateString()}
+      <div ref={navRef} className="overlay-ui">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    {new Date().toLocaleDateString()}
                     </p>
                 </div>
+            
             {currentUser && (
-            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
+                </div>
+                
                 <SearchBar />
                 <RandomUserButton />
-                <span style={{ marginRight: '10px' }}>Logged in as: {currentUser.username}</span>
-                <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ marginRight: '10px' }}>
+                
+                <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
                 {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
                 </button>
-                <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ marginRight: '10px' }}>
+                
+                <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
                 <IconRadar2 size={18} />
                 </button>
-                <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ marginRight: '10px', position: 'relative' }}>
+                
+                <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
                 Inbox
                 {unreadCount > 0 && (
                     <span style={{
                     position: 'absolute',
-                    top: '-5px',
-                    right: '-5px',
+                    top: '-2px',
+                    right: '-2px',
                     background: 'var(--accent-alert)',
                     color: 'white',
                     borderRadius: '50%',
-                    width: '18px',
-                    height: '18px',
-                    fontSize: '0.7rem',
+                    width: '14px',
+                    height: '14px',
+                    fontSize: '0.6rem',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'
@@ -365,24 +389,49 @@ function Main() {
                     </span>
                 )}
                 </button>
-                <button onClick={() => setIsFAQOpen(true)} title="Help" style={{ marginRight: '10px', padding: '5px 10px' }}>
-                <IconHelp size={18} />
+
+                <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
+                    {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
                 </button>
-                <button onClick={() => setIsAboutOpen(true)} title="About" style={{ marginRight: '10px', padding: '5px 10px' }}>
-                  <IconInfoCircle size={18} />
-                </button>
-                {currentUser.id === 1 && (
-                  <button onClick={() => setIsAdminOpen(true)} title="Admin Dashboard" style={{ marginRight: '10px', padding: '5px 10px', borderColor: 'var(--accent-alert)', color: 'var(--accent-alert)' }}><IconDashboard size={18} /></button>
-                )}
-                <button onClick={toggleTheme} title={`Theme: ${theme.charAt(0).toUpperCase() + theme.slice(1)}`} style={{ marginRight: '10px', padding: '5px 10px' }}>
-                  <IconPalette size={18} />
-                </button>
-                <button onClick={handleLogout}>Logout</button>
             </div>
             )}
             </div>
         </div>
-      )}
+
+        {/* Dropdown Menu */}
+        {isMenuOpen && currentUser && (
+            <div className="glass-panel fade-in" style={{
+                position: 'fixed',
+                top: '60px',
+                right: '10px',
+                width: '200px',
+                padding: '10px',
+                borderRadius: '8px',
+                zIndex: 2000,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+            }}>
+                <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    <IconHelp size={18} /> Help
+                </button>
+                <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    <IconInfoCircle size={18} /> About
+                </button>
+                <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                </button>
+                {currentUser.id === 1 && (
+                  <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
+                      <IconDashboard size={18} /> Admin
+                  </button>
+                )}
+                <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
+                <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    <IconLogout size={18} /> Logout
+                </button>
+            </div>
+        )}
 
       {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
       {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}

@@ -116,7 +116,7 @@ app.post('/api/register', async (c) => {
             from: 'Rel F <lowlier_serf@r3l.distorted.work>',
             to: email,
             subject: 'Verify your Rel F account',
-            html: `<p>Welcome to Rel F!</p><p>Please <a href="https://r3l.distorted.work/verify-email?token=${verificationToken}">verify your email</a> to continue.</p>`
+            html: `<p>Welcome to Rel F!</p><p>Please <a href="https://r3l.distorted.work/verify?token=${verificationToken}">verify your email</a> to continue.</p>`
           });
         } catch (emailError) {
           console.error("Failed to send email:", emailError);
@@ -164,13 +164,14 @@ app.post('/api/login', async (c) => {
     }
 
     // 4. Generate JWT
-    // Use a fallback secret for dev if not provided (warn in logs)
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod'; 
+    if (!c.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET is not set');
+    }
     const token = await sign({
       id: user.id,
       username: user.username,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 days
-    }, secret);
+    }, c.env.JWT_SECRET);
 
     // 5. Set HttpOnly Cookie
     setCookie(c, 'auth_token', token, {
@@ -418,6 +419,15 @@ app.post('/api/relationships/follow', async (c) => {
   }
 
   try {
+    // Check if any relationship exists
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ?'
+    ).bind(source_user_id, target_user_id).first();
+
+    if (existing) {
+       return c.json({ error: 'Relationship already exists' }, 409);
+    }
+
     const { success } = await c.env.DB.prepare(
       'INSERT INTO relationships (source_user_id, target_user_id, type, status) VALUES (?, ?, ?, ?)'
     ).bind(source_user_id, target_user_id, 'asym_follow', 'accepted').run();
@@ -451,17 +461,35 @@ app.post('/api/relationships/sym-request', async (c) => {
   try {
     // Check if an asym_follow exists from target_user_id to source_user_id
     // This could indicate an existing connection or a reciprocal interest
-    const existingAsym = await c.env.DB.prepare(
+    const existingAsymReverse = await c.env.DB.prepare(
       'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ?'
     ).bind(target_user_id, source_user_id, 'asym_follow').first();
 
-    // Check if there's already a pending request from source to target
-    const existingRequest = await c.env.DB.prepare(
-      'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ? AND status = ?'
-    ).bind(source_user_id, target_user_id, 'sym_request', 'pending').first();
+    // Check if there's already a relationship from source to target
+    const existingDirect = await c.env.DB.prepare(
+      'SELECT id, type, status FROM relationships WHERE source_user_id = ? AND target_user_id = ?'
+    ).bind(source_user_id, target_user_id).first();
 
-    if (existingRequest) {
-      return c.json({ error: 'Sym request already pending for this user' }, 409);
+    if (existingDirect) {
+        if (existingDirect.type === 'sym_request') {
+             return c.json({ error: 'Sym request already pending for this user' }, 409);
+        }
+        if (existingDirect.type === 'sym_accepted') {
+             return c.json({ error: 'Already connected' }, 409);
+        }
+        if (existingDirect.type === 'asym_follow') {
+            // Upgrade follow to sym_request
+            const { success } = await c.env.DB.prepare(
+                'UPDATE relationships SET type = ?, status = ? WHERE id = ?'
+            ).bind('sym_request', 'pending', existingDirect.id).run();
+            
+            if (success) {
+                 await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id);
+                 return c.json({ message: 'Sym request sent (upgraded from follow)' });
+            } else {
+                 return c.json({ error: 'Failed to upgrade to sym request' }, 500);
+            }
+        }
     }
     
     // Check if a mutual connection already exists
@@ -768,23 +796,6 @@ app.put('/api/communiques', async (c) => {
     return c.json({ error: 'Failed to update communique' }, 500);
   }
 });
-
-
-// Placeholder API routes
-app.get('/api/kv/:key', async (c) => {
-  const { key } = c.req.param();
-  const value = await c.env.KV.get(key);
-  return c.json({ key, value });
-});
-
-app.post('/api/kv/:key', async (c) => {
-  const { key } = c.req.param();
-  const { value } = await c.req.json();
-  await c.env.KV.put(key, value);
-  return c.json({ message: `Key '${key}' set with value '${value}'` });
-});
-
-
 
 
 // --- Files Routes ---

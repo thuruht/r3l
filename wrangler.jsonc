@@ -48,6 +48,19 @@
   "triggers": {
     "crons": ["0 * * * *"]
   },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": [
+        "RelfDO"
+      ],
+      "deleted_classes": [
+        "CollaborationRoom",
+        "ConnectionsObject",
+        "VisualizationObject"
+      ]
+    }
+  ],
   "routes": [
     {
       "pattern": "r3l.distorted.work",

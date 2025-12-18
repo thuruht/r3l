@@ -256,6 +256,102 @@ app.get('/api/users/me', async (c) => {
   }
 });
 
+app.get('/api/users/me/preferences', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    const preferences = await c.env.DB.prepare(
+      'SELECT theme_preferences, node_primary_color, node_secondary_color, node_size FROM users WHERE id = ?'
+    ).bind(user_id).first();
+
+    if (!preferences) return c.json({ error: 'User preferences not found' }, 404);
+
+    return c.json(preferences);
+  } catch (e) {
+    console.error("Error fetching user preferences:", e);
+    return c.json({ error: 'Failed to fetch user preferences' }, 500);
+  }
+});
+
+    return c.json(preferences);
+  } catch (e) {
+    console.error("Error fetching user preferences:", e);
+    return c.json({ error: 'Failed to fetch user preferences' }, 500);
+  }
+});
+
+app.put('/api/users/me/preferences', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { theme_preferences } = await c.req.json();
+
+  if (typeof theme_preferences !== 'object' && typeof theme_preferences !== 'string') {
+    return c.json({ error: 'Invalid theme preferences format' }, 400);
+  }
+
+  let themePrefsJson = typeof theme_preferences === 'string' ? theme_preferences : JSON.stringify(theme_preferences);
+
+  try {
+    const { success } = await c.env.DB.prepare(
+      'UPDATE users SET theme_preferences = ? WHERE id = ?'
+    ).bind(themePrefsJson, user_id).run();
+
+    if (success) {
+      return c.json({ message: 'Theme preferences updated successfully' });
+    } else {
+      return c.json({ error: 'Failed to update theme preferences' }, 500);
+    }
+  } catch (e) {
+    console.error("Error updating theme preferences:", e);
+    return c.json({ error: 'Failed to update theme preferences' }, 500);
+  }
+});
+
+// Helper for hex validation (basic, without full regex for #RRGGBBAA)
+const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color);
+
+app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { node_primary_color, node_secondary_color, node_size } = await c.req.json();
+
+  let updateFields: string[] = [];
+  let updateValues: (string | number)[] = [];
+
+  if (node_primary_color !== undefined) {
+    if (!isValidHexColor(node_primary_color)) return c.json({ error: 'Invalid node_primary_color format' }, 400);
+    updateFields.push('node_primary_color = ?');
+    updateValues.push(node_primary_color);
+  }
+  if (node_secondary_color !== undefined) {
+    if (!isValidHexColor(node_secondary_color)) return c.json({ error: 'Invalid node_secondary_color format' }, 400);
+    updateFields.push('node_secondary_color = ?');
+    updateValues.push(node_secondary_color);
+  }
+  if (node_size !== undefined) {
+    if (typeof node_size !== 'number' || node_size < 1 || node_size > 20) return c.json({ error: 'Invalid node_size' }, 400);
+    updateFields.push('node_size = ?');
+    updateValues.push(node_size);
+  }
+
+  if (updateFields.length === 0) {
+    return c.json({ error: 'No fields to update' }, 400);
+  }
+
+  try {
+    const { success } = await c.env.DB.prepare(
+      `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`
+    ).bind(...updateValues, user_id).run();
+
+    if (success) {
+      return c.json({ message: 'Profile aesthetics updated successfully' });
+    } else {
+      return c.json({ error: 'Failed to update profile aesthetics' }, 500);
+    }
+  } catch (e) {
+    console.error("Error updating profile aesthetics:", e);
+    return c.json({ error: 'Failed to update profile aesthetics' }, 500);
+  }
+});
+
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');

@@ -13,6 +13,7 @@ import About from './components/About';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
+import ThemeSettings from './components/ThemeSettings'; // New Import
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
@@ -30,6 +31,7 @@ function Main() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false); // New state
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
@@ -44,6 +46,7 @@ function Main() {
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [userPreferences, setUserPreferences] = useState<any | null>(null); // New state for user preferences
 
   const { showToast } = useToast();
   const { theme, toggleTheme } = useTheme();
@@ -188,14 +191,24 @@ function Main() {
           const data = await response.json();
           setCurrentUser(data.user);
           setIsAuthenticated(true);
+          // Fetch user preferences
+          const prefsResponse = await fetch('/api/users/me/preferences');
+          if (prefsResponse.ok) {
+            const prefsData = await prefsResponse.json();
+            setUserPreferences(prefsData);
+          } else {
+            console.warn('Failed to fetch user preferences');
+          }
         } else {
           setIsAuthenticated(false);
           setCurrentUser(null);
+          setUserPreferences(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
         setCurrentUser(null);
+        setUserPreferences(null);
       }
     };
     checkAuth();
@@ -240,6 +253,14 @@ function Main() {
         const data = await response.json();
         setCurrentUser(data.user);
         setIsAuthenticated(true);
+        // Fetch user preferences after successful login
+        const prefsResponse = await fetch('/api/users/me/preferences');
+        if (prefsResponse.ok) {
+          const prefsData = await prefsResponse.json();
+          setUserPreferences(prefsData);
+        } else {
+          console.warn('Failed to fetch user preferences after login');
+        }
         showToast(`Welcome back, ${data.user.username}`, 'success');
       } else {
         const errorData = await response.json();
@@ -283,13 +304,12 @@ function Main() {
       await fetch('/api/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentUser(null);
+      setUserPreferences(null); // Clear preferences on logout
       showToast('Logged out', 'info');
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
-
-  const onNodeClick = (nodeId: string) => {
+  };  const onNodeClick = (nodeId: string) => {
     if (nodeId.startsWith('file-')) {
       const node = nodes.find(n => n.id === nodeId);
       if (node && node.data) {
@@ -364,6 +384,7 @@ function Main() {
   }, []);
 
   return (
+    <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
     <>
       <div ref={navRef} className="overlay-ui">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
@@ -371,138 +392,150 @@ function Main() {
                     <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
                     {new Date().toLocaleDateString()}
-                    </p>
-                </div>
+                                </p>
+                            </div>
+                        
+                        {currentUser && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
+                            </div>
+                            
+                            <SearchBar />
+                            <RandomUserButton />
+                            
+                            <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
+                            {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
+                            </button>
+                            
+                            <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
+                            <IconRadar2 size={18} />
+                            </button>
+                            
+                            <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
+                            Inbox
+                            {unreadCount > 0 && (
+                                <span style={{
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-2px',
+                                background: 'var(--accent-alert)',
+                                color: 'white',
+                                borderRadius: '50%',
+                                width: '14px',
+                                height: '14px',
+                                fontSize: '0.6rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                                }}>
+                                {unreadCount}
+                                </span>
+                            )}
+                            </button>
             
-            {currentUser && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
-                </div>
-                
-                <SearchBar />
-                <RandomUserButton />
-                
-                <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
-                {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
-                </button>
-                
-                <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
-                <IconRadar2 size={18} />
-                </button>
-                
-                <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
-                Inbox
-                {unreadCount > 0 && (
-                    <span style={{
-                    position: 'absolute',
-                    top: '-2px',
-                    right: '-2px',
-                    background: 'var(--accent-alert)',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '14px',
-                    height: '14px',
-                    fontSize: '0.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                    }}>
-                    {unreadCount}
-                    </span>
-                )}
-                </button>
-
-                <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
-                    {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
-                </button>
-            </div>
-            )}
-            </div>
-        </div>
-
-        {/* Dropdown Menu */}
-        {isMenuOpen && currentUser && (
-            <div className="glass-panel fade-in" style={{
-                position: 'fixed',
-                top: '60px',
-                right: '10px',
-                width: '200px',
-                padding: '10px',
-                borderRadius: '8px',
-                zIndex: 2000,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-            }}>
-                <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                    <IconHelp size={18} /> Help
-                </button>
-                <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                    <IconInfoCircle size={18} /> About
-                </button>
-                <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                    <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                </button>
-                {currentUser.id === 1 && (
-                  <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
-                      <IconDashboard size={18} /> Admin
-                  </button>
-                )}
-                <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
-                <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                    <IconLogout size={18} /> Logout
-                </button>
-            </div>
-        )}
-
-      {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
-      {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
-      {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
-      {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-      
-      {previewFile && (
-        <FilePreviewModal
-            fileId={previewFile.id}
-            filename={previewFile.filename}
-            mimeType={previewFile.mime_type}
-            onClose={() => setPreviewFile(null)}
-            onDownload={() => {
-                const link = document.createElement('a');
-                link.href = `/api/files/${previewFile.id}/content`;
-                link.download = previewFile.filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }}
-        />
-      )}
-
-      <Routes>
-        <Route path="/" element={
-          viewMode === 'graph' ? (
-            <AssociationWeb
-              onNodeClick={onNodeClick}
-              nodes={nodes}
-              links={links}
-              isDrifting={isDrifting}
-              onlineUserIds={onlineUserIds}
-            />
-          ) : (
-            <NetworkList
-              nodes={nodes}
-              onNodeClick={onNodeClick}
-              loading={loading}
-              />
-          )
-        } />
-        <Route path="/communique/:userId" element={<CommuniquePage />} />
-      </Routes>
-    </>
+                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
+                                {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
+                            </button>
+                        </div>
+                        )}
+                        </div>
+                    </div>
+            
+                    {/* Dropdown Menu */}
+                    {isMenuOpen && currentUser && (
+                        <div className="glass-panel fade-in" style={{
+                            position: 'fixed',
+                            top: '60px',
+                            right: '10px',
+                            width: '200px',
+                            padding: '10px',
+                            borderRadius: '8px',
+                            zIndex: 2000,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                        }}>
+                            <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                                <IconHelp size={18} /> Help
+                            </button>
+                                            <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                                                <IconInfoCircle size={18} /> About
+                                            </button>
+                                            <button onClick={() => { setIsThemeSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                                                <IconPalette size={18} /> Theme Settings
+                                            </button>
+                                            <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                                                <IconPalette size={18} /> Toggle Default Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                                            </button>                            {currentUser.id === 1 && (
+                              <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
+                                  <IconDashboard size={18} /> Admin
+                              </button>
+                            )}
+                            <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
+                            <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                                <IconLogout size={18} /> Logout
+                            </button>
+                        </div>
+                    )}
+            
+                        {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
+                        {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
+                        {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+                        {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
+                        {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
+                  {previewFile && (
+                    <FilePreviewModal
+                        fileId={previewFile.id}
+                        filename={previewFile.filename}
+                        mimeType={previewFile.mime_type}
+                        onClose={() => setPreviewFile(null)}
+                        onDownload={() => {
+                            const link = document.createElement('a');
+                            link.href = `/api/files/${previewFile.id}/content`;
+                            link.download = previewFile.filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }}
+                    />
+                  )}
+            
+                  <Routes>
+                    <Route path="/" element={
+                      viewMode === 'graph' ? (
+                        <AssociationWeb
+                          onNodeClick={onNodeClick}
+                          nodes={nodes}
+                          links={links}
+                          isDrifting={isDrifting}
+                          onlineUserIds={onlineUserIds}
+                        />
+                      ) : (
+                        <NetworkList
+                          nodes={nodes}
+                          onNodeClick={onNodeClick}
+                          loading={loading}
+                          />
+                      )
+                    } />
+                    <Route path="/communique/:userId" element={<CommuniquePage />} />
+                  </Routes>
+                </>
+                </CustomizationProvider>
+              );
+            }
+function App() {
+  return (
+    <ThemeProvider>
+      <ToastProvider>
+        <Main />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }
 
-function App() {
+export default App;function App() {
   return (
     <ThemeProvider>
       <ToastProvider>

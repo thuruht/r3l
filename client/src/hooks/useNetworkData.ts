@@ -7,6 +7,9 @@ export interface NetworkNode {
   name: string;
   avatar_url?: string;
   online?: boolean; // New property
+  primaryNodeColor?: string; // New property
+  secondaryNodeColor?: string; // New property
+  nodeSize?: number; // New property
   data?: any; 
 }
 

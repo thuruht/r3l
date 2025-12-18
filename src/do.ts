@@ -1,9 +1,6 @@
-// This is the Durable Object (DO) code.
-// It is separate from the Worker code and runs in its own isolated environment.
+// do.ts
 
-// In a production app, you would have logic here to manage WebSocket connections,
-// send messages to connected clients, and potentially interact with D1 or KV.
-
+1
 interface Env {
   ASSETS: Fetcher;
   KV: KVNamespace;
@@ -23,7 +20,7 @@ interface Session {
 
 export class RelfDO {
   state: DurableObjectState;
-  sessions: Session[]; 
+  sessions: Session[];
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
@@ -34,18 +31,18 @@ export class RelfDO {
     const url = new URL(request.url);
 
     switch (url.pathname) {
-      case '/websocket': 
+      case '/websocket':
         if (request.headers.get("Upgrade") != "websocket") {
           return new Response("Expected Upgrade: websocket", { status: 426 });
         }
 
         const userIdHeader = request.headers.get('X-User-ID');
         if (!userIdHeader) {
-            return new Response("User ID missing from WebSocket upgrade request", { status: 400 });
+          return new Response("User ID missing from WebSocket upgrade request", { status: 400 });
         }
         const userId = parseInt(userIdHeader);
         if (isNaN(userId)) {
-            return new Response("Invalid User ID from WebSocket upgrade request", { status: 400 });
+          return new Response("Invalid User ID from WebSocket upgrade request", { status: 400 });
         }
 
         const pair = new WebSocketPair();
@@ -80,8 +77,8 @@ export class RelfDO {
           this.broadcast(body); // Broadcast raw body as the message
           return new Response("Signal broadcasted", { status: 200 });
         } catch (err: any) {
-           console.error("Error processing signal broadcast:", err);
-           return new Response(`Error: ${err.message}`, { status: 500 });
+          console.error("Error processing signal broadcast:", err);
+          return new Response(`Error: ${err.message}`, { status: 500 });
         }
 
       default:
@@ -95,16 +92,16 @@ export class RelfDO {
 
     // 1. Send current online users to the new client
     const onlineUserIds = Array.from(new Set(this.sessions.map(s => s.userId)));
-    webSocket.send(JSON.stringify({ 
-      type: 'presence_sync', 
-      onlineUserIds 
+    webSocket.send(JSON.stringify({
+      type: 'presence_sync',
+      onlineUserIds
     }));
 
     // 2. Broadcast 'online' status to everyone else
-    this.broadcast({ 
-        type: 'presence_update', 
-        status: 'online', 
-        userId 
+    this.broadcast({
+      type: 'presence_update',
+      status: 'online',
+      userId
     }, userId); // Exclude self from broadcast (optional, but cleaner)
 
     webSocket.addEventListener("message", async msg => {
@@ -121,15 +118,15 @@ export class RelfDO {
     webSocket.addEventListener("close", async evt => {
       console.log(`WebSocket closed for user ${userId}: ${evt.code} ${evt.reason}`);
       this.sessions = this.sessions.filter(s => s.ws !== webSocket);
-      
+
       // Check if user is completely offline (no other sessions)
       const stillOnline = this.sessions.some(s => s.userId === userId);
       if (!stillOnline) {
-          this.broadcast({ 
-              type: 'presence_update', 
-              status: 'offline', 
-              userId 
-          });
+        this.broadcast({
+          type: 'presence_update',
+          status: 'offline',
+          userId
+        });
       }
     });
 

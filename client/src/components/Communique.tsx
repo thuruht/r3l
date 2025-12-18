@@ -4,6 +4,7 @@ import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLin
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
+import { useCustomization } from '../context/CustomizationContext'; // New Import
 
 interface CommuniqueProps {
   userId: number; // Changed to number to match typical usage, though strict string/number handling is good
@@ -25,13 +26,28 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
   const [currentUser, setCurrentUser] = useState<{ id: number; username: string; avatar_url?: string } | null>(null);
-  
+
+  // New states for profile aesthetics
+  const [primaryNodeColor, setPrimaryNodeColor] = useState<string>('');
+  const [secondaryNodeColor, setSecondaryNodeColor] = useState<string>('');
+  const [nodeSize, setNodeSize] = useState<number>(8); // Default to 8
+
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+  const { preferences, updateProfileAesthetics } = useCustomization(); // Use customization context
 
   const isOwner = currentUser?.id === userId;
+
+  useEffect(() => {
+    // Load initial profile aesthetics from preferences
+    if (preferences) {
+        setPrimaryNodeColor(preferences.node_primary_color || '#1F77B4');
+        setSecondaryNodeColor(preferences.node_secondary_color || '#FF7F0E');
+        setNodeSize(preferences.node_size || 8);
+    }
+  }, [preferences]);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -204,6 +220,19 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
         setSaveStatus('error');
         showToast('Error updating communique.', 'error');
       }
+
+      // Save profile aesthetics
+      try {
+          await updateProfileAesthetics({
+              node_primary_color: primaryNodeColor,
+              node_secondary_color: secondaryNodeColor,
+              node_size: nodeSize,
+          });
+          // showToast('Profile aesthetics updated!', 'success'); // Toast already handled by CustomizationContext
+      } catch (err) {
+          console.error("Error updating profile aesthetics", err);
+          showToast('Failed to update profile aesthetics.', 'error');
+      }
     };
   
     const performRelationshipAction = async (endpoint: string, method: string = 'POST', body?: any) => {
@@ -294,33 +323,35 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>Communique</h4>
         {isOwner && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <input 
-                    type="file" 
-                    accept="image/*" 
-                    ref={avatarInputRef} 
-                    style={{ display: 'none' }} 
-                    onChange={handleAvatarUpload}
-                />
-                {currentUser?.avatar_url && (
-                  <img 
-                    src={currentUser.avatar_url} 
-                    alt="Avatar" 
-                    style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
-                  />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        ref={avatarInputRef} 
+                        style={{ display: 'none' }} 
+                        onChange={handleAvatarUpload}
+                    />
+                    {currentUser?.avatar_url && (
+                      <img 
+                        src={currentUser.avatar_url} 
+                        alt="Avatar" 
+                        style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }}
+                      />
+                    )}
+                    <button 
+                        onClick={() => avatarInputRef.current?.click()} 
+                        style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}
+                    >
+                        <IconUserPlus size={14} /> Upload Avatar
+                    </button>
+                </div>
+                {data.updated_at && (
+                  <small style={{ color: 'var(--text-secondary)', fontSize: '0.7em' }}>
+                    Last signal: {new Date(data.updated_at).toLocaleDateString()}
+                  </small>
                 )}
-                <button 
-                    onClick={() => avatarInputRef.current?.click()} 
-                    style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                    <IconUserPlus size={14} /> Upload Avatar
-                </button>
             </div>
-        )}
-        {data.updated_at && (
-          <small style={{ color: 'var(--text-secondary)', fontSize: '0.7em' }}>
-            Last signal: {new Date(data.updated_at).toLocaleDateString()}
-          </small>
         )}
       </div>
 
@@ -377,6 +408,40 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
             }}
             placeholder={`#communique-user-${userId} {\n  color: pink;\n}`}
           />
+
+          <div style={{ marginBottom: '20px', fontSize: '0.8em', color: 'var(--accent-sym)' }}>
+            Node Aesthetics:
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+            <label>
+              Primary Node Color (#RRGGBBAA):
+              <input
+                type="text"
+                value={primaryNodeColor}
+                onChange={(e) => setPrimaryNodeColor(e.target.value)}
+                placeholder="#1F77B4FF"
+              />
+            </label>
+            <label>
+              Secondary Node Color (#RRGGBBAA):
+              <input
+                type="text"
+                value={secondaryNodeColor}
+                onChange={(e) => setSecondaryNodeColor(e.target.value)}
+                placeholder="#FF7F0EFF"
+              />
+            </label>
+            <label>
+              Node Size (1-20):
+              <input
+                type="number"
+                value={nodeSize}
+                onChange={(e) => setNodeSize(parseInt(e.target.value) || 8)}
+                min="1"
+                max="20"
+              />
+            </label>
+          </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
             <button onClick={handleSave} disabled={saveStatus === 'saving'} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

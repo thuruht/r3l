@@ -108,16 +108,20 @@ app.post('/api/register', async (c) => {
     
     if (success) {
       // Send verification email
-      const resend = new Resend(c.env.RESEND_API_KEY);
-      try {
-        await resend.emails.send({
-          from: 'Rel F <lowlier_serf@r3l.distorted.work>',
-          to: email,
-          subject: 'Verify your Rel F account',
-          html: `<p>Welcome to Rel F!</p><p>Please <a href="https://r3l.distorted.work/verify-email?token=${verificationToken}">verify your email</a> to continue.</p>`
-        });
-      } catch (emailError) {
-        console.error("Failed to send email:", emailError);
+      if (c.env.RESEND_API_KEY) {
+        try {
+          const resend = new Resend(c.env.RESEND_API_KEY);
+          await resend.emails.send({
+            from: 'Rel F <lowlier_serf@r3l.distorted.work>',
+            to: email,
+            subject: 'Verify your Rel F account',
+            html: `<p>Welcome to Rel F!</p><p>Please <a href="https://r3l.distorted.work/verify-email?token=${verificationToken}">verify your email</a> to continue.</p>`
+          });
+        } catch (emailError) {
+          console.error("Failed to send email:", emailError);
+        }
+      } else {
+        console.log("Skipping email verification (RESEND_API_KEY missing)");
       }
 
       return c.json({ message: 'User created successfully. Please check your email to verify.' });

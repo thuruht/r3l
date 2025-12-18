@@ -73,12 +73,12 @@
 - [x] Frontend: "Drift" mode in Association Web (Ghost nodes)
 - [x] Frontend: Vitality UI (Boost buttons and count)
 
-### Phase 6: The Pulse (Real-time) (Planned)
-- [ ] Durable Object WebSocket integration for Presence
-- [ ] Live "Online" status indicators
-- [ ] Visual "Signal" propagation on graph
+### Phase 6: The Pulse (Real-time) (Complete)
+- [x] Durable Object WebSocket integration for Presence
+- [x] Live "Online" status indicators
+- [x] Visual "Signal" propagation on graph
 
 ## Handover Notes
-**Last Action:** Completed Phase 5 (The Drift). Implemented `GET /api/drift` (verified), added `GET /api/files/:id/metadata`, and updated `FilePreviewModal` to display and boost vitality.
-**Current State:** Fully functional Social, Artifact, and Discovery (Drift) systems.
-**Next Steps:** Begin **Phase 6: The Pulse** to implement real-time presence indicators.
+**Last Action:** Completed Phase 6 (The Pulse). Implemented real-time presence tracking, broadcasting of communique and artifact signals, and updated frontend to visualize online users.
+**Current State:** Fully functional Social, Artifact, Discovery (Drift), and Real-time (Pulse) systems.
+**Next Steps:** Begin **Phase 7: Deep Customization** to implement theming and profile aesthetics.

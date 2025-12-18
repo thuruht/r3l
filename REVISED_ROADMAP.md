@@ -28,11 +28,11 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
 - [x] **Refinement**
     - [x] Ensure the "Vitality" mechanic (voting on files) is visible in the UI (e.g., show vitality count, add a "Boost" button).
 
-## Phase 6: The Pulse (Real-time Presence)
+## Phase 6: The Pulse (Real-time Presence) (Completed)
 *Goal: Make the network feel alive.*
-- [ ] **Durable Object WebSocket:** Fully utilize `RelfDO` to track connected users.
-- [ ] **Live Indicators:** Show "Online" status (glowing nodes) in the Association Web.
-- [ ] **Signal Propagation:** When a user updates their Communique or uploads a file, send a visual "pulse" wave through the graph to their neighbors via WebSocket.
+- [x] **Durable Object WebSocket:** Fully utilize `RelfDO` to track connected users.
+- [x] **Live Indicators:** Show "Online" status (glowing nodes) in the Association Web.
+- [x] **Signal Propagation:** When a user updates their Communique or uploads a file, send a visual "pulse" wave through the graph to their neighbors via WebSocket.
 
 ## Phase 7: Deep Customization (The "Advanced" Cue)
 - [ ] **Theme Engine:** Allow users to tweak the "Mist" parameters (color shifts, density) in their local client.

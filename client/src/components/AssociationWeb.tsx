@@ -104,7 +104,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
           .attr("result", "coloredBlur");
       const onlineFeMerge = onlineGlow.append("feMerge");
       onlineFeMerge.append("feMergeNode").attr("in", "coloredBlur");
-      onlineFeMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
 
 
       // Avatar Patterns

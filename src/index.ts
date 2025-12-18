@@ -23,6 +23,7 @@ interface Env {
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   R2_ACCOUNT_ID: string; // Added
+  R2_BUCKET_NAME: string; // Added
   R2_PUBLIC_DOMAIN?: string; // Optional: Custom domain for R2
 }
 
@@ -84,7 +85,7 @@ function getR2PublicUrl(c: any, r2_key: string): string {
 
     // Fallback to the standard Cloudflare R2.dev URL format if no custom domain is set.
     // Note: Public access must be enabled on the bucket for this to work.
-    return `https://pub-${c.env.BUCKET.name}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
+    return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
 
 // --- Auth Routes ---
@@ -273,29 +274,33 @@ const authMiddleware = async (c: any, next: any) => {
 };
 
 // Durable Object WebSocket endpoint
-app.get('/api/do-websocket', authMiddleware, upgradeWebSocket((c) => {
+app.get('/api/do-websocket', authMiddleware, async (c) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+
   try {
-    // Get a Durable Object instance
     const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
     const doStub = c.env.DO_NAMESPACE.get(doId);
 
-    // Pass user_id to DO in a custom header
-    const newRequest = new Request(c.req.url, {
-        headers: c.req.raw.headers, // Copy existing headers
+    // Rewrite URL to match what DO expects
+    const url = new URL(c.req.url);
+    url.pathname = '/websocket';
+
+    const newRequest = new Request(url.toString(), {
+        headers: c.req.raw.headers,
         method: c.req.raw.method,
         body: c.req.raw.body,
-        // ... and other properties of c.req.raw as needed
     });
     newRequest.headers.set('X-User-ID', c.get('user_id').toString());
 
-    // Forward the WebSocket request to the Durable Object
-    // The DO's fetch method will handle the websocket upgrade
     return doStub.fetch(newRequest);
   } catch (error) {
-    console.error("Error upgrading WebSocket to DO:", error);
-    return c.text('WebSocket upgrade failed', 500);
+    console.error("Error proxying WebSocket to DO:", error);
+    return c.text('WebSocket proxy failed', 500);
   }
-}));
+});
 
 
 // Apply middleware to protected routes
@@ -492,59 +497,42 @@ app.post('/api/relationships/accept-sym-request', async (c) => {
   }
 
   try {
-    // Start a transaction for atomicity
-    await c.env.DB.prepare('BEGIN;').run();
-
     // 1. Find the pending request from source_user_id to target_user_id
     const request = await c.env.DB.prepare(
       'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ? AND status = ?'
     ).bind(source_user_id, target_user_id, 'sym_request', 'pending').first();
 
     if (!request) {
-      await c.env.DB.prepare('ROLLBACK;').run();
       return c.json({ error: 'Sym request not found or not pending' }, 404);
     }
 
-    // 2. Update the existing request to 'sym_accepted'
-    const updateReq = await c.env.DB.prepare(
-      'UPDATE relationships SET type = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-    ).bind('sym_accepted', 'accepted', request.id).run();
-
-    if (!updateReq.success) {
-      await c.env.DB.prepare('ROLLBACK;').run();
-      return c.json({ error: 'Failed to update sym request' }, 500);
-    }
-
-    // 3. Create the inverse 'sym_accepted' relationship from target_user_id to source_user_id
-    const insertInverse = await c.env.DB.prepare(
-      'INSERT INTO relationships (source_user_id, target_user_id, type, status) VALUES (?, ?, ?, ?)'
-    ).bind(target_user_id, source_user_id, 'sym_accepted', 'accepted').run();
-
-    if (!insertInverse.success) {
-      await c.env.DB.prepare('ROLLBACK;').run();
-      return c.json({ error: 'Failed to create inverse sym relationship' }, 500);
-    }
-
-    // 4. Insert into mutual_connections table
     const userA = Math.min(source_user_id, target_user_id);
     const userB = Math.max(source_user_id, target_user_id);
-    const insertMutual = await c.env.DB.prepare(
-      'INSERT INTO mutual_connections (user_a_id, user_b_id) VALUES (?, ?)'
-    ).bind(userA, userB).run();
-    
-    if (!insertMutual.success) {
-      await c.env.DB.prepare('ROLLBACK;').run();
-      return c.json({ error: 'Failed to create mutual connection' }, 500);
-    }
 
-    await c.env.DB.prepare('COMMIT;').run();
+    // Use batch() for atomic transaction
+    await c.env.DB.batch([
+      // 2. Update the existing request to 'sym_accepted'
+      c.env.DB.prepare(
+        'UPDATE relationships SET type = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind('sym_accepted', 'accepted', request.id),
+
+      // 3. Create the inverse 'sym_accepted' relationship from target_user_id to source_user_id
+      c.env.DB.prepare(
+        'INSERT INTO relationships (source_user_id, target_user_id, type, status) VALUES (?, ?, ?, ?)'
+      ).bind(target_user_id, source_user_id, 'sym_accepted', 'accepted'),
+
+      // 4. Insert into mutual_connections table
+      c.env.DB.prepare(
+        'INSERT INTO mutual_connections (user_a_id, user_b_id) VALUES (?, ?)'
+      ).bind(userA, userB)
+    ]);
+
     // Trigger notification for the source user (who sent the request originally)
     await createNotification(c.env, c.env.DB, source_user_id, 'sym_accepted', target_user_id);
     
     return c.json({ message: 'Sym request accepted and mutual connection established' });
 
   } catch (e: any) {
-    await c.env.DB.prepare('ROLLBACK;').run();
     console.error("Error accepting sym request:", e);
     return c.json({ error: 'Failed to accept sym request' }, 500);
   }

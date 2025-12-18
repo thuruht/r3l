@@ -4,6 +4,10 @@
   "main": "src/index.ts",
   "compatibility_date": "2025-12-15",
   "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "R2_ACCOUNT_ID": "829921384c97e0dbbb34430e307d6b52",
+    "R2_BUCKET_NAME": "rr33ll-bucket"
+  },
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1

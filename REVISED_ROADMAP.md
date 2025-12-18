@@ -17,7 +17,16 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
     - [x] Real-time updates (toast + badge count).
     - [x] Action buttons (Accept/Decline Sym Request).
 
-## Phase 5: The Drift (Next)
+## Phase 5: The Drift (Discovery) (Completed)
+
+- [x] **Backend - Randomness**
+    - [x] `GET /api/drift`: Efficiently fetch a random sample of public profiles or artifacts from D1.
+    - [x] Ensure it excludes current friends to promote *new* connections.
+- [x] **Frontend - Visualization**
+    - [x] Add a "Drift" control to the UI (e.g., a radar button).
+    - [x] When active, inject these "Drift" nodes into the D3 Association Web as "ghost" nodes (fainter, drifting).
+- [x] **Refinement**
+    - [x] Ensure the "Vitality" mechanic (voting on files) is visible in the UI (e.g., show vitality count, add a "Boost" button).
 
 ## Phase 6: The Pulse (Real-time Presence)
 *Goal: Make the network feel alive.*

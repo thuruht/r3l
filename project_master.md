@@ -68,10 +68,10 @@
 - [x] Frontend: Sym Request Flows (Friend Request logic)
 - [x] Frontend: File Sharing UI
 
-### Phase 5: The Drift (Discovery) (Planned)
-- [ ] Backend: `GET /api/drift` (Random user/artifact sampling)
-- [ ] Frontend: "Drift" mode in Association Web (Ghost nodes)
-- [ ] Frontend: Vitality UI (Boost buttons)
+### Phase 5: The Drift (Discovery) (Complete)
+- [x] Backend: `GET /api/drift` (Random user/artifact sampling)
+- [x] Frontend: "Drift" mode in Association Web (Ghost nodes)
+- [x] Frontend: Vitality UI (Boost buttons and count)
 
 ### Phase 6: The Pulse (Real-time) (Planned)
 - [ ] Durable Object WebSocket integration for Presence
@@ -79,14 +79,6 @@
 - [ ] Visual "Signal" propagation on graph
 
 ## Handover Notes
-**Last Action:** Deployed Phase 4 features (Inbox, Badge, Sharing) to production.
-**Current State:** Fully functional Social & Artifact system.
-**Next Steps:** Begin **Phase 5: The Drift** to implement serendipitous discovery.
-
-## Handover Notes
-**Last Action:** Attempted to run `wrangler d1 migrations apply relf-db --remote`.
-**Result:** Failed with `[code: 7403]` (Unauthorized). The user needs to resolve Cloudflare account permissions.
-**Next Steps:**
-1. Retry migration application.
-2. Verify the `Communique` component saves data correctly to the new D1 table.
-3. Proceed to Phase 3 (Files/R2).
+**Last Action:** Completed Phase 5 (The Drift). Implemented `GET /api/drift` (verified), added `GET /api/files/:id/metadata`, and updated `FilePreviewModal` to display and boost vitality.
+**Current State:** Fully functional Social, Artifact, and Discovery (Drift) systems.
+**Next Steps:** Begin **Phase 6: The Pulse** to implement real-time presence indicators.

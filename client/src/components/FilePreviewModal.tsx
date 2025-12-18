@@ -17,6 +17,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const [boosted, setBoosted] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
+  const [vitality, setVitality] = useState<number>(0);
   const { showToast } = useToast();
 
   const isImage = mimeType.startsWith('image/');
@@ -31,6 +32,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
         });
         if (res.ok) {
             setBoosted(true);
+            setVitality(prev => prev + 1);
             showToast('Signal boosted!', 'success');
         } else {
             showToast('Failed to boost', 'error');
@@ -41,6 +43,14 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   };
 
   useEffect(() => {
+    // Fetch Metadata (Vitality)
+    fetch(`/api/files/${fileId}/metadata`)
+        .then(res => res.json())
+        .then((data: any) => {
+            if (data.vitality !== undefined) setVitality(data.vitality);
+        })
+        .catch(console.error);
+
     if (isText) {
       setLoading(true);
       fetch(`/api/files/${fileId}/content`)
@@ -109,8 +119,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             <button onClick={handleRefresh} title="Keep Alive (Reset Expiration)">
                <IconRefresh size={18} />
             </button>
-            <button onClick={handleBoost} title="Boost Signal" disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)' }}>
+            <button onClick={handleBoost} title="Boost Signal" disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                <IconBolt size={18} />
+               <span>{vitality}</span>
             </button>
             
             {isText && !isEditing && (

@@ -1049,6 +1049,42 @@ app.post('/api/files', async (c) => {
   }
 });
 
+// GET /api/files/:id/metadata: Get file metadata
+app.get('/api/files/:id/metadata', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+
+  if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
+
+  try {
+    const file = await c.env.DB.prepare(
+      'SELECT id, filename, size, mime_type, visibility, vitality, expires_at, created_at, user_id FROM files WHERE id = ?'
+    ).bind(file_id).first();
+
+    if (!file) return c.json({ error: 'File not found' }, 404);
+
+    // Permission check (same as download)
+    if (file.user_id !== user_id && file.visibility === 'private') {
+         return c.json({ error: 'Unauthorized' }, 403);
+    }
+    // If 'sym', check mutual (omitted for brevity, but ideally should be here or frontend handles it via error on content fetch)
+    // For metadata, we can be slightly more lenient or just strictly follow visibility.
+    // Let's check mutual if sym.
+    if (file.user_id !== user_id && file.visibility === 'sym') {
+         const mutual = await c.env.DB.prepare(
+            'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(Math.min(user_id, file.user_id as number), Math.max(user_id, file.user_id as number), Math.min(user_id, file.user_id as number), Math.max(user_id, file.user_id as number)).first();
+        
+        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    return c.json(file);
+  } catch (e) {
+    console.error("Error fetching file metadata:", e);
+    return c.json({ error: 'Failed to fetch metadata' }, 500);
+  }
+});
+
 // GET /api/files/:id/content: Download a file
 app.get('/api/files/:id/content', async (c) => {
   const user_id = c.get('user_id'); // Current user

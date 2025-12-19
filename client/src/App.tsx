@@ -15,6 +15,7 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
 import ThemeSettings from './components/ThemeSettings'; // New Import
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { CustomizationProvider } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import './styles/global.css';
@@ -525,6 +526,7 @@ function Main() {
                 </CustomizationProvider>
               );
             }
+
 function App() {
   return (
     <ThemeProvider>

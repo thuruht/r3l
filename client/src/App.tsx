@@ -337,7 +337,7 @@ function Main() {
   }, []);
 
   return (
-    <>
+    <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
       {!isAuthenticated ? (
         <div className="auth-container">
           <h1>Welcome to Rel F</h1>
@@ -374,7 +374,7 @@ function Main() {
           </button>
         </div>
       ) : (
-        <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
+        <>
           <div ref={navRef} className="overlay-ui">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -515,9 +515,9 @@ function Main() {
               } />
               <Route path="/communique/:userId" element={<CommuniquePage />} />
             </Routes>
-        </CustomizationProvider>
+        </>
       )}
-    </>
+    </CustomizationProvider>
   );
 }
 

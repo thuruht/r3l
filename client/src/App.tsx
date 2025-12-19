@@ -535,14 +535,4 @@ function App() {
   );
 }
 
-export default App;function App() {
-  return (
-    <ThemeProvider>
-      <ToastProvider>
-        <Main />
-      </ToastProvider>
-    </ThemeProvider>
-  );
-}
-
 export default App;

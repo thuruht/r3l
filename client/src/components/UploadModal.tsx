@@ -84,18 +84,27 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
       background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center',
       backdropFilter: 'blur(5px)'
-    }} onClick={onClose}>
+    }} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
       <div className="glass-panel" style={{
         width: '500px', maxWidth: '90%', padding: '20px', borderRadius: '8px',
         display: 'flex', flexDirection: 'column', gap: '15px'
       }} onClick={e => e.stopPropagation()}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>Upload Artifacts</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', padding: 0 }}><IconX /></button>
+          <h3 id="upload-modal-title">Upload Artifacts</h3>
+          <button onClick={onClose} aria-label="Close upload modal" style={{ background: 'none', border: 'none', padding: 0 }}><IconX /></button>
         </div>
 
         <div 
+            role="button"
+            tabIndex={0}
+            aria-label="Upload file drop zone. Drag and drop files here or press Enter to select files."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
             onDragLeave={() => setIsDragOver(false)}
             onDrop={(e) => { 
@@ -130,7 +139,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
                         </div>
                     </div>
                     {f.status === 'success' && <IconCheck size={16} color="var(--accent-sym)" />}
-                    {f.status === 'error' && <IconAlertCircle size={16} color="var(--accent-alert)" title={f.error} />}
+                    {f.status === 'error' && <IconAlertCircle size={16} color="var(--accent-alert)" title={f.error} role="img" aria-label={f.error} />}
                 </div>
             ))}
         </div>

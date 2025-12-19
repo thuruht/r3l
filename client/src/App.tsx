@@ -1,6 +1,6 @@
 // App.tsx
 
-import React, { useState, useEffect, useRef, useLayoutEffect, createContext } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout } from '@tabler/icons-react';
@@ -15,7 +15,7 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
 import ThemeSettings from './components/ThemeSettings';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
+import { CustomizationProvider } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import './styles/global.css';
@@ -41,6 +41,7 @@ function Main() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [username, setUsername] = useState<string>('');
@@ -52,7 +53,6 @@ function Main() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const { preferences: currentCustomizationPreferences } = useCustomization(); // Get current preferences from context
 
   const { nodes, links, refresh: refreshNetwork, loading } = useNetworkData({
     currentUserId: currentUser?.id || null,
@@ -498,7 +498,6 @@ function Main() {
                     links={links}
                     isDrifting={isDrifting}
                     onlineUserIds={onlineUserIds}
-                    userPreferences={currentCustomizationPreferences} // Pass user preferences to AssociationWeb
                   />
                 ) : (
                   <NetworkList
@@ -520,9 +519,7 @@ function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <CustomizationProvider initialPreferences={null} currentUserId={null}> {/* Temporarily provide nulls */}
-          <Main />
-        </CustomizationProvider>
+        <Main />
       </ToastProvider>
     </ThemeProvider>
   );

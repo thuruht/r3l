@@ -7,3 +7,6 @@
 ## 2025-05-21 - Artifact List Accessibility & Data Constraints
 **Learning:** Interactive lists using `div`s must handle keyboard events (Enter/Space) and focus (`tabIndex=0`, `role="button"`) manually. Additionally, frontend UI constants (like `private`) must align exactly with database constraints (e.g. `me`), otherwise operations fail silently or with generic errors, confusing users.
 **Action:** Standardized list item accessibility in `Artifacts.tsx` and aligned visibility constants with DB schema.
+## 2025-05-24 - File Upload Accessibility
+**Learning:** Drag-and-drop zones are often inaccessible to keyboard users. Using `role="button"`, `tabIndex={0}`, and an `onKeyDown` handler (Enter/Space) on the drop zone container allows keyboard users to trigger the hidden file input.
+**Action:** Implemented keyboard-accessible drag-and-drop zone in `UploadModal.tsx`.

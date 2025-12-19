@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { NetworkNode, NetworkLink } from '../hooks/useNetworkData';
-import { UserPreferences } from '../context/CustomizationContext'; // Import UserPreferences
+import { useCustomization } from '../context/CustomizationContext'; // Import hook
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
@@ -9,7 +9,6 @@ interface AssociationWebProps {
   onNodeClick: (nodeId: string) => void;
   isDrifting: boolean;
   onlineUserIds: Set<number>;
-  userPreferences: UserPreferences | null; // New prop for user's custom preferences
 }
 
 // Map NetworkNode/Link to D3 types
@@ -20,7 +19,8 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds, userPreferences }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds }) => {
+  const { preferences: userPreferences } = useCustomization();
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });

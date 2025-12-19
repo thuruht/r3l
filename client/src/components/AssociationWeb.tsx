@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { NetworkNode, NetworkLink } from '../hooks/useNetworkData';
+import { UserPreferences } from '../context/CustomizationContext'; // Import UserPreferences
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
   links: NetworkLink[];
   onNodeClick: (nodeId: string) => void;
   isDrifting: boolean;
-  onlineUserIds: Set<number>; // New prop
+  onlineUserIds: Set<number>;
+  userPreferences: UserPreferences | null; // New prop for user's custom preferences
 }
 
 // Map NetworkNode/Link to D3 types
@@ -18,7 +20,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds, userPreferences }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
@@ -185,7 +187,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
               .attr('stroke', n => {
                 if (n.id === d.id || neighbors.has(n.id)) return 'var(--accent-sym)';
                 if (n.online) return 'var(--accent-online)'; // Online but not hovered
-                if (n.group === 'me') return '#ffffffcc';
+                if (n.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc'; // Use custom secondary color
                 if (n.group === 'sym') return 'var(--accent-sym)';
                 if (n.group === 'drift_file') return 'transparent';
                 if (n.group === 'drift_user') return '#777';
@@ -203,7 +205,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
               .select('circle:nth-child(2)')
               .attr('stroke', (d) => {
                  if (d.online) return 'var(--accent-online)';
-                 if (d.group === 'me') return '#ffffffcc';
+                 if (d.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc'; // Use custom secondary color
                  if (d.group === 'sym') return 'var(--accent-sym)';
                  if (d.group === 'drift_file') return 'transparent';
                  if (d.group === 'drift_user') return '#777';
@@ -220,13 +222,13 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
       node.append('circle')
         .attr('r', (d) => {
-            if (d.group === 'me') return 12;
+            if (d.group === 'me') return userPreferences?.node_size || 12; // Use custom node size
             if (d.group === 'drift_file') return 4;
             return 8;
         })
         .attr('fill', (d) => {
           if (d.avatar_url) return `url(#avatar-${d.id})`;
-          if (d.group === 'me') return 'var(--accent-me)';
+          if (d.group === 'me') return userPreferences?.node_primary_color || 'var(--accent-me)'; // Use custom primary color
           if (d.group === 'sym') return 'var(--accent-sym)';
           if (d.group === 'asym') return 'var(--accent-asym)';
           if (d.group === 'drift_user') return '#555555';
@@ -239,14 +241,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
       node.append('circle')
         .attr('r', (d) => {
-            if (d.group === 'me') return 12;
+            if (d.group === 'me') return userPreferences?.node_size || 12; // Use custom node size
             if (d.group === 'drift_file') return 4;
             return 8;
         })
         .attr('fill', 'transparent')
         .attr('stroke', (d) => {
            if (d.online) return 'var(--accent-online)';
-           if (d.group === 'me') return '#ffffffcc';
+           if (d.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc'; // Use custom secondary color
            if (d.group === 'sym') return 'var(--accent-sym)';
            if (d.group === 'drift_file') return 'transparent';
            if (d.group === 'drift_user') return '#777';
@@ -277,7 +279,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     };
 
     drawGraph();
-  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions]); // Added onlineUserIds to dependencies
+  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions, userPreferences]); // Added userPreferences to dependencies
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {

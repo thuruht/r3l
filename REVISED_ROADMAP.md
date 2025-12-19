@@ -47,23 +47,15 @@ You are continuing development on **Rel F (r3l.distorted.work)**, a serendipitou
 
 **Context:**
 - **Stack:** Cloudflare Workers, D1, R2, KV, Durable Objects, React (Vite).
-- **Current State:** Phase 4 (Social/Inbox) is deployed. Users can friend, share files, and view notifications.
+- **Current State:** Phases 1-6 are deployed, including Social, Artifact, Discovery (Drift), and Real-time (Pulse) systems.
 - **Theme:** "Mist & Glow" (Dark, Ephemeral, Tabler Icons).
 
-**Objective: Phase 5 - The Drift (Discovery)**
-Your goal is to implement the "Anti-algorithmic" discovery features inferred from the source inspiration (r3l).
+**Objective: Phase 7 - Deep Customization**
+Your goal is to implement advanced theming and profile aesthetics features.
 
 **Tasks:**
-1.  **Backend - Randomness:**
-    - Create `GET /api/drift`: Efficiently fetch a random sample of public profiles or artifacts from D1.
-    - Ensure it excludes current friends to promote *new* connections.
-    
-2.  **Frontend - Visualization:**
-    - Add a "Drift" control to the UI (e.g., a radar button).
-    - When active, inject these "Drift" nodes into the D3 Association Web as "ghost" nodes (fainter, drifting).
-    
-3.  **Refinement:**
-    - Ensure the "Vitality" mechanic (voting on files) is visible in the UI (e.g., show vitality count, add a "Boost" button).
+1.  **Theme Engine:** Allow users to tweak the "Mist" parameters (color shifts, density) in their local client.
+2.  **Profile aesthetics:** Allow custom hex codes for node colors (beyond the fixed theme).
 
 **Constraints:**
 - Maintain the #RRGGBBAA hex-only styling.

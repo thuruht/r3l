@@ -273,12 +273,6 @@ app.get('/api/users/me/preferences', authMiddleware, async (c) => {
   }
 });
 
-    return c.json(preferences);
-  } catch (e) {
-    console.error("Error fetching user preferences:", e);
-    return c.json({ error: 'Failed to fetch user preferences' }, 500);
-  }
-});
 
 app.put('/api/users/me/preferences', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -327,13 +321,13 @@ app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
     updateValues.push(node_secondary_color);
   }
   if (node_size !== undefined) {
-    if (typeof node_size !== 'number' || node_size < 1 || node_size > 20) return c.json({ error: 'Invalid node_size' }, 400);
+    if (typeof node_size !== 'number' || node_size < 4 || node_size > 30) return c.json({ error: 'Invalid node_size' }, 400);
     updateFields.push('node_size = ?');
     updateValues.push(node_size);
   }
 
   if (updateFields.length === 0) {
-    return c.json({ error: 'No fields to update' }, 400);
+    return c.json({ message: 'No profile aesthetics to update' }, 400);
   }
 
   try {

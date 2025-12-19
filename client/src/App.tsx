@@ -1,6 +1,6 @@
 // App.tsx
 
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, createContext } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
 import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout } from '@tabler/icons-react';
@@ -13,8 +13,9 @@ import About from './components/About';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
-import ThemeSettings from './components/ThemeSettings'; // New Import
+import ThemeSettings from './components/ThemeSettings';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import './styles/global.css';
@@ -31,7 +32,7 @@ function Main() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false); // New state
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
@@ -45,13 +46,13 @@ function Main() {
   const [username, setUsername] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [email, setEmail] = useState<string>('');
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const [userPreferences, setUserPreferences] = useState<any | null>(null); // New state for user preferences
+  const [userPreferences, setUserPreferences] = useState<any | null>(null); // For initial fetch
 
   const { showToast } = useToast();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const { preferences: currentCustomizationPreferences } = useCustomization(); // Get current preferences from context
 
   const { nodes, links, refresh: refreshNetwork, loading } = useNetworkData({
     currentUserId: currentUser?.id || null,
@@ -62,7 +63,6 @@ function Main() {
     onlineUserIds
   });
 
-  // Use a ref for refreshNetwork to prevent WebSocket reconnection when network data updates
   const refreshNetworkRef = useRef(refreshNetwork);
   useEffect(() => {
     refreshNetworkRef.current = refreshNetwork;
@@ -94,11 +94,9 @@ function Main() {
     }
   };
 
-  // Setup WebSocket for real-time notifications
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Use current host, upgrade to wss:// if https://
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}/api/do-websocket`;
 
@@ -132,12 +130,8 @@ function Main() {
                  else next.delete(data.userId);
                  return next;
              });
-             // showToast(`User ${data.userId} is ${data.status}`, 'info'); // Optional: too noisy?
           }
           else if (data.type === 'signal_communique') {
-              // Trigger a visual pulse? For now, just a subtle toast if it's a friend
-              // Ideally we pass this signal to AssociationWeb to trigger D3 pulse
-              // We can rely on refreshNetwork or just visual
           }
           else if (data.type === 'signal_artifact') {
               showToast('New artifact signal detected', 'info');
@@ -161,7 +155,6 @@ function Main() {
 
     connect();
 
-    // Initial fetch of unread count
     const fetchUnread = async () => {
       try {
         const res = await fetch('/api/notifications');
@@ -183,7 +176,6 @@ function Main() {
   }, [isAuthenticated, showToast]);
 
   useEffect(() => {
-    // Check if user is already logged in (e.g., via existing cookie)
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/users/me');
@@ -191,11 +183,10 @@ function Main() {
           const data = await response.json();
           setCurrentUser(data.user);
           setIsAuthenticated(true);
-          // Fetch user preferences
           const prefsResponse = await fetch('/api/users/me/preferences');
           if (prefsResponse.ok) {
             const prefsData = await prefsResponse.json();
-            setUserPreferences(prefsData);
+            setUserPreferences(prefsData); // Set initial preferences for CustomizationProvider
           } else {
             console.warn('Failed to fetch user preferences');
           }
@@ -236,7 +227,7 @@ function Main() {
       };
       fetchDriftData();
     } else {
-      setDriftData({ users: [], files: [] }); // Clear data when not drifting
+      setDriftData({ users: [], files: [] });
     }
   }, [isDrifting]);
 
@@ -253,11 +244,10 @@ function Main() {
         const data = await response.json();
         setCurrentUser(data.user);
         setIsAuthenticated(true);
-        // Fetch user preferences after successful login
         const prefsResponse = await fetch('/api/users/me/preferences');
         if (prefsResponse.ok) {
           const prefsData = await prefsResponse.json();
-          setUserPreferences(prefsData);
+          setUserPreferences(prefsData); // Set initial preferences for CustomizationProvider
         } else {
           console.warn('Failed to fetch user preferences after login');
         }
@@ -285,7 +275,7 @@ function Main() {
       });
       if (response.ok) {
         showToast('Registration successful! Please log in.', 'success');
-        setIsRegistering(false); // Switch to login form
+        setIsRegistering(false);
         setAuthError(null);
       } else {
         const errorData = await response.json();
@@ -304,12 +294,14 @@ function Main() {
       await fetch('/api/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentUser(null);
-      setUserPreferences(null); // Clear preferences on logout
+      setUserPreferences(null);
       showToast('Logged out', 'info');
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };  const onNodeClick = (nodeId: string) => {
+  };
+
+  const onNodeClick = (nodeId: string) => {
     if (nodeId.startsWith('file-')) {
       const node = nodes.find(n => n.id === nodeId);
       if (node && node.data) {
@@ -324,48 +316,7 @@ function Main() {
     setIsDrifting(!isDrifting);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="auth-container">
-        <h1>Welcome to Rel F</h1>
-        <h2>{isRegistering ? 'Register' : 'Login'}</h2>
-        <form onSubmit={isRegistering ? handleRegister : handleLogin}>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {isRegistering && (
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          )}
-          {authError && <p style={{ color: 'red' }}>{authError}</p>}
-          <button type="submit">{isRegistering ? 'Register' : 'Login'}</button>
-        </form>
-        <button onClick={() => setIsRegistering(!isRegistering)}>
-          {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
-        </button>
-      </div>
-    );
-  }
-
-  // Hide UI overlays if on Communique page?
   const isCommuniquePage = location.pathname.startsWith('/communique');
-
   const navRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -384,162 +335,194 @@ function Main() {
   }, []);
 
   return (
-    <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
     <>
-      <div ref={navRef} className="overlay-ui">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    {new Date().toLocaleDateString()}
-                                </p>
-                            </div>
-                        
-                        {currentUser && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
-                            </div>
-                            
-                            <SearchBar />
-                            <RandomUserButton />
-                            
-                            <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
-                            {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
-                            </button>
-                            
-                            <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
-                            <IconRadar2 size={18} />
-                            </button>
-                            
-                            <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
-                            Inbox
-                            {unreadCount > 0 && (
-                                <span style={{
-                                position: 'absolute',
-                                top: '-2px',
-                                right: '-2px',
-                                background: 'var(--accent-alert)',
-                                color: 'white',
-                                borderRadius: '50%',
-                                width: '14px',
-                                height: '14px',
-                                fontSize: '0.6rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                                }}>
-                                {unreadCount}
-                                </span>
-                            )}
-                            </button>
-            
-                            <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
-                                {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
-                            </button>
-                        </div>
-                        )}
-                        </div>
+      {!isAuthenticated ? (
+        <div className="auth-container">
+          <h1>Welcome to Rel F</h1>
+          <h2>{isRegistering ? 'Register' : 'Login'}</h2>
+          <form onSubmit={isRegistering ? handleRegister : handleLogin}>
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            {isRegistering && (
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            )}
+            {authError && <p style={{ color: 'red' }}>{authError}</p>}
+            <button type="submit">{isRegistering ? 'Register' : 'Login'}</button>
+          </form>
+          <button onClick={() => setIsRegistering(!isRegistering)}>
+            {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
+          </button>
+        </div>
+      ) : (
+        <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
+          <div ref={navRef} className="overlay-ui">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
+                        {new Date().toLocaleDateString()}
+                        </p>
                     </div>
-            
-                    {/* Dropdown Menu */}
-                    {isMenuOpen && currentUser && (
-                        <div className="glass-panel fade-in" style={{
-                            position: 'fixed',
-                            top: '60px',
-                            right: '10px',
-                            width: '200px',
-                            padding: '10px',
-                            borderRadius: '8px',
-                            zIndex: 2000,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px'
+                
+                {currentUser && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
+                    </div>
+                    
+                    <SearchBar />
+                    <RandomUserButton />
+                    
+                    <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
+                    {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
+                    </button>
+                    
+                    <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
+                    <IconRadar2 size={18} />
+                    </button>
+                    
+                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
+                    Inbox
+                    {unreadCount > 0 && (
+                        <span style={{
+                        position: 'absolute',
+                        top: '-2px',
+                        right: '-2px',
+                        background: 'var(--accent-alert)',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '14px',
+                        height: '14px',
+                        fontSize: '0.6rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                         }}>
-                            <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                                <IconHelp size={18} /> Help
-                            </button>
-                                            <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                                                <IconInfoCircle size={18} /> About
-                                            </button>
-                                            <button onClick={() => { setIsThemeSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                                                <IconPalette size={18} /> Theme Settings
-                                            </button>
-                                            <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                                                <IconPalette size={18} /> Toggle Default Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
-                                            </button>                            {currentUser.id === 1 && (
-                              <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
-                                  <IconDashboard size={18} /> Admin
-                              </button>
-                            )}
-                            <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
-                            <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                                <IconLogout size={18} /> Logout
-                            </button>
-                        </div>
+                        {unreadCount}
+                        </span>
                     )}
-            
-                        {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
-                        {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
-                        {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
-                        {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-                        {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
-                  {previewFile && (
-                    <FilePreviewModal
-                        fileId={previewFile.id}
-                        filename={previewFile.filename}
-                        mimeType={previewFile.mime_type}
-                        onClose={() => setPreviewFile(null)}
-                        onDownload={() => {
-                            const link = document.createElement('a');
-                            link.href = `/api/files/${previewFile.id}/content`;
-                            link.download = previewFile.filename;
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                        }}
+                    </button>
+    
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
+                        {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
+                    </button>
+                </div>
+                )}
+                </div>
+            </div>
+    
+            {/* Dropdown Menu */}
+            {isMenuOpen && currentUser && (
+                <div className="glass-panel fade-in" style={{
+                    position: 'fixed',
+                    top: '60px',
+                    right: '10px',
+                    width: '200px',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    zIndex: 2000,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                }}>
+                    <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconHelp size={18} /> Help
+                    </button>
+                    <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconInfoCircle size={18} /> About
+                    </button>
+                    <button onClick={() => { setIsThemeSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconPalette size={18} /> Theme Settings
+                    </button>
+                    <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconPalette size={18} /> Toggle Default Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                    </button>
+                    {currentUser.id === 1 && (
+                      <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
+                          <IconDashboard size={18} /> Admin
+                      </button>
+                    )}
+                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
+                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconLogout size={18} /> Logout
+                    </button>
+                </div>
+            )}
+    
+            {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
+            {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
+            {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+            {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
+            {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
+            {previewFile && (
+              <FilePreviewModal
+                  fileId={previewFile.id}
+                  filename={previewFile.filename}
+                  mimeType={previewFile.mime_type}
+                  onClose={() => setPreviewFile(null)}
+                  onDownload={() => {
+                      const link = document.createElement('a');
+                      link.href = `/api/files/${previewFile.id}/content`;
+                      link.download = previewFile.filename;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                  }}
+              />
+            )}
+    
+            <Routes>
+              <Route path="/" element={
+                viewMode === 'graph' ? (
+                  <AssociationWeb
+                    onNodeClick={onNodeClick}
+                    nodes={nodes}
+                    links={links}
+                    isDrifting={isDrifting}
+                    onlineUserIds={onlineUserIds}
+                    userPreferences={currentCustomizationPreferences} // Pass user preferences to AssociationWeb
+                  />
+                ) : (
+                  <NetworkList
+                    nodes={nodes}
+                    onNodeClick={onNodeClick}
+                    loading={loading}
                     />
-                  )}
-            
-                  <Routes>
-                    <Route path="/" element={
-                      viewMode === 'graph' ? (
-                        <AssociationWeb
-                          onNodeClick={onNodeClick}
-                          nodes={nodes}
-                          links={links}
-                          isDrifting={isDrifting}
-                          onlineUserIds={onlineUserIds}
-                        />
-                      ) : (
-                        <NetworkList
-                          nodes={nodes}
-                          onNodeClick={onNodeClick}
-                          loading={loading}
-                          />
-                      )
-                    } />
-                    <Route path="/communique/:userId" element={<CommuniquePage />} />
-                  </Routes>
-                </>
-                </CustomizationProvider>
-              );
-            }
+                )
+              } />
+              <Route path="/communique/:userId" element={<CommuniquePage />} />
+            </Routes>
+        </CustomizationProvider>
+      )}
+    </>
+  );
+}
+
 function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <Main />
-      </ToastProvider>
-    </ThemeProvider>
-  );
-}
-
-export default App;function App() {
-  return (
-    <ThemeProvider>
-      <ToastProvider>
-        <Main />
+        <CustomizationProvider initialPreferences={null} currentUserId={null}> {/* Temporarily provide nulls */}
+          <Main />
+        </CustomizationProvider>
       </ToastProvider>
     </ThemeProvider>
   );

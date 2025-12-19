@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy, IconRefresh } from '@tabler/icons-react';
+import { IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy, IconRefresh, IconFolderPlus } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+import CollectionsManager from './CollectionsManager';
+import { useCollections } from '../hooks/useCollections';
 
 interface FilePreviewModalProps {
   fileId: number;
@@ -18,7 +20,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [vitality, setVitality] = useState<number>(0);
+  const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const { showToast } = useToast();
+  const { addToCollection } = useCollections();
 
   const isImage = mimeType.startsWith('image/');
   const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js');
@@ -40,6 +44,16 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
     } catch(e) {
         showToast('Error boosting signal', 'error');
     }
+  };
+
+  const handleAddToCollection = async (collectionId: number) => {
+      const success = await addToCollection(collectionId, fileId);
+      if (success) {
+          showToast('Added to collection', 'success');
+          setShowCollectionSelect(false);
+      } else {
+          showToast('Failed to add to collection (might already be there)', 'error');
+      }
   };
 
   useEffect(() => {
@@ -124,6 +138,10 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
                <span>{vitality}</span>
             </button>
             
+            <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection">
+                <IconFolderPlus size={18} />
+            </button>
+
             {isText && !isEditing && (
                 <button onClick={() => setIsEditing(true)} title="Edit">
                     <IconEdit size={18} />
@@ -207,6 +225,14 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
              </>
           )}
         </div>
+
+        {showCollectionSelect && (
+            <CollectionsManager 
+                mode="select" 
+                onClose={() => setShowCollectionSelect(false)} 
+                onSelect={handleAddToCollection} 
+            />
+        )}
 
       </div>
     </div>

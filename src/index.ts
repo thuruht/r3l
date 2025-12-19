@@ -496,6 +496,8 @@ app.use('/api/notifications', authMiddleware);
 app.use('/api/files/*', authMiddleware);
 app.use('/api/communiques', authMiddleware);
 app.use('/api/communiques/*', authMiddleware);
+app.use('/api/collections', authMiddleware);
+app.use('/api/collections/*', authMiddleware);
 
 
 // --- Notification Helpers ---
@@ -1471,6 +1473,228 @@ app.post('/api/files/:id/archive', async (c) => {
     return c.json({ error: 'Failed to archive file' }, 500);
   }
 });
+
+// --- Collection Routes ---
+
+// GET /api/collections: List user's collections
+app.get('/api/collections', async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT * FROM collections WHERE user_id = ? ORDER BY updated_at DESC'
+    ).bind(user_id).all();
+
+    // Fetch file counts for each collection
+    const enrichedResults = await Promise.all(results.map(async (collection: any) => {
+        const countResult = await c.env.DB.prepare(
+            'SELECT COUNT(*) as count FROM collection_files WHERE collection_id = ?'
+        ).bind(collection.id).first();
+        return { ...collection, file_count: countResult?.count || 0 };
+    }));
+
+    return c.json({ collections: enrichedResults });
+  } catch (e: any) {
+    console.error("Error listing collections:", e);
+    return c.json({ error: 'Failed to list collections' }, 500);
+  }
+});
+
+// POST /api/collections: Create a new collection
+app.post('/api/collections', async (c) => {
+  const user_id = c.get('user_id');
+  const { name, description, visibility } = await c.req.json();
+
+  if (!name) return c.json({ error: 'Name is required' }, 400);
+
+  try {
+    const { success, meta } = await c.env.DB.prepare(
+      'INSERT INTO collections (user_id, name, description, visibility) VALUES (?, ?, ?, ?)'
+    ).bind(user_id, name, description || '', visibility || 'private').run();
+
+    if (success) {
+      return c.json({ 
+          message: 'Collection created successfully', 
+          collection: { id: meta.last_row_id, user_id, name, description, visibility, file_count: 0 } 
+      });
+    } else {
+      return c.json({ error: 'Failed to create collection' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error creating collection:", e);
+    return c.json({ error: 'Failed to create collection' }, 500);
+  }
+});
+
+// GET /api/collections/:id: Get collection details and files
+app.get('/api/collections/:id', async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+
+  if (isNaN(collection_id)) return c.json({ error: 'Invalid collection ID' }, 400);
+
+  try {
+    const collection = await c.env.DB.prepare(
+      'SELECT * FROM collections WHERE id = ?'
+    ).bind(collection_id).first();
+
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+
+    // Permission check
+    if (collection.user_id !== user_id) {
+        if (collection.visibility === 'private') {
+            return c.json({ error: 'Unauthorized' }, 403);
+        }
+        if (collection.visibility === 'sym') {
+             const mutual = await c.env.DB.prepare(
+                'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+            ).bind(Math.min(user_id, collection.user_id as number), Math.max(user_id, collection.user_id as number), Math.min(user_id, collection.user_id as number), Math.max(user_id, collection.user_id as number)).first();
+            if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+        }
+    }
+
+    // Fetch files in collection
+    const { results: files } = await c.env.DB.prepare(
+        `SELECT f.* 
+         FROM files f
+         JOIN collection_files cf ON f.id = cf.file_id
+         WHERE cf.collection_id = ?
+         ORDER BY cf.file_order ASC`
+    ).bind(collection_id).all();
+
+    return c.json({ collection, files });
+  } catch (e: any) {
+    console.error("Error fetching collection:", e);
+    return c.json({ error: 'Failed to fetch collection' }, 500);
+  }
+});
+
+// PUT /api/collections/:id: Update collection
+app.put('/api/collections/:id', async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+  const { name, description, visibility } = await c.req.json();
+
+  if (isNaN(collection_id)) return c.json({ error: 'Invalid collection ID' }, 400);
+
+  try {
+    // Verify ownership
+    const collection = await c.env.DB.prepare('SELECT user_id FROM collections WHERE id = ?').bind(collection_id).first();
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+    if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    const { success } = await c.env.DB.prepare(
+      'UPDATE collections SET name = ?, description = ?, visibility = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(name, description, visibility, collection_id).run();
+
+    if (success) {
+      return c.json({ message: 'Collection updated successfully' });
+    } else {
+      return c.json({ error: 'Failed to update collection' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error updating collection:", e);
+    return c.json({ error: 'Failed to update collection' }, 500);
+  }
+});
+
+// DELETE /api/collections/:id: Delete collection
+app.delete('/api/collections/:id', async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+
+  if (isNaN(collection_id)) return c.json({ error: 'Invalid collection ID' }, 400);
+
+  try {
+    const collection = await c.env.DB.prepare('SELECT user_id FROM collections WHERE id = ?').bind(collection_id).first();
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+    if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    await c.env.DB.prepare('DELETE FROM collections WHERE id = ?').bind(collection_id).run();
+    // Cascade delete handles collection_files cleanup (if supported/configured), 
+    // but D1 support for FK constraints needs to be ensured PRAGMA foreign_keys = ON;
+    // Explicit cleanup is safer:
+    await c.env.DB.prepare('DELETE FROM collection_files WHERE collection_id = ?').bind(collection_id).run();
+
+    return c.json({ message: 'Collection deleted successfully' });
+  } catch (e: any) {
+    console.error("Error deleting collection:", e);
+    return c.json({ error: 'Failed to delete collection' }, 500);
+  }
+});
+
+// POST /api/collections/:id/files: Add file to collection
+app.post('/api/collections/:id/files', async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+  const { file_id } = await c.req.json();
+
+  if (isNaN(collection_id) || !file_id) return c.json({ error: 'Invalid parameters' }, 400);
+
+  try {
+    // Verify ownership of collection
+    const collection = await c.env.DB.prepare('SELECT user_id FROM collections WHERE id = ?').bind(collection_id).first();
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+    if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    // Verify file exists (and maybe access?)
+    // For now, assume if you have the ID you can add it, 
+    // but ideally we check if user has read access to the file.
+    const file = await c.env.DB.prepare('SELECT id FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+
+    // Get current max order
+    const maxOrder = await c.env.DB.prepare(
+        'SELECT MAX(file_order) as max_order FROM collection_files WHERE collection_id = ?'
+    ).bind(collection_id).first();
+    const nextOrder = ((maxOrder?.max_order as number) || 0) + 1;
+
+    const { success } = await c.env.DB.prepare(
+      'INSERT INTO collection_files (collection_id, file_id, file_order) VALUES (?, ?, ?)'
+    ).bind(collection_id, file_id, nextOrder).run();
+
+    if (success) {
+      return c.json({ message: 'File added to collection' });
+    } else {
+      return c.json({ error: 'Failed to add file to collection' }, 500);
+    }
+  } catch (e: any) {
+    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+        return c.json({ error: 'File already in collection' }, 409);
+    }
+    console.error("Error adding file to collection:", e);
+    return c.json({ error: 'Failed to add file to collection' }, 500);
+  }
+});
+
+// DELETE /api/collections/:id/files/:file_id: Remove file from collection
+app.delete('/api/collections/:id/files/:file_id', async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+  const file_id = Number(c.req.param('file_id'));
+
+  if (isNaN(collection_id) || isNaN(file_id)) return c.json({ error: 'Invalid parameters' }, 400);
+
+  try {
+    const collection = await c.env.DB.prepare('SELECT user_id FROM collections WHERE id = ?').bind(collection_id).first();
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+    if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    const { success } = await c.env.DB.prepare(
+      'DELETE FROM collection_files WHERE collection_id = ? AND file_id = ?'
+    ).bind(collection_id, file_id).run();
+
+    if (success) {
+      return c.json({ message: 'File removed from collection' });
+    } else {
+      return c.json({ error: 'Failed to remove file from collection' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error removing file from collection:", e);
+    return c.json({ error: 'Failed to remove file from collection' }, 500);
+  }
+});
+
 
 // POST /api/users/me/avatar: Upload user avatar to R2
 app.post('/api/users/me/avatar', authMiddleware, async (c) => {

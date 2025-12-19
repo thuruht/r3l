@@ -34,9 +34,25 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
 - [x] **Live Indicators:** Show "Online" status (glowing nodes) in the Association Web.
 - [x] **Signal Propagation:** When a user updates their Communique or uploads a file, send a visual "pulse" wave through the graph to their neighbors via WebSocket.
 
-## Phase 7: Deep Customization (The "Advanced" Cue)
-- [ ] **Theme Engine:** Allow users to tweak the "Mist" parameters (color shifts, density) in their local client.
-- [ ] **Profile aesthetics:** Allow custom hex codes for node colors (beyond the fixed theme).
+## Phase 7: Deep Customization (The "Advanced" Cue) (Completed)
+- [x] **Theme Engine:** Allow users to tweak the "Mist" parameters (color shifts, density) in their local client.
+- [x] **Profile aesthetics:** Allow custom hex codes for node colors (beyond the fixed theme).
+
+## Phase 8: Collections (Curated Chaos) (Functional)
+*Goal: Allow users to organize the ephemeral stream into permanent or semi-permanent sets.*
+- [x] **Backend - Core Logic**
+    - [x] API: `CRUD /api/collections` (Name, Description, Visibility).
+    - [x] API: `POST/DELETE /api/collections/:id/files` (Manage contents).
+    - [x] Database: Ensure `0010_create_collections.sql` is applied.
+- [x] **Frontend - Management**
+    - [x] **Collection Manager:** A dedicated view (or modal) to create/edit collections.
+    - [x] **Add to Collection:** Context menu on Files to "Add to [Collection Name]".
+- [ ] **Visualization**
+    - [ ] Represent Collections in the Association Web (perhaps as a larger "Cluster" node or a bounded hull around files).
+
+## Future / Polish
+- [ ] **Deep Visualization:** Visualizing collections as clusters in the graph.
+- [ ] **Mobile Optimization:** Ensure complex overlays work well on small screens.
 
 ---
 

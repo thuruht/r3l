@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
-import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout } from '@tabler/icons-react';
+import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import CommuniquePage from './components/CommuniquePage';
@@ -14,6 +14,7 @@ import FilePreviewModal from './components/FilePreviewModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
 import ThemeSettings from './components/ThemeSettings';
+import CollectionsManager from './components/CollectionsManager';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
@@ -31,6 +32,7 @@ function Main() {
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -449,6 +451,9 @@ function Main() {
                     <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
                         <IconInfoCircle size={18} /> About
                     </button>
+                    <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                        <IconFolder size={18} /> Collections
+                    </button>
                     <button onClick={() => { setIsThemeSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
                         <IconPalette size={18} /> Theme Settings
                     </button>
@@ -472,6 +477,7 @@ function Main() {
             {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
             {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
+            {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
             {previewFile && (
               <FilePreviewModal
                   fileId={previewFile.id}

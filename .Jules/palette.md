@@ -10,3 +10,7 @@
 ## 2025-05-24 - File Upload Accessibility
 **Learning:** Drag-and-drop zones are often inaccessible to keyboard users. Using `role="button"`, `tabIndex={0}`, and an `onKeyDown` handler (Enter/Space) on the drop zone container allows keyboard users to trigger the hidden file input.
 **Action:** Implemented keyboard-accessible drag-and-drop zone in `UploadModal.tsx`.
+
+## 2025-05-25 - Interactive List Accessibility
+**Learning:** Lists that act as navigation menus (like `NetworkList`) must implement the "button" pattern (role="button", tabIndex=0, onKeyDown) on list items if they are not native `<button>` or `<a>` elements. This is critical for keyboard users to navigate the directory.
+**Action:** Added keyboard support and ARIA roles to `NetworkList.tsx` items.

@@ -9,9 +9,9 @@ import { Resend } from 'resend';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
-import { DocumentRoom } from './do/DocumentRoom';
+// import { DocumentRoom } from './do/DocumentRoom';
 export { RelfDO } from './do';
-export { DocumentRoom } from './do/DocumentRoom';
+// export { DocumentRoom } from './do/DocumentRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -24,7 +24,7 @@ interface Env {
   DB: D1Database;
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
-  DOCUMENT_ROOM: DurableObjectNamespace;
+  // DOCUMENT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -477,28 +477,28 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   }
 });
 
-// GET /api/document/:id: Document Room WebSocket endpoint (Phase 9 Scaffolding)
-app.get('/api/document/:id', authMiddleware, async (c) => {
-  const upgradeHeader = c.req.header('Upgrade');
-  if (!upgradeHeader || upgradeHeader !== 'websocket') {
-    return c.text('Expected Upgrade: websocket', 426);
-  }
+// GET /api/document/:id: Document Room WebSocket endpoint (Phase 9 Scaffolding - Disabled for Deployment)
+// app.get('/api/document/:id', authMiddleware, async (c) => {
+//   const upgradeHeader = c.req.header('Upgrade');
+//   if (!upgradeHeader || upgradeHeader !== 'websocket') {
+//     return c.text('Expected Upgrade: websocket', 426);
+//   }
 
-  const documentId = c.req.param('id');
+//   const documentId = c.req.param('id');
 
-  try {
-    const doId = c.env.DOCUMENT_ROOM.idFromName(documentId);
-    const doStub = c.env.DOCUMENT_ROOM.get(doId);
+//   try {
+//     const doId = c.env.DOCUMENT_ROOM.idFromName(documentId);
+//     const doStub = c.env.DOCUMENT_ROOM.get(doId);
 
-    const url = new URL(c.req.url);
-    url.pathname = '/websocket';
+//     const url = new URL(c.req.url);
+//     url.pathname = '/websocket';
 
-    return doStub.fetch(new Request(url.toString(), c.req.raw));
-  } catch (e) {
-    console.error("Error proxying to Document Room:", e);
-    return c.text('Document Room proxy failed', 500);
-  }
-});
+//     return doStub.fetch(new Request(url.toString(), c.req.raw));
+//   } catch (e) {
+//     console.error("Error proxying to Document Room:", e);
+//     return c.text('Document Room proxy failed', 500);
+//   }
+// });
 
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {

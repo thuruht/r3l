@@ -41,7 +41,16 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
         {sortedNodes.map(node => (
           <div 
             key={node.id} 
+            role="button"
+            tabIndex={0}
+            aria-label={`View profile of ${node.name}`}
             onClick={() => onNodeClick(node.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNodeClick(node.id);
+              }
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

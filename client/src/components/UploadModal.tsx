@@ -38,7 +38,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
 
     const formData = new FormData();
     formData.append('file', upload.file);
-    formData.append('visibility', 'me'); // Default to private ('me')
+    formData.append('visibility', 'private'); // Default to private
     if (parentId) formData.append('parent_id', parentId.toString());
 
     try {

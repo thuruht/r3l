@@ -23,22 +23,17 @@ interface Notification {
 
 const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [connections, setConnections] = useState<any[]>([]); // Added for Sym Links
   const [loading, setLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast(); // Added
 
   useEffect(() => {
     fetchNotifications();
+    fetchConnections(); // Added
   }, []);
 
-  useEffect(() => {
-    if (notifications.length > 0 && listRef.current) {
-        gsap.fromTo(listRef.current.children,
-            { opacity: 0, x: 20 },
-            { opacity: 1, x: 0, duration: 0.3, stagger: 0.05, ease: 'power2.out' }
-        );
-    }
-  }, [notifications]);
+  // ... (gsap effect)
 
   const fetchNotifications = async () => {
     setLoading(true);
@@ -55,6 +50,17 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     }
   };
 
+  const fetchConnections = async () => {
+      try {
+          const res = await fetch('/api/relationships');
+          if (res.ok) {
+              const data = await res.json();
+              setConnections(data.mutual || []);
+          }
+      } catch (e) { console.error(e); }
+  };
+
+  // ... (markAsRead, handleMarkAllRead, handleAction, handleDelete, renderMessage functions remain same) ...
   const markAsRead = async (id: number) => {
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
@@ -93,6 +99,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         if (res.ok) {
            showToast(action === 'accept' ? 'Connection established.' : 'Request declined.', 'success');
            markAsRead(notif.id);
+           fetchConnections(); // Refresh connections
         } else {
            const err = await res.json();
            showToast(err.error || `Failed to ${action}`, 'error');
@@ -147,11 +154,11 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   return (
     <div className="inbox-overlay fade-in" style={{
       position: 'absolute', top: '60px', right: '20px', width: 'min(360px, 90vw)',
-      background: '#000000dd', border: '1px solid var(--border-color)', 
+      background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', 
       backdropFilter: 'blur(10px)', padding: '15px', borderRadius: '8px',
-      zIndex: 1000
+      zIndex: 'var(--z-dropdown)', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', alignItems: 'center', flexShrink: 0 }}>
         <h4 style={{ margin: 0, color: 'var(--text-primary)' }}>Inbox</h4>
         <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', padding: '4px', display: 'flex' }} title="Mark all as read">
@@ -171,7 +178,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         </div>
       )}
 
-      <div ref={listRef} style={{ maxHeight: '300px', overflowY: 'auto' }}>
+      <div ref={listRef} style={{ overflowY: 'auto', flex: 1, minHeight: '100px' }}>
         {notifications.length === 0 && !loading && (
           <div style={{ padding: '10px', textAlign: 'center', color: '#444', fontSize: '0.8em' }}>Silence...</div>
         )}
@@ -207,6 +214,33 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
             )}
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
+          <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>Sym Links ({connections.length})</h5>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '100px', overflowY: 'auto' }}>
+              {connections.map(c => (
+                  <div 
+                    key={c.user_id} 
+                    onClick={() => onOpenCommunique(c.user_id.toString())}
+                    style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid var(--border-color)',
+                        fontSize: '0.85em',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                    }}
+                  >
+                      <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: c.avatar_url ? `url(${c.avatar_url}) center/cover` : '#333' }}></div>
+                      {c.username}
+                  </div>
+              ))}
+              {connections.length === 0 && <span style={{ color: '#555', fontSize: '0.8em' }}>No connections yet.</span>}
+          </div>
       </div>
     </div>
   );

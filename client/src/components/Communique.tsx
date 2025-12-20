@@ -17,6 +17,12 @@ interface CommuniqueData {
   updated_at: string | null;
 }
 
+interface UserProfile {
+    id: number;
+    username: string;
+    avatar_url?: string;
+}
+
 const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [data, setData] = useState<CommuniqueData>({ content: '', theme_prefs: '{}', updated_at: null });
   const [loading, setLoading] = useState(false);
@@ -25,7 +31,8 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
-  const [currentUser, setCurrentUser] = useState<{ id: number; username: string; avatar_url?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
 
   // New states for profile aesthetics
   const [primaryNodeColor, setPrimaryNodeColor] = useState<string>('');
@@ -65,7 +72,19 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   }, []);
 
   useEffect(() => {
-    fetchCommunique();
+      const fetchTargetUser = async () => {
+          try {
+              const res = await fetch(`/api/users/${userId}`);
+              if (res.ok) {
+                  const json = await res.json();
+                  setTargetUser(json.user);
+              }
+          } catch (e) {
+              console.error("Failed to fetch target user", e);
+          }
+      };
+      fetchTargetUser();
+      fetchCommunique();
   }, [userId]);
 
   // Fetch relationship status
@@ -303,7 +322,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       } catch (e) { return ''; }
   };
 
-  if (loading) {
+  if (loading && !targetUser) {
     return (
         <div style={{ padding: '20px' }}>
             <Skeleton height="30px" width="50%" marginBottom="20px" />
@@ -321,7 +340,9 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       <style>{getRenderCSS()}</style>
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>Communique</h4>
+        <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>
+            Communique: {targetUser?.username || 'Signal'}
+        </h4>
         {isOwner && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

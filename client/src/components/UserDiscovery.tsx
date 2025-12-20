@@ -121,7 +121,29 @@ export const RandomUserButton: React.FC = () => {
   };
 
   return (
-    <button onClick={handleRandom} title="Random User" aria-label="Go to random user" style={{ marginRight: '10px', padding: '5px 10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+    <button 
+      onClick={handleRandom} 
+      title="Drift to Random User" 
+      aria-label="Go to random user" 
+      style={{ 
+        marginRight: '10px', 
+        padding: '5px 10px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '5px',
+        borderColor: 'var(--accent-asym)',
+        color: 'var(--accent-asym)',
+        background: 'transparent'
+      }}
+      onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-sym)';
+          e.currentTarget.style.color = 'var(--accent-sym)';
+      }}
+      onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent-asym)';
+          e.currentTarget.style.color = 'var(--accent-asym)';
+      }}
+    >
       <IconDice size={18} />
     </button>
   );

@@ -130,7 +130,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('visibility', 'me'); // 'me' maps to private in DB schema
+    formData.append('visibility', 'private'); // 'private' in DB schema
     if (remixTarget) {
       formData.append('parent_id', remixTarget.id.toString());
     }

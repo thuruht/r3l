@@ -1,31 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { useTheme } from '../context/ThemeContext'; // To toggle default themes
-import { IconPalette, IconX, IconCheck } from '@tabler/icons-react';
+import { IconPalette, IconX, IconCheck, IconDeviceFloppy } from '@tabler/icons-react';
 
 interface ThemeSettingsProps {
   onClose: () => void;
 }
 
 const ThemeSettings: React.FC<ThemeSettingsProps> = ({ onClose }) => {
-  const { preferences, updateThemePreferences } = useCustomization();
+  const { preferences, updateThemePreferences, updateProfileAesthetics } = useCustomization();
   const { theme: currentDefaultTheme, toggleTheme } = useTheme();
 
-  const [customPrimaryColor, setCustomPrimaryColor] = useState<string>('');
-  const [customSecondaryColor, setCustomSecondaryColor] = useState<string>('');
-  const [bgColor, setBgColor] = useState<string>('');
-  const [textColor, setTextColor] = useState<string>('');
-  const [borderColor, setBorderColor] = useState<string>('');
-  const [accentMe, setAccentMe] = useState<string>('');
-  const [accentSym, setAccentSym] = useState<string>('');
-  const [accentAsym, setAccentAsym] = useState<string>('');
-  const [bgMist, setBgMist] = useState<string>('');
-  const [accentAlert, setAccentAlert] = useState<string>('');
-  const [drawerBg, setDrawerBg] = useState<string>('');
-  const [glowSym, setGlowSym] = useState<string>('');
-  const [glowMe, setGlowMe] = useState<string>('');
-  const [hoverBg, setHoverBg] = useState<string>('');
-
+  const [customCSS, setCustomCSS] = useState<string>('');
+  
   // Profile Aesthetics states
   const [nodePrimaryColor, setNodePrimaryColor] = useState<string>('');
   const [nodeSecondaryColor, setNodeSecondaryColor] = useState<string>('');
@@ -36,20 +23,7 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ onClose }) => {
       if (preferences.theme_preferences) {
         try {
           const parsedPrefs = JSON.parse(preferences.theme_preferences);
-          setCustomPrimaryColor(parsedPrefs['accent-primary'] || '');
-          setCustomSecondaryColor(parsedPrefs['accent-secondary'] || '');
-          setBgColor(parsedPrefs['bg-color'] || '');
-          setTextColor(parsedPrefs['text-primary'] || '');
-          setBorderColor(parsedPrefs['border-color'] || '');
-          setAccentMe(parsedPrefs['accent-me'] || '');
-          setAccentSym(parsedPrefs['accent-sym'] || '');
-          setAccentAsym(parsedPrefs['accent-asym'] || '');
-          setBgMist(parsedPrefs['bg-mist'] || '');
-          setAccentAlert(parsedPrefs['accent-alert'] || '');
-          setDrawerBg(parsedPrefs['drawer-bg'] || '');
-          setGlowSym(parsedPrefs['glow-sym'] || '');
-          setGlowMe(parsedPrefs['glow-me'] || '');
-          setHoverBg(parsedPrefs['hover-bg'] || '');
+          setCustomCSS(parsedPrefs.custom_css || '');
         } catch (e) {
           console.error("Failed to parse initial theme preferences", e);
         }
@@ -61,25 +35,11 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ onClose }) => {
     }
   }, [preferences]);
 
-  const handleSaveCustomTheme = async () => {
+  const handleSaveCustomCSS = async () => {
     const newCustomPrefs = {
-      'accent-primary': customPrimaryColor,
-      'accent-secondary': customSecondaryColor,
-      'bg-color': bgColor,
-      'text-primary': textColor,
-      'border-color': borderColor,
-      'accent-me': accentMe,
-      'accent-sym': accentSym,
-      'accent-asym': accentAsym,
-      'bg-mist': bgMist,
-      'accent-alert': accentAlert,
-      'drawer-bg': drawerBg,
-      'glow-sym': glowSym,
-      'glow-me': glowMe,
-      'hover-bg': hoverBg,
+      custom_css: customCSS
     };
     await updateThemePreferences(newCustomPrefs);
-    // onClose(); // Keep modal open for aesthetics update
   };
 
   const handleSaveProfileAesthetics = async () => {
@@ -89,225 +49,110 @@ const ThemeSettings: React.FC<ThemeSettingsProps> = ({ onClose }) => {
       node_size: nodeSize,
     };
     await updateProfileAesthetics(newAesthetics);
-    onClose();
+    // We don't close automatically to allow user to tweak
   };
 
   return (
-    <div className="overlay-panel fade-in" style={{ zIndex: 3000 }}>
-      <div className="glass-panel" style={{ width: '400px', padding: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h2 style={{ margin: 0 }}>Theme Settings</h2>
-          <button onClick={onClose} title="Close">
-            <IconX size={18} />
+    <div className="modal-overlay fade-in">
+      <div className="glass-panel" style={{ width: '500px', padding: '20px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <IconPalette size={24} /> Theme Settings
+          </h2>
+          <button onClick={onClose} title="Close" style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+            <IconX size={20} />
           </button>
         </div>
 
-        <div style={{ marginBottom: '15px' }}>
-          <h3>Default Themes</h3>
-          <p>Current: {currentDefaultTheme}</p>
-          <button onClick={toggleTheme}>Toggle Default Theme</button>
+        <div style={{ marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginTop: 0 }}>Base Theme</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <span>Current: <strong>{currentDefaultTheme.charAt(0).toUpperCase() + currentDefaultTheme.slice(1)}</strong></span>
+            <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <IconPalette size={16} /> Toggle Theme
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '25px', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+          <h3 style={{ marginTop: 0 }}>Global Custom CSS</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
+            Inject custom CSS rules that apply to your entire view of the application. 
+            Overrides base theme styles.
+          </p>
+          <textarea
+            value={customCSS}
+            onChange={(e) => setCustomCSS(e.target.value)}
+            placeholder={`/* Example */\n:root {\n  --accent-primary: #ff00ff;\n}\n\nbody {\n  font-family: 'Courier New', monospace;\n}`}
+            style={{
+              width: '100%',
+              minHeight: '200px',
+              background: 'rgba(0,0,0,0.3)',
+              color: '#a6e22e',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              padding: '10px',
+              marginBottom: '10px',
+              resize: 'vertical'
+            }}
+          />
+          <button onClick={handleSaveCustomCSS} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconDeviceFloppy size={18} /> Save CSS
+          </button>
         </div>
 
         <div>
-          <h3>Custom Theme (Experimental)</h3>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Primary Accent Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={customPrimaryColor}
-                onChange={(e) => setCustomPrimaryColor(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Secondary Accent Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={customSecondaryColor}
-                onChange={(e) => setCustomSecondaryColor(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Background Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={bgColor}
-                onChange={(e) => setBgColor(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Background Mist Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={bgMist}
-                onChange={(e) => setBgMist(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Text Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={textColor}
-                onChange={(e) => setTextColor(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Border Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={borderColor}
-                onChange={(e) => setBorderColor(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Accent "Me" Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={accentMe}
-                onChange={(e) => setAccentMe(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Accent "Sym" Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={accentSym}
-                onChange={(e) => setAccentSym(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Accent "Asym" Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={accentAsym}
-                onChange={(e) => setAccentAsym(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Accent Alert Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={accentAlert}
-                onChange={(e) => setAccentAlert(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Drawer Background Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={drawerBg}
-                onChange={(e) => setDrawerBg(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Glow Sym Color (CSS Filter value):
-              <input
-                type="text"
-                value={glowSym}
-                onChange={(e) => setGlowSym(e.target.value)}
-                placeholder="0 0 10px #26de8166"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Glow Me Color (CSS Filter value):
-              <input
-                type="text"
-                value={glowMe}
-                onChange={(e) => setGlowMe(e.target.value)}
-                placeholder="0 0 15px #ffffff80"
-              />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Hover Background Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={hoverBg}
-                onChange={(e) => setHoverBg(e.target.value)}
-                placeholder="#AABBCCFF"
-              />
-            </label>
-          </div>
-          <button onClick={handleSaveCustomTheme} style={{ marginRight: '10px' }}>
-            <IconCheck size={18} style={{ verticalAlign: 'middle' }} /> Save Custom Theme
-          </button>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <h3>Profile Node Aesthetics</h3>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Node Primary Color (#RRGGBBAA):
+          <h3 style={{ marginTop: 0 }}>Profile Node Aesthetics</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '15px' }}>
+            Customize how your node appears in the network graph.
+          </p>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
+                Primary Color
+              </label>
               <input
                 type="text"
                 value={nodePrimaryColor}
                 onChange={(e) => setNodePrimaryColor(e.target.value)}
-                placeholder="#AABBCCFF"
+                placeholder="#1F77B4"
+                style={{ width: '100%', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
               />
-            </label>
-          </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Node Secondary Color (#RRGGBBAA):
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
+                Secondary Color
+              </label>
               <input
                 type="text"
                 value={nodeSecondaryColor}
                 onChange={(e) => setNodeSecondaryColor(e.target.value)}
-                placeholder="#AABBCCFF"
+                placeholder="#FF7F0E"
+                style={{ width: '100%', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
               />
-            </label>
+            </div>
           </div>
-          <div style={{ marginBottom: '10px' }}>
-            <label>
-              Node Size (e.g., 8, 12, 16):
-              <input
-                type="number"
-                value={nodeSize === 0 ? '' : nodeSize} // Handle 0 for placeholder
-                onChange={(e) => setNodeSize(parseInt(e.target.value) || 0)}
-                placeholder="8"
-                min="4"
-                max="30"
-              />
+          
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
+              Node Size (Default: 8)
             </label>
+            <input
+              type="number"
+              value={nodeSize === 0 ? '' : nodeSize}
+              onChange={(e) => setNodeSize(parseInt(e.target.value) || 0)}
+              placeholder="8"
+              min="4"
+              max="30"
+              style={{ width: '100%', padding: '8px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+            />
           </div>
-          <button onClick={handleSaveProfileAesthetics}>
-            <IconCheck size={18} style={{ verticalAlign: 'middle' }} /> Save Profile Aesthetics
+
+          <button onClick={handleSaveProfileAesthetics} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <IconCheck size={18} /> Save Node Settings
           </button>
         </div>
       </div>

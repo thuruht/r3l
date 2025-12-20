@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
-import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder } from '@tabler/icons-react';
+import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder, IconHome } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import CommuniquePage from './components/CommuniquePage';
@@ -15,10 +15,12 @@ import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
 import ThemeSettings from './components/ThemeSettings';
 import CollectionsManager from './components/CollectionsManager';
+import LandingPage from './components/LandingPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
+import { GlobalStyleInjector } from './components/GlobalStyleInjector';
 import './styles/global.css';
 
 interface User {
@@ -46,9 +48,6 @@ function Main() {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
   const [userPreferences, setUserPreferences] = useState<any | null>(null); // For initial fetch
 
   const { showToast } = useToast();
@@ -233,14 +232,14 @@ function Main() {
     }
   }, [isDrifting]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent, credentials: any) => {
     e.preventDefault();
     setAuthError(null);
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(credentials),
       });
       if (response.ok) {
         const data = await response.json();
@@ -266,14 +265,14 @@ function Main() {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent, credentials: any) => {
     e.preventDefault();
     setAuthError(null);
     try {
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, email }),
+        body: JSON.stringify(credentials),
       });
       if (response.ok) {
         showToast('Registration successful! Please log in.', 'success');
@@ -321,6 +320,8 @@ function Main() {
   const isCommuniquePage = location.pathname.startsWith('/communique');
   const navRef = useRef<HTMLDivElement>(null);
 
+  const isAdmin = currentUser?.id === 1;
+
   useLayoutEffect(() => {
     if (navRef.current) {
       gsap.fromTo(navRef.current, 
@@ -338,46 +339,20 @@ function Main() {
 
   return (
     <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
+      <GlobalStyleInjector />
       {!isAuthenticated ? (
-        <div className="auth-container">
-          <h1>Welcome to Rel F</h1>
-          <h2>{isRegistering ? 'Register' : 'Login'}</h2>
-          <form onSubmit={isRegistering ? handleRegister : handleLogin}>
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            {isRegistering && (
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            )}
-            {authError && <p style={{ color: 'red' }}>{authError}</p>}
-            <button type="submit">{isRegistering ? 'Register' : 'Login'}</button>
-          </form>
-          <button onClick={() => setIsRegistering(!isRegistering)}>
-            {isRegistering ? 'Already have an account? Login' : 'Need an account? Register'}
-          </button>
-        </div>
+        <LandingPage 
+          onLogin={handleLogin}
+          onRegister={handleRegister}
+          authError={authError}
+          isRegistering={isRegistering}
+          setIsRegistering={setIsRegistering}
+        />
       ) : (
         <>
           <div ref={navRef} className="overlay-ui">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => navigate('/')}>
                         <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
                         <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
                         {new Date().toLocaleDateString()}
@@ -390,12 +365,48 @@ function Main() {
                         <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
                     </div>
                     
-                    <SearchBar />
-                    <RandomUserButton />
-                    
-                    <button onClick={() => setViewMode(viewMode === 'graph' ? 'list' : 'graph')} title="Toggle View" style={{ padding: '6px' }}>
-                    {viewMode === 'graph' ? <IconList size={18} /> : <IconChartCircles size={18} />}
+                    <button onClick={() => navigate('/')} title="Home" style={{ padding: '6px' }}>
+                        <IconHome size={18} />
                     </button>
+
+                    <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <SearchBar />
+                      <RandomUserButton />
+                      
+                      {/* View Mode Toggle (Segmented Control) */}
+                      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px', marginRight: '5px' }}>
+                        <button 
+                          onClick={() => setViewMode('graph')} 
+                          title="Graph View"
+                          style={{ 
+                            padding: '4px 8px', 
+                            background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
+                            color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderRadius: '3px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <IconChartCircles size={16} />
+                        </button>
+                        <button 
+                          onClick={() => setViewMode('list')} 
+                          title="List View"
+                          style={{ 
+                            padding: '4px 8px', 
+                            background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
+                            color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderRadius: '3px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <IconList size={16} />
+                        </button>
+                      </div>
+                    </div>
                     
                     <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
                     <IconRadar2 size={18} />
@@ -436,15 +447,54 @@ function Main() {
                 <div className="glass-panel fade-in" style={{
                     position: 'fixed',
                     top: '60px',
-                    right: '10px',
-                    width: '200px',
+                    right: '5vw', /* Use viewport unit for responsive right position */
+                    width: 'min(200px, 80vw)', /* Responsive width */
                     padding: '10px',
                     borderRadius: '8px',
-                    zIndex: 2000,
+                    zIndex: 'var(--z-dropdown)', /* Use CSS variable for z-index */
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '8px'
                 }}>
+                    <div className="mobile-only" style={{ flexDirection: 'column', gap: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                           <SearchBar />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View:</span>
+                             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
+                                <button 
+                                  onClick={() => { setViewMode('graph'); setIsMenuOpen(false); }} 
+                                  style={{ 
+                                    padding: '4px 8px', 
+                                    background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
+                                    color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
+                                    border: 'none',
+                                    borderRadius: '3px'
+                                  }}
+                                >
+                                  <IconChartCircles size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => { setViewMode('list'); setIsMenuOpen(false); }} 
+                                  style={{ 
+                                    padding: '4px 8px', 
+                                    background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
+                                    color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
+                                    border: 'none',
+                                    borderRadius: '3px'
+                                  }}
+                                >
+                                  <IconList size={16} />
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Discover:</span>
+                             <RandomUserButton />
+                        </div>
+                    </div>
+
                     <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
                         <IconHelp size={18} /> Help
                     </button>
@@ -460,7 +510,7 @@ function Main() {
                     <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
                         <IconPalette size={18} /> Toggle Default Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
-                    {currentUser.id === 1 && (
+                    {isAdmin && (
                       <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
                           <IconDashboard size={18} /> Admin
                       </button>
@@ -474,7 +524,7 @@ function Main() {
     
             {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
-            {isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+            {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
             {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
             {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}

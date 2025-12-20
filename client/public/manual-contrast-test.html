@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrast & Theme Manual Verification</title>
+    <style>
+        /* Base styles mimicking global.css logic */
+        :root {
+            /* Default (Mist) */
+            --bg-color-mist: #0a0b10ff;
+            --text-primary-mist: #e0e4e8ff;
+            --text-secondary-mist: #7f8a96ff;
+
+            /* Dusk */
+            --bg-color-dusk: #002b36;
+            --text-primary-dusk: #93a1a1;
+            --text-secondary-dusk: #839496;
+
+            /* Dawn */
+            --bg-color-dawn: #fdf6e3;
+            --text-primary-dawn: #586e75;
+            --text-secondary-dawn: #657b83;
+        }
+
+        body { font-family: sans-serif; padding: 20px; background: #333; }
+        .theme-block {
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #777;
+        }
+        .theme-mist { background-color: var(--bg-color-mist); color: var(--text-primary-mist); }
+        .theme-dusk { background-color: var(--bg-color-dusk); color: var(--text-primary-dusk); }
+        .theme-dawn { background-color: var(--bg-color-dawn); color: var(--text-primary-dawn); }
+
+        .secondary { font-size: 0.9em; }
+        .mist-sec { color: var(--text-secondary-mist); }
+        .dusk-sec { color: var(--text-secondary-dusk); }
+        .dawn-sec { color: var(--text-secondary-dawn); }
+    </style>
+</head>
+<body>
+    <h1>Manual Contrast Verification</h1>
+    
+    <div class="theme-block theme-mist">
+        <h2>Mist Theme (Default)</h2>
+        <p>Primary Text: The quick brown fox jumps over the lazy dog.</p>
+        <p class="secondary mist-sec">Secondary Text: The quick brown fox jumps over the lazy dog.</p>
+    </div>
+
+    <div class="theme-block theme-dusk">
+        <h2>Dusk Theme</h2>
+        <p>Primary Text: The quick brown fox jumps over the lazy dog.</p>
+        <p class="secondary dusk-sec">Secondary Text: The quick brown fox jumps over the lazy dog.</p>
+    </div>
+
+    <div class="theme-block theme-dawn">
+        <h2>Dawn Theme</h2>
+        <p>Primary Text: The quick brown fox jumps over the lazy dog.</p>
+        <p class="secondary dawn-sec">Secondary Text: The quick brown fox jumps over the lazy dog.</p>
+    </div>
+
+    <script>
+        // Simple script to log contrast ratios to console for verification
+        function getContrast(hex1, hex2) {
+            const r1 = parseInt(hex1.substr(1,2), 16);
+            const g1 = parseInt(hex1.substr(3,2), 16);
+            const b1 = parseInt(hex1.substr(5,2), 16);
+            const r2 = parseInt(hex2.substr(1,2), 16);
+            const g2 = parseInt(hex2.substr(3,2), 16);
+            const b2 = parseInt(hex2.substr(5,2), 16);
+            
+            const lum = (r, g, b) => {
+                const a = [r, g, b].map((v) => {
+                    v /= 255;
+                    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+                });
+                return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+            };
+
+            const l1 = lum(r1, g1, b1);
+            const l2 = lum(r2, g2, b2);
+            return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        }
+
+        console.log("Mist Primary:", getContrast('#0a0b10', '#e0e4e8'));
+        console.log("Mist Secondary:", getContrast('#0a0b10', '#7f8a96'));
+        console.log("Dusk Primary:", getContrast('#002b36', '#93a1a1'));
+        console.log("Dusk Secondary:", getContrast('#002b36', '#839496'));
+        console.log("Dawn Primary:", getContrast('#fdf6e3', '#586e75'));
+        console.log("Dawn Secondary:", getContrast('#fdf6e3', '#657b83'));
+    </script>
+</body>
+</html>

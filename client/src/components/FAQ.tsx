@@ -9,11 +9,7 @@ interface FAQProps {
 
 const FAQ: React.FC<FAQProps> = ({ onClose }) => {
   return (
-    <div className="faq-overlay fade-in" style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: '#000000dd', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center',
-      backdropFilter: 'blur(5px)'
-    }}>
+    <div className="modal-overlay fade-in">
       <div style={{
         width: '600px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
         background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',

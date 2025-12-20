@@ -17,7 +17,7 @@ interface CustomizationContextType {
 
 const CustomizationContext = createContext<CustomizationContextType | undefined>(undefined);
 
-export const CustomizationProvider: React.FC<{ children: ReactNode; initialPreferences: UserPreferences | null; currentUserId: number | null }> = ({ children, initialPreferences, currentUserId }) => {
+export const CustomizationProvider: React.FC<{ children: ReactNode; initialPreferences?: UserPreferences | null }> = ({ children, initialPreferences = null }) => {
   const [preferences, setPreferences] = useState<UserPreferences | null>(initialPreferences);
   const { showToast } = useToast();
 
@@ -28,24 +28,20 @@ export const CustomizationProvider: React.FC<{ children: ReactNode; initialPrefe
   }, [initialPreferences]);
 
   const refreshPreferences = useCallback(async () => {
-    if (!currentUserId) {
-        setPreferences(null);
-        return;
-    }
     try {
       const prefsResponse = await fetch('/api/users/me/preferences');
       if (prefsResponse.ok) {
         const prefsData = await prefsResponse.json();
         setPreferences(prefsData);
       } else {
-        console.warn('Failed to refresh user preferences');
+        // If 401 or other error, clear preferences
         setPreferences(null);
       }
     } catch (error) {
       console.error('Error refreshing user preferences:', error);
       setPreferences(null);
     }
-  }, [currentUserId]);
+  }, []);
 
   const updateThemePreferences = useCallback(async (newPrefs: any) => {
     try {

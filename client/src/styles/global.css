@@ -4,7 +4,7 @@
   --text-primary: #e0e4e8ff;
   --text-secondary: #7f8a96ff;
   --accent-me: #ffffffff;
-  --accent-sym: #26de8100;
+  --accent-sym: #26de81; /* Opaque green */
   --accent-sym-bright: #26de81; /* Added for highlighting */
   --accent-asym: #5b6670ff;
   --accent-alert: #ff4b4bff;
@@ -13,17 +13,25 @@
   --glow-sym: 0 0 10px #26de8166;
   --glow-me: 0 0 15px #ffffff80;
   --hover-bg: #ffffff11;
+  
+  /* Z-Index Stack */
+  --z-ui-base: 1000;
+  --z-dropdown: 2000;
+  --z-modal: 3000;
+  --z-toast: 4000;
+  --z-tooltip: 5000;
+
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
 
-/* Dusk Theme - Solarized Dark Inspired */
+/* Dusk Theme - Solarized Dark Inspired - High Contrast Tweak */
 html.theme-dusk {
   --bg-color: #002b36;
   --bg-mist: #073642;
   --text-primary: #93a1a1;
-  --text-secondary: #586e75;
+  --text-secondary: #839496; /* Lightened for contrast against #002b36 */
   --accent-me: #fdf6e3;
   --accent-sym: #859900; /* Solarized Green */
   --accent-sym-bright: #859900;
@@ -36,12 +44,12 @@ html.theme-dusk {
   --hover-bg: #ffffff0d;
 }
 
-/* Dawn Theme - Solarized Light Inspired */
+/* Dawn Theme - Solarized Light Inspired - High Contrast Tweak */
 html.theme-dawn {
   --bg-color: #fdf6e3;
   --bg-mist: #eee8d5;
-  --text-primary: #657b83;
-  --text-secondary: #93a1a1;
+  --text-primary: #586e75; /* Darkened base01 for primary text */
+  --text-secondary: #657b83; /* Darkened base00 for secondary */
   --accent-me: #002b36;
   --accent-sym: #859900; /* Solarized Green */
   --accent-sym-bright: #859900;
@@ -59,18 +67,19 @@ h1, h2, h3, h4, h5, h6, button, .font-heading {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-body {
+html, body {
+  height: 100%; /* Ensure html and body take full height */
   margin: 0;
   padding: 0;
   background-color: var(--bg-color);
   color: var(--text-primary);
-  overflow: hidden;
+  /* overflow: hidden; -- REMOVED to allow scrolling */
   width: 100vw;
-  height: 100vh;
 }
 #root {
   width: 100%;
   height: 100%;
+  overflow-y: auto; /* Allow scrolling for main content */
 }
 button {
   border-radius: 4px;
@@ -79,7 +88,7 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1aff;
+  background-color: var(--bg-mist); /* Ensure button bg isn't black on white theme */
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.25s;
@@ -87,6 +96,7 @@ button {
 button:hover {
   border-color: var(--accent-sym);
   box-shadow: var(--glow-sym);
+  background-color: var(--hover-bg);
 }
 button:focus,
 button:focus-visible {
@@ -112,11 +122,11 @@ input:focus, textarea:focus {
   background: var(--bg-color); 
 }
 ::-webkit-scrollbar-thumb {
-  background: #333333ff; 
+  background: var(--border-color); 
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #555555ff; 
+  background: var(--accent-asym); 
 }
 @keyframes fadeIn {
   from { opacity: 0; }
@@ -131,7 +141,7 @@ input:focus, textarea:focus {
   left: 0;
   width: 100%;
   padding: 0.5rem 1rem;
-  z-index: 1000;
+  z-index: var(--z-ui-base);
   background: rgba(10, 11, 16, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -145,12 +155,28 @@ input:focus, textarea:focus {
   pointer-events: auto;
 }
 
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-modal);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--drawer-bg); /* Use theme variable */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
   box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
 }
 
 .page-content-spacer {
@@ -179,6 +205,16 @@ input:focus, textarea:focus {
   }
   .overlay-ui h1 {
     font-size: 1rem;
+  }
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  .mobile-only {
+    display: flex !important;
   }
 }
 

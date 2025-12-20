@@ -1,28 +1,29 @@
-// App.tsx
-
-import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import gsap from 'gsap';
-import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder, IconHome, IconMessage } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import {
+  IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard
+} from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
-import CommuniquePage from './components/CommuniquePage';
-import VerifyEmail from './components/VerifyEmail';
-import FeedbackModal from './components/FeedbackModal';
-import PrivacyPolicy from './components/PrivacyPolicy';
 import Inbox from './components/Inbox';
-import FAQ from './components/FAQ';
+import CommuniquePage from './components/CommuniquePage';
 import About from './components/About';
-import FilePreviewModal from './components/FilePreviewModal';
-import { ToastProvider, useToast } from './context/ToastContext';
+import FAQ from './components/FAQ';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import AdminDashboard from './components/AdminDashboard';
+import VerifyEmail from './components/VerifyEmail';
 import CollectionsManager from './components/CollectionsManager';
-import LandingPage from './components/LandingPage';
+import FeedbackModal from './components/FeedbackModal';
+import FilePreviewModal from './components/FilePreviewModal';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { CustomizationProvider } from './context/CustomizationContext';
+import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 
 import './styles/global.css';
+import './styles/App.css';
 
 interface User {
   id: number;
@@ -37,25 +38,121 @@ function Main() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [isDrifting, setIsDrifting] = useState(false);
+  const [driftData, setDriftData] = useState<{users: any[], files: any[]}>({ users: [], files: [] });
+  const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [isDrifting, setIsDrifting] = useState(false);
-  const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
-  const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
-  const [previewFile, setPreviewFile] = useState<any | null>(null);
+  const [previewFile, setPreviewFile] = useState<any>(null);
+
+  // Websocket state
+  const [ws, setWs] = useState<WebSocket | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isRegistering, setIsRegistering] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  const { showToast } = useToast();
   const { theme, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { nodes, links, refresh: refreshNetwork, loading } = useNetworkData({
+  useEffect(() => {
+    // Check Auth
+    fetch('/api/users/me')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Unauthorized');
+      })
+      .then(data => {
+        setCurrentUser(data.user);
+        setLoadingUser(false);
+        // Connect WS
+        connectWebSocket();
+      })
+      .catch(() => {
+        setLoadingUser(false);
+        if (location.pathname !== '/verify') { // Don't redirect if verifying
+             // Allow unauthenticated landing view (Drift only mode?)
+             // For now, simple auth gate, but maybe show "Connect" button
+        }
+      });
+  }, []); // Run once
+
+  // Websocket Connection
+  const connectWebSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host; // e.g. localhost:8787 or r3l.distorted.work
+      const wsUrl = `${protocol}//${host}/api/do-websocket`;
+
+      const socket = new WebSocket(wsUrl);
+
+      socket.onopen = () => {
+          console.log('Connected to Signal Stream');
+          setWs(socket);
+      };
+
+      socket.onmessage = (event) => {
+          try {
+              const msg = JSON.parse(event.data);
+
+              if (msg.type === 'presence_sync') {
+                  setOnlineUserIds(new Set(msg.onlineUserIds));
+              } else if (msg.type === 'presence_update') {
+                  setOnlineUserIds(prev => {
+                      const next = new Set(prev);
+                      if (msg.status === 'online') next.add(msg.userId);
+                      else next.delete(msg.userId);
+                      return next;
+                  });
+              } else if (msg.type === 'new_notification') {
+                  showToast(`New Notification: ${msg.notificationType}`, 'info');
+                  setUnreadCount(prev => prev + 1); // Simple increment
+                  refreshNetwork(); // Refresh graph to show new links
+              } else if (msg.type === 'new_message') {
+                  showToast(`New Whisper from user ${msg.sender_id}`, 'info');
+                  setUnreadCount(prev => prev + 1);
+              } else if (msg.type === 'signal_artifact') {
+                   // Only if drifting? Or show faint pulse?
+                   if (isDrifting) {
+                       fetchDrift(); // Refresh drift data
+                   }
+              }
+          } catch (e) {
+              console.error("WS Error", e);
+          }
+      };
+
+      socket.onclose = () => {
+          console.log('Signal Stream lost. Reconnecting...');
+          setTimeout(connectWebSocket, 3000);
+      };
+  };
+
+
+  const fetchDrift = async () => {
+      try {
+          const res = await fetch('/api/drift');
+          if (res.ok) {
+              const data = await res.json();
+              setDriftData(data);
+          }
+      } catch (e) {
+          console.error(e);
+      }
+  };
+
+  const toggleDrift = () => {
+      const newState = !isDrifting;
+      setIsDrifting(newState);
+      if (newState) {
+          fetchDrift();
+          showToast('Drift Mode: Scanning frequency...', 'info');
+      } else {
+          showToast('Drift Mode: Disengaged.', 'info');
+      }
+  };
+
+  const { nodes, links, collections, refresh: refreshNetwork, loading } = useNetworkData({
     currentUserId: currentUser?.id || null,
     meUsername: currentUser?.username,
     meAvatarUrl: currentUser?.avatar_url,
@@ -71,319 +168,184 @@ function Main() {
 
   const playNotificationSound = () => {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1); // Drop to A4
-      
-      gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-
-      osc.start();
-      osc.stop(ctx.currentTime + 0.1);
-    } catch (e) {
-      console.error("Audio play failed", e);
-    }
-  };
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/api/do-websocket`;
-
-    let ws: WebSocket;
-    let reconnectTimer: any;
-
-    const connect = () => {
-      ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'new_notification') {
-            showToast(`New signal: ${data.notificationType}`, 'info');
-            playNotificationSound();
-            setUnreadCount(prev => prev + 1);
-            if (refreshNetworkRef.current) refreshNetworkRef.current();
-          } 
-          else if (data.type === 'new_message') {
-             showToast('New whisper received', 'info');
-             playNotificationSound();
-             setUnreadCount(prev => prev + 1); // Increment global badge
-             // Note: If Inbox is open, it won't auto-refresh without more complex state lifting,
-             // but user will likely close/re-open or switch tabs which triggers fetch.
-          }
-          else if (data.type === 'presence_sync') {
-             setOnlineUserIds(new Set(data.onlineUserIds));
-          }
-          else if (data.type === 'presence_update') {
-             setOnlineUserIds(prev => {
-                 const next = new Set(prev);
-                 if (data.status === 'online') next.add(data.userId);
-                 else next.delete(data.userId);
-                 return next;
-             });
-          }
-          else if (data.type === 'signal_artifact') {
-              showToast('New artifact signal detected', 'info');
-          }
-
-        } catch (e) {
-          console.error("WS message parse error", e);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('WebSocket disconnected, reconnecting...');
-        reconnectTimer = setTimeout(connect, 3000);
-      };
-
-      ws.onerror = (err) => {
-        console.error("WebSocket error", err);
-        ws.close();
-      };
-    };
-
-    connect();
-
-    const fetchUnread = async () => {
-      try {
-        const res = await fetch('/api/notifications');
-        if (res.ok) {
-          const data = await res.json();
-          const unread = data.notifications.filter((n: any) => n.is_read === 0).length;
-          setUnreadCount(unread);
-        }
-      } catch (e) {
-        console.error("Bg fetch error", e);
-      }
-    };
-    fetchUnread();
-
-    return () => {
-      if (ws) ws.close();
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-    };
-  }, [isAuthenticated, showToast]);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/users/me');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentUser(data.user);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-          setCurrentUser(null);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setIsAuthenticated(false);
-        setCurrentUser(null);
-      }
-    };
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (isDrifting) {
-      const fetchDriftData = async () => {
-        try {
-          const response = await fetch('/api/drift');
-          if (response.ok) {
-            const data = await response.json();
-            setDriftData(data);
-            showToast('Drift radar active. Scanning...', 'info');
-          } else {
-            const err: { error?: string } = await response.json();
-            showToast(err.error || 'Drift failed', 'error');
-            setIsDrifting(false);
-          }
-        } catch (error) {
-          console.error('Failed to fetch drift data:', error);
-          showToast('Drift signal lost', 'error');
-          setIsDrifting(false);
-        }
-      };
-      fetchDriftData();
-    } else {
-      setDriftData({ users: [], files: [] });
-    }
-  }, [isDrifting]);
-
-  const handleLogin = async (e: React.FormEvent, credentials: any) => {
-    e.preventDefault();
-    setAuthError(null);
-    try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentUser(data.user);
-        setIsAuthenticated(true);
-        showToast(`Welcome back, ${data.user.username}`, 'success');
-      } else {
-        const errorData = await response.json();
-        setAuthError(errorData.error || 'Login failed');
-        showToast(errorData.error || 'Login failed', 'error');
-      }
-    } catch (error) {
-      setAuthError('Network error during login');
-      showToast('Network error during login', 'error');
-      console.error('Login error:', error);
-    }
-  };
-
-  const handleRegister = async (e: React.FormEvent, credentials: any) => {
-    e.preventDefault();
-    setAuthError(null);
-    try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      if (response.ok) {
-        showToast('Registration successful! Please log in.', 'success');
-        setIsRegistering(false);
-        setAuthError(null);
-      } else {
-        const errorData = await response.json();
-        setAuthError(errorData.error || 'Registration failed');
-        showToast(errorData.error || 'Registration failed', 'error');
-      }
-    } catch (error) {
-      setAuthError('Network error during registration');
-      showToast('Network error during registration', 'error');
-      console.error('Register error:', error);
-    }
+        const audio = new Audio('/assets/ping.mp3');
+        audio.volume = 0.2;
+        audio.play().catch(e => console.log('Audio play failed', e));
+    } catch (e) {}
   };
 
   const handleLogout = async () => {
-    try {
-      await fetch('/api/logout', { method: 'POST' });
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      showToast('Logged out', 'info');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.reload();
   };
 
   const onNodeClick = (nodeId: string) => {
-    if (nodeId.startsWith('file-')) {
-      const node = nodes.find(n => n.id === nodeId);
-      if (node && node.data) {
-        setPreviewFile(node.data);
+      // Logic to handle node clicks (Profile, File, etc.)
+      if (nodeId.startsWith('file-')) {
+          const fileId = nodeId.replace('file-', '');
+          // Identify if it's a drift file object or just an ID
+          // We can find it in nodes
+          const node = nodes.find(n => n.id === nodeId);
+          if (node && node.data) {
+              setPreviewFile(node.data);
+          }
+      } else {
+         // It's a user
+         navigate(`/communique/${nodeId}`);
       }
-    } else {
-      navigate(`/communique/${nodeId}`);
-    }
   };
 
-  const toggleDrift = () => {
-    setIsDrifting(!isDrifting);
+  // Login Form
+  const [loginUsername, setLoginUsername] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [regEmail, setRegEmail] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      try {
+          const res = await fetch('/api/login', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ username: loginUsername, password: loginPassword })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              setCurrentUser(data.user);
+              connectWebSocket();
+          } else {
+              showToast(data.error, 'error');
+          }
+      } catch (err) {
+          showToast('Login failed', 'error');
+      }
   };
 
-  const isCommuniquePage = location.pathname.startsWith('/communique');
-  const navRef = useRef<HTMLDivElement>(null);
+  const handleRegister = async (e: React.FormEvent) => {
+      e.preventDefault();
+       try {
+          const res = await fetch('/api/register', {
+              method: 'POST',
+              headers: {'Content-Type': 'application/json'},
+              body: JSON.stringify({ username: loginUsername, password: loginPassword, email: regEmail })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              showToast('Registration successful! Check your email.', 'success');
+              setIsRegistering(false);
+          } else {
+              showToast(data.error, 'error');
+          }
+      } catch (err) {
+          showToast('Registration failed', 'error');
+      }
+  }
 
-  const isAdmin = currentUser?.id === 1;
+  // Admin Check
+  const isAdmin = currentUser?.id === 1; // Hardcoded admin ID for now
 
-  useLayoutEffect(() => {
-    if (navRef.current) {
-      gsap.fromTo(navRef.current, 
-        { y: -50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }
-      );
-      
-      const buttons = navRef.current.querySelectorAll('button');
-      gsap.fromTo(buttons, 
-        { opacity: 0, y: -10 },
-        { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, delay: 0.3, ease: 'power2.out' }
-      );
-    }
-  }, []);
+  if (loadingUser) {
+    return (
+        <div style={{
+            height: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'var(--bg-color)',
+            color: 'var(--text-primary)',
+            flexDirection: 'column',
+            gap: '20px'
+        }}>
+            <div className="radar-scan" style={{ width: '50px', height: '50px', border: '2px solid var(--accent-sym)', borderRadius: '50%' }}></div>
+            <div>Establishing Uplink...</div>
+        </div>
+    );
+  }
 
   return (
     <>
-            {!isAuthenticated ? (
-        <LandingPage 
-          onLogin={handleLogin}
-          onRegister={handleRegister}
-          authError={authError}
-          isRegistering={isRegistering}
-          setIsRegistering={setIsRegistering}
-        />
+      {!currentUser && location.pathname !== '/verify' ? (
+        <div className="login-container">
+            <h1 className="glitch" data-text="REL F">REL F</h1>
+            <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
+
+            <div className="login-grid">
+               <div className="info-card">
+                  <IconRadar2 size={32} color="var(--accent-sym)" />
+                  <h3>THE DRIFT</h3>
+                  <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
+               </div>
+
+                <div className="info-card">
+                  <IconChartCircles size={32} color="var(--accent-alert)" />
+                  <h3>VITALITY</h3>
+                  <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
+               </div>
+
+               <div className="login-form-card">
+                   <h2>{isRegistering ? 'INITIALIZE NODE' : 'RESUME BROADCAST'}</h2>
+                   <form onSubmit={isRegistering ? handleRegister : handleLogin}>
+                       <input
+                         type="text"
+                         placeholder="Username"
+                         value={loginUsername}
+                         onChange={e => setLoginUsername(e.target.value)}
+                         required
+                       />
+                        {isRegistering && (
+                            <input
+                                type="email"
+                                placeholder="Email (for verification)"
+                                value={regEmail}
+                                onChange={e => setRegEmail(e.target.value)}
+                                required
+                            />
+                        )}
+                       <input
+                         type="password"
+                         placeholder="Password"
+                         value={loginPassword}
+                         onChange={e => setLoginPassword(e.target.value)}
+                         required
+                       />
+                       <button type="submit" className="primary-btn">
+                           {isRegistering ? 'REGISTER' : 'LOGIN'} <IconMenu2 size={16} style={{transform: 'rotate(90deg)'}}/>
+                       </button>
+                   </form>
+                   <button className="text-btn" onClick={() => setIsRegistering(!isRegistering)}>
+                       {isRegistering ? 'Already have a frequency? Login' : 'Need a frequency? Register'}
+                   </button>
+               </div>
+            </div>
+        </div>
       ) : (
         <>
-          <div ref={navRef} className="overlay-ui">
+            {/* Header / Nav */}
+            <div className="header glass-panel">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => navigate('/')}>
-                        <div>
-                          <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            Rel F 
-                            <span style={{ 
-                              fontSize: '0.6rem', 
-                              padding: '2px 5px', 
-                              border: '1px solid var(--accent-sym)', 
-                              borderRadius: '3px', 
-                              color: 'var(--accent-sym)',
-                              letterSpacing: '0.1em'
-                            }}>BETA</span>
-                          </h1>
-                          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
-                          {new Date().toLocaleDateString()}
-                          </p>
-                        </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
+                    <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
+                         <SearchBar />
+                         <RandomUserButton />
                     </div>
-                
-                {currentUser && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span className="desktop-only" style={{ marginRight: '10px', fontSize: '0.9rem' }}>{currentUser.username}</span>
-                    
-                    <button onClick={() => navigate('/')} title="Home" aria-label="Home" style={{ padding: '8px' }}>
-                        <IconHome size={20} aria-hidden="true" />
-                    </button>
+                </div>
 
-                    <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <SearchBar />
-                      <RandomUserButton />
-                      
-                      {/* View Mode Toggle */}
-                      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px', marginRight: '5px' }}>
+                {currentUser && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    
+                    <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
                         <button 
                           onClick={() => setViewMode('graph')} 
                           title="Graph View"
-                          aria-label="Switch to graph view"
                           style={{ 
                             padding: '6px 10px', 
                             background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
                             color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
                             border: 'none',
                             borderRadius: '3px',
-                            display: 'flex',
-                            alignItems: 'center'
+                            cursor: 'pointer'
                           }}
                         >
                           <IconChartCircles size={18} aria-hidden="true" />
@@ -391,15 +353,13 @@ function Main() {
                         <button 
                           onClick={() => setViewMode('list')} 
                           title="List View"
-                          aria-label="Switch to list view"
                           style={{ 
                             padding: '6px 10px', 
                             background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
                             color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
                             border: 'none',
                             borderRadius: '3px',
-                            display: 'flex',
-                            alignItems: 'center'
+                            cursor: 'pointer'
                           }}
                         >
                           <IconList size={18} aria-hidden="true" />
@@ -555,6 +515,7 @@ function Main() {
                     onNodeClick={onNodeClick}
                     nodes={nodes}
                     links={links}
+                    collections={collections}
                     isDrifting={isDrifting}
                     onlineUserIds={onlineUserIds}
                   />
@@ -577,9 +538,11 @@ function Main() {
 function App() {
   return (
     <ThemeProvider>
-      <ToastProvider>
-        <Main />
-      </ToastProvider>
+      <CustomizationProvider>
+        <ToastProvider>
+          <Main />
+        </ToastProvider>
+      </CustomizationProvider>
     </ThemeProvider>
   );
 }

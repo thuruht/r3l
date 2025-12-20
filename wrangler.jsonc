@@ -42,6 +42,10 @@
       {
         "name": "DO_NAMESPACE",
         "class_name": "RelfDO"
+      },
+      {
+        "name": "DOCUMENT_ROOM",
+        "class_name": "DocumentRoom"
       }
     ]
   },
@@ -53,11 +57,12 @@
       "tag": "v1",
       "new_classes": [
         "RelfDO"
-      ],
-      "deleted_classes": [
-        "CollaborationRoom",
-        "ConnectionsObject",
-        "VisualizationObject"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_classes": [
+        "DocumentRoom"
       ]
     }
   ],

@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { IconMaximize } from '@tabler/icons-react';
 import { NetworkNode, NetworkLink } from '../hooks/useNetworkData';
-import { useCustomization } from '../context/CustomizationContext';
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
@@ -16,11 +15,10 @@ interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
 interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   source: string | D3Node;
   target: string | D3Node;
-  type: 'sym' | 'asym' | 'drift';
+  type: 'sym' | 'asym' | 'drift' | 'collection';
 }
 
 const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds }) => {
-  const { preferences: userPreferences } = useCustomization();
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
@@ -47,28 +45,11 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     const width = dimensions.width;
     const height = dimensions.height;
     
-    // Calculate bounding box
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    // We need current positions. If simulation is running, we might need to wait or use what we have.
-    // D3 nodes in the simulation are mutated. We can try to get them from the selection if possible,
-    // or just assume the data passed in (which might not have x/y yet if fresh).
-    // Actually, best to do this *after* simulation ticks a bit or settles.
-    // For now, let's look at the bound data in the DOM if available, or just the passed nodes if they have x/y.
-    
-    // A simpler approach for "auto-centering" new nodes is to just reset zoom to identity centered?
-    // No, user wants to fit ALL nodes.
-    
-    // Let's assume nodes have x/y after simulation. 
-    // If this is called immediately, x/y might be 0 or NaN.
-    // We can rely on the simulation 'end' or 'tick' to update bounds, but that's expensive.
-    // Let's perform a zoomToFit with a slight delay or rely on the button mainly, 
-    // and trigger it once after simulation stabilizes?
-    
-    // For manual trigger:
     // We need to query the D3 nodes.
     const d3Nodes = svgSelectionRef.current.selectAll<SVGGElement, D3Node>('g > g').data();
     if (d3Nodes.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
 
     d3Nodes.forEach(d => {
         if (typeof d.x === 'number' && typeof d.y === 'number') {
@@ -115,8 +96,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     const width = dimensions.width;
     const height = dimensions.height;
 
-    // Clear previous if total reset needed, but d3.join handles updates efficiently.
-    // However, for clean slate on mode change (Drift vs not), removing might be safer for artifacts.
+    // Clear previous if total reset needed
     d3.select(svgRef.current).selectAll('*').remove();
 
     const svg = d3.select(svgRef.current)
@@ -156,9 +136,10 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     const d3Links: D3Link[] = links.map(l => ({ ...l }));
 
     const simulation = d3.forceSimulation<D3Node, D3Link>(d3Nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : 120))
+      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' ? 60 : 120))) // Closer drift links if they exist
       .force('charge', d3.forceManyBody().strength(-400))
       .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('radial', d3.forceRadial(Math.min(width, height) / 3, width / 2, height / 2).strength(0.1)) // Keep loose nodes in orbit
       .force('collide', d3.forceCollide(30));
 
     // Defs & Filters (Markers, Glows)
@@ -242,7 +223,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
             .attr('stroke', n => {
               if (n.id === d.id || neighbors.has(n.id)) return 'var(--accent-sym)';
               if (n.online) return 'var(--accent-online)';
-              if (n.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc';
+              if (n.group === 'me') return '#ffffffcc';
               if (n.group === 'sym') return 'var(--accent-sym)';
               return 'var(--text-secondary)';
             })
@@ -259,7 +240,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
             .select('circle:nth-child(2)')
             .attr('stroke', (d) => {
                if (d.online) return 'var(--accent-online)';
-               if (d.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc';
+               if (d.group === 'me') return '#ffffffcc';
                if (d.group === 'sym') return 'var(--accent-sym)';
                if (d.group === 'drift_file') return 'transparent';
                if (d.group === 'drift_user') return '#777';
@@ -275,13 +256,13 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
     node.append('circle')
       .attr('r', (d) => {
-          if (d.group === 'me') return userPreferences?.node_size || 12;
+          if (d.group === 'me') return 12;
           if (d.group === 'drift_file') return 4;
           return 8;
       })
       .attr('fill', (d) => {
         if (d.avatar_url) return `url(#avatar-${d.id})`;
-        if (d.group === 'me') return userPreferences?.node_primary_color || 'var(--accent-me)';
+        if (d.group === 'me') return 'var(--accent-me)';
         if (d.group === 'sym') return 'var(--accent-sym)';
         if (d.group === 'asym') return 'var(--accent-asym)';
         if (d.group === 'drift_user') return '#555555';
@@ -294,14 +275,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
     node.append('circle')
       .attr('r', (d) => {
-          if (d.group === 'me') return userPreferences?.node_size || 12;
+          if (d.group === 'me') return 12;
           if (d.group === 'drift_file') return 4;
           return 8;
       })
       .attr('fill', 'transparent')
       .attr('stroke', (d) => {
          if (d.online) return 'var(--accent-online)';
-         if (d.group === 'me') return userPreferences?.node_secondary_color || '#ffffffcc';
+         if (d.group === 'me') return '#ffffffcc';
          if (d.group === 'sym') return 'var(--accent-sym)';
          if (d.group === 'drift_file') return 'transparent';
          if (d.group === 'drift_user') return '#777';
@@ -329,7 +310,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     });
 
     return () => simulation.stop();
-  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions, userPreferences]); // Re-run if dependencies change
+  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions]); // Removed userPreferences
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {
@@ -357,7 +338,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
   return (
     <div ref={wrapperRef} className="association-web-container" style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      <svg ref={svgRef}></svg>
+      <svg ref={svgRef} role="img" aria-label="Network visualization graph"></svg>
       
       {/* Zoom to Fit Button */}
       <button 
@@ -375,6 +356,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
             cursor: 'pointer'
         }}
         title="Zoom to Fit"
+        aria-label="Zoom to fit"
       >
         <IconMaximize size={20} />
       </button>

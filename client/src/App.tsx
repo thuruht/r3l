@@ -3,24 +3,25 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import gsap from 'gsap';
-import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder, IconHome } from '@tabler/icons-react';
+import { IconRadar2, IconHelp, IconList, IconChartCircles, IconPalette, IconInfoCircle, IconDashboard, IconMenu2, IconX, IconLogout, IconFolder, IconHome, IconMessage } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import CommuniquePage from './components/CommuniquePage';
+import VerifyEmail from './components/VerifyEmail';
+import FeedbackModal from './components/FeedbackModal';
+import PrivacyPolicy from './components/PrivacyPolicy';
 import Inbox from './components/Inbox';
 import FAQ from './components/FAQ';
 import About from './components/About';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ToastProvider, useToast } from './context/ToastContext';
 import AdminDashboard from './components/AdminDashboard';
-import ThemeSettings from './components/ThemeSettings';
 import CollectionsManager from './components/CollectionsManager';
 import LandingPage from './components/LandingPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { CustomizationProvider } from './context/CustomizationContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
-import { GlobalStyleInjector } from './components/GlobalStyleInjector';
+
 import './styles/global.css';
 
 interface User {
@@ -35,8 +36,8 @@ function Main() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftData, setDriftData] = useState<{ users: any[], files: any[] }>({ users: [], files: [] });
@@ -48,7 +49,6 @@ function Main() {
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [userPreferences, setUserPreferences] = useState<any | null>(null); // For initial fetch
 
   const { showToast } = useToast();
   const { theme, toggleTheme } = useTheme();
@@ -121,6 +121,13 @@ function Main() {
             setUnreadCount(prev => prev + 1);
             if (refreshNetworkRef.current) refreshNetworkRef.current();
           } 
+          else if (data.type === 'new_message') {
+             showToast('New whisper received', 'info');
+             playNotificationSound();
+             setUnreadCount(prev => prev + 1); // Increment global badge
+             // Note: If Inbox is open, it won't auto-refresh without more complex state lifting,
+             // but user will likely close/re-open or switch tabs which triggers fetch.
+          }
           else if (data.type === 'presence_sync') {
              setOnlineUserIds(new Set(data.onlineUserIds));
           }
@@ -131,8 +138,6 @@ function Main() {
                  else next.delete(data.userId);
                  return next;
              });
-          }
-          else if (data.type === 'signal_communique') {
           }
           else if (data.type === 'signal_artifact') {
               showToast('New artifact signal detected', 'info');
@@ -184,23 +189,14 @@ function Main() {
           const data = await response.json();
           setCurrentUser(data.user);
           setIsAuthenticated(true);
-          const prefsResponse = await fetch('/api/users/me/preferences');
-          if (prefsResponse.ok) {
-            const prefsData = await prefsResponse.json();
-            setUserPreferences(prefsData); // Set initial preferences for CustomizationProvider
-          } else {
-            console.warn('Failed to fetch user preferences');
-          }
         } else {
           setIsAuthenticated(false);
           setCurrentUser(null);
-          setUserPreferences(null);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
         setCurrentUser(null);
-        setUserPreferences(null);
       }
     };
     checkAuth();
@@ -245,13 +241,6 @@ function Main() {
         const data = await response.json();
         setCurrentUser(data.user);
         setIsAuthenticated(true);
-        const prefsResponse = await fetch('/api/users/me/preferences');
-        if (prefsResponse.ok) {
-          const prefsData = await prefsResponse.json();
-          setUserPreferences(prefsData); // Set initial preferences for CustomizationProvider
-        } else {
-          console.warn('Failed to fetch user preferences after login');
-        }
         showToast(`Welcome back, ${data.user.username}`, 'success');
       } else {
         const errorData = await response.json();
@@ -295,7 +284,6 @@ function Main() {
       await fetch('/api/logout', { method: 'POST' });
       setIsAuthenticated(false);
       setCurrentUser(null);
-      setUserPreferences(null);
       showToast('Logged out', 'info');
     } catch (error) {
       console.error('Logout error:', error);
@@ -338,9 +326,8 @@ function Main() {
   }, []);
 
   return (
-    <CustomizationProvider initialPreferences={userPreferences} currentUserId={currentUser?.id || null}>
-      <GlobalStyleInjector />
-      {!isAuthenticated ? (
+    <>
+            {!isAuthenticated ? (
         <LandingPage 
           onLogin={handleLogin}
           onRegister={handleRegister}
@@ -352,34 +339,45 @@ function Main() {
         <>
           <div ref={navRef} className="overlay-ui">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer' }} onClick={() => navigate('/')}>
-                        <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1 }}>Rel F</h1>
-                        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
-                        {new Date().toLocaleDateString()}
-                        </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => navigate('/')}>
+                        <div>
+                          <h1 style={{ margin: 0, fontSize: '1.2rem', lineHeight: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            Rel F 
+                            <span style={{ 
+                              fontSize: '0.6rem', 
+                              padding: '2px 5px', 
+                              border: '1px solid var(--accent-sym)', 
+                              borderRadius: '3px', 
+                              color: 'var(--accent-sym)',
+                              letterSpacing: '0.1em'
+                            }}>BETA</span>
+                          </h1>
+                          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', margin: 0 }}>
+                          {new Date().toLocaleDateString()}
+                          </p>
+                        </div>
                     </div>
                 
                 {currentUser && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ marginRight: '5px', fontSize: '0.9rem' }}>{currentUser.username}</span>
-                    </div>
+                    <span className="desktop-only" style={{ marginRight: '10px', fontSize: '0.9rem' }}>{currentUser.username}</span>
                     
-                    <button onClick={() => navigate('/')} title="Home" style={{ padding: '6px' }}>
-                        <IconHome size={18} />
+                    <button onClick={() => navigate('/')} title="Home" aria-label="Home" style={{ padding: '8px' }}>
+                        <IconHome size={20} aria-hidden="true" />
                     </button>
 
                     <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <SearchBar />
                       <RandomUserButton />
                       
-                      {/* View Mode Toggle (Segmented Control) */}
+                      {/* View Mode Toggle */}
                       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px', marginRight: '5px' }}>
                         <button 
                           onClick={() => setViewMode('graph')} 
                           title="Graph View"
+                          aria-label="Switch to graph view"
                           style={{ 
-                            padding: '4px 8px', 
+                            padding: '6px 10px', 
                             background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
                             color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
                             border: 'none',
@@ -388,13 +386,14 @@ function Main() {
                             alignItems: 'center'
                           }}
                         >
-                          <IconChartCircles size={16} />
+                          <IconChartCircles size={18} aria-hidden="true" />
                         </button>
                         <button 
                           onClick={() => setViewMode('list')} 
                           title="List View"
+                          aria-label="Switch to list view"
                           style={{ 
-                            padding: '4px 8px', 
+                            padding: '6px 10px', 
                             background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
                             color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
                             border: 'none',
@@ -403,39 +402,33 @@ function Main() {
                             alignItems: 'center'
                           }}
                         >
-                          <IconList size={16} />
+                          <IconList size={18} aria-hidden="true" />
                         </button>
                       </div>
+
+                      <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px' }}>
+                        <IconRadar2 size={20} aria-hidden="true" />
+                      </button>
                     </div>
                     
-                    <button onClick={toggleDrift} title="Toggle Drift" className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
-                    <IconRadar2 size={18} />
-                    </button>
-                    
-                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '6px', position: 'relative' }}>
+                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
                     Inbox
                     {unreadCount > 0 && (
                         <span style={{
                         position: 'absolute',
-                        top: '-2px',
-                        right: '-2px',
+                        top: '4px',
+                        right: '4px',
                         background: 'var(--accent-alert)',
                         color: 'white',
                         borderRadius: '50%',
-                        width: '14px',
-                        height: '14px',
-                        fontSize: '0.6rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                        }}>
-                        {unreadCount}
-                        </span>
+                        width: '8px',
+                        height: '8px',
+                        }} aria-hidden="true"></span>
                     )}
                     </button>
     
-                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '6px' }} title="Menu">
-                        {isMenuOpen ? <IconX size={18} /> : <IconMenu2 size={18} />}
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
+                        {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
                     </button>
                 </div>
                 )}
@@ -443,30 +436,27 @@ function Main() {
             </div>
     
             {/* Dropdown Menu */}
-            {isMenuOpen && currentUser && (
-                <div className="glass-panel fade-in" style={{
-                    position: 'fixed',
-                    top: '60px',
-                    right: '5vw', /* Use viewport unit for responsive right position */
-                    width: 'min(200px, 80vw)', /* Responsive width */
-                    padding: '10px',
-                    borderRadius: '8px',
-                    zIndex: 'var(--z-dropdown)', /* Use CSS variable for z-index */
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
+              {isMenuOpen && (
+                <div className="glass-panel nav-dropdown" style={{
+                  position: 'absolute',
+                  top: '100%',
+                  right: 0,
+                  marginTop: '10px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem',
+                  zIndex: 2000
                 }}>
-                    <div className="mobile-only" style={{ flexDirection: 'column', gap: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                           <SearchBar />
-                        </div>
+                    <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                        <SearchBar />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View:</span>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View Mode:</span>
                              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
                                 <button 
                                   onClick={() => { setViewMode('graph'); setIsMenuOpen(false); }} 
                                   style={{ 
-                                    padding: '4px 8px', 
+                                    padding: '6px 10px', 
                                     background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
                                     color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
                                     border: 'none',
@@ -478,7 +468,7 @@ function Main() {
                                 <button 
                                   onClick={() => { setViewMode('list'); setIsMenuOpen(false); }} 
                                   style={{ 
-                                    padding: '4px 8px', 
+                                    padding: '6px 10px', 
                                     background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
                                     color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
                                     border: 'none',
@@ -489,34 +479,45 @@ function Main() {
                                 </button>
                             </div>
                         </div>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Drift:</span>
+                            <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
+                                <IconRadar2 size={18} />
+                            </button>
+                        </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Discover:</span>
                              <RandomUserButton />
                         </div>
                     </div>
 
-                    <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                        <IconHelp size={18} /> Help
-                    </button>
-                    <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                        <IconInfoCircle size={18} /> About
-                    </button>
-                    <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconFolder size={18} /> Collections
                     </button>
-                    <button onClick={() => { setIsThemeSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                        <IconPalette size={18} /> Theme Settings
+
+                    <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
-                    <button onClick={toggleTheme} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
-                        <IconPalette size={18} /> Toggle Default Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+
+                    <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconHelp size={18} /> Help
                     </button>
+                    <button onClick={() => { setIsFeedbackOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconMessage size={18} /> Feedback
+                    </button>
+                    <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconInfoCircle size={18} /> About
+                    </button>
+                    
                     {isAdmin && (
-                      <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)' }}>
+                      <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)', padding: '5px' }}>
                           <IconDashboard size={18} /> Admin
                       </button>
                     )}
+                    
                     <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
-                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'flex-start', border: 'none', background: 'transparent' }}>
+                    
+                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconLogout size={18} /> Logout
                     </button>
                 </div>
@@ -526,8 +527,8 @@ function Main() {
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
             {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-            {isThemeSettingsOpen && <ThemeSettings onClose={() => setIsThemeSettingsOpen(false)} />}                  
             {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
+            {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
             {previewFile && (
               <FilePreviewModal
                   fileId={previewFile.id}
@@ -546,7 +547,9 @@ function Main() {
             )}
     
             <Routes>
-              <Route path="/" element={
+        <Route path="/verify" element={<VerifyEmail />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/" element={
                 viewMode === 'graph' ? (
                   <AssociationWeb
                     onNodeClick={onNodeClick}
@@ -567,7 +570,7 @@ function Main() {
             </Routes>
         </>
       )}
-    </CustomizationProvider>
+    </>
   );
 }
 

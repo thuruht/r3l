@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation } from '@tabler/icons-react'; // Added icons
+import { sanitizeHTML } from '../utils/sanitize';
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
-import { useCustomization } from '../context/CustomizationContext'; // New Import
 
 interface CommuniqueProps {
   userId: number; // Changed to number to match typical usage, though strict string/number handling is good
@@ -34,27 +34,12 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
 
-  // New states for profile aesthetics
-  const [primaryNodeColor, setPrimaryNodeColor] = useState<string>('');
-  const [secondaryNodeColor, setSecondaryNodeColor] = useState<string>('');
-  const [nodeSize, setNodeSize] = useState<number>(8); // Default to 8
-
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
-  const { preferences, updateProfileAesthetics } = useCustomization(); // Use customization context
 
-  const isOwner = currentUser?.id === userId;
-
-  useEffect(() => {
-    // Load initial profile aesthetics from preferences
-    if (preferences) {
-        setPrimaryNodeColor(preferences.node_primary_color || '#1F77B4');
-        setSecondaryNodeColor(preferences.node_secondary_color || '#FF7F0E');
-        setNodeSize(preferences.node_size || 8);
-    }
-  }, [preferences]);
+  const isOwner = currentUser?.id === Number(userId);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -239,19 +224,6 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
         setSaveStatus('error');
         showToast('Error updating communique.', 'error');
       }
-
-      // Save profile aesthetics
-      try {
-          await updateProfileAesthetics({
-              node_primary_color: primaryNodeColor,
-              node_secondary_color: secondaryNodeColor,
-              node_size: nodeSize,
-          });
-          // showToast('Profile aesthetics updated!', 'success'); // Toast already handled by CustomizationContext
-      } catch (err) {
-          console.error("Error updating profile aesthetics", err);
-          showToast('Failed to update profile aesthetics.', 'error');
-      }
     };
   
     const performRelationshipAction = async (endpoint: string, method: string = 'POST', body?: any) => {
@@ -388,7 +360,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
             opacity: data.content ? 1 : 0.6,
             marginBottom: '20px'
           }}
-          dangerouslySetInnerHTML={{ __html: data.content || (isOwner ? "Your frequency is silent. Broadcast something..." : "This signal is empty.") }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHTML(data.content) || (isOwner ? "Your frequency is silent. Broadcast something..." : "This signal is empty.") }}
         />
       ) : (
         <div ref={editorRef} style={{ marginBottom: '20px', overflow: 'hidden' }}>
@@ -429,40 +401,6 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
             }}
             placeholder={`#communique-user-${userId} {\n  color: pink;\n}`}
           />
-
-          <div style={{ marginBottom: '20px', fontSize: '0.8em', color: 'var(--accent-sym)' }}>
-            Node Aesthetics:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-            <label>
-              Primary Node Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={primaryNodeColor}
-                onChange={(e) => setPrimaryNodeColor(e.target.value)}
-                placeholder="#1F77B4FF"
-              />
-            </label>
-            <label>
-              Secondary Node Color (#RRGGBBAA):
-              <input
-                type="text"
-                value={secondaryNodeColor}
-                onChange={(e) => setSecondaryNodeColor(e.target.value)}
-                placeholder="#FF7F0EFF"
-              />
-            </label>
-            <label>
-              Node Size (1-20):
-              <input
-                type="number"
-                value={nodeSize}
-                onChange={(e) => setNodeSize(parseInt(e.target.value) || 8)}
-                min="1"
-                max="20"
-              />
-            </label>
-          </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
             <button onClick={handleSave} disabled={saveStatus === 'saving'} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

@@ -24,6 +24,7 @@ interface Env {
   DO_NAMESPACE: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
+  ENCRYPTION_SECRET: string;
   R2_ACCOUNT_ID: string; // Added
   R2_BUCKET_NAME: string; // Added
   R2_PUBLIC_DOMAIN?: string; // Optional: Custom domain for R2
@@ -53,6 +54,50 @@ async function hashPassword(password: string, salt?: string): Promise<{ hash: st
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   return { hash: hashHex, salt: mySalt };
+}
+
+// --- Encryption Helpers ---
+
+async function getEncryptionKey(secret: string): Promise<CryptoKey> {
+  const encoder = new TextEncoder();
+  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(secret));
+  return crypto.subtle.importKey(
+    "raw",
+    hash,
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function encryptData(data: ArrayBuffer | string, secret: string): Promise<{ encrypted: ArrayBuffer, iv: string }> {
+  const key = await getEncryptionKey(secret);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encodedData = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encodedData
+  );
+  
+  return { 
+    encrypted, 
+    iv: Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('') 
+  };
+}
+
+async function decryptData(encrypted: ArrayBuffer, ivHex: string, secret: string): Promise<ArrayBuffer> {
+  const key = await getEncryptionKey(secret);
+  const ivMatch = ivHex.match(/.{1,2}/g);
+  if (!ivMatch) throw new Error("Invalid IV");
+  const iv = new Uint8Array(ivMatch.map(byte => parseInt(byte, 16)));
+  
+  return await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encrypted
+  );
 }
 
 // --- Rate Limiting Helper ---
@@ -1129,31 +1174,48 @@ app.post('/api/files', async (c) => {
     const file = formData['file'] as File;
     const visibility = (formData['visibility'] as string) || 'private';
     const parent_id = formData['parent_id'] ? Number(formData['parent_id']) : null;
+    const shouldEncrypt = formData['encrypt'] === 'true';
 
     if (!file) {
       return c.json({ error: 'No file uploaded' }, 400);
+    }
+
+    // Encryption logic
+    let body: ReadableStream | ArrayBuffer = file.stream();
+    let is_encrypted = 0;
+    let iv: string | null = null;
+    let size = file.size;
+
+    if (shouldEncrypt && c.env.ENCRYPTION_SECRET) {
+      const arrayBuffer = await file.arrayBuffer();
+      const encryptedData = await encryptData(arrayBuffer, c.env.ENCRYPTION_SECRET);
+      body = encryptedData.encrypted;
+      iv = encryptedData.iv;
+      is_encrypted = 1;
+      size = encryptedData.encrypted.byteLength;
     }
 
     // Generate a unique key for R2
     const r2_key = `${user_id}/${crypto.randomUUID()}-${file.name}`;
     
     // Upload to R2
-    await c.env.BUCKET.put(r2_key, file.stream(), {
+    await c.env.BUCKET.put(r2_key, body, {
       httpMetadata: {
         contentType: file.type,
       },
       customMetadata: {
         originalName: file.name,
-        userId: String(user_id)
+        userId: String(user_id),
+        isEncrypted: String(is_encrypted)
       }
     });
 
     // Record in D1
     const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
     const { success } = await c.env.DB.prepare(
-      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, file.name, file.size, file.type, visibility, expires_at, parent_id).run();
+      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv).run();
 
     if (success) {
       // Trigger Pulse Signal if public or sym
@@ -1255,12 +1317,24 @@ app.get('/api/files/:id/content', async (c) => {
       return c.json({ error: 'File content missing in storage' }, 404);
     }
 
+    let body = await object.arrayBuffer();
+
+    // Decrypt if needed
+    if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
+        try {
+            body = await decryptData(body, file.iv as string, c.env.ENCRYPTION_SECRET);
+        } catch (e) {
+            console.error("Decryption failed:", e);
+            return c.json({ error: 'Failed to decrypt file' }, 500);
+        }
+    }
+
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
     headers.set('Content-Disposition', `attachment; filename="${file.filename}"`);
 
-    return new Response(object.body, {
+    return new Response(body, {
       headers,
     });
 
@@ -1696,6 +1770,168 @@ app.delete('/api/collections/:id/files/:file_id', async (c) => {
 });
 
 
+// --- Messaging Routes (Phase 9) ---
+
+// GET /api/messages/conversations: List active conversations
+app.get('/api/messages/conversations', async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    // Complex query to get latest message for each conversation partner
+    const query = `
+      SELECT 
+        CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END as partner_id,
+        u.username as partner_name,
+        u.avatar_url as partner_avatar,
+        MAX(m.created_at) as last_message_at,
+        m.content as last_message_snippet,
+        SUM(CASE WHEN m.receiver_id = ? AND m.is_read = 0 THEN 1 ELSE 0 END) as unread_count
+      FROM messages m
+      JOIN users u ON (CASE WHEN m.sender_id = ? THEN m.receiver_id ELSE m.sender_id END) = u.id
+      WHERE m.sender_id = ? OR m.receiver_id = ?
+      GROUP BY partner_id
+      ORDER BY last_message_at DESC
+    `;
+
+    const { results } = await c.env.DB.prepare(query)
+      .bind(user_id, user_id, user_id, user_id, user_id)
+      .all();
+
+    const conversations = results.map((conv: any) => ({
+      ...conv,
+      partner_avatar: (conv.partner_avatar && typeof conv.partner_avatar === 'string' && conv.partner_avatar.startsWith('avatars/')) 
+        ? getR2PublicUrl(c, conv.partner_avatar) 
+        : conv.partner_avatar
+    }));
+
+    return c.json({ conversations });
+  } catch (e: any) {
+    console.error("Error fetching conversations:", e);
+    return c.json({ error: 'Failed to fetch conversations' }, 500);
+  }
+});
+
+// GET /api/messages/:partner_id: Get history
+app.get('/api/messages/:partner_id', async (c) => {
+  const user_id = c.get('user_id');
+  const partner_id = Number(c.req.param('partner_id'));
+
+  if (isNaN(partner_id)) return c.json({ error: 'Invalid partner ID' }, 400);
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT * FROM messages 
+       WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+       ORDER BY created_at ASC 
+       LIMIT 100` // Cap at 100 for now
+    ).bind(user_id, partner_id, partner_id, user_id).all();
+
+    const decryptedResults = await Promise.all(results.map(async (msg: any) => {
+        if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {
+            try {
+                const encryptedBuffer = Buffer.from(msg.content, 'base64');
+                const decryptedBuffer = await decryptData(encryptedBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
+                const decryptedText = new TextDecoder().decode(decryptedBuffer);
+                return { ...msg, content: decryptedText };
+            } catch (e) {
+                return { ...msg, content: '[Decryption Error]' };
+            }
+        }
+        return msg;
+    }));
+
+    return c.json({ messages: decryptedResults });
+  } catch (e: any) {
+    console.error("Error fetching messages:", e);
+    return c.json({ error: 'Failed to fetch messages' }, 500);
+  }
+});
+
+// POST /api/messages: Send a message
+app.post('/api/messages', async (c) => {
+  const sender_id = c.get('user_id');
+  const { receiver_id, content, encrypt } = await c.req.json();
+
+  if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
+
+  try {
+    // Verify mutual connection (Optional: Rel F allows messaging anyone? 
+    // Let's restrict to Sym connections for anti-spam/safety, matching the ethos)
+    const mutual = await c.env.DB.prepare(
+      'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+    ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
+
+    if (!mutual) return c.json({ error: 'Must be mutually connected (Sym) to whisper.' }, 403);
+
+    let finalContent = content;
+    let is_encrypted = 0;
+    let iv: string | null = null;
+
+    if (encrypt === true && c.env.ENCRYPTION_SECRET) {
+        const encryptedData = await encryptData(content, c.env.ENCRYPTION_SECRET);
+        // Store as base64 string
+        finalContent = Buffer.from(encryptedData.encrypted).toString('base64');
+        iv = encryptedData.iv;
+        is_encrypted = 1;
+    }
+
+    const { success, meta } = await c.env.DB.prepare(
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv) VALUES (?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv).run();
+
+    if (success) {
+      const messageId = meta.last_row_id;
+      // Send the ORIGINAL content via WebSocket so the recipient sees it immediately without needing to decrypt
+      // (WSS provides transport security). The DB stores it encrypted.
+      const messagePayload = {
+        id: messageId,
+        sender_id,
+        receiver_id,
+        content: content, // Send clear text to active session
+        created_at: new Date().toISOString()
+      };
+
+      // Notify Recipient via WebSocket
+      // We use the existing 'new_notification' type or a dedicated 'new_message' type.
+      // Let's use 'new_message' for cleaner frontend handling.
+      const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
+      const doStub = c.env.DO_NAMESPACE.get(doId);
+      
+      await doStub.fetch('http://do-stub/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          userId: receiver_id, 
+          message: { type: 'new_message', ...messagePayload } 
+        }),
+      });
+
+      return c.json({ message: 'Whisper sent', data: messagePayload });
+    } else {
+      return c.json({ error: 'Failed to send message' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error sending message:", e);
+    return c.json({ error: 'Failed to send message' }, 500);
+  }
+});
+
+// PUT /api/messages/:partner_id/read: Mark conversation as read
+app.put('/api/messages/:partner_id/read', async (c) => {
+  const user_id = c.get('user_id');
+  const partner_id = Number(c.req.param('partner_id'));
+
+  try {
+    await c.env.DB.prepare(
+      'UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?'
+    ).bind(partner_id, user_id).run();
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ error: 'Failed to update read status' }, 500);
+  }
+});
+
+
 // POST /api/users/me/avatar: Upload user avatar to R2
 app.post('/api/users/me/avatar', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -1741,6 +1977,45 @@ app.post('/api/users/me/avatar', authMiddleware, async (c) => {
 });
 
 
+// POST /api/feedback: Send feedback to admin
+app.post('/api/feedback', async (c) => {
+  if (!await checkRateLimit(c, 'feedback', 3, 3600)) { // 3 per hour
+    return c.json({ error: 'Too many feedback attempts. Please try again later.' }, 429);
+  }
+  
+  const user_id = c.get('user_id'); // Optional: could be anonymous if we allow it, but let's require auth for now
+  const { message, type } = await c.req.json();
+
+  if (!message) return c.json({ error: 'Message is required' }, 400);
+
+  if (c.env.RESEND_API_KEY) {
+    try {
+      const resend = new Resend(c.env.RESEND_API_KEY);
+      
+      // Fetch user details if authenticated
+      let userInfo = 'Anonymous';
+      if (user_id) {
+          const user = await c.env.DB.prepare('SELECT username, email FROM users WHERE id = ?').bind(user_id).first();
+          if (user) userInfo = `${user.username} (${user.email})`;
+      }
+
+      await resend.emails.send({
+        from: 'Rel F Feedback <feedback@r3l.distorted.work>',
+        to: 'lowlyserf@distorted.work',
+        subject: `[Rel F Beta] Feedback: ${type || 'General'}`,
+        html: `<p><strong>User:</strong> ${userInfo}</p><p><strong>Message:</strong></p><pre>${message}</pre>`
+      });
+      return c.json({ message: 'Feedback sent successfully' });
+    } catch (emailError) {
+      console.error("Failed to send feedback email:", emailError);
+      return c.json({ error: 'Failed to send feedback email' }, 500);
+    }
+  } else {
+    console.log("Skipping feedback email (RESEND_API_KEY missing)");
+    return c.json({ message: 'Feedback logged (Email skipped)' });
+  }
+});
+
 // Serve static assets for all other requests
 // This will effectively route all non-/api requests to the ASSETS binding
 app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
@@ -1750,9 +2025,9 @@ export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     console.log("Cron Triggered:", event.cron, event.scheduledTime);
     
-    // Find expired files
     const now = new Date().toISOString();
     try {
+      // 1. Purge Expired Files
       const { results } = await env.DB.prepare(
         'SELECT id, r2_key FROM files WHERE is_archived = 0 AND expires_at < ?'
       ).bind(now).all();
@@ -1760,14 +2035,20 @@ export default {
       console.log(`Found ${results.length} expired files to delete.`);
 
       for (const file of results) {
-        // Delete from R2
         if (file.r2_key) {
             await env.BUCKET.delete(file.r2_key as string);
         }
-        // Delete from D1
         await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
         console.log(`Deleted expired file ID: ${file.id}`);
       }
+
+      // 2. Purge Old Messages (Inbox/Outgoing unarchived > 30 days)
+      const messagePurgeThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { meta: msgMeta } = await env.DB.prepare(
+        'DELETE FROM messages WHERE is_archived = 0 AND created_at < ?'
+      ).bind(messagePurgeThreshold).run();
+      
+      console.log(`Purged ${msgMeta.changes} old messages.`);
 
     } catch (e) {
       console.error("Error in scheduled handler:", e);

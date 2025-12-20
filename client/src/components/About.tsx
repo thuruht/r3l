@@ -50,9 +50,18 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                 <strong>Sym</strong> (Symmetrical) links are mutual agreements, opening channels for direct sharing.
             </p>
 
+            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Data & Privacy</h4>
+            <p style={{ marginTop: 0 }}>
+                We respect the void. We do not track you. We do not sell your data.
+                <br/>
+                <a href="/privacy" onClick={(e) => { e.preventDefault(); window.location.href='/privacy'; }} style={{ color: 'var(--accent-sym)', textDecoration: 'none', borderBottom: '1px dotted var(--accent-sym)' }}>
+                    Read our strict Privacy & Data Policy
+                </a>
+            </p>
+
             <div style={{ marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
                 <p>
-                    <em>"We are but signals in the noise."</em>
+                    <em>"Signals emerge from the static."</em>
                 </p>
                 <a href="https://github.com/thuruht/r3l" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none' }}>
                     <IconBrandGithub size={16} /> Source Code

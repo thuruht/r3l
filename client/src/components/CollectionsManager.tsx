@@ -43,15 +43,15 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
 
   return (
     <div className="modal-overlay">
-      <div className="glass-panel" style={{ width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2>{mode === 'manage' ? 'My Collections' : 'Select Collection'}</h2>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none' }}>
-            <IconX />
+      <div className="glass-panel" style={{ width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 20px 10px 20px', margin: 0 }}>
+          <h2 style={{ margin: 0 }}>{mode === 'manage' ? 'My Collections' : 'Select Collection'}</h2>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close">
+            <IconX aria-hidden="true" />
           </button>
         </div>
 
-        <div className="collections-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="collections-list" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', padding: '0 20px 20px 20px' }}>
             {loading && <p>Loading...</p>}
             {!loading && collections.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No collections found.</p>}
             
@@ -68,6 +68,14 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         border: mode === 'select' ? '1px solid transparent' : undefined
                     }}
                     onClick={() => mode === 'select' && onSelect && onSelect(c.id)}
+                    role={mode === 'select' ? 'button' : undefined}
+                    tabIndex={mode === 'select' ? 0 : undefined}
+                    onKeyDown={(e) => {
+                        if (mode === 'select' && (e.key === 'Enter' || e.key === ' ') && onSelect) {
+                            e.preventDefault();
+                            onSelect(c.id);
+                        }
+                    }}
                     onMouseEnter={(e) => {
                         if (mode === 'select') e.currentTarget.style.borderColor = 'var(--accent-sym)';
                     }}
@@ -76,7 +84,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <IconFolder size={20} color="var(--accent-sym)" />
+                        <IconFolder size={20} color="var(--accent-sym)" aria-hidden="true" />
                         <div>
                             <div style={{ fontWeight: 'bold' }}>{c.name}</div>
                             <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
@@ -89,12 +97,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                             onClick={(e) => handleDelete(c.id, e)}
                             style={{ background: 'transparent', border: 'none', color: 'var(--accent-alert)' }}
                             title="Delete Collection"
+                            aria-label={`Delete collection ${c.name}`}
                         >
-                            <IconTrash size={16} />
+                            <IconTrash size={16} aria-hidden="true" />
                         </button>
                     )}
                      {mode === 'select' && (
-                        <IconCheck size={16} style={{ opacity: 0.5 }} />
+                        <IconCheck size={16} style={{ opacity: 0.5 }} aria-hidden="true" />
                     )}
                 </div>
             ))}

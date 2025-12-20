@@ -25,6 +25,15 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
         <h2 style={{ color: 'var(--accent-sym)', marginTop: 0 }}>Drift Manual & FAQ</h2>
 
         <section style={{ marginBottom: '30px' }}>
+          <h4>Beta Status</h4>
+          <p style={{ color: 'var(--text-secondary)' }}>
+            Rel F is currently in <strong>BETA</strong>. This means the universe is still expanding, and laws of physics may occasionally break.
+            <br/><br/>
+            If you encounter anomalies or have suggestions, please use the <strong>Feedback</strong> button in the main menu to contact the developer directly.
+          </p>
+        </section>
+
+        <section style={{ marginBottom: '30px' }}>
           <h4>What is the Drift?</h4>
           <p style={{ color: 'var(--text-secondary)' }}>
             The Drift is the mist between known nodes. By activating the Drift radar, you can detect faint signals from 

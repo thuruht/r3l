@@ -1,4 +1,4 @@
-1. Dual Modes of Connection
+11. Dual Modes of Connection
 
 Sym (Explicit, Mutual Relationships):
 

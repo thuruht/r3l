@@ -179,6 +179,26 @@ input:focus, textarea:focus {
   color: var(--text-primary);
 }
 
+/* Mobile Menu Fix */
+.nav-dropdown {
+  right: 1rem !important; /* Force right alignment */
+  left: auto !important;
+  max-width: 90vw; /* Prevent overflow */
+  width: 250px;
+}
+
+/* Sticky Modal Header */
+.modal-header-sticky {
+  position: sticky;
+  top: 0;
+  background: inherit; /* Matches parent glass-panel */
+  z-index: 10;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  backdrop-filter: blur(16px); /* Ensure content behind is blurred */
+}
+
 .page-content-spacer {
   padding-top: 80px; /* Adjust based on header height */
 }

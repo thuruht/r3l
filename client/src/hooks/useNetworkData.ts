@@ -11,12 +11,19 @@ export interface NetworkNode {
   secondaryNodeColor?: string; // New property
   nodeSize?: number; // New property
   data?: any; 
+  collectionIds?: number[]; // New property: Files can belong to collections
 }
 
 export interface NetworkLink {
   source: string;
   target: string;
-  type: 'sym' | 'asym' | 'drift';
+  type: 'sym' | 'asym' | 'drift' | 'collection';
+}
+
+export interface NetworkCollection {
+    id: number;
+    name: string;
+    file_ids: number[];
 }
 
 interface UseNetworkDataProps {
@@ -31,6 +38,7 @@ interface UseNetworkDataProps {
 export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds }: UseNetworkDataProps) => {
   const [nodes, setNodes] = useState<NetworkNode[]>([]);
   const [links, setLinks] = useState<NetworkLink[]>([]);
+  const [collections, setCollections] = useState<NetworkCollection[]>([]);
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 
@@ -38,13 +46,34 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     if (!currentUserId) return;
     setLoading(true);
     try {
-      const res = await fetch('/api/relationships');
-      if (!res.ok) throw new Error('Failed to fetch network');
+      // Parallel fetch relationships and collections
+      const [relRes, collRes] = await Promise.all([
+          fetch('/api/relationships'),
+          fetch('/api/collections')
+      ]);
       
-      const relData = await res.json();
+      if (!relRes.ok) throw new Error('Failed to fetch network');
       
+      const relData = await relRes.json();
+      const collData = collRes.ok ? await collRes.json() : { collections: [] }; // Fail gracefully
+
       const nodeMap = new Map<string, NetworkNode>();
       const newLinks: NetworkLink[] = [];
+
+      // Process Collections to get file IDs
+      const loadedCollections: NetworkCollection[] = [];
+      if (collData.collections) {
+          // We need to fetch files for each collection to know which nodes belong to it?
+          // Or we can just store the collection metadata and let the UI handle it if we had the data.
+          // The /api/collections endpoint returns list of collections but NOT file IDs.
+          // We would need to fetch /api/collections/:id for each to get files, which is too many requests.
+          // Let's assume for now we only visualize "My Collections" if we had a bulk endpoint.
+          // Or we rely on the `files` endpoint which might return collection info? No.
+          
+          // Optimization: Let's skip deep collection visualization for now as it requires backend changes 
+          // (bulk fetch collections with file IDs).
+          // OR we can just fetch the list and show "Collection Nodes".
+      }
 
       // 1. Add Me
       nodeMap.set(currentUserId.toString(), {
@@ -140,11 +169,13 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, isDrifting, driftData, onlineUserIds, showToast]); // Added onlineUserIds dependency
+  }, [currentUserId, isDrifting, driftData, showToast, onlineUserIds]); // Added onlineUserIds dependency
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+
 
   return { nodes, links, loading, refresh: fetchData };
 };

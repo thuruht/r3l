@@ -8,9 +8,16 @@ This document tracks the database schema evolution for Rel F (Relational Ephemer
 | :--- | :--- | :--- | :--- |
 | 0001 | `init` | Creates `users` table with auth fields. | ✅ Applied |
 | 0002 | `create_relationship_tables` | Creates `relationships` (sym/asym) and `mutual_connections`. | ✅ Applied |
-| 0003 | `create_communiques` | Creates `communiques` table for user profiles and themes. | ⏳ Pending Application (Auth Error) |
-| 0004 | `create_files` | Creates `files` table for R2 metadata and ephemeral logic. | ⏳ Pending Application (Auth Error) |
-| 0005 | `create_notifications` | Creates `notifications` table for the inbox system. | ⏳ Pending Application (Auth Error) |
+| 0003 | `create_communiques` | Creates `communiques` table for user profiles and themes. | ✅ Applied |
+| 0004 | `create_files` | Creates `files` table for R2 metadata and ephemeral logic. | ✅ Applied |
+| 0005 | `create_notifications` | Creates `notifications` table for the inbox system. | ✅ Applied |
+| 0006 | `add_email_to_users` | Adds email column for verification. | ✅ Applied |
+| 0007 | `add_vitality_to_files` | Adds vitality column for file boosting. | ✅ Applied |
+| 0008 | `fix_relationship_constraints` | Fixes unique constraints on relationships. | ✅ Applied |
+| 0009 | `add_user_customization_fields` | Adds theme preferences and profile aesthetics to users. | ✅ Applied |
+| 0010 | `create_collections` | Creates `collections` and `collection_files` tables. | ✅ Applied |
+| 0011 | `create_messages` | Creates `messages` table for direct messaging. | ✅ Applied |
+| 0012 | `add_encryption_and_archive_to_messages` | Adds `is_encrypted`, `iv` to `messages` and `files`. | ✅ Applied |
 
 ---
 
@@ -45,6 +52,8 @@ Metadata for files stored in R2. Handles the ephemeral lifecycle.
     - `is_archived` (BOOLEAN): If 1, file does not expire.
     - `expires_at` (DATETIME): Calculated at upload (e.g., +1 week).
     - `created_at` (DATETIME)
+    - `is_encrypted` (BOOLEAN): If 1, content is AES-GCM encrypted.
+    - `iv` (TEXT): Initialization vector for encryption.
 
 ### 0005_create_notifications.sql
 The persistent backing store for the User Inbox.
@@ -57,4 +66,11 @@ The persistent backing store for the User Inbox.
     - `is_read` (BOOLEAN DEFAULT 0)
     - `created_at` (DATETIME)
 
-CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read);
+### 0010_create_collections.sql
+Curated sets of files.
+- **collections**: `id`, `user_id`, `name`, `description`, `visibility`.
+- **collection_files**: `collection_id`, `file_id`, `file_order`.
+
+### 0011_create_messages.sql & 0012
+Direct messaging system.
+- **messages**: `id`, `sender_id`, `receiver_id`, `content`, `is_read`, `created_at`, `is_archived`, `is_encrypted`, `iv`.

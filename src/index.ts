@@ -9,7 +9,9 @@ import { Resend } from 'resend';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
+// import { DocumentRoom } from './do/DocumentRoom';
 export { RelfDO } from './do';
+// export { DocumentRoom } from './do/DocumentRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -22,6 +24,7 @@ interface Env {
   DB: D1Database;
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
+  // DOCUMENT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -301,7 +304,7 @@ app.get('/api/users/me', async (c) => {
   }
 });
 
-app.get('/api/users/me/preferences', authMiddleware, async (c) => {
+app.get('/api/customization', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {
@@ -318,35 +321,69 @@ app.get('/api/users/me/preferences', authMiddleware, async (c) => {
   }
 });
 
+// Helper for hex validation (basic, without full regex for #RRGGBBAA)
+const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color);
 
-app.put('/api/users/me/preferences', authMiddleware, async (c) => {
+app.put('/api/customization', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  const { theme_preferences } = await c.req.json();
+  const body = await c.req.json();
+  const { theme_preferences, node_primary_color, node_secondary_color, node_size } = body;
 
-  if (typeof theme_preferences !== 'object' && typeof theme_preferences !== 'string') {
-    return c.json({ error: 'Invalid theme preferences format' }, 400);
+  let updateFields: string[] = [];
+  let updateValues: (string | number)[] = [];
+
+  // Theme Preferences
+  if (theme_preferences !== undefined) {
+      let themePrefsJson = typeof theme_preferences === 'string' ? theme_preferences : JSON.stringify(theme_preferences);
+      updateFields.push('theme_preferences = ?');
+      updateValues.push(themePrefsJson);
   }
 
-  let themePrefsJson = typeof theme_preferences === 'string' ? theme_preferences : JSON.stringify(theme_preferences);
+  // Aesthetics
+  if (node_primary_color !== undefined) {
+    if (!isValidHexColor(node_primary_color)) return c.json({ error: 'Invalid node_primary_color format' }, 400);
+    updateFields.push('node_primary_color = ?');
+    updateValues.push(node_primary_color);
+  }
+  if (node_secondary_color !== undefined) {
+    if (!isValidHexColor(node_secondary_color)) return c.json({ error: 'Invalid node_secondary_color format' }, 400);
+    updateFields.push('node_secondary_color = ?');
+    updateValues.push(node_secondary_color);
+  }
+  if (node_size !== undefined) {
+    if (typeof node_size !== 'number' || node_size < 4 || node_size > 30) return c.json({ error: 'Invalid node_size' }, 400);
+    updateFields.push('node_size = ?');
+    updateValues.push(node_size);
+  }
+
+  if (updateFields.length === 0) {
+    return c.json({ message: 'No customization updates provided' }, 400);
+  }
 
   try {
     const { success } = await c.env.DB.prepare(
-      'UPDATE users SET theme_preferences = ? WHERE id = ?'
-    ).bind(themePrefsJson, user_id).run();
+      `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`
+    ).bind(...updateValues, user_id).run();
 
     if (success) {
-      return c.json({ message: 'Theme preferences updated successfully' });
+      return c.json({ message: 'Customization updated successfully' });
     } else {
-      return c.json({ error: 'Failed to update theme preferences' }, 500);
+      return c.json({ error: 'Failed to update customization' }, 500);
     }
   } catch (e) {
-    console.error("Error updating theme preferences:", e);
-    return c.json({ error: 'Failed to update theme preferences' }, 500);
+    console.error("Error updating customization:", e);
+    return c.json({ error: 'Failed to update customization' }, 500);
   }
 });
 
-// Helper for hex validation (basic, without full regex for #RRGGBBAA)
-const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color);
+
+// Deprecated routes kept for backward compat if needed (redirecting logic internally)
+app.get('/api/users/me/preferences', authMiddleware, async (c) => {
+    // Reuse new logic
+    const user_id = c.get('user_id');
+    const preferences = await c.env.DB.prepare('SELECT theme_preferences, node_primary_color, node_secondary_color, node_size FROM users WHERE id = ?').bind(user_id).first();
+    return c.json(preferences);
+});
 
 app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -439,6 +476,29 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
     return c.text('WebSocket proxy failed', 500);
   }
 });
+
+// GET /api/document/:id: Document Room WebSocket endpoint (Phase 9 Scaffolding - Disabled for Deployment)
+// app.get('/api/document/:id', authMiddleware, async (c) => {
+//   const upgradeHeader = c.req.header('Upgrade');
+//   if (!upgradeHeader || upgradeHeader !== 'websocket') {
+//     return c.text('Expected Upgrade: websocket', 426);
+//   }
+
+//   const documentId = c.req.param('id');
+
+//   try {
+//     const doId = c.env.DOCUMENT_ROOM.idFromName(documentId);
+//     const doStub = c.env.DOCUMENT_ROOM.get(doId);
+
+//     const url = new URL(c.req.url);
+//     url.pathname = '/websocket';
+
+//     return doStub.fetch(new Request(url.toString(), c.req.raw));
+//   } catch (e) {
+//     console.error("Error proxying to Document Room:", e);
+//     return c.text('Document Room proxy failed', 500);
+//   }
+// });
 
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
@@ -1555,19 +1615,26 @@ app.get('/api/collections', async (c) => {
   const user_id = c.get('user_id');
 
   try {
+    // Single query using LEFT JOIN to aggregate file data
+    // D1/SQLite Group Concat approach
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM collections WHERE user_id = ? ORDER BY updated_at DESC'
+      `SELECT
+          c.*,
+          COUNT(cf.file_id) as file_count,
+          GROUP_CONCAT(cf.file_id) as file_ids_str
+       FROM collections c
+       LEFT JOIN collection_files cf ON c.id = cf.collection_id
+       WHERE c.user_id = ?
+       GROUP BY c.id
+       ORDER BY c.updated_at DESC`
     ).bind(user_id).all();
 
-    // Fetch file counts for each collection
-    const enrichedResults = await Promise.all(results.map(async (collection: any) => {
-        const countResult = await c.env.DB.prepare(
-            'SELECT COUNT(*) as count FROM collection_files WHERE collection_id = ?'
-        ).bind(collection.id).first();
-        return { ...collection, file_count: countResult?.count || 0 };
+    const collections = results.map((r: any) => ({
+      ...r,
+      file_ids: r.file_ids_str ? r.file_ids_str.split(',').map(Number) : []
     }));
 
-    return c.json({ collections: enrichedResults });
+    return c.json({ collections });
   } catch (e: any) {
     console.error("Error listing collections:", e);
     return c.json({ error: 'Failed to list collections' }, 500);

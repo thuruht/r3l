@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { IconMaximize } from '@tabler/icons-react';
-import { NetworkNode, NetworkLink } from '../hooks/useNetworkData';
+import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
+import { useCustomization } from '../context/CustomizationContext';
+import CustomizationSettings from './CustomizationSettings';
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
   links: NetworkLink[];
+  collections?: NetworkCollection[];
   onNodeClick: (nodeId: string) => void;
   isDrifting: boolean;
   onlineUserIds: Set<number>;
@@ -18,9 +21,10 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift' | 'collection';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeClick, isDrifting, onlineUserIds }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   
@@ -103,7 +107,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
       .attr('viewBox', [0, 0, width, height])
       .style('width', '100%')
       .style('height', '100%')
-      .style('background', 'radial-gradient(circle at center, #1a1c24ff 0%, var(--bg-color) 80%)');
+      // Apply Mist Density via gradient or opacity
+      .style('background', `radial-gradient(circle at center, #1a1c24ff ${(theme_preferences.mistDensity || 0.5) * 100}%, var(--bg-color) 100%)`);
 
     svgSelectionRef.current = svg;
 
@@ -136,11 +141,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
     const d3Links: D3Link[] = links.map(l => ({ ...l }));
 
     const simulation = d3.forceSimulation<D3Node, D3Link>(d3Nodes)
-      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' ? 60 : 120))) // Closer drift links if they exist
+      .force('link', d3.forceLink<D3Node, D3Link>(d3Links).id(d => d.id).distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' ? 60 : 120)))
       .force('charge', d3.forceManyBody().strength(-400))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('radial', d3.forceRadial(Math.min(width, height) / 3, width / 2, height / 2).strength(0.1)) // Keep loose nodes in orbit
+      .force('radial', d3.forceRadial(Math.min(width, height) / 3, width / 2, height / 2).strength(0.1))
       .force('collide', d3.forceCollide(30));
+
+    // Hull Drawing Helper
+    const hullLayer = svg.append('g').attr('class', 'hulls');
 
     // Defs & Filters (Markers, Glows)
     const defs = svg.append('defs');
@@ -189,7 +197,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
       .selectAll('line')
       .data(d3Links)
       .join('line')
-      .attr('stroke', (d) => d.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)')
+      // Use Custom Colors
+      .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
       .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1)
       .attr('opacity', (d) => d.type === 'sym' ? 0.8 : 0.4)
       .attr('stroke-dasharray', (d) => d.type === 'sym' ? 'none' : '4,4')
@@ -221,16 +230,16 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
         node.attr('opacity', n => neighbors.has(n.id) ? 1 : 0.1)
             .select('circle:nth-child(2)')
             .attr('stroke', n => {
-              if (n.id === d.id || neighbors.has(n.id)) return 'var(--accent-sym)';
+              if (n.id === d.id || neighbors.has(n.id)) return node_primary_color;
               if (n.online) return 'var(--accent-online)';
               if (n.group === 'me') return '#ffffffcc';
-              if (n.group === 'sym') return 'var(--accent-sym)';
+              if (n.group === 'sym') return node_primary_color;
               return 'var(--text-secondary)';
             })
             .attr('stroke-width', n => (n.id === d.id || neighbors.has(n.id)) ? 2.5 : (n.online ? 2.0 : 1.5));
 
         link.attr('opacity', l => relatedLinks.has(l) ? 1 : 0.05)
-            .attr('stroke', l => relatedLinks.has(l) ? 'var(--accent-sym-bright)' : (l.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)'))
+            .attr('stroke', l => relatedLinks.has(l) ? 'var(--accent-sym-bright)' : (l.type === 'sym' ? node_primary_color : node_secondary_color))
             .attr('stroke-width', l => relatedLinks.has(l) ? 2.5 : (l.type === 'sym' ? 2 : 1));
       })
       .on('mouseout', () => {
@@ -241,14 +250,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
             .attr('stroke', (d) => {
                if (d.online) return 'var(--accent-online)';
                if (d.group === 'me') return '#ffffffcc';
-               if (d.group === 'sym') return 'var(--accent-sym)';
+               if (d.group === 'sym') return node_primary_color;
                if (d.group === 'drift_file') return 'transparent';
                if (d.group === 'drift_user') return '#777';
                return 'var(--text-secondary)';
             })
             .attr('stroke-width', d => d.online ? 2.0 : 1.5);
         link.attr('opacity', (d) => d.type === 'sym' ? 0.8 : (d.type === 'drift' ? 0.2 : 0.4))
-            .attr('stroke', (d) => d.type === 'sym' ? 'var(--accent-sym)' : 'var(--accent-asym)')
+            .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
             .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1);
       });
 
@@ -256,15 +265,15 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
     node.append('circle')
       .attr('r', (d) => {
-          if (d.group === 'me') return 12;
-          if (d.group === 'drift_file') return 4;
-          return 8;
+          if (d.group === 'me') return node_size * 1.5;
+          if (d.group === 'drift_file') return node_size * 0.5;
+          return node_size; // Use customized size
       })
       .attr('fill', (d) => {
         if (d.avatar_url) return `url(#avatar-${d.id})`;
         if (d.group === 'me') return 'var(--accent-me)';
-        if (d.group === 'sym') return 'var(--accent-sym)';
-        if (d.group === 'asym') return 'var(--accent-asym)';
+        if (d.group === 'sym') return node_primary_color;
+        if (d.group === 'asym') return node_secondary_color;
         if (d.group === 'drift_user') return '#555555';
         if (d.group === 'drift_file') return '#888888';
         return '#333333ff';
@@ -275,15 +284,15 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
 
     node.append('circle')
       .attr('r', (d) => {
-          if (d.group === 'me') return 12;
-          if (d.group === 'drift_file') return 4;
-          return 8;
+          if (d.group === 'me') return node_size * 1.5;
+          if (d.group === 'drift_file') return node_size * 0.5;
+          return node_size;
       })
       .attr('fill', 'transparent')
       .attr('stroke', (d) => {
          if (d.online) return 'var(--accent-online)';
          if (d.group === 'me') return '#ffffffcc';
-         if (d.group === 'sym') return 'var(--accent-sym)';
+         if (d.group === 'sym') return node_primary_color;
          if (d.group === 'drift_file') return 'transparent';
          if (d.group === 'drift_user') return '#777';
          return 'var(--text-secondary)';
@@ -307,10 +316,45 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
         .attr('y2', (d: any) => d.target.y);
 
       node.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+
+      // Update Hulls
+      if (collections.length > 0) {
+        const hullData = collections.map(collection => {
+             // Find all nodes in this collection
+             const collectionNodes = d3Nodes.filter(n => {
+                 // The 'file-ID' format in nodes.id vs file_ids in collection
+                 if (n.group === 'drift_file') {
+                     const fileId = parseInt(n.id.replace('file-', ''));
+                     return collection.file_ids.includes(fileId);
+                 }
+                 // If we had collection-specific nodes, check them here.
+                 // Currently we only have Drift Files or "My Files" if we loaded them.
+                 // Assuming we might map local files to nodes eventually.
+                 return false;
+             }).map(n => [n.x, n.y] as [number, number]);
+
+             if (collectionNodes.length < 3) return null; // Need 3 points for a hull
+             return { id: collection.id, name: collection.name, points: collectionNodes };
+        }).filter(h => h !== null);
+
+        hullLayer.selectAll('path')
+           .data(hullData as any[])
+           .join('path')
+           .attr('d', (d: any) => {
+               const hull = d3.polygonHull(d.points);
+               return hull ? `M${hull.join('L')}Z` : null;
+           })
+           .attr('fill', node_primary_color) // Use theme color
+           .attr('fill-opacity', 0.1)
+           .attr('stroke', node_primary_color)
+           .attr('stroke-width', 1)
+           .attr('stroke-opacity', 0.3)
+           .attr('stroke-linejoin', 'round');
+      }
     });
 
     return () => simulation.stop();
-  }, [nodes, links, onNodeClick, isDrifting, onlineUserIds, dimensions]); // Removed userPreferences
+  }, [nodes, links, collections, onNodeClick, isDrifting, onlineUserIds, dimensions, node_primary_color, node_secondary_color, node_size, theme_preferences]);
 
   const drag = (simulation: d3.Simulation<D3Node, D3Link>) => {
     function dragstarted(event: any) {
@@ -377,6 +421,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, onNodeCli
           {tooltip.content}
         </div>
       )}
+
+      <CustomizationSettings />
     </div>
   );
 };

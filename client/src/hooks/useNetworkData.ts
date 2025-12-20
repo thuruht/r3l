@@ -63,17 +63,15 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       // Process Collections to get file IDs
       const loadedCollections: NetworkCollection[] = [];
       if (collData.collections) {
-          // We need to fetch files for each collection to know which nodes belong to it?
-          // Or we can just store the collection metadata and let the UI handle it if we had the data.
-          // The /api/collections endpoint returns list of collections but NOT file IDs.
-          // We would need to fetch /api/collections/:id for each to get files, which is too many requests.
-          // Let's assume for now we only visualize "My Collections" if we had a bulk endpoint.
-          // Or we rely on the `files` endpoint which might return collection info? No.
-          
-          // Optimization: Let's skip deep collection visualization for now as it requires backend changes 
-          // (bulk fetch collections with file IDs).
-          // OR we can just fetch the list and show "Collection Nodes".
+          collData.collections.forEach((c: any) => {
+              loadedCollections.push({
+                  id: c.id,
+                  name: c.name,
+                  file_ids: c.file_ids || []
+              });
+          });
       }
+      setCollections(loadedCollections);
 
       // 1. Add Me
       nodeMap.set(currentUserId.toString(), {
@@ -177,5 +175,5 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
 
 
 
-  return { nodes, links, loading, refresh: fetchData };
+  return { nodes, links, collections, loading, refresh: fetchData };
 };

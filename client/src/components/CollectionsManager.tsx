@@ -18,6 +18,15 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   const [newDesc, setNewDesc] = useState('');
   const [newVisibility, setNewVisibility] = useState<'private' | 'public' | 'sym'>('private');
 
+  // Handle Escape key to close modal
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleCreate = async () => {
     if (!newName.trim()) return;
     
@@ -42,10 +51,10 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title">
       <div className="glass-panel" style={{ width: '500px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 20px 10px 20px', margin: 0 }}>
-          <h2 style={{ margin: 0 }}>{mode === 'manage' ? 'My Collections' : 'Select Collection'}</h2>
+          <h2 id="collections-modal-title" style={{ margin: 0 }}>{mode === 'manage' ? 'My Collections' : 'Select Collection'}</h2>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close">
             <IconX aria-hidden="true" />
           </button>
@@ -122,7 +131,8 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <input 
                             type="text" 
-                            placeholder="Collection Name" 
+                            placeholder="Collection Name"
+                            aria-label="Collection Name"
                             value={newName} 
                             onChange={e => setNewName(e.target.value)}
                             autoFocus
@@ -130,38 +140,42 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         <input 
                             type="text" 
                             placeholder="Description (Optional)" 
+                            aria-label="Collection Description"
                             value={newDesc} 
                             onChange={e => setNewDesc(e.target.value)}
                         />
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                             <label>
-                                 <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="private" 
-                                    checked={newVisibility === 'private'}
-                                    onChange={() => setNewVisibility('private')}
-                                 /> Private
-                             </label>
-                             <label>
-                                 <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="public" 
-                                    checked={newVisibility === 'public'}
-                                    onChange={() => setNewVisibility('public')}
-                                 /> Public
-                             </label>
-                             <label>
-                                 <input 
-                                    type="radio" 
-                                    name="visibility" 
-                                    value="sym" 
-                                    checked={newVisibility === 'sym'}
-                                    onChange={() => setNewVisibility('sym')}
-                                 /> Sym Only
-                             </label>
-                        </div>
+                        <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                          <legend style={{ fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '5px' }}>Visibility</legend>
+                          <div style={{ display: 'flex', gap: '15px' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                                  <input
+                                      type="radio"
+                                      name="visibility"
+                                      value="private"
+                                      checked={newVisibility === 'private'}
+                                      onChange={() => setNewVisibility('private')}
+                                  /> Private
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                                  <input
+                                      type="radio"
+                                      name="visibility"
+                                      value="public"
+                                      checked={newVisibility === 'public'}
+                                      onChange={() => setNewVisibility('public')}
+                                  /> Public
+                              </label>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                                  <input
+                                      type="radio"
+                                      name="visibility"
+                                      value="sym"
+                                      checked={newVisibility === 'sym'}
+                                      onChange={() => setNewVisibility('sym')}
+                                  /> Sym Only
+                              </label>
+                          </div>
+                        </fieldset>
                         <div style={{ display: 'flex', gap: '10px', marginTop: '5px' }}>
                             <button onClick={handleCreate}>Create</button>
                             <button onClick={() => setIsCreating(false)} style={{ background: 'transparent', border: '1px solid var(--border-color)' }}>Cancel</button>

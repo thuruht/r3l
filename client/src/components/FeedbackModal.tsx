@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { IconX, IconSend, IconMessage } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 
@@ -11,6 +11,24 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   const [type, setType] = useState('general');
   const [sending, setSending] = useState(false);
   const { showToast } = useToast();
+  const modalRef = useRef<HTMLDivElement>(null);
+  const firstInputRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Focus the first input on mount
+    if (firstInputRef.current) {
+      firstInputRef.current.focus();
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +57,24 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="modal-overlay fade-in">
-      <div className="glass-panel" style={{ width: '500px', maxWidth: '90%', padding: '0', display: 'flex', flexDirection: 'column' }}>
+    <div
+      className="modal-overlay fade-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="feedback-modal-title"
+    >
+      <div
+        ref={modalRef}
+        className="glass-panel"
+        style={{ width: '500px', maxWidth: '90%', padding: '0', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
-          <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h3 id="feedback-modal-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
             <IconMessage size={20} /> Feedback / Contact
           </h3>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close">
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close feedback modal">
             <IconX />
           </button>
         </div>
@@ -56,9 +85,11 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           </p>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Type</label>
-            <select 
-              value={type} 
+            <label htmlFor="feedback-type" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Type</label>
+            <select
+              id="feedback-type"
+              ref={firstInputRef}
+              value={type}
               onChange={(e) => setType(e.target.value)}
               style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
             >
@@ -70,8 +101,9 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           </div>
 
           <div>
-            <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Message</label>
+            <label htmlFor="feedback-message" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Message</label>
             <textarea
+              id="feedback-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Your message here..."

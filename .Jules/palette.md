@@ -14,3 +14,7 @@
 ## 2025-05-25 - Interactive List Accessibility
 **Learning:** Lists that act as navigation menus (like `NetworkList`) must implement the "button" pattern (role="button", tabIndex=0, onKeyDown) on list items if they are not native `<button>` or `<a>` elements. This is critical for keyboard users to navigate the directory.
 **Action:** Added keyboard support and ARIA roles to `NetworkList.tsx` items.
+
+## 2025-12-22 - Modal Standardization
+**Learning:** Inconsistent modal implementations lead to varying accessibility support. Refactoring legacy modals (like `FeedbackModal`) to match established accessible patterns (like `ConfirmModal`) is crucial. Specifically, ensuring `Escape` key support, initial focus, and proper ARIA labeling makes the app usable for everyone.
+**Action:** Refactored `FeedbackModal.tsx` to include `role="dialog"`, `aria-modal`, escape key handling, and focus management.

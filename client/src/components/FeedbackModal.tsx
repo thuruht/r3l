@@ -6,6 +6,8 @@ interface FeedbackModalProps {
   onClose: () => void;
 }
 
+const MAX_CHARS = 1000;
+
 const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   const [message, setMessage] = useState('');
   const [type, setType] = useState('general');
@@ -30,8 +32,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitFeedback = async () => {
     if (!message.trim()) return;
 
     setSending(true);
@@ -56,6 +57,18 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
     }
   };
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    submitFeedback();
+  };
+
+  const handleTextAreaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      submitFeedback();
+    }
+  };
+
   return (
     <div
       className="modal-overlay fade-in"
@@ -72,14 +85,14 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       >
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
           <h3 id="feedback-modal-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconMessage size={20} /> Feedback / Contact
+            <IconMessage size={20} aria-hidden="true" /> Feedback / Contact
           </h3>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close feedback modal">
             <IconX />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={handleFormSubmit} style={{ padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
             Found a bug? Have an idea? Want to say hello? Messages are sent directly to the developer.
           </p>
@@ -101,20 +114,35 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           </div>
 
           <div>
-            <label htmlFor="feedback-message" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Message</label>
+            <label htmlFor="feedback-message" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
+              Message <span style={{ color: 'var(--accent-alert)', marginLeft: '4px' }} aria-label="required">*</span>
+            </label>
             <textarea
               id="feedback-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleTextAreaKeyDown}
               placeholder="Your message here..."
-              style={{ width: '100%', minHeight: '150px', resize: 'vertical' }}
+              maxLength={MAX_CHARS}
+              style={{ width: '100%', minHeight: '150px', resize: 'vertical', fontFamily: 'inherit' }}
               required
+              aria-describedby="message-hint"
             />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                <span id="message-hint">Press Ctrl+Enter to send</span>
+                <span aria-label={`${message.length} of ${MAX_CHARS} characters used`}>
+                    {message.length} / {MAX_CHARS}
+                </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" disabled={sending} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <IconSend size={16} /> {sending ? 'Sending...' : 'Send Feedback'}
+            <button
+              type="submit"
+              disabled={sending || !message.trim()}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+            >
+              <IconSend size={16} aria-hidden="true" /> {sending ? 'Sending...' : 'Send Feedback'}
             </button>
           </div>
         </form>

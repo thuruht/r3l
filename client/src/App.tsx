@@ -147,6 +147,7 @@ function Main() {
       if (newState) {
           fetchDrift();
           showToast('Drift Mode: Scanning frequency...', 'info');
+          navigate('/');
       } else {
           showToast('Drift Mode: Disengaged.', 'info');
       }
@@ -337,7 +338,7 @@ function Main() {
                     <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
                       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
                         <button 
-                          onClick={() => setViewMode('graph')} 
+                          onClick={() => { setViewMode('graph'); navigate('/'); }}
                           title="Graph View"
                           style={{ 
                             padding: '6px 10px', 
@@ -351,7 +352,7 @@ function Main() {
                           <IconChartCircles size={18} aria-hidden="true" />
                         </button>
                         <button 
-                          onClick={() => setViewMode('list')} 
+                          onClick={() => { setViewMode('list'); navigate('/'); }}
                           title="List View"
                           style={{ 
                             padding: '6px 10px', 
@@ -399,14 +400,15 @@ function Main() {
               {isMenuOpen && (
                 <div className="glass-panel nav-dropdown" style={{
                   position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '10px',
+                  top: '60px',
+                  right: '10px',
                   padding: '1rem',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1rem',
-                  zIndex: 2000
+                  zIndex: 2000,
+                  maxHeight: '80vh',
+                  overflowY: 'auto'
                 }}>
                     <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
                         <SearchBar />
@@ -414,7 +416,7 @@ function Main() {
                             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View Mode:</span>
                              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
                                 <button 
-                                  onClick={() => { setViewMode('graph'); setIsMenuOpen(false); }} 
+                                  onClick={() => { setViewMode('graph'); setIsMenuOpen(false); navigate('/'); }}
                                   style={{ 
                                     padding: '6px 10px', 
                                     background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
@@ -426,7 +428,7 @@ function Main() {
                                   <IconChartCircles size={16} />
                                 </button>
                                 <button 
-                                  onClick={() => { setViewMode('list'); setIsMenuOpen(false); }} 
+                                  onClick={() => { setViewMode('list'); setIsMenuOpen(false); navigate('/'); }}
                                   style={{ 
                                     padding: '6px 10px', 
                                     background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 

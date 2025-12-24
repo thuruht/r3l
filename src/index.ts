@@ -138,6 +138,30 @@ function getR2PublicUrl(c: any, r2_key: string): string {
     return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
 
+// --- Authentication Middleware ---
+const authMiddleware = async (c: any, next: any) => {
+  const token = getCookie(c, 'auth_token');
+  if (!token) {
+    return c.json({ error: 'Unauthorized: No token provided' }, 401);
+  }
+
+  try {
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
+
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
+    }
+
+    // Attach user ID to context variables for downstream routes
+    c.set('user_id', payload.id as number);
+    await next();
+  } catch (e) {
+    console.error("JWT verification failed:", e);
+    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+  }
+};
+
 // --- Auth Routes ---
 
 app.post('/api/register', async (c) => {
@@ -151,7 +175,6 @@ app.post('/api/register', async (c) => {
     const { hash, salt } = await hashPassword(password);
     const verificationToken = crypto.randomUUID();
     
-    // Store the hash, salt, email, and verification token
     // Store the hash, salt, email, and verification token
     const { success } = await c.env.DB.prepare(
       'INSERT INTO users (username, password, salt, email, verification_token, avatar_url) VALUES (?, ?, ?, ?, ?, ?)'
@@ -428,29 +451,18 @@ app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
   }
 });
 
-// --- Authentication Middleware ---
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
+// Apply middleware to protected routes
+app.use('/api/drift', authMiddleware);
+app.use('/api/relationships/*', authMiddleware);
+app.use('/api/notifications', authMiddleware);
+app.use('/api/notifications/*', authMiddleware); // Added wildcart
+app.use('/api/files/*', authMiddleware);
+app.use('/api/communiques', authMiddleware);
+app.use('/api/communiques/*', authMiddleware);
+app.use('/api/collections', authMiddleware);
+app.use('/api/collections/*', authMiddleware);
+app.use('/api/messages/*', authMiddleware); // Added messages middleware
 
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // Durable Object WebSocket endpoint
 app.get('/api/do-websocket', authMiddleware, async (c) => {
@@ -476,29 +488,6 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
     return c.text('WebSocket proxy failed', 500);
   }
 });
-
-// GET /api/document/:id: Document Room WebSocket endpoint (Phase 9 Scaffolding - Disabled for Deployment)
-// app.get('/api/document/:id', authMiddleware, async (c) => {
-//   const upgradeHeader = c.req.header('Upgrade');
-//   if (!upgradeHeader || upgradeHeader !== 'websocket') {
-//     return c.text('Expected Upgrade: websocket', 426);
-//   }
-
-//   const documentId = c.req.param('id');
-
-//   try {
-//     const doId = c.env.DOCUMENT_ROOM.idFromName(documentId);
-//     const doStub = c.env.DOCUMENT_ROOM.get(doId);
-
-//     const url = new URL(c.req.url);
-//     url.pathname = '/websocket';
-
-//     return doStub.fetch(new Request(url.toString(), c.req.raw));
-//   } catch (e) {
-//     console.error("Error proxying to Document Room:", e);
-//     return c.text('Document Room proxy failed', 500);
-//   }
-// });
 
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
@@ -594,16 +583,6 @@ app.get('/api/users/:id', authMiddleware, async (c) => {
   }
 });
 
-// Apply middleware to protected routes
-app.use('/api/drift', authMiddleware);
-app.use('/api/relationships/*', authMiddleware);
-app.use('/api/notifications', authMiddleware);
-app.use('/api/files/*', authMiddleware);
-app.use('/api/communiques', authMiddleware);
-app.use('/api/communiques/*', authMiddleware);
-app.use('/api/collections', authMiddleware);
-app.use('/api/collections/*', authMiddleware);
-
 
 // --- Notification Helpers ---
 
@@ -665,7 +644,7 @@ async function broadcastSignal(
 // --- Notification Routes ---
 
 // GET /api/notifications: List notifications
-app.get('/api/notifications', async (c) => {
+app.get('/api/notifications', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   
   try {
@@ -687,7 +666,7 @@ app.get('/api/notifications', async (c) => {
 });
 
 // PUT /api/notifications/:id/read: Mark as read
-app.put('/api/notifications/:id/read', async (c) => {
+app.put('/api/notifications/:id/read', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const notification_id = Number(c.req.param('id'));
 
@@ -742,7 +721,7 @@ app.delete('/api/notifications/:id', authMiddleware, async (c) => {
 // --- Relationship Routes ---
 
 // POST /api/relationships/follow: Create an asym_follow relationship
-app.post('/api/relationships/follow', async (c) => {
+app.post('/api/relationships/follow', authMiddleware, async (c) => {
   const source_user_id = c.get('user_id');
   const { target_user_id } = await c.req.json();
 
@@ -782,7 +761,7 @@ app.post('/api/relationships/follow', async (c) => {
 });
 
 // POST /api/relationships/sym-request: Send a sym_request
-app.post('/api/relationships/sym-request', async (c) => {
+app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
   const source_user_id = c.get('user_id');
   const { target_user_id } = await c.req.json();
 
@@ -855,7 +834,7 @@ app.post('/api/relationships/sym-request', async (c) => {
 });
 
 // POST /api/relationships/accept-sym-request: Accept a sym_request
-app.post('/api/relationships/accept-sym-request', async (c) => {
+app.post('/api/relationships/accept-sym-request', authMiddleware, async (c) => {
   const target_user_id = c.get('user_id'); // Current user is the target
   const { source_user_id } = await c.req.json(); // User who sent the request
 
@@ -906,7 +885,7 @@ app.post('/api/relationships/accept-sym-request', async (c) => {
 });
 
 // POST /api/relationships/decline-sym-request: Decline a sym_request
-app.post('/api/relationships/decline-sym-request', async (c) => {
+app.post('/api/relationships/decline-sym-request', authMiddleware, async (c) => {
   const target_user_id = c.get('user_id'); // Current user is the target
   const { source_user_id } = await c.req.json(); // User who sent the request
 
@@ -939,7 +918,7 @@ app.post('/api/relationships/decline-sym-request', async (c) => {
 });
 
 // DELETE /api/relationships/:target_user_id: Remove a relationship
-app.delete('/api/relationships/:target_user_id', async (c) => {
+app.delete('/api/relationships/:target_user_id', authMiddleware, async (c) => {
   const source_user_id = c.get('user_id');
   const target_user_id = Number(c.req.param('target_user_id'));
 
@@ -1003,7 +982,7 @@ app.delete('/api/relationships/:target_user_id', async (c) => {
 });
 
 // GET /api/relationships: List relationships for the authenticated user
-app.get('/api/relationships', async (c) => {
+app.get('/api/relationships', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {
@@ -1048,7 +1027,7 @@ app.get('/api/relationships', async (c) => {
 });
 
 // GET /api/drift: Fetch a random sample of public data (users and files)
-app.get('/api/drift', async (c) => {
+app.get('/api/drift', authMiddleware, async (c) => {
     if (!await checkRateLimit(c, 'drift', 20, 600)) { // 20 per 10 mins
         return c.json({ error: 'Drifting too fast. Please wait.' }, 429);
     }
@@ -1093,7 +1072,7 @@ app.get('/api/drift', async (c) => {
 // --- Communique Routes ---
 
 // GET /api/communiques/:user_id: Fetch a user's communique
-app.get('/api/communiques/:user_id', async (c) => {
+app.get('/api/communiques/:user_id', authMiddleware, async (c) => {
   const user_id = Number(c.req.param('user_id'));
   if (isNaN(user_id)) return c.json({ error: 'Invalid user ID' }, 400);
 
@@ -1115,7 +1094,7 @@ app.get('/api/communiques/:user_id', async (c) => {
 });
 
 // PUT /api/communiques: Update the current user's communique
-app.put('/api/communiques', async (c) => {
+app.put('/api/communiques', authMiddleware, async (c) => {
   const user_id = c.get('user_id'); // From auth middleware
   if (!user_id) return c.json({ error: 'Unauthorized' }, 401);
 
@@ -1164,7 +1143,7 @@ app.put('/api/communiques', async (c) => {
 // --- Files Routes ---
 
 // GET /api/files: List files for the authenticated user (My Files)
-app.get('/api/files', async (c) => {
+app.get('/api/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {
@@ -1180,7 +1159,7 @@ app.get('/api/files', async (c) => {
 });
 
 // GET /api/users/:target_user_id/files: List files for another user (Shared/Public)
-app.get('/api/users/:target_user_id/files', async (c) => {
+app.get('/api/users/:target_user_id/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id'); // Me
   const target_user_id = Number(c.req.param('target_user_id'));
 
@@ -1224,7 +1203,7 @@ app.get('/api/users/:target_user_id/files', async (c) => {
 // For larger files, we would use the S3 compatible API with aws-sdk-js-v3.
 
 // POST /api/files: Upload a file
-app.post('/api/files', async (c) => {
+app.post('/api/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   
   // Parse form data to get file and metadata
@@ -1300,7 +1279,7 @@ app.post('/api/files', async (c) => {
 });
 
 // GET /api/files/:id/metadata: Get file metadata
-app.get('/api/files/:id/metadata', async (c) => {
+app.get('/api/files/:id/metadata', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1336,7 +1315,7 @@ app.get('/api/files/:id/metadata', async (c) => {
 });
 
 // GET /api/files/:id/content: Download a file
-app.get('/api/files/:id/content', async (c) => {
+app.get('/api/files/:id/content', authMiddleware, async (c) => {
   const user_id = c.get('user_id'); // Current user
   const file_id = Number(c.req.param('id'));
 
@@ -1405,7 +1384,7 @@ app.get('/api/files/:id/content', async (c) => {
 });
 
 // PUT /api/files/:id/content: Update file content (Text only)
-app.put('/api/files/:id/content', async (c) => {
+app.put('/api/files/:id/content', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { content } = await c.req.json();
@@ -1443,7 +1422,7 @@ app.put('/api/files/:id/content', async (c) => {
 });
 
 // POST /api/files/:id/share: Share a file with a connection
-app.post('/api/files/:id/share', async (c) => {
+app.post('/api/files/:id/share', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { target_user_id } = await c.req.json();
@@ -1483,7 +1462,7 @@ app.post('/api/files/:id/share', async (c) => {
 });
 
 // DELETE /api/files/:id: Delete a file
-app.delete('/api/files/:id', async (c) => {
+app.delete('/api/files/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1518,7 +1497,7 @@ app.delete('/api/files/:id', async (c) => {
 
 
 // POST /api/files/:id/refresh: Reset expiration timer (Keep Alive)
-app.post('/api/files/:id/refresh', async (c) => {
+app.post('/api/files/:id/refresh', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1551,7 +1530,7 @@ app.post('/api/files/:id/refresh', async (c) => {
 });
 
 // POST /api/files/:id/vitality: Vote on a file (increase vitality)
-app.post('/api/files/:id/vitality', async (c) => {
+app.post('/api/files/:id/vitality', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { amount } = await c.req.json().catch(() => ({ amount: 1 })); // Default +1
@@ -1586,7 +1565,7 @@ app.post('/api/files/:id/vitality', async (c) => {
 });
 
 // POST /api/files/:id/archive: Manually archive a file (Owner only)
-app.post('/api/files/:id/archive', async (c) => {
+app.post('/api/files/:id/archive', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1611,7 +1590,7 @@ app.post('/api/files/:id/archive', async (c) => {
 // --- Collection Routes ---
 
 // GET /api/collections: List user's collections
-app.get('/api/collections', async (c) => {
+app.get('/api/collections', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {
@@ -1642,7 +1621,7 @@ app.get('/api/collections', async (c) => {
 });
 
 // POST /api/collections: Create a new collection
-app.post('/api/collections', async (c) => {
+app.post('/api/collections', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const { name, description, visibility } = await c.req.json();
 
@@ -1668,7 +1647,7 @@ app.post('/api/collections', async (c) => {
 });
 
 // GET /api/collections/:id: Get collection details and files
-app.get('/api/collections/:id', async (c) => {
+app.get('/api/collections/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
 
@@ -1696,7 +1675,7 @@ app.get('/api/collections/:id', async (c) => {
 
     // Fetch files in collection
     const { results: files } = await c.env.DB.prepare(
-        `SELECT f.* 
+        `SELECT f.*, cf.file_order
          FROM files f
          JOIN collection_files cf ON f.id = cf.file_id
          WHERE cf.collection_id = ?
@@ -1711,7 +1690,7 @@ app.get('/api/collections/:id', async (c) => {
 });
 
 // PUT /api/collections/:id: Update collection
-app.put('/api/collections/:id', async (c) => {
+app.put('/api/collections/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
   const { name, description, visibility } = await c.req.json();
@@ -1739,8 +1718,39 @@ app.put('/api/collections/:id', async (c) => {
   }
 });
 
+// PUT /api/collections/:id/reorder: Reorder files in a collection
+app.put('/api/collections/:id/reorder', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+  const { file_orders } = await c.req.json(); // Array of { file_id: number, order: number }
+
+  if (isNaN(collection_id) || !Array.isArray(file_orders)) return c.json({ error: 'Invalid parameters' }, 400);
+
+  try {
+     // Verify ownership
+    const collection = await c.env.DB.prepare('SELECT user_id FROM collections WHERE id = ?').bind(collection_id).first();
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+    if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    // Use batch to update orders
+    const statements = file_orders.map((item: any) =>
+        c.env.DB.prepare('UPDATE collection_files SET file_order = ? WHERE collection_id = ? AND file_id = ?')
+        .bind(item.order, collection_id, item.file_id)
+    );
+
+    await c.env.DB.batch(statements);
+
+    return c.json({ message: 'Collection files reordered' });
+
+  } catch (e) {
+      console.error("Error reordering collection:", e);
+      return c.json({ error: 'Failed to reorder collection' }, 500);
+  }
+});
+
+
 // DELETE /api/collections/:id: Delete collection
-app.delete('/api/collections/:id', async (c) => {
+app.delete('/api/collections/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
 
@@ -1765,7 +1775,7 @@ app.delete('/api/collections/:id', async (c) => {
 });
 
 // POST /api/collections/:id/files: Add file to collection
-app.post('/api/collections/:id/files', async (c) => {
+app.post('/api/collections/:id/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
   const { file_id } = await c.req.json();
@@ -1809,7 +1819,7 @@ app.post('/api/collections/:id/files', async (c) => {
 });
 
 // DELETE /api/collections/:id/files/:file_id: Remove file from collection
-app.delete('/api/collections/:id/files/:file_id', async (c) => {
+app.delete('/api/collections/:id/files/:file_id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
   const file_id = Number(c.req.param('file_id'));
@@ -1840,7 +1850,7 @@ app.delete('/api/collections/:id/files/:file_id', async (c) => {
 // --- Messaging Routes (Phase 9) ---
 
 // GET /api/messages/conversations: List active conversations
-app.get('/api/messages/conversations', async (c) => {
+app.get('/api/messages/conversations', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {
@@ -1879,7 +1889,7 @@ app.get('/api/messages/conversations', async (c) => {
 });
 
 // GET /api/messages/:partner_id: Get history
-app.get('/api/messages/:partner_id', async (c) => {
+app.get('/api/messages/:partner_id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const partner_id = Number(c.req.param('partner_id'));
 
@@ -1915,7 +1925,7 @@ app.get('/api/messages/:partner_id', async (c) => {
 });
 
 // POST /api/messages: Send a message
-app.post('/api/messages', async (c) => {
+app.post('/api/messages', authMiddleware, async (c) => {
   const sender_id = c.get('user_id');
   const { receiver_id, content, encrypt } = await c.req.json();
 
@@ -1984,7 +1994,7 @@ app.post('/api/messages', async (c) => {
 });
 
 // PUT /api/messages/:partner_id/read: Mark conversation as read
-app.put('/api/messages/:partner_id/read', async (c) => {
+app.put('/api/messages/:partner_id/read', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const partner_id = Number(c.req.param('partner_id'));
 

@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy, IconRefresh, IconFolderPlus } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 import CollectionsManager from './CollectionsManager';
 import { useCollections } from '../hooks/useCollections';
+import Skeleton from './Skeleton';
 
 interface FilePreviewModalProps {
   fileId: number;
@@ -24,6 +25,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const { showToast } = useToast();
   const { addToCollection } = useCollections();
 
+  const modalRef = useRef<HTMLDivElement>(null);
   const isImage = mimeType.startsWith('image/');
   const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js');
 
@@ -55,6 +57,21 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
           showToast('Failed to add to collection (might already be there)', 'error');
       }
   };
+
+  // Focus trap and Escape key handling
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Initial focus
+    if (modalRef.current) {
+        modalRef.current.focus();
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   useEffect(() => {
     // Fetch Metadata (Vitality)
@@ -114,61 +131,80 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   };
 
   return (
-    <div className="preview-overlay fade-in" style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: '#000000ee', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center',
-      backdropFilter: 'blur(10px)'
-    }} onClick={onClose}>
-      <div style={{
-        width: '80%', height: '80%', maxWidth: '1000px', maxHeight: '800px',
-        background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
-        padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative'
-      }} onClick={e => e.stopPropagation()}>
+    <div
+      className="preview-overlay fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="file-preview-title"
+      style={{
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+        background: '#000000ee', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center',
+        backdropFilter: 'blur(10px)'
+      }}
+      onClick={onClose}
+    >
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        style={{
+          width: '80%', height: '80%', maxWidth: '1000px', maxHeight: '800px',
+          background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
+          padding: '20px', display: 'flex', flexDirection: 'column', position: 'relative', outline: 'none'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', borderBottom: '1px solid #333', paddingBottom: '10px' }}>
-          <h3 style={{ margin: 0, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <h3 id="file-preview-title" style={{ margin: 0, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {filename}
           </h3>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={handleRefresh} title="Keep Alive (Reset Expiration)">
+            <button onClick={handleRefresh} title="Keep Alive (Reset Expiration)" aria-label="Keep Alive (Reset Expiration)">
                <IconRefresh size={18} />
             </button>
-            <button onClick={handleBoost} title="Boost Signal" disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <button onClick={handleBoost} title="Boost Signal" aria-label={`Boost Signal (Current vitality: ${vitality})`} disabled={boosted} style={{ color: boosted ? 'var(--accent-sym)' : 'inherit', borderColor: boosted ? 'var(--accent-sym)' : 'var(--border-color)', display: 'flex', alignItems: 'center', gap: '5px' }}>
                <IconBolt size={18} />
                <span>{vitality}</span>
             </button>
             
-            <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection">
+            <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection">
                 <IconFolderPlus size={18} />
             </button>
 
             {isText && !isEditing && (
-                <button onClick={() => setIsEditing(true)} title="Edit">
+                <button onClick={() => setIsEditing(true)} title="Edit" aria-label="Edit file">
                     <IconEdit size={18} />
                 </button>
             )}
             {isText && isEditing && (
                 <>
-                    <button onClick={handleSave} title="Save Changes" style={{ color: 'var(--accent-sym)', borderColor: 'var(--accent-sym)' }}>
+                    <button onClick={handleSave} title="Save Changes" aria-label="Save changes" style={{ color: 'var(--accent-sym)', borderColor: 'var(--accent-sym)' }}>
                         <IconDeviceFloppy size={18} />
                     </button>
-                    <button onClick={() => { setIsEditing(false); setEditContent(content || ''); }} title="Cancel Edit">
+                    <button onClick={() => { setIsEditing(false); setEditContent(content || ''); }} title="Cancel Edit" aria-label="Cancel edit">
                         <IconX size={18} />
                     </button>
                 </>
             )}
 
-            <button onClick={onDownload} title="Download Original">
+            <button onClick={onDownload} title="Download Original" aria-label="Download Original">
                <IconDownload size={18} />
             </button>
-            <button onClick={onClose} title="Close">
+            <button onClick={onClose} title="Close" aria-label="Close preview">
                <IconX size={18} />
             </button>
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#00000066', borderRadius: '4px' }}>
-          {loading && <div>Loading preview...</div>}
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#00000066', borderRadius: '4px', position: 'relative' }}>
+          {loading && (
+            <div style={{ width: '80%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <Skeleton height="20px" width="100%" />
+                <Skeleton height="20px" width="90%" />
+                <Skeleton height="20px" width="95%" />
+                <Skeleton height="20px" width="80%" />
+            </div>
+          )}
           {error && <div style={{ color: 'var(--accent-alert)' }}>{error}</div>}
           
           {!loading && !error && (
@@ -176,7 +212,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
                {isImage && (
                  <img 
                    src={`/api/files/${fileId}/content`} 
-                   alt={filename} 
+                   alt={`Preview of ${filename}`}
                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
                  />
                )}
@@ -200,6 +236,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
                    <textarea
                        value={editContent}
                        onChange={(e) => setEditContent(e.target.value)}
+                       aria-label="Edit file content"
                        style={{
                            width: '100%',
                            height: '100%',

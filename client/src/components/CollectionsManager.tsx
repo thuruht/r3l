@@ -214,11 +214,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 <button
                                     disabled={index === 0}
                                     onClick={() => moveFile(index, 'up')}
+                                    aria-label="Move Up"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
                                 >▲</button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
+                                    aria-label="Move Down"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
                                 >▼</button>
                             </div>

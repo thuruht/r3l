@@ -322,6 +322,12 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                             fontSize: '0.9em', borderRadius: '0 4px 4px 0'
                         }} 
                         onClick={() => !n.is_read && markAsRead(n.id)}
+                        onKeyDown={(e) => {
+                            if ((e.key === 'Enter' || e.key === ' ') && !n.is_read) {
+                                e.preventDefault();
+                                markAsRead(n.id);
+                            }
+                        }}
                     >
                         <div style={{ marginBottom: '5px' }}>{renderMessage(n)}</div>
                         <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
@@ -386,6 +392,12 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                     <div key={c.partner_id}
                         role="button" tabIndex={0}
                         onClick={() => setActiveConversationId(c.partner_id)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setActiveConversationId(c.partner_id);
+                            }
+                        }}
                         style={{
                             padding: '12px', borderBottom: '1px solid #ffffff11', cursor: 'pointer',
                             background: c.unread_count > 0 ? 'rgba(var(--accent-sym-rgb), 0.1)' : 'transparent',
@@ -443,12 +455,13 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                         placeholder="Whisper..."
+                        aria-label="Type a message"
                         style={{ 
                             flex: 1, background: '#00000044', border: '1px solid var(--border-color)', 
                             borderRadius: '20px', padding: '8px 15px', color: 'white' 
                         }}
                     />
-                    <button onClick={sendMessage} disabled={!newMessage.trim()} style={{ background: 'transparent', border: 'none', color: newMessage.trim() ? 'var(--accent-sym)' : '#555' }}>
+                    <button onClick={sendMessage} disabled={!newMessage.trim()} aria-label="Send message" style={{ background: 'transparent', border: 'none', color: newMessage.trim() ? 'var(--accent-sym)' : '#555' }}>
                         <IconSend size={20} />
                     </button>
                 </div>

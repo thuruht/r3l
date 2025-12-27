@@ -82,8 +82,8 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
               </div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                 {node.group === 'me' ? 'You' : 
-                 node.group === 'sym' ? 'Mutual Connection' : 
-                 node.group === 'asym' ? 'One-way Connection' : 
+                 node.group === 'sym' ? 'Sym Connection' :
+                 node.group === 'asym' ? 'Asym Connection' :
                  node.group === 'drift_user' ? 'Drifting User' : 'Drifting Artifact'}
               </div>
             </div>

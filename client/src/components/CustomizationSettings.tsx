@@ -32,9 +32,13 @@ const CustomizationSettings: React.FC = () => {
   // Debounced update
   useEffect(() => {
       const timer = setTimeout(() => {
+          // Ensure colors are 8-digit hex (append FF if needed)
+          const pColor = localState.node_primary_color.length === 7 ? localState.node_primary_color + 'ff' : localState.node_primary_color;
+          const sColor = localState.node_secondary_color.length === 7 ? localState.node_secondary_color + 'ff' : localState.node_secondary_color;
+
           updateCustomization({
-              node_primary_color: localState.node_primary_color,
-              node_secondary_color: localState.node_secondary_color,
+              node_primary_color: pColor,
+              node_secondary_color: sColor,
               node_size: localState.node_size,
               theme_preferences: { ...theme_preferences, mistDensity: localState.mistDensity }
           });
@@ -43,6 +47,8 @@ const CustomizationSettings: React.FC = () => {
   }, [localState]);
 
   const handleLocalChange = (key: string, value: any) => {
+      // Input type='color' returns 7-char hex. We store it as is locally for the input to read correctly,
+      // but the effect above handles the conversion for the API.
       setLocalState(prev => ({ ...prev, [key]: value }));
   };
 

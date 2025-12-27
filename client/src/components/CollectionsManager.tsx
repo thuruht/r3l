@@ -189,6 +189,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                     onClick={(e) => handleDelete(c.id, e)}
                                     style={{ background: 'transparent', border: 'none', color: 'var(--accent-alert)', opacity: 0.7 }}
                                     title="Delete Collection"
+                                    aria-label="Delete Collection"
                                 >
                                     <IconTrash size={18} />
                                 </button>
@@ -231,12 +232,12 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 {f.filename}
                             </div>
 
-                            <button onClick={() => setPreviewFile(f)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)' }} title="View">
+                            <button onClick={() => setPreviewFile(f)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)' }} title="View" aria-label="View file">
                                 <IconEye size={18} />
                             </button>
 
                             {/* Edit/Remove Actions */}
-                            <button onClick={() => removeFile(f.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-alert)' }} title="Remove">
+                            <button onClick={() => removeFile(f.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-alert)' }} title="Remove" aria-label="Remove file">
                                 <IconX size={18} />
                             </button>
                         </div>

@@ -21,11 +21,23 @@ const CustomizationSettings: React.FC = () => {
 
   // Sync local state when context updates (initial load)
   useEffect(() => {
-      setLocalState({
-          node_primary_color,
-          node_secondary_color,
-          node_size,
-          mistDensity: theme_preferences.mistDensity || 0.5
+      // Only sync if values actually differ to avoid loop
+      setLocalState(prev => {
+          if (
+              prev.node_primary_color !== node_primary_color ||
+              prev.node_secondary_color !== node_secondary_color ||
+              prev.node_size !== node_size ||
+              prev.mistDensity !== (theme_preferences.mistDensity || 0.5)
+          ) {
+              // Strip alpha for local input compatibility if needed
+              return {
+                  node_primary_color: node_primary_color.slice(0, 7),
+                  node_secondary_color: node_secondary_color.slice(0, 7),
+                  node_size,
+                  mistDensity: theme_preferences.mistDensity || 0.5
+              };
+          }
+          return prev;
       });
   }, [node_primary_color, node_secondary_color, node_size, theme_preferences]);
 
@@ -36,15 +48,18 @@ const CustomizationSettings: React.FC = () => {
           const pColor = localState.node_primary_color.length === 7 ? localState.node_primary_color + 'ff' : localState.node_primary_color;
           const sColor = localState.node_secondary_color.length === 7 ? localState.node_secondary_color + 'ff' : localState.node_secondary_color;
 
-          updateCustomization({
-              node_primary_color: pColor,
-              node_secondary_color: sColor,
-              node_size: localState.node_size,
-              theme_preferences: { ...theme_preferences, mistDensity: localState.mistDensity }
-          });
+          // Only call update if value is effectively different
+          if (pColor !== node_primary_color || sColor !== node_secondary_color || localState.node_size !== node_size || localState.mistDensity !== theme_preferences.mistDensity) {
+              updateCustomization({
+                  node_primary_color: pColor,
+                  node_secondary_color: sColor,
+                  node_size: localState.node_size,
+                  theme_preferences: { ...theme_preferences, mistDensity: localState.mistDensity }
+              });
+          }
       }, 500); // 500ms debounce
       return () => clearTimeout(timer);
-  }, [localState]);
+  }, [localState, node_primary_color, node_secondary_color, node_size, theme_preferences, updateCustomization]);
 
   const handleLocalChange = (key: string, value: any) => {
       // Input type='color' returns 7-char hex. We store it as is locally for the input to read correctly,

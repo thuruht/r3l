@@ -88,11 +88,11 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
         </section>
 
         <section>
-          <h4>Vitality & Archival</h4>
+          <h4>Active Signals vs. Archives</h4>
           <p style={{ color: 'var(--text-secondary)' }}>
-            Files have "Vitality". Voting on a file increases its Vitality. 
-            If a file's Vitality reaches the threshold, it becomes permanently archived. 
-            Otherwise, files fade away (expire) after 24 hours.
+            <strong>Active Signal:</strong> Files you upload enter your active stream. They have <strong>Vitality</strong>. Without attention (boosts), they decay and are eventually reclaimed by the void (deleted) after 7 days.
+            <br/><br/>
+            <strong>Archive:</strong> To save an artifact from the void, add it to a <strong>Collection</strong>. Collecting an artifact crystallizes it, preserving it permanently in your personal archive.
           </p>
         </section>
       </div>

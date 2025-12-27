@@ -1819,15 +1819,20 @@ app.post('/api/collections/:id/files', authMiddleware, async (c) => {
     ).bind(collection_id).first();
     const nextOrder = ((maxOrder?.max_order as number) || 0) + 1;
 
-    const { success } = await c.env.DB.prepare(
-      'INSERT INTO collection_files (collection_id, file_id, file_order) VALUES (?, ?, ?)'
-    ).bind(collection_id, file_id, nextOrder).run();
+    // Use batch to insert into collection_files AND update files table (archive it)
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        'INSERT INTO collection_files (collection_id, file_id, file_order) VALUES (?, ?, ?)'
+      ).bind(collection_id, file_id, nextOrder),
+      // Preserve the file (crystallize)
+      c.env.DB.prepare(
+        'UPDATE files SET is_archived = 1 WHERE id = ?'
+      ).bind(file_id)
+    ]);
 
-    if (success) {
-      return c.json({ message: 'File added to collection' });
-    } else {
-      return c.json({ error: 'Failed to add file to collection' }, 500);
-    }
+    // Check success by catching errors (batch throws on failure)
+    return c.json({ message: 'File collected and preserved' });
+
   } catch (e: any) {
     if (e.message && e.message.includes('UNIQUE constraint failed')) {
         return c.json({ error: 'File already in collection' }, 409);

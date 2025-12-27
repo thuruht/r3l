@@ -275,7 +275,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                           <legend style={{ fontSize: '0.85em', color: 'var(--text-secondary)', marginBottom: '5px' }}>Visibility</legend>
                           <div style={{ display: 'flex', gap: '15px' }}>
                               <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                                  <input type="radio" name="visibility" value="private" checked={newVisibility === 'private'} onChange={() => setNewVisibility('private')} /> Private
+                                  <input type="radio" name="visibility" value="private" checked={newVisibility === 'private'} onChange={() => setNewVisibility('private')} /> Me
                               </label>
                               <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                                   <input type="radio" name="visibility" value="public" checked={newVisibility === 'public'} onChange={() => setNewVisibility('public')} /> Public

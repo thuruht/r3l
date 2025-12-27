@@ -36,18 +36,18 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
                 artifacts and users floating in this digital ether.
             </p>
 
-            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Vitality</h4>
+            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Vitality & Archives</h4>
             <p style={{ marginTop: 0 }}>
-                Data requires energy to exist. Artifacts (files) uploaded to the network have <strong>Vitality</strong>. 
+                Data requires energy to exist. Artifacts (files) uploaded to your <strong>Active Signal</strong> have <strong>Vitality</strong>.
                 Without attention (boosts), they decay and are eventually reclaimed by the void (deleted). 
-                Only those that resonate with the network survive.
+                To preserve a signal, you must collect it into your <strong>Archive</strong> (Collections).
             </p>
 
             <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Symmetry</h4>
             <p style={{ marginTop: 0 }}>
                 Connections are defined by their geometry. 
                 <strong>Asym</strong> (Asymmetrical) links are one-way observations. 
-                <strong>Sym</strong> (Symmetrical) links are mutual agreements, opening channels for direct sharing.
+                <strong>Sym</strong> (Symmetrical) links are mutual agreements, opening channels for direct sharing and whispering.
             </p>
 
             <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Data & Privacy</h4>

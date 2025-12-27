@@ -8,10 +8,11 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 
 ## Core Concepts
 
-*   **Sym vs. A-Sym**:
-    *   **Sym (Symmetric)**: Explicit, mutual relationships. Both parties agree to connect.
-    *   **A-Sym (Asymmetric)**: One-way follows or proximity-based connections.
-*   **Ephemerality**: Content expires by default (7 days). "Vitality" can extend this life, or users can "Refresh" to reset the clock.
+*   **Sym (Symmetric)**: Explicit, mutual relationships. Both parties agree to connect. Only Sym links allow for direct artifact sharing and whispering (messaging).
+*   **Asym (Asymmetric)**: One-way follows. You can observe the public signals of a user, but cannot interact directly unless they reciprocate.
+*   **Active Signal vs. Archive**:
+    *   **Active Signal**: Your live stream of artifacts. These are ephemeral and expire by default after 7 days (168 hours).
+    *   **Archive**: A permanent state. Adding an artifact to a **Collection** crystallizes it, preserving it from expiration indefinitely.
 *   **The Drift**: A radar-like discovery mode that samples random public artifacts and users from the network, visualized as pulsating "ghost nodes."
 
 ## Features
@@ -23,8 +24,12 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 ### 📂 Artifacts & File System
 *   **Universal Uploads**: Share any file type (images, text, code, audio).
 *   **New Upload Modal**: Drag-and-drop support for multiple files with progress tracking.
+*   **Visibility**:
+    *   **Me**: Private. Only visible to you.
+    *   **Sym**: Visible only to mutual connections.
+    *   **Public**: Visible to everyone and discoverable in The Drift.
 *   **Expiration**:
-    *   **Default Lifespan**: 7 Days (168 Hours).
+    *   **Default Lifespan**: 7 Days.
     *   **Refresh**: Instantly reset the 7-day timer to keep content alive.
     *   **Vitality**: Boost a file's signal to increase visibility (and slightly extend life).
 *   **In-Place Editing**: Text-based artifacts (Markdown, Code, JSON) can be edited directly in the browser.
@@ -33,12 +38,12 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 *   **Interactive Graph**: A D3.js visualization of your social world.
     *   **Me**: Center node.
     *   **Sym**: Glowing, strong connections.
-    *   **A-Sym**: Dashed, weaker connections.
+    *   **Asym**: Dashed, weaker connections.
     *   **Drift**: Pulsating nodes representing random discoveries.
 *   **Navigation**: Persistent top-nav with glassmorphism for easy access to tools.
 
 ### ✉️ Inbox & Notifications
-*   **Unified Comms**: All signals—connection requests, file shares, system alerts—arrive here.
+*   **Unified Comms**: All signals—Sym requests, file shares, system alerts—arrive here.
 *   **Real-Time**: WebSocket integration ensures instant delivery.
 *   **Control**: Accept/Decline connection requests or simply delete old notifications.
 
@@ -66,7 +71,7 @@ Built entirely on the **Cloudflare Developer Platform**:
 *   ✅ **Auth**: Complete (JWT, Email Verification flow).
 *   ✅ **Graph**: Complete (D3.js, Drift Pulse).
 *   ✅ **Files**: Advanced (Modals, Editing, Expiration Logic).
-*   ✅ **Social**: Functional (Sym/A-Sym, Inbox, Sharing).
+*   ✅ **Social**: Functional (Sym/Asym, Inbox, Sharing).
 *   🚧 **Next Steps**: Collaborative Workspaces, Audio/Video Streaming support.
 
 ## Getting Started (Dev)

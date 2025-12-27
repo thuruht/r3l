@@ -1221,7 +1221,7 @@ app.get('/api/users/:target_user_id/files', async (c) => {
 // For larger files, we would use the S3 compatible API with aws-sdk-js-v3.
 
 // POST /api/files: Upload a file
-app.post('/api/files', async (c) => {
+app.post('/api/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   
   // Parse form data to get file and metadata
@@ -1440,7 +1440,7 @@ app.put('/api/files/:id/content', async (c) => {
 });
 
 // POST /api/files/:id/share: Share a file with a connection
-app.post('/api/files/:id/share', async (c) => {
+app.post('/api/files/:id/share', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { target_user_id } = await c.req.json();
@@ -1515,7 +1515,7 @@ app.delete('/api/files/:id', async (c) => {
 
 
 // POST /api/files/:id/refresh: Reset expiration timer (Keep Alive)
-app.post('/api/files/:id/refresh', async (c) => {
+app.post('/api/files/:id/refresh', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1548,7 +1548,7 @@ app.post('/api/files/:id/refresh', async (c) => {
 });
 
 // POST /api/files/:id/vitality: Vote on a file (increase vitality)
-app.post('/api/files/:id/vitality', async (c) => {
+app.post('/api/files/:id/vitality', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { amount } = await c.req.json().catch(() => ({ amount: 1 })); // Default +1
@@ -1583,7 +1583,7 @@ app.post('/api/files/:id/vitality', async (c) => {
 });
 
 // POST /api/files/:id/archive: Manually archive a file (Owner only)
-app.post('/api/files/:id/archive', async (c) => {
+app.post('/api/files/:id/archive', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
 
@@ -1639,7 +1639,7 @@ app.get('/api/collections', async (c) => {
 });
 
 // POST /api/collections: Create a new collection
-app.post('/api/collections', async (c) => {
+app.post('/api/collections', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const { name, description, visibility } = await c.req.json();
 
@@ -1793,7 +1793,7 @@ app.delete('/api/collections/:id', async (c) => {
 });
 
 // POST /api/collections/:id/files: Add file to collection
-app.post('/api/collections/:id/files', async (c) => {
+app.post('/api/collections/:id/files', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   const collection_id = Number(c.req.param('id'));
   const { file_id } = await c.req.json();
@@ -1943,7 +1943,7 @@ app.get('/api/messages/:partner_id', async (c) => {
 });
 
 // POST /api/messages: Send a message
-app.post('/api/messages', async (c) => {
+app.post('/api/messages', authMiddleware, async (c) => {
   const sender_id = c.get('user_id');
   const { receiver_id, content, encrypt } = await c.req.json();
 
@@ -2028,7 +2028,7 @@ app.put('/api/messages/:partner_id/read', async (c) => {
 
 
 // POST /api/users/me/avatar: Upload user avatar to R2
-app.post('/api/users/me/avatar', async (c) => {
+app.post('/api/users/me/avatar', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
 
   try {

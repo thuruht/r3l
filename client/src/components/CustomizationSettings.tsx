@@ -87,44 +87,54 @@ const CustomizationSettings: React.FC = () => {
         <button
             onClick={() => setIsOpen(false)}
             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+            aria-label="Close settings"
         >
             <IconX size={16} />
         </button>
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+        <label htmlFor="node-size-input" style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
           Node Size ({localState.node_size}px)
         </label>
         <input
+          id="node-size-input"
           type="range"
           min="4"
           max="20"
           value={localState.node_size}
           onChange={(e) => handleLocalChange('node_size', Number(e.target.value))}
           style={{ width: '100%' }}
+          aria-valuemin={4}
+          aria-valuemax={20}
+          aria-valuenow={localState.node_size}
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+        <label htmlFor="mist-density-input" style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
           Mist Density ({(localState.mistDensity * 100).toFixed(0)}%)
         </label>
         <input
+          id="mist-density-input"
           type="range"
           min="0"
           max="100"
           value={localState.mistDensity * 100}
           onChange={(e) => handleLocalChange('mistDensity', Number(e.target.value) / 100)}
           style={{ width: '100%' }}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={localState.mistDensity * 100}
         />
       </div>
 
       <div style={{ marginBottom: '12px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+        <label htmlFor="primary-color-input" style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
           Primary Color (Sym)
         </label>
         <input
+          id="primary-color-input"
           type="color"
           value={localState.node_primary_color}
           onChange={(e) => handleLocalChange('node_primary_color', e.target.value)}
@@ -133,10 +143,11 @@ const CustomizationSettings: React.FC = () => {
       </div>
 
       <div style={{ marginBottom: '0px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+        <label htmlFor="secondary-color-input" style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
           Secondary Color (Asym)
         </label>
         <input
+          id="secondary-color-input"
           type="color"
           value={localState.node_secondary_color}
           onChange={(e) => handleLocalChange('node_secondary_color', e.target.value)}

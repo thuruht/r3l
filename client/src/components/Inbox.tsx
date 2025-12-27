@@ -1,7 +1,7 @@
 // Inbox.tsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 
@@ -358,18 +358,27 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                                 style={{
                                     padding: '4px 8px', borderRadius: '4px',
                                     background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
-                                    fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '6px'
+                                    fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '8px'
                                 }}
                             >
-                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: c.avatar_url ? `url(${c.avatar_url}) center/cover` : '#333' }}></div>
-                                <span onClick={() => onOpenCommunique(c.user_id.toString())} style={{ cursor: 'pointer' }}>{c.username}</span>
+                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: c.avatar_url ? `url(${c.avatar_url}) center/cover` : '#333' }}></div>
+                                <span style={{ fontWeight: 'bold' }}>{c.username}</span>
+                                <div style={{ height: '15px', width: '1px', background: 'var(--border-color)', margin: '0 2px' }}></div>
+                                <button
+                                    onClick={() => onOpenCommunique(c.user_id.toString())}
+                                    style={{ background: 'none', border: 'none', padding: '0', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                                    title="View Profile"
+                                    aria-label={`View profile of ${c.username}`}
+                                >
+                                    <IconUser size={14} />
+                                </button>
                                 <button 
                                     onClick={() => { setActiveTab('messages'); setActiveConversationId(c.user_id); }}
-                                    style={{ background: 'none', border: 'none', padding: '0', color: 'var(--accent-sym)', cursor: 'pointer', display: 'flex' }}
+                                    style={{ background: 'none', border: 'none', padding: '0', color: 'var(--accent-sym)', cursor: 'pointer' }}
                                     title="Whisper"
                                     aria-label={`Whisper to ${c.username}`}
                                 >
-                                    <IconMessage size={12} />
+                                    <IconMessage size={14} />
                                 </button>
                             </div>
                         ))}
@@ -474,4 +483,3 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 };
 
 export default Inbox;
-

@@ -6,6 +6,7 @@ import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';
+import JSZip from 'jszip';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
@@ -344,8 +345,8 @@ app.get('/api/customization', authMiddleware, async (c) => {
   }
 });
 
-// Helper for hex validation (basic, without full regex for #RRGGBBAA)
-const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color);
+// Helper for hex validation (Strict 8-digit hex for #RRGGBBAA)
+const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{8}$/.test(color);
 
 app.put('/api/customization', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -1285,8 +1286,13 @@ app.post('/api/files', async (c) => {
       }
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });
     } else {
-      // If DB insert fails, we might want to delete the orphan file from R2
-      // For now, we'll just report error
+      // If DB insert fails, we must delete the orphan file from R2 (Atomicity)
+      try {
+        await c.env.BUCKET.delete(r2_key);
+        console.log(`Atomicity: Deleted orphan file ${r2_key} after DB failure.`);
+      } catch (cleanupErr) {
+        console.error(`Failed to cleanup orphan file ${r2_key}:`, cleanupErr);
+      }
       return c.json({ error: 'Failed to record file metadata' }, 500);
     }
 
@@ -1789,6 +1795,65 @@ app.delete('/api/collections/:id', async (c) => {
   } catch (e: any) {
     console.error("Error deleting collection:", e);
     return c.json({ error: 'Failed to delete collection' }, 500);
+  }
+});
+
+// GET /api/collections/:id/zip: Download collection as ZIP
+app.get('/api/collections/:id/zip', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const collection_id = Number(c.req.param('id'));
+
+  try {
+    const collection = await c.env.DB.prepare(
+      'SELECT * FROM collections WHERE id = ?'
+    ).bind(collection_id).first();
+
+    if (!collection) return c.json({ error: 'Collection not found' }, 404);
+
+    // Permission Check
+    if (collection.user_id !== user_id) {
+        if (collection.visibility === 'private') return c.json({ error: 'Unauthorized' }, 403);
+        if (collection.visibility === 'sym') {
+            const mutual = await c.env.DB.prepare(
+                'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+            ).bind(Math.min(user_id, collection.user_id as number), Math.max(user_id, collection.user_id as number), Math.min(user_id, collection.user_id as number), Math.max(user_id, collection.user_id as number)).first();
+            if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+        }
+    }
+
+    const { results: files } = await c.env.DB.prepare(
+        `SELECT f.* FROM files f
+         JOIN collection_files cf ON f.id = cf.file_id
+         WHERE cf.collection_id = ?
+         ORDER BY cf.file_order ASC`
+    ).bind(collection_id).all();
+
+    if (!files || files.length === 0) return c.json({ error: 'Collection is empty' }, 400);
+
+    const zip = new JSZip();
+    for (const file of files) {
+      const object = await c.env.BUCKET.get(file.r2_key as string);
+      if (object) {
+        let body = await object.arrayBuffer();
+        // Decrypt on-the-fly using existing helper
+        if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
+          body = await decryptData(body, file.iv as string, c.env.ENCRYPTION_SECRET);
+        }
+        zip.file(file.filename as string, body);
+      }
+    }
+
+    const zipBuffer = await zip.generateAsync({ type: 'arraybuffer' });
+
+    return new Response(zipBuffer, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${collection.name}.zip"`,
+      },
+    });
+  } catch (e) {
+    console.error("ZIP creation failed:", e);
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 

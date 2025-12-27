@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -11,7 +11,7 @@ interface CollectionsManagerProps {
 }
 
 const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode = 'manage', onSelect }) => {
-  const { collections, createCollection, deleteCollection, loading: loadingColls } = useCollections();
+  const { collections, createCollection, deleteCollection, updateCollection, loading: loadingColls } = useCollections();
   const { showToast } = useToast();
   
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
@@ -24,6 +24,11 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [newVisibility, setNewVisibility] = useState<'private' | 'public' | 'sym'>('private');
+
+  // Editing State
+  const [isEditingColl, setIsEditingColl] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editVisibility, setEditVisibility] = useState<'private' | 'public' | 'sym'>('private');
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -60,6 +65,33 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
       }
   };
 
+  const startEdit = (e: React.MouseEvent, collection: Collection) => {
+      e.stopPropagation();
+      setEditName(collection.name);
+      setEditVisibility(collection.visibility as any);
+      setIsEditingColl(true);
+      setSelectedCollection(collection); // Use this to track which one is being edited in list view context if needed
+  };
+
+  const saveEdit = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!selectedCollection) return;
+      const success = await updateCollection(selectedCollection.id, editName, selectedCollection.description, editVisibility);
+      if (success) {
+          showToast('Collection updated', 'success');
+          setIsEditingColl(false);
+          setSelectedCollection(null);
+      } else {
+          showToast('Failed to update', 'error');
+      }
+  };
+
+  const cancelEdit = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setIsEditingColl(false);
+      setSelectedCollection(null);
+  };
+
   const openCollection = async (collection: Collection) => {
       setSelectedCollection(collection);
       setActiveView('detail');
@@ -77,6 +109,30 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
           showToast('Error loading collection', 'error');
       } finally {
           setLoadingFiles(false);
+      }
+  };
+
+  const downloadZip = async () => {
+      if (!selectedCollection) return;
+      showToast('Preparing ZIP...', 'info');
+      try {
+          const res = await fetch(`/api/collections/${selectedCollection.id}/zip`);
+          if (res.ok) {
+              const blob = await res.blob();
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `${selectedCollection.name}.zip`;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+              showToast('Download started', 'success');
+          } else {
+              showToast('Failed to generate ZIP', 'error');
+          }
+      } catch(e) {
+          showToast('Error downloading ZIP', 'error');
       }
   };
 
@@ -141,9 +197,16 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                   {activeView === 'list' ? (mode === 'manage' ? 'My Collections' : 'Select Collection') : selectedCollection?.name}
               </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close">
-            <IconX aria-hidden="true" />
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {activeView === 'detail' && (
+                <button onClick={downloadZip} title="Download as ZIP" style={{ background: 'transparent', border: 'none' }}>
+                    <IconDownload />
+                </button>
+            )}
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close">
+                <IconX aria-hidden="true" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -155,7 +218,10 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                     {loadingColls && <p>Loading...</p>}
                     {!loadingColls && collections.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No collections found.</p>}
 
-                    {collections.map(c => (
+                    {collections.map(c => {
+                        const isEditingThis = isEditingColl && selectedCollection?.id === c.id;
+
+                        return (
                         <div
                             key={c.id}
                             className="glass-panel"
@@ -164,39 +230,80 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                cursor: 'pointer',
+                                cursor: isEditingThis ? 'default' : 'pointer',
                                 border: '1px solid transparent',
                                 transition: 'all 0.2s'
                             }}
                             onClick={() => {
+                                if (isEditingThis) return;
                                 if (mode === 'select' && onSelect) onSelect(c.id);
                                 else openCollection(c);
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-sym)'}
-                            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'transparent'}
+                            onMouseEnter={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'var(--accent-sym)')}
+                            onMouseLeave={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'transparent')}
                         >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
                                 <IconFolder size={24} color="var(--accent-sym)" />
-                                <div>
-                                    <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{c.name}</div>
-                                    <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
-                                        {c.file_count} items • {c.visibility}
+                                {isEditingThis ? (
+                                    <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
+                                        <input
+                                            value={editName}
+                                            onChange={e => setEditName(e.target.value)}
+                                            onClick={e => e.stopPropagation()}
+                                            style={{ flex: 1, padding: '2px 5px' }}
+                                        />
+                                        <select
+                                            value={editVisibility}
+                                            onChange={e => setEditVisibility(e.target.value as any)}
+                                            onClick={e => e.stopPropagation()}
+                                            style={{ padding: '2px' }}
+                                        >
+                                            <option value="private">Private</option>
+                                            <option value="public">Public</option>
+                                            <option value="sym">Sym</option>
+                                        </select>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1.1em' }}>{c.name}</div>
+                                        <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+                                            {c.file_count} items • {c.visibility}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
+
                             {mode === 'manage' && (
-                                <button
-                                    onClick={(e) => handleDelete(c.id, e)}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-alert)', opacity: 0.7 }}
-                                    title="Delete Collection"
-                                    aria-label="Delete Collection"
-                                >
-                                    <IconTrash size={18} />
-                                </button>
+                                <div style={{ display: 'flex', gap: '5px' }}>
+                                    {isEditingThis ? (
+                                        <>
+                                            <button onClick={saveEdit} style={{ color: 'var(--accent-sym)', background: 'transparent', border: 'none' }}><IconDeviceFloppy size={18} /></button>
+                                            <button onClick={cancelEdit} style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none' }}><IconX size={18} /></button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                onClick={(e) => startEdit(e, c)}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', opacity: 0.7 }}
+                                                title="Edit"
+                                            >
+                                                <IconPencil size={18} />
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDelete(c.id, e)}
+                                                style={{ background: 'transparent', border: 'none', color: 'var(--accent-alert)', opacity: 0.7 }}
+                                                title="Delete Collection"
+                                                aria-label="Delete Collection"
+                                            >
+                                                <IconTrash size={18} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             )}
                             {mode === 'select' && <IconCheck size={18} style={{ opacity: 0.5 }} />}
                         </div>
-                    ))}
+                    )})}
                 </>
             )}
 

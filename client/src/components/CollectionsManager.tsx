@@ -182,7 +182,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 3200 }}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 3200, pointerEvents: 'auto' }}>
       <div className="glass-panel" style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Header */}

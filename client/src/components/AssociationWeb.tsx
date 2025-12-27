@@ -4,6 +4,8 @@ import { IconMaximize } from '@tabler/icons-react';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
 import { useCustomization } from '../context/CustomizationContext';
 import CustomizationSettings from './CustomizationSettings';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
@@ -12,6 +14,7 @@ interface AssociationWebProps {
   onNodeClick: (nodeId: string) => void;
   isDrifting: boolean;
   onlineUserIds: Set<number>;
+  signal?: any; // New prop for incoming signals
 }
 
 interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
@@ -21,7 +24,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift' | 'collection';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
@@ -33,6 +36,65 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+
+  // --- Signal Pulse Animation (GSAP) ---
+  const triggerPulse = useCallback((sourceId: string, targetId: string) => {
+    if (!gRef.current) return;
+
+    // Find the link element
+    const linkElement = gRef.current.select('.links').selectAll('line')
+      .filter((d: any) => {
+          const s = d.source.id || d.source;
+          const t = d.target.id || d.target;
+          return (s === sourceId && t === targetId) || (s === targetId && t === sourceId);
+      });
+
+    if (!linkElement.empty()) {
+        const node = linkElement.node() as SVGLineElement;
+
+        // Animate stroke-dasharray/offset to simulate a pulse
+        // Note: Lines don't have a path length easily accessible for dashoffset animation without getTotalLength() which is for paths.
+        // So we fake it with a temporary overlay path or just flash it.
+        // Let's create a temporary clone path on top to animate.
+
+        const x1 = parseFloat(linkElement.getAttribute('x1') || '0');
+        const y1 = parseFloat(linkElement.getAttribute('y1') || '0');
+        const x2 = parseFloat(linkElement.getAttribute('x2') || '0');
+        const y2 = parseFloat(linkElement.getAttribute('y2') || '0');
+
+        const pulsePath = gRef.current.select('.links').append('line')
+            .attr('x1', x1)
+            .attr('y1', y1)
+            .attr('x2', x2)
+            .attr('y2', y2)
+            .attr('stroke', 'var(--accent-online)')
+            .attr('stroke-width', 3)
+            .attr('stroke-linecap', 'round')
+            .attr('opacity', 1);
+
+        gsap.fromTo(pulsePath.node(),
+            { strokeDasharray: "0, 1000" },
+            {
+                strokeDasharray: "1000, 0",
+                duration: 1,
+                ease: "power2.out",
+                onComplete: () => pulsePath.remove()
+            }
+        );
+    }
+  }, []);
+
+  // React to incoming signals
+  useGSAP(() => {
+    if (signal) {
+        // Assume signal has actorId (source) and we are the target (Me)
+        // Or if it's a file update, source is file node, target is Me.
+        if (signal.actorId) {
+             triggerPulse(signal.actorId.toString(), 'me'); // Pulse from actor to Me
+        }
+    }
+  }, [signal]);
+
 
   // Resize Handler
   useEffect(() => {
@@ -69,7 +131,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
       // 3. Setup Layers (Order matters)
       if (g.select('.links').empty()) g.append('g').attr('class', 'links');
-      if (g.select('.hulls').empty()) g.append('g').attr('class', 'hulls'); // Hulls below nodes? or above? Let's put below
+      if (g.select('.hulls').empty()) g.append('g').attr('class', 'hulls');
       if (g.select('.nodes').empty()) g.append('g').attr('class', 'nodes');
 
       // 4. Setup Zoom
@@ -81,7 +143,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       zoomBehaviorRef.current = zoom;
       svg.call(zoom);
 
-      // 5. Setup Defs (Markers, Filters)
+      // 5. Setup Defs
       let defs = svg.select('defs');
       if (defs.empty()) {
           defs = svg.append('defs');
@@ -122,7 +184,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       return () => {
           simulationRef.current?.stop();
       };
-  }, []); // Run once on mount
+  }, []);
 
   // Data Updates & Rendering Loop
   useEffect(() => {
@@ -141,68 +203,45 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       simulation.force('radial', d3.forceRadial(Math.min(dimensions.width, dimensions.height) / 3, dimensions.width / 2, dimensions.height / 2).strength(0.1));
 
       // --- Data Merging Strategy ---
-      // Preserve existing nodes to keep x,y,vx,vy
       const oldNodes = new Map(simulation.nodes().map(d => [d.id, d]));
       const newNodes = nodes.map(n => {
           const old = oldNodes.get(n.id);
           if (old) {
-              // Merge, preserving simulation state
               return Object.assign(old, n);
           }
-          // New node
           return { ...n } as D3Node;
       });
 
-      // Update Simulation Data
       simulation.nodes(newNodes);
-      // Create mutable link objects for the simulation
       const mutableLinks = links.map(l => ({ ...l }));
 
       (simulation.force('link') as d3.ForceLink<D3Node, D3Link>)
           .links(mutableLinks)
-          .distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' ? 60 : 120));
+          .distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' || d.type === 'drift' ? 60 : 120));
 
-      // Re-heat only slightly if nodes changed count (avoid jumping)
       if (nodes.length !== oldNodes.size) {
           simulation.alpha(0.3).restart();
       } else {
-          // If only data updated, keep simmering or let cool
           if (simulation.alpha() < 0.1) simulation.alpha(0.1).restart();
       }
 
-      // --- Rendering (Enter/Update/Exit) ---
+      // --- Rendering ---
 
-      // 1. Avatars in Defs
+      // 1. Avatars
       const avatarPattern = defs.selectAll('pattern')
           .data(newNodes.filter(n => n.avatar_url), (d: any) => d.id);
-
       avatarPattern.exit().remove();
-
       const avatarEnter = avatarPattern.enter().append('pattern')
           .attr('id', d => `avatar-${d.id}`)
-          .attr('height', '100%')
-          .attr('width', '100%')
-          .attr('patternContentUnits', 'objectBoundingBox');
-
-      avatarEnter.append('image')
-          .attr('height', 1)
-          .attr('width', 1)
-          .attr('preserveAspectRatio', 'xMidYMid slice');
-
-      // Update existing & entered
-      avatarPattern.merge(avatarEnter).select('image')
-          .attr('href', d => d.avatar_url || '');
-
+          .attr('height', '100%').attr('width', '100%').attr('patternContentUnits', 'objectBoundingBox');
+      avatarEnter.append('image').attr('height', 1).attr('width', 1).attr('preserveAspectRatio', 'xMidYMid slice');
+      avatarPattern.merge(avatarEnter).select('image').attr('href', d => d.avatar_url || '');
 
       // 2. Links
-      // Use mutableLinks which will be updated by the simulation with object references
       const linkSelection = g.select('.links').selectAll<SVGLineElement, D3Link>('line')
-          .data(mutableLinks, (d: any) => `${d.source.id || d.source}-${d.target.id || d.target}`); // Use unique ID for key
-
+          .data(mutableLinks, (d: any) => `${d.source.id || d.source}-${d.target.id || d.target}`);
       linkSelection.exit().remove();
-
       const linkEnter = linkSelection.enter().append('line');
-
       const allLinks = linkEnter.merge(linkSelection)
           .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
           .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1)
@@ -211,61 +250,79 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           .attr('marker-end', (d) => d.type === 'asym' ? 'url(#end-asym)' : null)
           .style('filter', (d) => d.type === 'sym' ? 'url(#glow)' : 'none');
 
-
       // 3. Nodes
       const nodeSelection = g.select('.nodes').selectAll<SVGGElement, D3Node>('g.node')
           .data(newNodes, d => d.id);
-
       nodeSelection.exit().transition().duration(300).attr('opacity', 0).remove();
 
       const nodeEnter = nodeSelection.enter().append('g')
           .attr('class', 'node')
           .call(drag(simulation) as any)
-          .on('click', (event, d) => {
-              event.stopPropagation();
-              onNodeClick(d.id);
-          })
-          .on('mouseover', (event, d) => handleMouseOver(event, d, allLinks, allNodes, node_primary_color))
-          .on('mouseout', () => handleMouseOut(allLinks, allNodes, node_primary_color));
+          .on('click', (event, d) => { event.stopPropagation(); onNodeClick(d.id); })
+          .on('mouseover', (event, d) => handleMouseOver(event, d, allLinks, allNodes))
+          .on('mouseout', () => handleMouseOut(allLinks, allNodes));
 
-      // Circle 1 (Fill/Bg)
       nodeEnter.append('circle').attr('class', 'bg-circle');
-      // Circle 2 (Stroke/Ring)
       nodeEnter.append('circle').attr('class', 'ring-circle').attr('fill', 'transparent');
-      // Label
-      nodeEnter.append('text')
-          .attr('dy', 25)
-          .attr('text-anchor', 'middle')
-          .attr('font-size', '10px')
-          .style('pointer-events', 'none');
+      nodeEnter.append('text').attr('dy', 25).attr('text-anchor', 'middle').attr('font-size', '10px').style('pointer-events', 'none');
 
       const allNodes = nodeEnter.merge(nodeSelection);
 
+      // Helper for Vitality Decay
+      const getVitalityOpacity = (d: D3Node) => {
+        if (d.group !== 'artifact' || !d.data?.expires_at) return 1;
+        const now = new Date().getTime();
+        const expiry = new Date(d.data.expires_at).getTime();
+        const hoursLeft = (expiry - now) / (1000 * 60 * 60);
+
+        // < 24h starts fading. < 1h is very faint.
+        if (hoursLeft > 24) return 1;
+        if (hoursLeft <= 0) return 0.2;
+        return 0.2 + (0.8 * (hoursLeft / 24));
+      };
+
+      const getVitalityBlur = (d: D3Node) => {
+          if (d.group !== 'artifact' || !d.data?.expires_at) return 'none';
+          const now = new Date().getTime();
+          const expiry = new Date(d.data.expires_at).getTime();
+          const hoursLeft = (expiry - now) / (1000 * 60 * 60);
+
+          if (hoursLeft > 24) return 'none';
+          // Increase blur as it dies
+          const blurAmount = Math.max(0, 5 - (5 * (hoursLeft / 24))); // 0 to 5px
+          return blurAmount > 0 ? `blur(${blurAmount}px)` : 'none';
+      };
+
+
       // Update Attributes
-      allNodes.classed('drift-pulse', d => d.group.startsWith('drift'))
-          .attr('opacity', d => d.group.startsWith('drift') ? 0.6 : 1);
+      allNodes
+          .attr('opacity', d => d.group.startsWith('drift') ? 0.6 : getVitalityOpacity(d))
+          .style('filter', d => {
+              const blur = getVitalityBlur(d);
+              if (d.group === 'sym' || d.group === 'me') return 'url(#glow)';
+              if (d.online) return 'url(#online-glow)';
+              return blur; // Apply blur for decaying artifacts
+          });
 
       allNodes.select('.bg-circle')
-          .attr('r', (d) => (d.group === 'me' ? node_size * 1.5 : (d.group === 'drift_file' ? node_size * 0.5 : node_size)))
+          .attr('r', (d) => (d.group === 'me' ? node_size * 1.5 : (d.group === 'drift_file' || d.group === 'artifact' ? node_size * 0.5 : node_size)))
           .attr('fill', (d) => {
               if (d.avatar_url) return `url(#avatar-${d.id})`;
               if (d.group === 'me') return 'var(--accent-me)';
               if (d.group === 'sym') return node_primary_color;
               if (d.group === 'asym') return node_secondary_color;
               if (d.group === 'drift_user') return '#555555';
-              if (d.group === 'drift_file') return '#888888';
+              if (d.group === 'drift_file' || d.group === 'artifact') return '#888888';
               return '#333333ff';
-          })
-          .style('filter', (d) => (d.group === 'sym' || d.group === 'me') ? 'url(#glow)' : (d.online ? 'url(#online-glow)' : 'none'));
+          });
 
       allNodes.select('.ring-circle')
-          .attr('r', (d) => (d.group === 'me' ? node_size * 1.5 : (d.group === 'drift_file' ? node_size * 0.5 : node_size)))
+          .attr('r', (d) => (d.group === 'me' ? node_size * 1.5 : (d.group === 'drift_file' || d.group === 'artifact' ? node_size * 0.5 : node_size)))
           .attr('stroke', (d) => {
               if (d.online) return 'var(--accent-online)';
               if (d.group === 'me') return '#ffffffcc';
               if (d.group === 'sym') return node_primary_color;
-              if (d.group === 'drift_file') return 'transparent';
-              if (d.group === 'drift_user') return '#777';
+              if (d.group === 'drift_file' || d.group === 'artifact') return 'transparent';
               return 'var(--text-secondary)';
           })
           .attr('stroke-width', d => d.online ? 2.0 : 1.5);
@@ -286,12 +343,12 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
           allNodes.attr('transform', (d: any) => `translate(${d.x || 0},${d.y || 0})`);
 
-          // Update Hulls (Simplified for performance)
+          // Update Hulls (Simplified)
           if (collections.length > 0) {
               const hullGroup = g.select('.hulls');
               const hullData = collections.map(collection => {
                   const collectionNodes = newNodes.filter(n => {
-                      if (n.group === 'drift_file') {
+                      if (n.group === 'drift_file' || n.group === 'artifact') {
                           const fileId = parseInt(n.id.replace('file-', ''));
                           return collection.file_ids.includes(fileId);
                       }
@@ -321,26 +378,24 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           }
       });
 
-  }, [nodes, links, collections, dimensions, isDrifting, node_primary_color, node_secondary_color, node_size, theme_preferences]);
+  }, [nodes, links, collections, dimensions, isDrifting, node_primary_color, node_secondary_color, node_size, theme_preferences, triggerPulse]);
 
   // Helpers for Interaction
-  const handleMouseOver = (event: any, d: D3Node, allLinks: any, allNodes: any, color: string) => {
+  const handleMouseOver = (event: any, d: D3Node, allLinks: any, allNodes: any) => {
       setTooltip({ x: event.clientX, y: event.clientY, content: d.name });
-
       const neighbors = new Set<string>();
       allLinks.each((l: D3Link) => {
           if ((l.source as D3Node).id === d.id) neighbors.add((l.target as D3Node).id);
           else if ((l.target as D3Node).id === d.id) neighbors.add((l.source as D3Node).id);
       });
       neighbors.add(d.id);
-
       allNodes.attr('opacity', (n: D3Node) => neighbors.has(n.id) ? 1 : 0.1);
       allLinks.attr('opacity', (l: D3Link) =>
           ((l.source as D3Node).id === d.id || (l.target as D3Node).id === d.id) ? 1 : 0.05
       );
   };
 
-  const handleMouseOut = (allLinks: any, allNodes: any, color: string) => {
+  const handleMouseOut = (allLinks: any, allNodes: any) => {
       setTooltip(prev => ({ ...prev, content: null }));
       allNodes.attr('opacity', (d: D3Node) => d.group.startsWith('drift') ? 0.6 : 1);
       allLinks.attr('opacity', (d: D3Link) => d.type === 'sym' ? 0.8 : 0.4);
@@ -393,7 +448,6 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
                 }
             });
             if (minX === Infinity) return;
-
             const padding = 50;
             const bboxWidth = maxX - minX + padding * 2;
             const bboxHeight = maxY - minY + padding * 2;

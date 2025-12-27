@@ -3,15 +3,11 @@ import { useToast } from '../context/ToastContext';
 
 export interface NetworkNode {
   id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file';
+  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact';
   name: string;
   avatar_url?: string;
-  online?: boolean; // New property
-  primaryNodeColor?: string; // New property
-  secondaryNodeColor?: string; // New property
-  nodeSize?: number; // New property
-  data?: any; 
-  collectionIds?: number[]; // New property: Files can belong to collections
+  online?: boolean;
+  data?: any;
 }
 
 export interface NetworkLink {
@@ -32,7 +28,7 @@ interface UseNetworkDataProps {
   meAvatarUrl: string | undefined; 
   isDrifting: boolean;
   driftData: { users: any[], files: any[] };
-  onlineUserIds: Set<number>; // New prop
+  onlineUserIds: Set<number>;
 }
 
 export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds }: UseNetworkDataProps) => {
@@ -46,21 +42,17 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     if (!currentUserId) return;
     setLoading(true);
     try {
-      // Parallel fetch relationships and collections
-      const [relRes, collRes] = await Promise.all([
+      const [relRes, fileRes, collRes] = await Promise.all([
           fetch('/api/relationships'),
+          fetch('/api/files'),
           fetch('/api/collections')
       ]);
       
-      if (!relRes.ok) throw new Error('Failed to fetch network');
-      
       const relData = await relRes.json();
-      const collData = collRes.ok ? await collRes.json() : { collections: [] }; // Fail gracefully
+      const fileData = await fileRes.json();
+      const collData = collRes.ok ? await collRes.json() : { collections: [] };
 
-      const nodeMap = new Map<string, NetworkNode>();
-      const newLinks: NetworkLink[] = [];
-
-      // Process Collections to get file IDs
+      // Process Collections
       const loadedCollections: NetworkCollection[] = [];
       if (collData.collections) {
           collData.collections.forEach((c: any) => {
@@ -73,15 +65,33 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       }
       setCollections(loadedCollections);
 
-      // 1. Add Me
+      const nodeMap = new Map<string, NetworkNode>();
+      const newLinks: NetworkLink[] = [];
+
+      // Add "Me" hub
       nodeMap.set(currentUserId.toString(), {
         id: currentUserId.toString(),
         group: 'me',
-        name: meUsername || 'Me', 
+        name: meUsername || 'Me',
         avatar_url: meAvatarUrl,
         online: true
       });
 
+      // Add personal artifacts as nodes linked to "Me"
+      if (fileData.files) {
+          fileData.files.forEach((f: any) => {
+            const fileId = `file-${f.id}`;
+            nodeMap.set(fileId, {
+              id: fileId,
+              group: 'artifact',
+              name: f.filename,
+              data: f
+            });
+            newLinks.push({ source: fileId, target: currentUserId.toString(), type: 'drift' }); // Using 'drift' type for dotted line look, or create new type 'artifact'
+          });
+      }
+
+      // Add Social Nodes
       const processNode = (r: any, group: NetworkNode['group']) => {
         if (!nodeMap.has(r.user_id.toString())) {
           nodeMap.set(r.user_id.toString(), {
@@ -95,7 +105,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       };
 
       // Outgoing
-      relData.outgoing.forEach((r: any) => {
+      relData.outgoing?.forEach((r: any) => {
         if (r.type === 'asym_follow' && r.status === 'accepted') {
           processNode(r, 'asym');
           newLinks.push({ source: currentUserId.toString(), target: r.user_id.toString(), type: 'asym' });
@@ -103,22 +113,21 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       });
 
       // Incoming
-      relData.incoming.forEach((r: any) => {
+      relData.incoming?.forEach((r: any) => {
         if (r.type === 'asym_follow' && r.status === 'accepted') {
           processNode(r, 'asym');
           newLinks.push({ source: r.user_id.toString(), target: currentUserId.toString(), type: 'asym' });
         }
       });
 
-      // Mutual
-      relData.mutual.forEach((r: any) => {
+      relData.mutual?.forEach((r: any) => {
         processNode(r, 'sym');
         newLinks.push({ source: currentUserId.toString(), target: r.user_id.toString(), type: 'sym' });
       });
 
-      // Drift
+      // Drift Logic
       if (isDrifting && driftData) {
-        driftData.users.forEach((u: any) => {
+        driftData.users?.forEach((u: any) => {
           const uid = u.id.toString();
           if (!nodeMap.has(uid)) {
             nodeMap.set(uid, {
@@ -130,50 +139,39 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
             });
           }
         });
-        driftData.files.forEach((f: any) => {
-          const fileNodeId = `file-${f.id}`;
-          const ownerId = f.user_id.toString();
 
-          // Ensure owner node exists (stub if necessary)
-          if (!nodeMap.has(ownerId)) {
-             nodeMap.set(ownerId, {
-                 id: ownerId,
-                 group: 'drift_user', 
-                 name: f.owner_username || 'Unknown Signal',
-                 avatar_url: undefined,
-                 online: onlineUserIds.has(f.user_id)
-             });
-          }
+        driftData.files?.forEach((f: any) => {
+            const fileNodeId = `file-${f.id}`;
+            const ownerId = f.user_id.toString();
 
-          if (!nodeMap.has(fileNodeId)) {
-            nodeMap.set(fileNodeId, {
-              id: fileNodeId,
-              group: 'drift_file',
-              name: f.filename,
-              data: f
-            });
-            // Link to owner
-            newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
-          }
+            // Ensure owner node exists (stub if necessary)
+            if (!nodeMap.has(ownerId)) {
+                nodeMap.set(ownerId, {
+                    id: ownerId,
+                    group: 'drift_user',
+                    name: f.owner_username || 'Unknown Signal',
+                    online: onlineUserIds.has(f.user_id)
+                });
+            }
+
+            if (!nodeMap.has(fileNodeId)) {
+                nodeMap.set(fileNodeId, { id: fileNodeId, group: 'drift_file', name: f.filename, data: f });
+                newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
+            }
         });
       }
 
       setNodes(Array.from(nodeMap.values()));
       setLinks(newLinks);
-
     } catch (e) {
       console.error(e);
-      showToast('Failed to sync network', 'error');
+      showToast('Failed to sync filenet', 'error');
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, isDrifting, driftData, showToast, onlineUserIds]); // Added onlineUserIds dependency
+  }, [currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds, showToast]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   return { nodes, links, collections, loading, refresh: fetchData };
 };

@@ -413,8 +413,8 @@ app.get('/api/users/me', async (c) => {
         id: user.id, 
         username: user.username, 
         avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
-        public_key: user.public_key || null, // Handle missing fields gracefully
-        encrypted_private_key: user.encrypted_private_key || null
+        public_key: user.public_key,
+        encrypted_private_key: user.encrypted_private_key
       } 
     });
   } catch (e) {

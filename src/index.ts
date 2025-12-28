@@ -175,6 +175,7 @@ app.post('/api/register', async (c) => {
   try {
     const { hash, salt } = await hashPassword(password);
     const verificationToken = crypto.randomUUID();
+    const defaultAvatar = 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg';
     
     // Store the hash, salt, email, verification token, and E2EE keys
     const { success } = await c.env.DB.prepare(
@@ -185,7 +186,7 @@ app.post('/api/register', async (c) => {
       salt,
       email,
       verificationToken,
-      avatar_url || 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg',
+      avatar_url || defaultAvatar,
       public_key || null,
       encrypted_private_key || null
     ).run();

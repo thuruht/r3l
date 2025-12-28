@@ -178,40 +178,18 @@ app.post('/api/register', async (c) => {
     const defaultAvatar = 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg';
     
     // Store the hash, salt, email, verification token, and E2EE keys
-    // Backward compatibility: If public_key column doesn't exist, fall back to legacy insert
-    let success = false;
-    try {
-      const result = await c.env.DB.prepare(
-        'INSERT INTO users (username, password, salt, email, verification_token, avatar_url, public_key, encrypted_private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      ).bind(
-        username,
-        hash,
-        salt,
-        email,
-        verificationToken,
-        avatar_url || defaultAvatar,
-        public_key || null,
-        encrypted_private_key || null
-      ).run();
-      success = result.success;
-    } catch (dbError: any) {
-       if (dbError.message && dbError.message.includes('no such column')) {
-          console.warn("Migration 0014 missing: Falling back to legacy user registration.");
-          const result = await c.env.DB.prepare(
-            'INSERT INTO users (username, password, salt, email, verification_token, avatar_url) VALUES (?, ?, ?, ?, ?, ?)'
-          ).bind(
-            username,
-            hash,
-            salt,
-            email,
-            verificationToken,
-            avatar_url || defaultAvatar
-          ).run();
-          success = result.success;
-       } else {
-         throw dbError; // Re-throw other errors (e.g. constraints)
-       }
-    }
+    const { success } = await c.env.DB.prepare(
+      'INSERT INTO users (username, password, salt, email, verification_token, avatar_url, public_key, encrypted_private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(
+      username,
+      hash,
+      salt,
+      email,
+      verificationToken,
+      avatar_url || defaultAvatar,
+      public_key || null,
+      encrypted_private_key || null
+    ).run();
     
     if (success) {
       // Send verification email
@@ -255,21 +233,9 @@ app.post('/api/login', async (c) => {
 
   try {
     // 1. Fetch user (including secret salt and E2EE keys)
-    let user;
-    try {
-      user = await c.env.DB.prepare(
-        'SELECT id, username, password, salt, avatar_url, public_key, encrypted_private_key FROM users WHERE username = ?'
-      ).bind(username).first();
-    } catch (dbError: any) {
-       if (dbError.message && dbError.message.includes('no such column')) {
-          console.warn("Migration 0014 missing: Falling back to legacy login query.");
-          user = await c.env.DB.prepare(
-            'SELECT id, username, password, salt, avatar_url FROM users WHERE username = ?'
-          ).bind(username).first();
-       } else {
-         throw dbError;
-       }
-    }
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, password, salt, avatar_url, public_key, encrypted_private_key FROM users WHERE username = ?'
+    ).bind(username).first();
 
     if (!user) return c.json({ error: 'Invalid credentials' }, 401);
 
@@ -436,20 +402,9 @@ app.get('/api/users/me', async (c) => {
     const payload = await verify(token, secret);
     
     // Optional: Fetch fresh data from DB to ensure user still exists
-    let user;
-    try {
-      user = await c.env.DB.prepare(
-        'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
-      ).bind(payload.id).first();
-    } catch (dbError: any) {
-        if (dbError.message && dbError.message.includes('no such column')) {
-           user = await c.env.DB.prepare(
-             'SELECT id, username, avatar_url FROM users WHERE id = ?'
-           ).bind(payload.id).first();
-        } else {
-          throw dbError;
-        }
-    }
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
+    ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
 
@@ -1412,25 +1367,10 @@ app.post('/api/files', async (c) => {
     // Check for burn_on_read flag in formData (default false)
     const burn_on_read = formData['burn_on_read'] === 'true';
 
-    let success = false;
-    try {
-        const result = await c.env.DB.prepare(
-          `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
-        success = result.success;
-    } catch (dbError: any) {
-        if (dbError.message && dbError.message.includes('no such column')) {
-            console.warn("Migration 0014 missing: Falling back to legacy file upload.");
-             const result = await c.env.DB.prepare(
-              `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-            ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv).run();
-            success = result.success;
-        } else {
-            throw dbError;
-        }
-    }
+    const { success } = await c.env.DB.prepare(
+      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
 
     if (success) {
       // Trigger Pulse Signal if public or sym

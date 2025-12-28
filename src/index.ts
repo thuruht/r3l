@@ -169,17 +169,49 @@ app.post('/api/register', async (c) => {
   if (!await checkRateLimit(c, 'register', 5, 3600)) { // 5 per hour
     return c.json({ error: 'Too many registration attempts. Please try again later.' }, 429);
   }
-  const { username, password, email, avatar_url } = await c.req.json();
+  const { username, password, email, avatar_url, public_key, encrypted_private_key } = await c.req.json();
   if (!username || !password || !email) return c.json({ error: 'Missing fields' }, 400);
 
   try {
     const { hash, salt } = await hashPassword(password);
     const verificationToken = crypto.randomUUID();
+    const defaultAvatar = 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg';
     
-    // Store the hash, salt, email, and verification token
-    const { success } = await c.env.DB.prepare(
-      'INSERT INTO users (username, password, salt, email, verification_token, avatar_url) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(username, hash, salt, email, verificationToken, avatar_url || 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg').run();
+    // Store the hash, salt, email, verification token, and E2EE keys
+    // Backward compatibility: If public_key column doesn't exist, fall back to legacy insert
+    let success = false;
+    try {
+      const result = await c.env.DB.prepare(
+        'INSERT INTO users (username, password, salt, email, verification_token, avatar_url, public_key, encrypted_private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(
+        username,
+        hash,
+        salt,
+        email,
+        verificationToken,
+        avatar_url || defaultAvatar,
+        public_key || null,
+        encrypted_private_key || null
+      ).run();
+      success = result.success;
+    } catch (dbError: any) {
+       if (dbError.message && dbError.message.includes('no such column')) {
+          console.warn("Migration 0014 missing: Falling back to legacy user registration.");
+          const result = await c.env.DB.prepare(
+            'INSERT INTO users (username, password, salt, email, verification_token, avatar_url) VALUES (?, ?, ?, ?, ?, ?)'
+          ).bind(
+            username,
+            hash,
+            salt,
+            email,
+            verificationToken,
+            avatar_url || defaultAvatar
+          ).run();
+          success = result.success;
+       } else {
+         throw dbError; // Re-throw other errors (e.g. constraints)
+       }
+    }
     
     if (success) {
       // Send verification email
@@ -222,10 +254,22 @@ app.post('/api/login', async (c) => {
   if (!username || !password) return c.json({ error: 'Missing fields' }, 400);
 
   try {
-    // 1. Fetch user (including secret salt)
-    const user = await c.env.DB.prepare(
-      'SELECT id, username, password, salt, avatar_url FROM users WHERE username = ?'
-    ).bind(username).first();
+    // 1. Fetch user (including secret salt and E2EE keys)
+    let user;
+    try {
+      user = await c.env.DB.prepare(
+        'SELECT id, username, password, salt, avatar_url, public_key, encrypted_private_key FROM users WHERE username = ?'
+      ).bind(username).first();
+    } catch (dbError: any) {
+       if (dbError.message && dbError.message.includes('no such column')) {
+          console.warn("Migration 0014 missing: Falling back to legacy login query.");
+          user = await c.env.DB.prepare(
+            'SELECT id, username, password, salt, avatar_url FROM users WHERE username = ?'
+          ).bind(username).first();
+       } else {
+         throw dbError;
+       }
+    }
 
     if (!user) return c.json({ error: 'Invalid credentials' }, 401);
 
@@ -260,7 +304,9 @@ app.post('/api/login', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
+        public_key: user.public_key,
+        encrypted_private_key: user.encrypted_private_key
       } 
     });
 
@@ -273,6 +319,86 @@ app.post('/api/login', async (c) => {
 app.post('/api/logout', (c) => {
   deleteCookie(c, 'auth_token');
   return c.json({ message: 'Logged out' });
+});
+
+app.post('/api/forgot-password', async (c) => {
+  if (!await checkRateLimit(c, 'forgot', 3, 3600)) { // 3 per hour
+    return c.json({ error: 'Too many attempts. Please try again later.' }, 429);
+  }
+  const { email } = await c.req.json();
+  if (!email) return c.json({ error: 'Email is required' }, 400);
+
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username FROM users WHERE email = ?'
+    ).bind(email).first();
+
+    if (!user) {
+        // Return success to prevent email enumeration
+        return c.json({ message: 'If this email exists, a reset link has been sent.' });
+    }
+
+    const resetToken = crypto.randomUUID();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+
+    const { success } = await c.env.DB.prepare(
+        'UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?'
+    ).bind(resetToken, expiresAt, user.id).run();
+
+    if (success && c.env.RESEND_API_KEY) {
+        try {
+            const resend = new Resend(c.env.RESEND_API_KEY);
+            await resend.emails.send({
+                from: 'Rel F Recovery <recovery@r3l.distorted.work>',
+                to: email,
+                subject: 'Reset your Rel F password',
+                html: `<p>Hi ${user.username},</p><p>Click <a href="https://r3l.distorted.work/reset-password?token=${resetToken}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`
+            });
+        } catch (emailError) {
+             console.error("Failed to send reset email:", emailError);
+        }
+    }
+
+    return c.json({ message: 'If this email exists, a reset link has been sent.' });
+
+  } catch (e) {
+    console.error("Forgot password error:", e);
+    return c.json({ error: 'Request failed' }, 500);
+  }
+});
+
+app.post('/api/reset-password', async (c) => {
+  if (!await checkRateLimit(c, 'reset', 3, 3600)) { // 3 per hour
+    return c.json({ error: 'Too many attempts.' }, 429);
+  }
+  const { token, newPassword } = await c.req.json();
+
+  if (!token || !newPassword) return c.json({ error: 'Missing fields' }, 400);
+
+  try {
+    const user = await c.env.DB.prepare(
+        'SELECT id, salt FROM users WHERE reset_token = ? AND reset_expires > ?'
+    ).bind(token, new Date().toISOString()).first();
+
+    if (!user) {
+        return c.json({ error: 'Invalid or expired token' }, 400);
+    }
+
+    const { hash } = await hashPassword(newPassword, user.salt as string); // Keep same salt
+
+    const { success } = await c.env.DB.prepare(
+        'UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?'
+    ).bind(hash, user.id).run();
+
+    if (success) {
+        return c.json({ message: 'Password reset successfully. You can now login.' });
+    } else {
+        return c.json({ error: 'Failed to reset password' }, 500);
+    }
+  } catch (e) {
+     console.error("Reset password error:", e);
+     return c.json({ error: 'Reset failed' }, 500);
+  }
 });
 
 app.get('/api/verify-email', async (c) => {
@@ -310,9 +436,20 @@ app.get('/api/users/me', async (c) => {
     const payload = await verify(token, secret);
     
     // Optional: Fetch fresh data from DB to ensure user still exists
-    const user = await c.env.DB.prepare(
-      'SELECT id, username, avatar_url FROM users WHERE id = ?'
-    ).bind(payload.id).first();
+    let user;
+    try {
+      user = await c.env.DB.prepare(
+        'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
+      ).bind(payload.id).first();
+    } catch (dbError: any) {
+        if (dbError.message && dbError.message.includes('no such column')) {
+           user = await c.env.DB.prepare(
+             'SELECT id, username, avatar_url FROM users WHERE id = ?'
+           ).bind(payload.id).first();
+        } else {
+          throw dbError;
+        }
+    }
 
     if (!user) return c.json({ error: 'User not found' }, 404);
 
@@ -320,7 +457,9 @@ app.get('/api/users/me', async (c) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url
+        avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
+        public_key: user.public_key || null, // Handle missing fields gracefully
+        encrypted_private_key: user.encrypted_private_key || null
       } 
     });
   } catch (e) {
@@ -1270,10 +1409,28 @@ app.post('/api/files', async (c) => {
 
     // Record in D1
     const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
-    const { success } = await c.env.DB.prepare(
-      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv).run();
+    // Check for burn_on_read flag in formData (default false)
+    const burn_on_read = formData['burn_on_read'] === 'true';
+
+    let success = false;
+    try {
+        const result = await c.env.DB.prepare(
+          `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
+        success = result.success;
+    } catch (dbError: any) {
+        if (dbError.message && dbError.message.includes('no such column')) {
+            console.warn("Migration 0014 missing: Falling back to legacy file upload.");
+             const result = await c.env.DB.prepare(
+              `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv).run();
+            success = result.success;
+        } else {
+            throw dbError;
+        }
+    }
 
     if (success) {
       // Trigger Pulse Signal if public or sym
@@ -1382,7 +1539,7 @@ app.get('/api/files/:id/content', async (c) => {
 
     let body = await object.arrayBuffer();
 
-    // Decrypt if needed
+    // Decrypt if needed (Server-side fallback)
     if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
         try {
             body = await decryptData(body, file.iv as string, c.env.ENCRYPTION_SECRET);
@@ -1396,6 +1553,17 @@ app.get('/api/files/:id/content', async (c) => {
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
     headers.set('Content-Disposition', `attachment; filename="${file.filename}"`);
+
+    // Handle Burn On Read (Ephemeral)
+    if (file.burn_on_read) {
+        // Schedule deletion after response (or immediately if we trust the buffer is in memory)
+        // Since this is a Worker, we can use waitUntil to perform background tasks
+        c.executionCtx.waitUntil(async function() {
+            await c.env.BUCKET.delete(file.r2_key as string);
+            await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
+            console.log(`Burned file ${file_id} after read.`);
+        }());
+    }
 
     return new Response(body, {
       headers,

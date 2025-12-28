@@ -1,6 +1,5 @@
 // do.ts
 
-1
 interface Env {
   ASSETS: Fetcher;
   KV: KVNamespace;

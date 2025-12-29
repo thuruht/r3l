@@ -62,12 +62,25 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
-      setPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+      // Calculate new position
+      let newX = e.clientX - dragOffset.current.x;
+      let newY = e.clientY - dragOffset.current.y;
+
+      // Constrain within viewport (allowing for some overhang but keeping header visible)
+      // Top constraint: Keep header fully visible (assuming ~60px header)
+      newY = Math.max(0, newY);
+      newY = Math.min(window.innerHeight - 60, newY); // Don't let top go below bottom edge
+
+      // Horizontal constraint: Keep at least 100px visible on either side
+      newX = Math.max(100 - size.w, newX); // Left edge
+      newX = Math.min(window.innerWidth - 100, newX); // Right edge
+
+      setPos({ x: newX, y: newY });
     }
     if (isResizing) {
       setSize({ w: Math.max(400, e.clientX - pos.x), h: Math.max(300, e.clientY - pos.y) });
     }
-  }, [isDragging, isResizing, pos]);
+  }, [isDragging, isResizing, pos, size.w]);
 
   useEffect(() => {
     const stopAction = () => { setIsDragging(false); setIsResizing(false); };

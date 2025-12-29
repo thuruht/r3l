@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX, IconLoader2 } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
@@ -37,6 +37,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [remixTarget, setRemixTarget] = useState<FileData | null>(null);
   const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null); // Added
+  const [boostingIds, setBoostingIds] = useState<Set<number>>(new Set());
   
   const listRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast(); // Added
@@ -181,6 +182,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   };
 
   const handleBoost = async (fileId: number) => {
+    setBoostingIds(prev => new Set(prev).add(fileId));
     try {
       const res = await fetch(`/api/files/${fileId}/vitality`, {
         method: 'POST',
@@ -201,6 +203,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       }
     } catch (e) {
       console.error("Error boosting", e);
+    } finally {
+      setBoostingIds(prev => {
+        const next = new Set(prev);
+        next.delete(fileId);
+        return next;
+      });
     }
   };
 
@@ -278,6 +286,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                  <span style={{ fontSize: '0.8em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
                  <button 
                    onClick={() => handleBoost(file.id)} 
+                   disabled={boostingIds.has(file.id)}
                    style={{ 
                      padding: '0 4px', 
                      background: 'transparent', 
@@ -285,13 +294,17 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                      color: '#ffeb3b', 
                      borderRadius: '4px',
                      fontSize: '0.7em',
-                     cursor: 'pointer',
-                     marginLeft: '4px'
+                     cursor: boostingIds.has(file.id) ? 'wait' : 'pointer',
+                     marginLeft: '4px',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     minWidth: '20px'
                    }}
                    title="Boost Signal"
                    aria-label="Boost Signal"
                  >
-                   +
+                   {boostingIds.has(file.id) ? <IconLoader2 size={12} className="icon-spin" /> : "+"}
                  </button>
               </div>
 
@@ -317,6 +330,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 onClick={(e) => { e.stopPropagation(); setRemixTarget(file); }}
                 style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
                 title="Remix this artifact"
+                aria-label="Remix this artifact"
               >
                 <IconArrowsShuffle size={14} />
               </button>

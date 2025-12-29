@@ -1392,22 +1392,36 @@ app.post('/api/files', async (c) => {
 
     // Record in D1
     const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
+
     // Check for burn_on_read flag in formData (default false)
     const burn_on_read = formData['burn_on_read'] === 'true';
+
+    // Map allowed visibility values
+    // DB Constraint: visibility IN ('public', 'sym', 'me')
+    // Frontend currently sends 'private', so map it to 'me'.
+    let dbVisibility = visibility;
+    if (dbVisibility === 'private') {
+      dbVisibility = 'me';
+    } else if (!['public', 'sym', 'me'].includes(dbVisibility)) {
+      dbVisibility = 'me'; // Default safe fallback
+    }
 
     const { success } = await c.env.DB.prepare(
       `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, file.name, size, file.type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
+    ).bind(user_id, r2_key, file.name, size, file.type, dbVisibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
 
     if (success) {
       // Trigger Pulse Signal if public or sym
+      // IMPORTANT: Non-blocking to prevent upload failure if DO is busy
       if (visibility === 'public' || visibility === 'sym') {
-         await broadcastSignal(c.env, 'signal_artifact', user_id, {
-             filename: file.name,
-             mime_type: file.type,
-             visibility
-         });
+         c.executionCtx.waitUntil(
+             broadcastSignal(c.env, 'signal_artifact', user_id, {
+                 filename: file.name,
+                 mime_type: file.type,
+                 visibility
+             }).catch(err => console.error("Pulse signal failed:", err))
+         );
       }
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });
     } else {

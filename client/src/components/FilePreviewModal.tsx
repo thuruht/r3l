@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy,
-  IconRefresh, IconFolderPlus, IconArrowsMove
+  IconRefresh, IconFolderPlus, IconArrowsMove, IconUsers
 } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 import CollectionsManager from './CollectionsManager';
 import { useCollections } from '../hooks/useCollections';
 import Skeleton from './Skeleton';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 interface FilePreviewModalProps {
   fileId: number;
@@ -33,11 +35,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const [editContent, setEditContent] = useState('');
   const [vitality, setVitality] = useState<number>(0);
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
+  const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
 
   const { showToast } = useToast();
   const { addToCollection } = useCollections();
 
+  const ydocRef = useRef<Y.Doc | null>(null);
+  const providerRef = useRef<WebsocketProvider | null>(null);
+
   const isImage = mimeType.startsWith('image/');
+  const isAudio = mimeType.startsWith('audio/');
+  const isVideo = mimeType.startsWith('video/');
+  const isPDF = mimeType === 'application/pdf';
   const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js') || filename.endsWith('.tsx') || filename.endsWith('.jsx') || filename.endsWith('.css') || filename.endsWith('.html');
 
   // --- Drag & Resize Handlers ---
@@ -140,6 +149,74 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
       }
   };
 
+  // --- Collab Setup ---
+  useEffect(() => {
+    if (isEditing && isText) {
+       // Initialize Yjs
+       setCollabStatus('connecting');
+       const ydoc = new Y.Doc();
+       const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+
+       // Note: In real production, authentication token should be passed here
+       const provider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), ydoc);
+
+       provider.on('status', (event: any) => {
+         setCollabStatus(event.status); // 'connected' or 'disconnected'
+       });
+
+       const yText = ydoc.getText('codemirror'); // Standard Yjs text type name
+
+       // Initial sync: set local content to Yjs doc if empty
+       // Ensure we don't overwrite if data exists (naive check)
+       if (editContent && yText.length === 0) {
+           yText.insert(0, editContent);
+       }
+
+       // Observe changes from other peers
+       yText.observe(event => {
+           setEditContent(yText.toString());
+       });
+
+       ydocRef.current = ydoc;
+       providerRef.current = provider;
+
+    } else {
+        // Cleanup
+        if (providerRef.current) {
+            providerRef.current.destroy();
+            providerRef.current = null;
+        }
+        if (ydocRef.current) {
+            ydocRef.current.destroy();
+            ydocRef.current = null;
+        }
+        setCollabStatus('disconnected');
+    }
+
+    return () => {
+        if (providerRef.current) providerRef.current.destroy();
+        if (ydocRef.current) ydocRef.current.destroy();
+    };
+  }, [isEditing, isText, fileId]);
+
+  // Handle local text changes to propagate to Yjs
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const newVal = e.target.value;
+      setEditContent(newVal);
+
+      if (ydocRef.current) {
+          const yText = ydocRef.current.getText('codemirror');
+          // Naive full replacement for "Bones" implementation
+          // Proper Yjs implementation uses diffs, but this proves the connection
+          if (yText.toString() !== newVal) {
+             ydocRef.current.transact(() => {
+                 yText.delete(0, yText.length);
+                 yText.insert(0, newVal);
+             });
+          }
+      }
+  };
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
       <div
@@ -187,7 +264,14 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             </button>
             <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconFolderPlus size={18} /></button>
             {isText && !isEditing && <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconEdit size={18}/></button>}
-            {isEditing && <button onClick={handleSave} style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)' }}><IconDeviceFloppy size={18}/></button>}
+            {isEditing && (
+                <>
+                    <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)' }}>
+                        <IconUsers size={14} /> {collabStatus}
+                    </div>
+                    <button onClick={handleSave} style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)' }}><IconDeviceFloppy size={18}/></button>
+                </>
+            )}
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconX size={20} /></button>
           </div>
         </div>
@@ -199,11 +283,40 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
           {!loading && !error && (
              <>
                {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="" />}
+
+               {isAudio && (
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                   <audio controls style={{ width: '100%' }}>
+                     <source src={`/api/files/${fileId}/content`} type={mimeType} />
+                     Your browser does not support the audio element.
+                   </audio>
+                 </div>
+               )}
+
+               {isVideo && (
+                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                   <video controls style={{ maxWidth: '100%', maxHeight: '100%' }}>
+                     <source src={`/api/files/${fileId}/content`} type={mimeType} />
+                     Your browser does not support the video element.
+                   </video>
+                 </div>
+               )}
+
+               {isPDF && (
+                 <iframe
+                    src={`/api/files/${fileId}/content`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 'none' }}
+                    title="PDF Viewer"
+                 />
+               )}
+
                {isText && !isEditing && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
                {isText && isEditing && (
                    <textarea
                     value={editContent}
-                    onChange={e => setEditContent(e.target.value)}
+                    onChange={handleTextChange}
                     style={{ width: '100%', height: '100%', background: 'transparent', border: 'none', color: 'inherit', resize: 'none', outline: 'none', fontFamily: 'monospace' }}
                    />
                )}

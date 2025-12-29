@@ -10,9 +10,9 @@ import JSZip from 'jszip';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
-// import { DocumentRoom } from './do/DocumentRoom';
+import { DocumentRoom } from './do/DocumentRoom';
 export { RelfDO } from './do';
-// export { DocumentRoom } from './do/DocumentRoom';
+export { DocumentRoom } from './do/DocumentRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -25,7 +25,7 @@ interface Env {
   DB: D1Database;
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
-  // DOCUMENT_ROOM: DurableObjectNamespace;
+  DOCUMENT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -588,6 +588,26 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   }
 });
 
+// Document Collaboration WebSocket endpoint
+app.get('/api/collab/:fileId', authMiddleware, async (c) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+  const fileId = c.req.param('fileId');
+
+  try {
+    // Map fileId to a unique DocumentRoom DO instance
+    const doId = c.env.DOCUMENT_ROOM.idFromName(fileId);
+    const doStub = c.env.DOCUMENT_ROOM.get(doId);
+
+    return doStub.fetch(c.req.raw);
+  } catch (error) {
+    console.error("Error proxying Collab WebSocket:", error);
+    return c.text('Collab WebSocket proxy failed', 500);
+  }
+});
+
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -1138,11 +1158,11 @@ app.get('/api/drift', authMiddleware, async (c) => {
         return c.json({ error: 'Drifting too fast. Please wait.' }, 429);
     }
     const user_id = c.get('user_id');
+    const type = c.req.query('type'); // 'image', 'audio', 'text', or undefined
 
     try {
         // Optimization Note: ORDER BY RANDOM() can be slow on very large tables.
         // For the current scale of Rel F, this is acceptable.
-        // If performance degrades, consider fetching a random ID range or using a reservoir sampling strategy implemented in the application layer.
 
         const driftUsers = await c.env.DB.prepare(
             `SELECT u.id, u.username, u.avatar_url 
@@ -1153,15 +1173,23 @@ app.get('/api/drift', authMiddleware, async (c) => {
              LIMIT 10`
         ).bind(user_id, user_id, user_id).all();
 
-        const driftFiles = await c.env.DB.prepare(
-            `SELECT f.id, f.filename, f.mime_type, f.user_id, u.username as owner_username
+        let fileQuery = `
+             SELECT f.id, f.filename, f.mime_type, f.user_id, u.username as owner_username
              FROM files f
              JOIN users u ON f.user_id = u.id
              LEFT JOIN mutual_connections mc ON (f.user_id = mc.user_a_id AND mc.user_b_id = ?) OR (f.user_id = mc.user_b_id AND mc.user_a_id = ?)
              WHERE f.visibility = 'public' AND f.user_id != ? AND mc.id IS NULL
-             ORDER BY RANDOM()
-             LIMIT 10`
-        ).bind(user_id, user_id, user_id).all();
+        `;
+        const fileParams: (string | number)[] = [user_id, user_id, user_id];
+
+        if (type) {
+            fileQuery += ` AND f.mime_type LIKE ?`;
+            fileParams.push(`${type}/%`);
+        }
+
+        fileQuery += ` ORDER BY RANDOM() LIMIT 10`;
+
+        const driftFiles = await c.env.DB.prepare(fileQuery).bind(...fileParams).all();
 
         const processAvatar = (u: any) => ({
             ...u,
@@ -1471,7 +1499,9 @@ app.get('/api/files/:id/content', async (c) => {
     }
 
     // 3. Fetch from R2
-    const object = await c.env.BUCKET.get(file.r2_key as string);
+  const object = await c.env.BUCKET.get(file.r2_key, {
+    range: c.req.header('Range') // Pass Range header for seeking
+  });
 
     if (!object) {
       return c.json({ error: 'File content missing in storage' }, 404);
@@ -2252,7 +2282,7 @@ app.post('/api/feedback', async (c) => {
   }
   
   const user_id = c.get('user_id'); // Optional: could be anonymous if we allow it, but let's require auth for now
-  const { message, type } = await c.req.json();
+  const { message, type, name, email } = await c.req.json();
 
   if (!message) return c.json({ error: 'Message is required' }, 400);
 
@@ -2262,16 +2292,35 @@ app.post('/api/feedback', async (c) => {
       
       // Fetch user details if authenticated
       let userInfo = 'Anonymous';
+      let userDetails = '';
+
       if (user_id) {
-          const user = await c.env.DB.prepare('SELECT username, email FROM users WHERE id = ?').bind(user_id).first();
-          if (user) userInfo = `${user.username} (${user.email})`;
+          const user = await c.env.DB.prepare('SELECT id, username, email FROM users WHERE id = ?').bind(user_id).first();
+          if (user) {
+              userInfo = `${user.username} (ID: ${user.id})`;
+              userDetails = `
+                <p><strong>Registered Email:</strong> ${user.email}</p>
+                <p><strong>Username:</strong> ${user.username}</p>
+                <p><strong>User ID:</strong> ${user.id}</p>
+              `;
+          }
       }
+
+      const manualContact = (name || email) ? `<p><strong>Provided Contact:</strong> ${name || 'N/A'} &lt;${email || 'N/A'}&gt;</p>` : '';
 
       await resend.emails.send({
         from: 'Rel F Feedback <feedback@r3l.distorted.work>',
         to: 'lowlyserf@distorted.work',
         subject: `[Rel F Beta] Feedback: ${type || 'General'}`,
-        html: `<p><strong>User:</strong> ${userInfo}</p><p><strong>Message:</strong></p><pre>${message}</pre>`
+        html: `
+            <h3>New Feedback Received</h3>
+            <p><strong>Type:</strong> ${type || 'General'}</p>
+            ${userDetails}
+            ${manualContact}
+            <hr />
+            <p><strong>Message:</strong></p>
+            <pre style="background: #f4f4f4; padding: 10px; border-radius: 5px;">${message}</pre>
+        `
       });
       return c.json({ message: 'Feedback sent successfully' });
     } catch (emailError) {

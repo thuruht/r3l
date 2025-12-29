@@ -18,11 +18,9 @@ export class DocumentRoom extends DurableObject {
   async fetch(request: Request) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/websocket") {
-      if (request.headers.get("Upgrade") !== "websocket") {
-        return new Response("Expected Upgrade: websocket", { status: 426 });
-      }
-
+    // Yjs websocket provider usually connects to root, or room-specific path
+    // We'll support /collab/:docName pattern if needed, but DO ID is unique per doc anyway
+    if (request.headers.get("Upgrade") === "websocket") {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -41,9 +39,10 @@ export class DocumentRoom extends DurableObject {
     webSocket.addEventListener("message", async (msg) => {
       try {
         // Broadcast message to all other sessions
-        // In Phase 9 proper, this will be replaced by Yjs awareness/sync protocol
+        // This is sufficient for Yjs 'y-websocket' provider which handles the sync protocol over the wire.
+        // We just act as a relay for the binary blobs.
         this.sessions.forEach((session) => {
-          if (session !== webSocket) {
+          if (session !== webSocket && session.readyState === WebSocket.READY_STATE_OPEN) {
             session.send(msg.data);
           }
         });

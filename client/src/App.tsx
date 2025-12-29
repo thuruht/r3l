@@ -41,6 +41,7 @@ function Main() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
+  const [driftType, setDriftType] = useState<string>(''); // '' = all, 'image', 'audio', 'text'
   const [driftData, setDriftData] = useState<{users: any[], files: any[]}>({ users: [], files: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -129,9 +130,10 @@ function Main() {
   };
 
 
-  const fetchDrift = async () => {
+  const fetchDrift = async (type: string = '') => {
       try {
-          const res = await fetch('/api/drift');
+          const query = type ? `?type=${type}` : '';
+          const res = await fetch(`/api/drift${query}`);
           if (res.ok) {
               const data = await res.json();
               setDriftData(data);
@@ -145,11 +147,26 @@ function Main() {
       const newState = !isDrifting;
       setIsDrifting(newState);
       if (newState) {
-          fetchDrift();
+          fetchDrift(driftType);
           showToast('Drift Mode: Scanning frequency...', 'info');
           navigate('/');
       } else {
           showToast('Drift Mode: Disengaged.', 'info');
+      }
+  };
+
+  const cycleDriftType = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const types = ['', 'image', 'audio', 'text'];
+      const currentIndex = types.indexOf(driftType);
+      const nextType = types[(currentIndex + 1) % types.length];
+      setDriftType(nextType);
+
+      const label = nextType === '' ? 'All' : nextType.charAt(0).toUpperCase() + nextType.slice(1);
+      showToast(`Drift Filter: ${label}`, 'info');
+
+      if (isDrifting) {
+          fetchDrift(nextType);
       }
   };
 
@@ -367,9 +384,14 @@ function Main() {
                         </button>
                       </div>
 
-                      <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px' }}>
-                        <IconRadar2 size={20} aria-hidden="true" />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', background: isDrifting ? 'rgba(50, 255, 100, 0.1)' : 'transparent', borderRadius: '4px' }}>
+                          <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+                            <IconRadar2 size={20} aria-hidden="true" />
+                          </button>
+                          <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} style={{ padding: '8px 6px', fontSize: '0.7rem', minWidth: '40px', color: isDrifting ? 'var(--accent-sym)' : 'var(--text-secondary)' }}>
+                              {driftType ? driftType.toUpperCase() : 'ALL'}
+                          </button>
+                      </div>
                     </div>
                     
                     <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>

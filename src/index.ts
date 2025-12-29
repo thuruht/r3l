@@ -1402,12 +1402,15 @@ app.post('/api/files', async (c) => {
 
     if (success) {
       // Trigger Pulse Signal if public or sym
+      // IMPORTANT: Non-blocking to prevent upload failure if DO is busy
       if (visibility === 'public' || visibility === 'sym') {
-         await broadcastSignal(c.env, 'signal_artifact', user_id, {
-             filename: file.name,
-             mime_type: file.type,
-             visibility
-         });
+         c.executionCtx.waitUntil(
+             broadcastSignal(c.env, 'signal_artifact', user_id, {
+                 filename: file.name,
+                 mime_type: file.type,
+                 visibility
+             }).catch(err => console.error("Pulse signal failed:", err))
+         );
       }
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });
     } else {

@@ -8,6 +8,7 @@
   --accent-sym-bright: #26de81; /* Added for highlighting */
   --accent-asym: #5b6670ff;
   --accent-alert: #ff4b4bff;
+  --accent-online: #00d2ff; /* Cyan for presence */
   --drawer-bg: #101217f2;
   --border-color: #2a2f3aff;
   --glow-sym: 0 0 10px #26de8166;
@@ -26,40 +27,22 @@
   font-weight: 400;
 }
 
-/* Dusk Theme - Solarized Dark Inspired - High Contrast Tweak */
-html.theme-dusk {
-  --bg-color: #002b36;
-  --bg-mist: #073642;
-  --text-primary: #93a1a1;
-  --text-secondary: #839496; /* Lightened for contrast against #002b36 */
-  --accent-me: #fdf6e3;
-  --accent-sym: #859900; /* Solarized Green */
-  --accent-sym-bright: #859900;
-  --accent-asym: #657b83;
-  --accent-alert: #dc322f; /* Red */
-  --drawer-bg: #073642f2;
-  --border-color: #586e75;
-  --glow-sym: 0 0 10px #85990066;
-  --glow-me: 0 0 15px #fdf6e380;
-  --hover-bg: #ffffff0d;
-}
-
-/* Dawn Theme - Solarized Light Inspired - High Contrast Tweak */
-html.theme-dawn {
-  --bg-color: #fdf6e3;
-  --bg-mist: #eee8d5;
-  --text-primary: #586e75; /* Darkened base01 for primary text */
-  --text-secondary: #657b83; /* Darkened base00 for secondary */
-  --accent-me: #002b36;
-  --accent-sym: #859900; /* Solarized Green */
-  --accent-sym-bright: #859900;
-  --accent-asym: #93a1a1;
-  --accent-alert: #cb4b16; /* Orange */
-  --drawer-bg: #eee8d5f2;
-  --border-color: #93a1a1;
-  --glow-sym: 0 0 10px #85990066;
-  --glow-me: 0 0 15px #002b3680;
-  --hover-bg: #0000000d;
+/* Verdant Mist - Combined Theme (High Green, Mist Base) */
+html.theme-verdant {
+  --bg-color: #05140a; /* Very dark green-black base */
+  --bg-mist: #0b2416; /* Dark forest mist */
+  --text-primary: #e0e8e2; /* Cool white-green tint */
+  --text-secondary: #8a9e90; /* Desaturated sage */
+  --accent-me: #f0fff4; /* Bright mint white */
+  --accent-sym: #26de81; /* Standard Neon Green */
+  --accent-sym-bright: #00ff88; /* Even brighter green */
+  --accent-asym: #4a6652; /* Muted olive */
+  --accent-alert: #ff6b6b; /* Soft Red */
+  --drawer-bg: #0b2416f2;
+  --border-color: #1e3a29; /* Dark fern border */
+  --glow-sym: 0 0 12px #26de8188; /* Stronger green glow */
+  --glow-me: 0 0 15px #f0fff480;
+  --hover-bg: #26de8115; /* Greenish hover tint */
 }
 
 h1, h2, h3, h4, h5, h6, button, .font-heading {

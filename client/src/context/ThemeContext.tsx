@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
-type Theme = 'mist' | 'dusk' | 'dawn';
+type Theme = 'mist' | 'verdant';
 
 interface ThemeContextType {
   theme: Theme;
@@ -32,8 +32,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => {
-      if (prevTheme === 'mist') return 'dusk';
-      if (prevTheme === 'dusk') return 'dawn';
+      if (prevTheme === 'mist') return 'verdant';
       return 'mist';
     });
   }, []);

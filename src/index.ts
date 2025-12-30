@@ -633,6 +633,61 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
   }
 });
 
+// GET /api/admin/users: List users (Admin only)
+app.get('/api/admin/users', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, username, email, created_at, is_verified FROM users ORDER BY created_at DESC LIMIT 100'
+    ).all();
+    return c.json({ users: results });
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch users' }, 500);
+  }
+});
+
+// DELETE /api/admin/users/:id: Delete user (Admin only)
+app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+  const targetId = Number(c.req.param('id'));
+
+  if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
+
+  try {
+    // Cascade delete manually if foreign keys aren't set
+    await c.env.DB.batch([
+        c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(targetId),
+        c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(targetId),
+        c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(targetId, targetId),
+        c.env.DB.prepare('DELETE FROM communiques WHERE user_id = ?').bind(targetId)
+    ]);
+    return c.json({ message: 'User deleted' });
+  } catch (e) {
+    return c.json({ error: 'Failed to delete user' }, 500);
+  }
+});
+
+// POST /api/admin/broadcast: System broadcast (Admin only)
+app.post('/api/admin/broadcast', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+
+  const { message } = await c.req.json();
+  if (!message) return c.json({ error: 'Message required' }, 400);
+
+  try {
+      // 1. Create system notification for all users? Too expensive for DB.
+      // Instead, just use WebSocket broadcast via DO
+      await broadcastSignal(c.env, 'system_alert', 1, { message });
+      return c.json({ message: 'Broadcast sent' });
+  } catch (e) {
+      return c.json({ error: 'Broadcast failed' }, 500);
+  }
+});
+
 // --- User Discovery Routes ---
 
 // GET /api/users/search: Search users by username

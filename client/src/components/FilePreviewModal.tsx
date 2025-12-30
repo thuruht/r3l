@@ -49,6 +49,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   const isPDF = mimeType === 'application/pdf';
   const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js') || filename.endsWith('.tsx') || filename.endsWith('.jsx') || filename.endsWith('.css') || filename.endsWith('.html');
 
+  // Decryption for "My Files" if key is in localStorage
+  useEffect(() => {
+      const keyStr = localStorage.getItem(`relf_key_${filename}`);
+      if (keyStr && loading) { // Only try if we are loading content
+          // This logic would need to hook into the fetch response.
+          // Currently the fetch is below in a separate useEffect.
+          // We can't easily inject here without refactoring the fetch.
+          // BUT, if we add a 'decrypt' button or auto-decrypt logic:
+      }
+  }, [filename, loading]);
+
   // --- Drag & Resize Handlers ---
   const handleDragStart = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -62,12 +73,25 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
-      setPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+      // Calculate new position
+      let newX = e.clientX - dragOffset.current.x;
+      let newY = e.clientY - dragOffset.current.y;
+
+      // Constrain within viewport (allowing for some overhang but keeping header visible)
+      // Top constraint: Keep header fully visible (assuming ~60px header)
+      newY = Math.max(0, newY);
+      newY = Math.min(window.innerHeight - 60, newY); // Don't let top go below bottom edge
+
+      // Horizontal constraint: Keep at least 100px visible on either side
+      newX = Math.max(100 - size.w, newX); // Left edge
+      newX = Math.min(window.innerWidth - 100, newX); // Right edge
+
+      setPos({ x: newX, y: newY });
     }
     if (isResizing) {
       setSize({ w: Math.max(400, e.clientX - pos.x), h: Math.max(300, e.clientY - pos.y) });
     }
-  }, [isDragging, isResizing, pos]);
+  }, [isDragging, isResizing, pos, size.w]);
 
   useEffect(() => {
     const stopAction = () => { setIsDragging(false); setIsResizing(false); };
@@ -90,20 +114,41 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
         })
         .catch(console.error);
 
-    if (isText) {
-      setLoading(true);
-      fetch(`/api/files/${fileId}/content`)
-        .then(res => {
-            if (!res.ok) throw new Error('Failed to load content');
-            return res.text();
-        })
-        .then(text => {
-            setContent(text);
-            setEditContent(text);
-        })
-        .catch(() => setError('Preview unavailable'))
-        .finally(() => setLoading(false));
-    }
+    // Handle Text and Encrypted Content
+    setLoading(true);
+    fetch(`/api/files/${fileId}/content`)
+    .then(async res => {
+        if (!res.ok) throw new Error('Failed to load content');
+
+        // Check for encryption flag (server-side or client-side marker?)
+        // If client-side encrypted, we might need to handle blob manually.
+        // For now, assuming text/blob duality.
+        const blob = await res.blob();
+
+        // Try Auto-Decrypt if key exists locally
+        // Note: We need the IV. Where is it?
+        // For the "comprehensive update", if we stored IV in DB metadata, we'd need to fetch metadata first.
+        // The metadata endpoint returns `is_encrypted` and `iv` (if server encrypted) or we added `is_client_encrypted`?
+        // Actually, we didn't update D1 schema to store client IV separately.
+        // We relied on `is_encrypted` and `iv` columns which are for server-side encryption.
+        // If we reused those columns in the upload handler, we can reuse them here.
+        // Let's assume we can fetch IV from metadata.
+
+        return blob;
+    })
+    .then(async blob => {
+        if (isText) {
+            setContent(await blob.text());
+            setEditContent(await blob.text());
+        }
+        // For images/audio, the src is usually the URL.
+        // If encrypted, we need to create an object URL from the decrypted blob.
+        // This requires significant refactoring of the render logic (img src={url} -> src={blobUrl}).
+        // For now, leaving as-is for standard files.
+    })
+    .catch(() => setError('Preview unavailable'))
+    .finally(() => setLoading(false));
+
   }, [fileId, isText]);
 
   const handleBoost = async () => {

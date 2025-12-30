@@ -14,6 +14,7 @@
   --glow-sym: 0 0 10px #26de8166;
   --glow-me: 0 0 15px #ffffff80;
   --hover-bg: #ffffff11;
+  --header-bg-transparent: rgba(16, 18, 23, 0.7); /* More transparent for nebula */
   
   /* Z-Index Stack */
   --z-ui-base: 1000;

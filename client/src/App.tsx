@@ -21,6 +21,7 @@ import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
+import AmbientBackground from './components/AmbientBackground';
 
 import './styles/global.css';
 import './styles/App.css';
@@ -339,7 +340,7 @@ function Main() {
       ) : (
         <>
             {/* Header / Nav */}
-            <div className="header glass-panel">
+            <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
@@ -564,6 +565,10 @@ function App() {
     <ThemeProvider>
       <CustomizationProvider>
         <ToastProvider>
+          <AmbientBackground
+            // Optional: Pass videoSrc="/assets/nebula_loop.webm" if available
+            // Optional: audioSrc="/assets/drone_ambient.mp3"
+          />
           <Main />
         </ToastProvider>
       </CustomizationProvider>

@@ -197,7 +197,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
       // Update Dimensions
       svg.attr('viewBox', [0, 0, dimensions.width, dimensions.height])
-         .style('background', `radial-gradient(circle at center, #1a1c24ff ${(theme_preferences.mistDensity || 0.5) * 100}%, var(--bg-color) 100%)`);
+         .style('background', 'transparent'); // Allow AmbientBackground to show through
 
       simulation.force('center', d3.forceCenter(dimensions.width / 2, dimensions.height / 2));
       simulation.force('radial', d3.forceRadial(Math.min(dimensions.width, dimensions.height) / 3, dimensions.width / 2, dimensions.height / 2).strength(0.1));

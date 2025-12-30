@@ -29,18 +29,21 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
 
   // CSS Nebula Generator (Fallback if no video)
   const getNebulaStyle = () => {
-      const baseColor = theme === 'verdant' ? '#05140a' : '#0a0b10';
-      const mistColor1 = theme === 'verdant' ? 'rgba(38, 222, 129, 0.1)' : 'rgba(100, 100, 255, 0.05)';
-      const mistColor2 = theme === 'verdant' ? 'rgba(20, 80, 40, 0.2)' : 'rgba(140, 50, 180, 0.08)';
+      // Significantly increased opacity and brightness for visibility
+      const baseColor = theme === 'verdant' ? '#081c10' : '#0f111a';
+      const mistColor1 = theme === 'verdant' ? 'rgba(38, 222, 129, 0.25)' : 'rgba(120, 120, 255, 0.2)';
+      const mistColor2 = theme === 'verdant' ? 'rgba(40, 160, 80, 0.35)' : 'rgba(160, 80, 220, 0.25)';
+      const accentColor = theme === 'verdant' ? 'rgba(100, 255, 150, 0.15)' : 'rgba(100, 200, 255, 0.15)';
 
       return {
           background: baseColor,
           backgroundImage: `
-            radial-gradient(circle at 50% 50%, ${mistColor1} 0%, transparent 60%),
-            radial-gradient(circle at 80% 20%, ${mistColor2} 0%, transparent 50%),
-            radial-gradient(circle at 20% 80%, ${mistColor2} 0%, transparent 50%)
+            radial-gradient(circle at 50% 50%, ${mistColor1} 0%, transparent 50%),
+            radial-gradient(circle at 85% 15%, ${mistColor2} 0%, transparent 40%),
+            radial-gradient(circle at 15% 85%, ${mistColor2} 0%, transparent 40%),
+            radial-gradient(circle at 50% 0%, ${accentColor} 0%, transparent 50%)
           `,
-          filter: 'blur(30px)',
+          filter: 'blur(40px) contrast(1.2)',
           transition: 'all 2s ease-in-out'
       };
   };
@@ -53,7 +56,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
             className="ambient-background"
             style={{
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                zIndex: -1, pointerEvents: 'none', overflow: 'hidden',
+                zIndex: 0, pointerEvents: 'none', overflow: 'hidden',
                 ...getNebulaStyle()
             }}
             role="presentation"
@@ -77,8 +80,8 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
             {/* Stars / Dust Particles (CSS) */}
             <div className="stars" style={{
                 position: 'absolute', inset: 0,
-                backgroundImage: 'radial-gradient(white 1px, transparent 1px)',
-                backgroundSize: '50px 50px', opacity: 0.1
+                backgroundImage: 'radial-gradient(white 2px, transparent 2px)',
+                backgroundSize: '70px 70px', opacity: 0.3
             }}></div>
         </div>
 

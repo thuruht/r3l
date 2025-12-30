@@ -271,6 +271,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
           left: `${pos.x}px`,
           top: `${pos.y}px`,
           width: `${size.w}px`,
+          maxWidth: '98vw', // Ensure it doesn't overflow mobile width
+          maxHeight: '98vh', // Ensure it doesn't overflow mobile height
           height: `${size.h}px`,
           display: 'flex',
           flexDirection: 'column',

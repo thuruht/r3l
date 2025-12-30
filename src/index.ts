@@ -1036,9 +1036,11 @@ app.post('/api/relationships/accept-sym-request', authMiddleware, async (c) => {
         'UPDATE relationships SET type = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
       ).bind('sym_accepted', 'accepted', request.id),
 
-      // 3. Create the inverse 'sym_accepted' relationship from target_user_id to source_user_id
+      // 3. Create/Update the inverse 'sym_accepted' relationship from target_user_id to source_user_id
+      // Use INSERT OR REPLACE to handle cases where an asym_follow might already exist in the reverse direction
       c.env.DB.prepare(
-        'INSERT INTO relationships (source_user_id, target_user_id, type, status) VALUES (?, ?, ?, ?)'
+        `INSERT INTO relationships (source_user_id, target_user_id, type, status) VALUES (?, ?, ?, ?)
+         ON CONFLICT(source_user_id, target_user_id) DO UPDATE SET type = 'sym_accepted', status = 'accepted', updated_at = CURRENT_TIMESTAMP`
       ).bind(target_user_id, source_user_id, 'sym_accepted', 'accepted'),
 
       // 4. Insert into mutual_connections table

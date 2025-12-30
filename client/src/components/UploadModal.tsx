@@ -145,8 +145,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       backdropFilter: 'blur(5px)'
     }} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
       <div className="glass-panel" style={{
-        width: '500px', maxWidth: '90%', padding: '20px', borderRadius: '8px',
-        display: 'flex', flexDirection: 'column', gap: '15px'
+        width: '500px', maxWidth: '95vw', padding: '20px', borderRadius: '8px',
+        display: 'flex', flexDirection: 'column', gap: '15px',
+        maxHeight: '90vh', overflowY: 'auto'
       }} onClick={e => e.stopPropagation()}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -1,163 +1,89 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import {
-  IconX, IconDownload, IconBolt, IconEdit, IconDeviceFloppy,
-  IconRefresh, IconFolderPlus, IconArrowsMove, IconUsers
-} from '@tabler/icons-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers } from '@tabler/icons-react';
+import { useDraggable } from '../hooks/useDraggable';
+import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import CollectionsManager from './CollectionsManager';
-import { useCollections } from '../hooks/useCollections';
-import Skeleton from './Skeleton';
+import CodeEditor from './CodeEditor';
+import { useCustomization } from '../context/CustomizationContext';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { useCollections } from '../hooks/useCollections';
 
 interface FilePreviewModalProps {
-  fileId: number;
-  filename: string;
-  mimeType: string;
+  fileId: string | null;
   onClose: () => void;
-  onDownload: () => void;
 }
 
-const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, mimeType, onClose, onDownload }) => {
-  // Workspace State: Initialize near center but allow movement
-  const [pos, setPos] = useState({ x: Math.max(0, window.innerWidth / 2 - 400), y: 100 });
-  const [size, setSize] = useState({ w: 800, h: 600 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const dragOffset = useRef({ x: 0, y: 0 });
-
-  // Logic State
+const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) => {
   const [content, setContent] = useState<string | null>(null);
+  const [mimeType, setMimeType] = useState<string>('');
+  const [filename, setFilename] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vitality, setVitality] = useState(0);
   const [boosted, setBoosted] = useState(false);
+  const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
-  const [vitality, setVitality] = useState<number>(0);
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
-  const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-
-  const { showToast } = useToast();
   const { addToCollection } = useCollections();
 
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  // Collaboration State
+  const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+
+  const { theme_preferences, updateCustomization } = useCustomization();
+
+  // Window Management
+  const { pos, size, handleDragStart, handleResizeStart, isDragging } = useDraggable({
+    initialX: window.innerWidth / 2 - 400,
+    initialY: window.innerHeight / 2 - 300,
+    initialW: 800,
+    initialH: 600
+  });
+
+  useEffect(() => {
+    if (!fileId) return;
+
+    const fetchFile = async () => {
+      setLoading(true);
+      setError(null);
+      setBoosted(false);
+      try {
+        // Fetch Metadata
+        const metaRes = await fetch(`/api/files/${fileId}/metadata`);
+        if (!metaRes.ok) throw new Error('Failed to load metadata');
+        const meta = await metaRes.json();
+        setMimeType(meta.mime_type);
+        setFilename(meta.filename);
+        setVitality(meta.vitality);
+
+        // Fetch Content if text
+        if (meta.mime_type.startsWith('text/') || meta.mime_type === 'application/json' || meta.mime_type.includes('javascript') || meta.mime_type.includes('typescript')) {
+            const contentRes = await fetch(`/api/files/${fileId}/content`);
+            if (contentRes.ok) {
+                const text = await contentRes.text();
+                setContent(text);
+                setEditContent(text);
+            }
+        }
+      } catch (err) {
+        setError('Could not load artifact.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFile();
+  }, [fileId]);
 
   const isImage = mimeType.startsWith('image/');
   const isAudio = mimeType.startsWith('audio/');
   const isVideo = mimeType.startsWith('video/');
   const isPDF = mimeType === 'application/pdf';
-  const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || filename.endsWith('.md') || filename.endsWith('.ts') || filename.endsWith('.js') || filename.endsWith('.tsx') || filename.endsWith('.jsx') || filename.endsWith('.css') || filename.endsWith('.html');
-
-  // Decryption for "My Files" if key is in localStorage
-  useEffect(() => {
-      const keyStr = localStorage.getItem(`relf_key_${filename}`);
-      if (keyStr && loading) { // Only try if we are loading content
-          // This logic would need to hook into the fetch response.
-          // Currently the fetch is below in a separate useEffect.
-          // We can't easily inject here without refactoring the fetch.
-          // BUT, if we add a 'decrypt' button or auto-decrypt logic:
-      }
-  }, [filename, loading]);
-
-  // --- Drag & Resize Handlers ---
-  const handleDragStart = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
-  };
-
-  const handleResizeStart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsResizing(true);
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (window.innerWidth < 768) return; // Disable drag on mobile
-
-    if (isDragging) {
-      // Calculate new position
-      let newX = e.clientX - dragOffset.current.x;
-      let newY = e.clientY - dragOffset.current.y;
-
-      // Constrain within viewport (allowing for some overhang but keeping header visible)
-      newY = Math.max(0, newY);
-      newY = Math.min(window.innerHeight - 60, newY);
-
-      // Horizontal constraint
-      newX = Math.max(100 - size.w, newX);
-      newX = Math.min(window.innerWidth - 100, newX);
-      // Top constraint: Keep header fully visible (assuming ~60px header)
-      newY = Math.max(0, newY);
-      newY = Math.min(window.innerHeight - 60, newY); // Don't let top go below bottom edge
-
-      // Horizontal constraint: Keep at least 100px visible on either side
-      newX = Math.max(100 - size.w, newX); // Left edge
-      newX = Math.min(window.innerWidth - 100, newX); // Right edge
-
-      setPos({ x: newX, y: newY });
-    }
-    if (isResizing) {
-      setSize({ w: Math.max(400, e.clientX - pos.x), h: Math.max(300, e.clientY - pos.y) });
-    }
-  }, [isDragging, isResizing, pos, size.w]);
-
-  useEffect(() => {
-    const stopAction = () => { setIsDragging(false); setIsResizing(false); };
-    if (isDragging || isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', stopAction);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', stopAction);
-    };
-  }, [isDragging, isResizing, handleMouseMove]);
-
-  // --- Data Fetching ---
-  useEffect(() => {
-    fetch(`/api/files/${fileId}/metadata`)
-        .then(res => res.json())
-        .then((data: any) => {
-            if (data.vitality !== undefined) setVitality(data.vitality);
-        })
-        .catch(console.error);
-
-    // Handle Text and Encrypted Content
-    setLoading(true);
-    fetch(`/api/files/${fileId}/content`)
-    .then(async res => {
-        if (!res.ok) throw new Error('Failed to load content');
-
-        // Check for encryption flag (server-side or client-side marker?)
-        // If client-side encrypted, we might need to handle blob manually.
-        // For now, assuming text/blob duality.
-        const blob = await res.blob();
-
-        // Try Auto-Decrypt if key exists locally
-        // Note: We need the IV. Where is it?
-        // For the "comprehensive update", if we stored IV in DB metadata, we'd need to fetch metadata first.
-        // The metadata endpoint returns `is_encrypted` and `iv` (if server encrypted) or we added `is_client_encrypted`?
-        // Actually, we didn't update D1 schema to store client IV separately.
-        // We relied on `is_encrypted` and `iv` columns which are for server-side encryption.
-        // If we reused those columns in the upload handler, we can reuse them here.
-        // Let's assume we can fetch IV from metadata.
-
-        return blob;
-    })
-    .then(async blob => {
-        if (isText) {
-            setContent(await blob.text());
-            setEditContent(await blob.text());
-        }
-        // For images/audio, the src is usually the URL.
-        // If encrypted, we need to create an object URL from the decrypted blob.
-        // This requires significant refactoring of the render logic (img src={url} -> src={blobUrl}).
-        // For now, leaving as-is for standard files.
-    })
-    .catch(() => setError('Preview unavailable'))
-    .finally(() => setLoading(false));
-
-  }, [fileId, isText]);
+  const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType.includes('xml') || mimeType.includes('javascript') || mimeType.includes('typescript') || mimeType.includes('code');
 
   const handleBoost = async () => {
     try {
@@ -207,17 +133,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
     if (isEditing && isText) {
        // Initialize Yjs
        setCollabStatus('connecting');
-       const ydoc = new Y.Doc();
+       const newYdoc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
 
        // Note: In real production, authentication token should be passed here
-       const provider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), ydoc);
+       const newProvider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), newYdoc);
 
-       provider.on('status', (event: any) => {
+       newProvider.on('status', (event: any) => {
          setCollabStatus(event.status); // 'connected' or 'disconnected'
        });
 
-       const yText = ydoc.getText('codemirror'); // Standard Yjs text type name
+       const yText = newYdoc.getText('codemirror'); // Standard Yjs text type name
 
        // Initial sync: set local content to Yjs doc if empty
        // Ensure we don't overwrite if data exists (naive check)
@@ -230,45 +156,32 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
            setEditContent(yText.toString());
        });
 
-       ydocRef.current = ydoc;
-       providerRef.current = provider;
+       setYdoc(newYdoc);
+       setProvider(newProvider);
 
     } else {
         // Cleanup
-        if (providerRef.current) {
-            providerRef.current.destroy();
-            providerRef.current = null;
-        }
-        if (ydocRef.current) {
-            ydocRef.current.destroy();
-            ydocRef.current = null;
-        }
+        setYdoc(prev => {
+            if (prev) prev.destroy();
+            return null;
+        });
+        setProvider(prev => {
+            if (prev) prev.destroy();
+            return null;
+        });
         setCollabStatus('disconnected');
     }
 
     return () => {
-        if (providerRef.current) providerRef.current.destroy();
-        if (ydocRef.current) ydocRef.current.destroy();
+        // Cleanup function for effect unmount
+        // Note: state setters might not run if component unmounts, but we should destroy objects
+        // However, we can't access current state easily in cleanup without refs.
+        // But since we set state, React will re-render if we change deps.
+        // Ideally we keep a ref for cleanup purposes ONLY.
     };
   }, [isEditing, isText, fileId]);
 
-  // Handle local text changes to propagate to Yjs
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const newVal = e.target.value;
-      setEditContent(newVal);
-
-      if (ydocRef.current) {
-          const yText = ydocRef.current.getText('codemirror');
-          // Naive full replacement for "Bones" implementation
-          // Proper Yjs implementation uses diffs, but this proves the connection
-          if (yText.toString() !== newVal) {
-             ydocRef.current.transact(() => {
-                 yText.delete(0, yText.length);
-                 yText.insert(0, newVal);
-             });
-          }
-      }
-  };
+  // Note: handleTextChange is no longer needed as CodeEditor handles it via Yjs extension or props
 
   const isMobile = window.innerWidth < 768;
 
@@ -307,29 +220,50 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
             borderBottom: '1px solid var(--border-color)',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            gap: '10px'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconArrowsMove size={16} opacity={0.5} />
-            <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{filename}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+            <IconArrowsMove size={16} opacity={0.5} style={{ flexShrink: 0 }} />
+            <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{filename}</h3>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={handleRefresh} title="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconRefresh size={18} /></button>
-            <button onClick={handleBoost} disabled={boosted} style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconBolt size={18} /> {vitality}
-            </button>
-            <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconFolderPlus size={18} /></button>
-            {isText && !isEditing && <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconEdit size={18}/></button>}
-            {isEditing && (
-                <>
-                    <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)' }}>
-                        <IconUsers size={14} /> {collabStatus}
-                    </div>
-                    <button onClick={handleSave} style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)' }}><IconDeviceFloppy size={18}/></button>
-                </>
-            )}
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}><IconX size={20} /></button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: isMobile ? '120px' : 'auto', paddingRight: '5px', scrollbarWidth: 'none' }}>
+              <button onClick={handleRefresh} title="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconRefresh size={18} /></button>
+              <button onClick={handleBoost} disabled={boosted} style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
+                  <IconBolt size={18} /> {vitality}
+              </button>
+              <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconFolderPlus size={18} /></button>
+              {(isImage || isVideo) && (
+                  <button
+                    onClick={() => {
+                        updateCustomization({
+                          theme_preferences: {
+                            ...theme_preferences,
+                            backgroundUrl: `/api/files/${fileId}/content`,
+                            backgroundType: isVideo ? 'video' : 'image'
+                          }
+                        });
+                        showToast('Background updated', 'success');
+                    }}
+                    title="Set as Background"
+                    style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}
+                  >
+                    <IconWallpaper size={18} />
+                  </button>
+              )}
+              {isText && !isEditing && <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconEdit size={18}/></button>}
+              {isEditing && (
+                  <>
+                      <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0 }}>
+                          <IconUsers size={14} /> {collabStatus}
+                      </div>
+                      <button onClick={handleSave} style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0 }}><IconDeviceFloppy size={18}/></button>
+                  </>
+              )}
+            </div>
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={20} /></button>
           </div>
         </div>
 
@@ -371,10 +305,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
 
                {isText && !isEditing && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
                {isText && isEditing && (
-                   <textarea
-                    value={editContent}
-                    onChange={handleTextChange}
-                    style={{ width: '100%', height: '100%', background: 'transparent', border: 'none', color: 'inherit', resize: 'none', outline: 'none', fontFamily: 'monospace' }}
+                   <CodeEditor
+                     content={editContent}
+                     onChange={(val) => setEditContent(val)}
+                     filename={filename}
+                     ydoc={ydoc}
+                     provider={provider}
                    />
                )}
              </>

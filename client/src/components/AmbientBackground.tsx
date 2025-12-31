@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { useCustomization } from '../context/CustomizationContext';
 import { IconVolume, IconVolumeOff, IconEye, IconEyeOff, IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
 
 interface AmbientBackgroundProps {
@@ -9,6 +10,7 @@ interface AmbientBackgroundProps {
 
 const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSrc }) => {
   const { theme } = useTheme();
+  const { theme_preferences } = useCustomization();
   const [muted, setMuted] = useState(true);
   const [visible, setVisible] = useState(true);
   const [playing, setPlaying] = useState(true);
@@ -58,6 +60,10 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
 
   if (!visible) return null;
 
+  const customBgUrl = theme_preferences.backgroundUrl;
+  const isVideo = theme_preferences.backgroundType === 'video' || customBgUrl?.match(/\.(mp4|webm|mov)$/i);
+  const activeVideoSrc = customBgUrl && isVideo ? customBgUrl : videoSrc;
+
   return (
     <>
         <div
@@ -65,21 +71,26 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
             style={{
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
                 zIndex: 0, pointerEvents: 'none', overflow: 'hidden',
-                ...getNebulaStyle()
+                ...(customBgUrl && !isVideo ? {
+                    backgroundImage: `url(${customBgUrl})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    filter: 'none'
+                } : getNebulaStyle())
             }}
             role="presentation"
             aria-hidden="true"
         >
-            {videoSrc && (
+            {activeVideoSrc && (
                 <video
                     ref={videoRef}
-                    src={videoSrc}
+                    src={activeVideoSrc}
                     loop
                     muted
                     playsInline
                     style={{
                         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                        minWidth: '100%', minHeight: '100%', objectFit: 'cover', opacity: 0.4, mixBlendMode: 'screen'
+                        minWidth: '100%', minHeight: '100%', objectFit: 'cover', opacity: 0.6, mixBlendMode: 'screen'
                     }}
                 />
             )}

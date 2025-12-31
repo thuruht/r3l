@@ -36,6 +36,26 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
+// Document Collaboration WebSocket endpoint
+app.get('/api/collab/:fileId', authMiddleware, async (c) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+  const fileId = c.req.param('fileId');
+
+  try {
+    // Map fileId to a unique DocumentRoom DO instance
+    const doId = c.env.DOCUMENT_ROOM.idFromName(fileId);
+    const doStub = c.env.DOCUMENT_ROOM.get(doId);
+
+    return doStub.fetch(c.req.raw);
+  } catch (error) {
+    console.error("Error proxying Collab WebSocket:", error);
+    return c.text('Collab WebSocket proxy failed', 500);
+  }
+});
+
 // Enable CORS for API routes
 app.use('/api/*', cors({
   origin: (origin) => {
@@ -452,9 +472,19 @@ app.put('/api/customization', authMiddleware, async (c) => {
 
   // Theme Preferences
   if (theme_preferences !== undefined) {
-      let themePrefsJson = typeof theme_preferences === 'string' ? theme_preferences : JSON.stringify(theme_preferences);
+      // Fetch current prefs to merge
+      const current = await c.env.DB.prepare('SELECT theme_preferences FROM users WHERE id = ?').bind(user_id).first();
+      let currentPrefs = {};
+      if (current && typeof current.theme_preferences === 'string') {
+          try { currentPrefs = JSON.parse(current.theme_preferences); } catch(e) {}
+      }
+
+      // Ensure theme_preferences is an object before merging
+      const inputPrefs = typeof theme_preferences === 'string' ? JSON.parse(theme_preferences) : theme_preferences;
+
+      const newPrefs = { ...currentPrefs, ...inputPrefs };
       updateFields.push('theme_preferences = ?');
-      updateValues.push(themePrefsJson);
+      updateValues.push(JSON.stringify(newPrefs));
   }
 
   // Aesthetics

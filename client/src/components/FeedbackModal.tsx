@@ -88,7 +88,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       <div
         ref={modalRef}
         className="glass-panel"
-        style={{ width: '500px', maxWidth: '90%', padding: '0', display: 'flex', flexDirection: 'column' }}
+        style={{ width: '500px', maxWidth: '95vw', padding: '0', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>

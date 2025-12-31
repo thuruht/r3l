@@ -86,9 +86,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       backdropFilter: 'blur(5px)'
     }}>
       <div style={{
-        width: '800px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
+        width: '800px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto',
         background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
-        padding: '30px', position: 'relative', boxShadow: '0 0 30px #000'
+        padding: '20px', position: 'relative', boxShadow: '0 0 30px #000'
       }}>
         <button onClick={onClose} style={{
           position: 'absolute', top: '15px', right: '15px',

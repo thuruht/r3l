@@ -72,6 +72,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (window.innerWidth < 768) return; // Disable drag on mobile
+
     if (isDragging) {
       // Calculate new position
       let newX = e.clientX - dragOffset.current.x;
@@ -262,26 +264,30 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
       }
   };
 
+  const isMobile = window.innerWidth < 768;
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
       <div
         className="glass-panel"
         style={{
           position: 'absolute',
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          width: `${size.w}px`,
-          height: `${size.h}px`,
+          left: isMobile ? 0 : `${pos.x}px`,
+          top: isMobile ? 0 : `${pos.y}px`,
+          width: isMobile ? '100%' : `${size.w}px`,
+          height: isMobile ? '100%' : `${size.h}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
           display: 'flex',
           flexDirection: 'column',
           pointerEvents: 'auto',
           userSelect: isDragging ? 'none' : 'auto',
           background: 'var(--drawer-bg)',
-          borderRadius: '8px',
+          borderRadius: isMobile ? 0 : '8px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           overflow: 'hidden',
           backdropFilter: 'blur(15px)',
-          border: '1px solid var(--border-color)'
+          border: isMobile ? 'none' : '1px solid var(--border-color)'
         }}
         onClick={e => e.stopPropagation()}
       >

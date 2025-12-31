@@ -23,9 +23,11 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
       paddingLeft: '20px',
       height: '100vh',
       overflowY: 'auto',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      position: 'relative',
+      zIndex: 1
     }}>
-      <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>Network Directory</h3>
+      <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '4px' }}>Network Directory</h3>
       
       {loading && (
         <div style={{ marginTop: '20px' }}>

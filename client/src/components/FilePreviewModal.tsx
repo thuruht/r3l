@@ -80,12 +80,13 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
       let newY = e.clientY - dragOffset.current.y;
 
       // Constrain within viewport (allowing for some overhang but keeping header visible)
+      // Top constraint: Keep header fully visible (assuming ~60px header)
       newY = Math.max(0, newY);
-      newY = Math.min(window.innerHeight - 60, newY);
+      newY = Math.min(window.innerHeight - 60, newY); // Don't let top go below bottom edge
 
-      // Horizontal constraint
-      newX = Math.max(100 - size.w, newX);
-      newX = Math.min(window.innerWidth - 100, newX);
+      // Horizontal constraint: Keep at least 100px visible on either side
+      newX = Math.max(100 - size.w, newX); // Left edge
+      newX = Math.min(window.innerWidth - 100, newX); // Right edge
 
       setPos({ x: newX, y: newY });
     }

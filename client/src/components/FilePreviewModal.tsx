@@ -72,19 +72,20 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (window.innerWidth < 768) return; // Disable drag on mobile
+
     if (isDragging) {
       // Calculate new position
       let newX = e.clientX - dragOffset.current.x;
       let newY = e.clientY - dragOffset.current.y;
 
       // Constrain within viewport (allowing for some overhang but keeping header visible)
-      // Top constraint: Keep header fully visible (assuming ~60px header)
       newY = Math.max(0, newY);
-      newY = Math.min(window.innerHeight - 60, newY); // Don't let top go below bottom edge
+      newY = Math.min(window.innerHeight - 60, newY);
 
-      // Horizontal constraint: Keep at least 100px visible on either side
-      newX = Math.max(100 - size.w, newX); // Left edge
-      newX = Math.min(window.innerWidth - 100, newX); // Right edge
+      // Horizontal constraint
+      newX = Math.max(100 - size.w, newX);
+      newX = Math.min(window.innerWidth - 100, newX);
 
       setPos({ x: newX, y: newY });
     }
@@ -262,28 +263,30 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, filename, m
       }
   };
 
+  const isMobile = window.innerWidth < 768;
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
       <div
         className="glass-panel"
         style={{
           position: 'absolute',
-          left: `${pos.x}px`,
-          top: `${pos.y}px`,
-          width: `${size.w}px`,
-          maxWidth: '98vw', // Ensure it doesn't overflow mobile width
-          maxHeight: '98vh', // Ensure it doesn't overflow mobile height
-          height: `${size.h}px`,
+          left: isMobile ? 0 : `${pos.x}px`,
+          top: isMobile ? 0 : `${pos.y}px`,
+          width: isMobile ? '100%' : `${size.w}px`,
+          height: isMobile ? '100%' : `${size.h}px`,
+          maxWidth: '100%',
+          maxHeight: '100%',
           display: 'flex',
           flexDirection: 'column',
           pointerEvents: 'auto',
           userSelect: isDragging ? 'none' : 'auto',
           background: 'var(--drawer-bg)',
-          borderRadius: '8px',
+          borderRadius: isMobile ? 0 : '8px',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
           overflow: 'hidden',
           backdropFilter: 'blur(15px)',
-          border: '1px solid var(--border-color)'
+          border: isMobile ? 'none' : '1px solid var(--border-color)'
         }}
         onClick={e => e.stopPropagation()}
       >

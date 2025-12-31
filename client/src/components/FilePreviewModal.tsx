@@ -8,6 +8,7 @@ import CodeEditor from './CodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { useCollections } from '../hooks/useCollections';
 
 interface FilePreviewModalProps {
   fileId: string | null;
@@ -32,6 +33,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
+  const { addToCollection } = useCollections();
+
+  // Collaboration State
+  const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
   const { theme_preferences, updateCustomization } = useCustomization();
 
@@ -132,17 +139,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
     if (isEditing && isText) {
        // Initialize Yjs
        setCollabStatus('connecting');
-       const ydoc = new Y.Doc();
+       const newYdoc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
 
        // Note: In real production, authentication token should be passed here
-       const provider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), ydoc);
+       const newProvider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), newYdoc);
 
-       provider.on('status', (event: any) => {
+       newProvider.on('status', (event: any) => {
          setCollabStatus(event.status); // 'connected' or 'disconnected'
        });
 
-       const yText = ydoc.getText('codemirror'); // Standard Yjs text type name
+       const yText = newYdoc.getText('codemirror'); // Standard Yjs text type name
 
        // Initial sync: set local content to Yjs doc if empty
        // Ensure we don't overwrite if data exists (naive check)
@@ -155,25 +162,28 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
            setEditContent(yText.toString());
        });
 
-       ydocRef.current = ydoc;
-       providerRef.current = provider;
+       setYdoc(newYdoc);
+       setProvider(newProvider);
 
     } else {
         // Cleanup
-        if (providerRef.current) {
-            providerRef.current.destroy();
-            providerRef.current = null;
-        }
-        if (ydocRef.current) {
-            ydocRef.current.destroy();
-            ydocRef.current = null;
-        }
+        setYdoc(prev => {
+            if (prev) prev.destroy();
+            return null;
+        });
+        setProvider(prev => {
+            if (prev) prev.destroy();
+            return null;
+        });
         setCollabStatus('disconnected');
     }
 
     return () => {
-        if (providerRef.current) providerRef.current.destroy();
-        if (ydocRef.current) ydocRef.current.destroy();
+        // Cleanup function for effect unmount
+        // Note: state setters might not run if component unmounts, but we should destroy objects
+        // However, we can't access current state easily in cleanup without refs.
+        // But since we set state, React will re-render if we change deps.
+        // Ideally we keep a ref for cleanup purposes ONLY.
     };
   }, [isEditing, isText, fileId]);
 

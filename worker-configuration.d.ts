@@ -6,6 +6,7 @@ interface Env {
 	R2_BUCKET_NAME: "rr33ll-bucket";
 	R2_PUBLIC_DOMAIN: "r3l-r2.distorted.work";
 	DO_NAMESPACE: DurableObjectNamespace<import("./src/index").RelfDO>;
+	DOCUMENT_ROOM: DurableObjectNamespace<import("./src/index").DocumentRoom>;
 	BUCKET: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;

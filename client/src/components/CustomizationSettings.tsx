@@ -16,25 +16,26 @@ const CustomizationSettings: React.FC = () => {
       node_primary_color,
       node_secondary_color,
       node_size,
-      mistDensity: theme_preferences.mistDensity || 0.5
+      mistDensity: theme_preferences.mistDensity || 0.5,
+      navOpacity: theme_preferences.navOpacity || 0.8
   });
 
   // Sync local state when context updates (initial load)
   useEffect(() => {
-      // Only sync if values actually differ to avoid loop
       setLocalState(prev => {
           if (
               prev.node_primary_color !== node_primary_color ||
               prev.node_secondary_color !== node_secondary_color ||
               prev.node_size !== node_size ||
-              prev.mistDensity !== (theme_preferences.mistDensity || 0.5)
+              prev.mistDensity !== (theme_preferences.mistDensity || 0.5) ||
+              prev.navOpacity !== (theme_preferences.navOpacity || 0.8)
           ) {
-              // Strip alpha for local input compatibility if needed
               return {
                   node_primary_color: node_primary_color.slice(0, 7),
                   node_secondary_color: node_secondary_color.slice(0, 7),
                   node_size,
-                  mistDensity: theme_preferences.mistDensity || 0.5
+                  mistDensity: theme_preferences.mistDensity || 0.5,
+                  navOpacity: theme_preferences.navOpacity || 0.8
               };
           }
           return prev;
@@ -44,20 +45,23 @@ const CustomizationSettings: React.FC = () => {
   // Debounced update
   useEffect(() => {
       const timer = setTimeout(() => {
-          // Ensure colors are 8-digit hex (append FF if needed)
           const pColor = localState.node_primary_color.length === 7 ? localState.node_primary_color + 'ff' : localState.node_primary_color;
           const sColor = localState.node_secondary_color.length === 7 ? localState.node_secondary_color + 'ff' : localState.node_secondary_color;
 
-          // Only call update if value is effectively different
-          if (pColor !== node_primary_color || sColor !== node_secondary_color || localState.node_size !== node_size || localState.mistDensity !== theme_preferences.mistDensity) {
+          if (pColor !== node_primary_color || sColor !== node_secondary_color || localState.node_size !== node_size ||
+              localState.mistDensity !== theme_preferences.mistDensity || localState.navOpacity !== theme_preferences.navOpacity) {
               updateCustomization({
                   node_primary_color: pColor,
                   node_secondary_color: sColor,
                   node_size: localState.node_size,
-                  theme_preferences: { ...theme_preferences, mistDensity: localState.mistDensity }
+                  theme_preferences: {
+                      ...theme_preferences,
+                      mistDensity: localState.mistDensity,
+                      navOpacity: localState.navOpacity
+                  }
               });
           }
-      }, 500); // 500ms debounce
+      }, 500);
       return () => clearTimeout(timer);
   }, [localState, node_primary_color, node_secondary_color, node_size, theme_preferences, updateCustomization]);
 
@@ -112,6 +116,34 @@ const CustomizationSettings: React.FC = () => {
         >
             <IconX size={16} />
         </button>
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+        <label htmlFor="nav-opacity-input" style={{ display: 'block', fontSize: '12px', marginBottom: '4px', color: 'var(--text-secondary)' }}>
+          Nav Opacity ({(localState.navOpacity * 100).toFixed(0)}%)
+        </label>
+        <input
+          id="nav-opacity-input"
+          type="range"
+          min="0"
+          max="100"
+          value={localState.navOpacity * 100}
+          onChange={(e) => handleLocalChange('navOpacity', Number(e.target.value) / 100)}
+          style={{ width: '100%' }}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={localState.navOpacity * 100}
+        />
+      </div>
+
+      <div style={{ marginBottom: '12px' }}>
+          <button
+            onClick={() => updateCustomization({ theme_preferences: { ...theme_preferences, backgroundUrl: undefined } })}
+            disabled={!theme_preferences.backgroundUrl}
+            style={{ width: '100%', fontSize: '0.8rem' }}
+          >
+              Reset Background
+          </button>
       </div>
 
       <div style={{ marginBottom: '12px' }}>

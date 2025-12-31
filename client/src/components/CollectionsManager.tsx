@@ -189,7 +189,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 20px 10px 20px', margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               {activeView === 'detail' && (
-                  <button onClick={() => setActiveView('list')} style={{ background: 'transparent', border: 'none', padding: 0 }}>
+                  <button onClick={() => setActiveView('list')} style={{ background: 'transparent', border: 'none', padding: 0 }} aria-label="Back to collections list">
                       <IconArrowLeft />
                   </button>
               )}
@@ -199,7 +199,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             {activeView === 'detail' && (
-                <button onClick={downloadZip} title="Download as ZIP" style={{ background: 'transparent', border: 'none' }}>
+                <button onClick={downloadZip} title="Download as ZIP" aria-label="Download as ZIP" style={{ background: 'transparent', border: 'none' }}>
                     <IconDownload />
                 </button>
             )}
@@ -225,6 +225,8 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         <div
                             key={c.id}
                             className="glass-panel"
+                            role="button"
+                            tabIndex={isEditingThis ? -1 : 0}
                             style={{
                                 padding: '12px',
                                 display: 'flex',
@@ -238,6 +240,14 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 if (isEditingThis) return;
                                 if (mode === 'select' && onSelect) onSelect(c.id);
                                 else openCollection(c);
+                            }}
+                            onKeyDown={(e) => {
+                                if (isEditingThis) return;
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    if (mode === 'select' && onSelect) onSelect(c.id);
+                                    else openCollection(c);
+                                }
                             }}
                             onMouseEnter={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'var(--accent-sym)')}
                             onMouseLeave={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'transparent')}
@@ -277,8 +287,8 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     {isEditingThis ? (
                                         <>
-                                            <button onClick={saveEdit} style={{ color: 'var(--accent-sym)', background: 'transparent', border: 'none' }}><IconDeviceFloppy size={18} /></button>
-                                            <button onClick={cancelEdit} style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none' }}><IconX size={18} /></button>
+                                            <button onClick={saveEdit} aria-label="Save changes" style={{ color: 'var(--accent-sym)', background: 'transparent', border: 'none' }}><IconDeviceFloppy size={18} /></button>
+                                            <button onClick={cancelEdit} aria-label="Cancel editing" style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none' }}><IconX size={18} /></button>
                                         </>
                                     ) : (
                                         <>
@@ -286,6 +296,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                                 onClick={(e) => startEdit(e, c)}
                                                 style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', opacity: 0.7 }}
                                                 title="Edit"
+                                                aria-label="Edit Collection"
                                             >
                                                 <IconPencil size={18} />
                                             </button>
@@ -368,6 +379,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         <input 
                             type="text" 
                             placeholder="Collection Name"
+                            aria-label="Collection Name"
                             value={newName} 
                             onChange={e => setNewName(e.target.value)}
                             autoFocus
@@ -375,6 +387,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         <input 
                             type="text" 
                             placeholder="Description (Optional)" 
+                            aria-label="Collection Description"
                             value={newDesc} 
                             onChange={e => setNewDesc(e.target.value)}
                         />

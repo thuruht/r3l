@@ -57,9 +57,18 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
     setState(prev => ({ ...prev, ...updates }));
 
     try {
+      // Strict Sanitization to prevent SQLITE_TOOBIG
+      let themePrefsStr = undefined;
+      if (updates.theme_preferences) {
+          const cleanPreferences = {
+              mistDensity: updates.theme_preferences.mistDensity
+          };
+          themePrefsStr = JSON.stringify(cleanPreferences);
+      }
+
       const payload = {
           ...updates,
-          theme_preferences: updates.theme_preferences ? JSON.stringify(updates.theme_preferences) : undefined
+          theme_preferences: themePrefsStr
       };
 
       const res = await fetch('/api/customization', {

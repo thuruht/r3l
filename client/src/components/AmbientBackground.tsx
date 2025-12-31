@@ -29,22 +29,30 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
 
   // CSS Nebula Generator (Fallback if no video)
   const getNebulaStyle = () => {
-      // Significantly increased opacity and brightness for visibility
-      const baseColor = theme === 'verdant' ? '#081c10' : '#0f111a';
-      const mistColor1 = theme === 'verdant' ? 'rgba(38, 222, 129, 0.25)' : 'rgba(120, 120, 255, 0.2)';
-      const mistColor2 = theme === 'verdant' ? 'rgba(40, 160, 80, 0.35)' : 'rgba(160, 80, 220, 0.25)';
-      const accentColor = theme === 'verdant' ? 'rgba(100, 255, 150, 0.15)' : 'rgba(100, 200, 255, 0.15)';
+      const isVerdant = theme === 'verdant';
+
+      // Mist: Deep Space (Violet, Magenta, Cyan, Black)
+      // Verdant: Lush Forest (Emerald, Lime, Teal, Dark Green)
+      const baseColor = isVerdant ? '#0a2a1a' : '#05070a'; // Lighter base for Verdant, Darker for Mist
+
+      const layers = isVerdant ? [
+          'radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.3) 0%, transparent 60%)', // Emerald
+          'radial-gradient(circle at 85% 15%, rgba(26, 188, 156, 0.4) 0%, transparent 50%)', // Teal
+          'radial-gradient(circle at 15% 85%, rgba(155, 233, 168, 0.25) 0%, transparent 50%)', // Lime-ish
+          'radial-gradient(circle at 50% 0%, rgba(0, 255, 128, 0.2) 0%, transparent 60%)', // Bright Green Top
+      ] : [
+          'radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.3) 0%, transparent 60%)', // Deep Violet
+          'radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.25) 0%, transparent 50%)', // Magenta
+          'radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.25) 0%, transparent 50%)', // Cyan
+          'radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.2) 0%, transparent 60%)', // Purple Top
+      ];
 
       return {
-          background: baseColor,
-          backgroundImage: `
-            radial-gradient(circle at 50% 50%, ${mistColor1} 0%, transparent 50%),
-            radial-gradient(circle at 85% 15%, ${mistColor2} 0%, transparent 40%),
-            radial-gradient(circle at 15% 85%, ${mistColor2} 0%, transparent 40%),
-            radial-gradient(circle at 50% 0%, ${accentColor} 0%, transparent 50%)
-          `,
-          filter: 'blur(40px) contrast(1.2)',
-          transition: 'all 2s ease-in-out'
+          backgroundColor: baseColor,
+          backgroundImage: layers.join(','),
+          filter: 'blur(60px) contrast(1.4) brightness(1.2)', // Increased blur and contrast for "cloud" effect
+          transition: 'all 2s ease-in-out',
+          backgroundBlendMode: 'screen'
       };
   };
 

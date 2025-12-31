@@ -3,6 +3,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 interface CustomizationState {
   theme_preferences: {
     mistDensity?: number; // 0.0 to 1.0
+    navOpacity?: number; // 0.0 to 1.0
+    backgroundUrl?: string; // Custom image or video URL
+    backgroundType?: 'video' | 'image';
   };
   node_primary_color: string;
   node_secondary_color: string;
@@ -15,7 +18,7 @@ interface CustomizationContextType extends CustomizationState {
 }
 
 const defaultState: CustomizationState = {
-  theme_preferences: { mistDensity: 0.5 },
+  theme_preferences: { mistDensity: 0.5, navOpacity: 0.8 },
   node_primary_color: '#1F77B4',
   node_secondary_color: '#FF7F0E',
   node_size: 8

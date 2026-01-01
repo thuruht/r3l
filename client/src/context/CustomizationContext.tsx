@@ -19,8 +19,8 @@ interface CustomizationContextType extends CustomizationState {
 
 const defaultState: CustomizationState = {
   theme_preferences: { mistDensity: 0.5, navOpacity: 0.8 },
-  node_primary_color: '#1F77B4',
-  node_secondary_color: '#FF7F0E',
+  node_primary_color: '#4a9effff',
+  node_secondary_color: '#8b7ec8ff',
   node_size: 8
 };
 

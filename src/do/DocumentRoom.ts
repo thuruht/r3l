@@ -20,7 +20,7 @@ export class DocumentRoom extends DurableObject {
 
     // Yjs websocket provider usually connects to root, or room-specific path
     // We'll support /collab/:docName pattern if needed, but DO ID is unique per doc anyway
-    if (request.headers.get("Upgrade") === "websocket") {
+    if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
@@ -29,7 +29,7 @@ export class DocumentRoom extends DurableObject {
       return new Response(null, { status: 101, webSocket: client });
     }
 
-    return new Response("Not found", { status: 404 });
+    return new Response("DO Not Found", { status: 404 });
   }
 
   handleSession(webSocket: WebSocket) {

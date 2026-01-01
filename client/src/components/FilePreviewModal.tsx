@@ -42,7 +42,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
   // Window Management
   const { pos, size, handleDragStart, handleResizeStart, isDragging } = useDraggable({
     initialX: window.innerWidth / 2 - 400,
-    initialY: window.innerHeight / 2 - 300,
+    initialY: Math.max(0, window.innerHeight / 2 - 300),
     initialW: 800,
     initialH: 600
   });

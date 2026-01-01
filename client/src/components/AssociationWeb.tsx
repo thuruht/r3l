@@ -6,6 +6,7 @@ import { useCustomization } from '../context/CustomizationContext';
 import CustomizationSettings from './CustomizationSettings';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
+import { useSpatialAudio } from '../hooks/useSpatialAudio';
 
 interface AssociationWebProps {
   nodes: NetworkNode[];
@@ -36,6 +37,9 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
   const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+
+  // --- Spatial Audio ---
+  const { updateAudioPositions } = useSpatialAudio(isDrifting);
 
   // --- Signal Pulse Animation (GSAP) ---
   const triggerPulse = useCallback((sourceId: string, targetId: string) => {
@@ -353,6 +357,9 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
             .attr('y2', (d: any) => d.target.y || 0);
 
           allNodes.attr('transform', (d: any) => `translate(${d.x || 0},${d.y || 0})`);
+          
+          // Update Audio
+          updateAudioPositions(newNodes);
 
           // Update Hulls (Simplified)
           if (collections.length > 0) {

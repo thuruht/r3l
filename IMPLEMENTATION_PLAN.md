@@ -26,12 +26,12 @@ This document outlines the strategic roadmap for implementing advanced Collabora
     *   **Files:** "User X is viewing this" banner in `FilePreviewModal`.
 
 **Checklist:**
-- [ ] Install `yjs`, `y-websocket` client-side.
-- [ ] Create `DocumentRoom` Durable Object in `src/do_document.ts` (needs new file).
-- [ ] Register `DocumentRoom` in `wrangler.jsonc`.
-- [ ] Add `/api/collab/:fileId` route in `src/index.ts`.
-- [ ] Implement `usePresence` React hook for location reporting.
-- [ ] Update `AssociationWeb` to render presence markers.
+- [x] Install `yjs`, `y-websocket` client-side.
+- [x] Create `DocumentRoom` Durable Object in `src/do_document.ts` (needs new file).
+- [x] Register `DocumentRoom` in `wrangler.jsonc`.
+- [x] Add `/api/collab/:fileId` route in `src/index.ts`.
+- [x] Implement `usePresence` React hook for location reporting.
+- [x] Update `AssociationWeb` to render presence markers.
 
 ---
 
@@ -55,11 +55,11 @@ This document outlines the strategic roadmap for implementing advanced Collabora
 2.  **Security:** Ensure proper CSP headers to prevent PDF scripts from executing efficiently.
 
 **Checklist:**
-- [ ] Verify `Range` header passthrough in `src/index.ts`.
-- [ ] Update `FilePreviewModal.tsx` to switch render logic based on `mime_type`.
-- [ ] Add `AudioPlayer` component.
-- [ ] Add `VideoPlayer` component.
-- [ ] Add `PDFViewer` component.
+- [x] Verify `Range` header passthrough in `src/index.ts`.
+- [x] Update `FilePreviewModal.tsx` to switch render logic based on `mime_type`.
+- [x] Add `AudioPlayer` component (Using HTML5 native).
+- [x] Add `VideoPlayer` component (Using HTML5 native).
+- [x] Add `PDFViewer` component (Using iframe).
 
 ---
 
@@ -85,10 +85,10 @@ This document outlines the strategic roadmap for implementing advanced Collabora
     *   *After* response initiates (or via a "cleanup" DO alarm), trigger deletion of the R2 object and DB record.
 
 **Checklist:**
-- [ ] Create `client/src/utils/crypto.ts`.
+- [x] Create `client/src/utils/crypto.ts`.
 - [ ] Generate User RSA Keypairs on registration (store Public in DB, Private in LocalStorage/Encrypted in DB).
 - [ ] Add `burn_on_read` column to `files`.
-- [ ] Implement deletion trigger on file access.
+- [x] Implement deletion trigger on file access.
 
 ---
 
@@ -111,10 +111,10 @@ This document outlines the strategic roadmap for implementing advanced Collabora
 4.  **Volume:** Distance-based attenuation (farther nodes = quieter).
 
 **Checklist:**
-- [ ] Update `GET /api/drift` SQL query to support filters.
-- [ ] Create `DriftTuner` UI component.
-- [ ] Create `SpatialAudio` manager class.
-- [ ] Hook D3 coordinates to Audio API in `AssociationWeb.tsx`.
+- [x] Update `GET /api/drift` SQL query to support filters.
+- [x] Create `DriftTuner` UI component (integrated in App.tsx/UserDiscovery).
+- [x] Create `SpatialAudio` manager class (implemented as useSpatialAudio hook).
+- [x] Hook D3 coordinates to Audio API in `AssociationWeb.tsx`.
 
 ---
 

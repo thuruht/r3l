@@ -58,12 +58,15 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
 - [x] **Frontend - Management**
     - [x] **Collection Manager:** A dedicated view (or modal) to create/edit collections.
     - [x] **Add to Collection:** Context menu on Files to "Add to [Collection Name]".
-- [ ] **Visualization**
-    - [ ] Represent Collections in the Association Web (perhaps as a larger "Cluster" node or a bounded hull around files).
+- [x] **Visualization**
+    - [x] Represent Collections in the Association Web (Visualized as convex hulls around file nodes).
 
 ## Future / Polish
-- [ ] **Deep Visualization:** Visualizing collections as clusters in the graph.
-- [ ] **Mobile Optimization:** Ensure complex overlays work well on small screens.
+- [ ] **Mobile Optimization:**
+    - [ ] Swipe Gestures for Inbox.
+    - [ ] PWA improvements (Service Worker caching).
+- [x] **Audio Experience:**
+    - [x] Spatial Audio Graph (Web Audio API panners for Drift nodes).
 
 ---
 

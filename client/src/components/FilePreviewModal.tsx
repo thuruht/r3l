@@ -28,7 +28,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
   const [editContent, setEditContent] = useState('');
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  
+
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
 

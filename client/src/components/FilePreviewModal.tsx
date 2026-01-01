@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
@@ -8,6 +8,7 @@ import CodeEditor from './CodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
+import { useCollections } from '../hooks/useCollections';
 
 interface FilePreviewModalProps {
   fileId: string | null;
@@ -27,9 +28,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
   const [editContent, setEditContent] = useState('');
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const { addToCollection } = CollectionsManager({ mode: 'select', onClose: () => {}, onSelect: () => {} }); // Hacky usage, refactor ideally
 
-  // Collaboration State
+  // Use the hook from main branch instead of the hacky component usage
+  const { addToCollection } = useCollections();
+
+  // Collaboration State - Using useState for re-rendering CodeEditor (Fix from mobile-fixes branch)
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -174,7 +177,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
         if (currentProvider) currentProvider.destroy();
         if (currentDoc) currentDoc.destroy();
     };
-  }, [isEditing, isText, fileId]); // Depend only on editing state toggle
+  }, [isEditing, isText, fileId]);
 
   // Note: handleTextChange is no longer needed as CodeEditor handles it via Yjs extension or props
 

@@ -1,0 +1,321 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
+
+:root {
+  --bg-color: #0a0b10ff;
+  --bg-mist: #111318ff;
+  --text-primary: #e0e4e8ff;
+  --text-secondary: #7f8a96ff;
+  --accent-me: #ffffffff;
+  --accent-sym: #26de81; /* Opaque green */
+  --accent-sym-bright: #26de81; /* Added for highlighting */
+  --accent-asym: #5b6670ff;
+  --accent-alert: #ff4b4bff;
+  --accent-online: #00d2ff; /* Cyan for presence */
+  --drawer-bg: #101217f2;
+  --border-color: #2a2f3aff;
+  --glow-sym: 0 0 10px #26de8166;
+  --glow-me: 0 0 15px #ffffff80;
+  --hover-bg: #ffffff11;
+  --header-bg-transparent: rgba(16, 18, 23, 0.7); /* More transparent for nebula */
+  --font-mono: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  
+  /* Z-Index Stack */
+  --z-ui-base: 1000;
+  --z-dropdown: 2000;
+  --z-modal: 3000;
+  --z-toast: 4000;
+  --z-tooltip: 5000;
+
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+/* Verdant Mist - Combined Theme (High Green, Mist Base) */
+html.theme-verdant {
+  --bg-color: #05140a; /* Very dark green-black base */
+  --bg-mist: #0b2416; /* Dark forest mist */
+  --text-primary: #e0e8e2; /* Cool white-green tint */
+  --text-secondary: #8a9e90; /* Desaturated sage */
+  --accent-me: #f0fff4; /* Bright mint white */
+  --accent-sym: #26de81; /* Standard Neon Green */
+  --accent-sym-bright: #00ff88; /* Even brighter green */
+  --accent-asym: #4a6652; /* Muted olive */
+  --accent-alert: #ff6b6b; /* Soft Red */
+  --drawer-bg: #0b2416f2;
+  --border-color: #1e3a29; /* Dark fern border */
+  --glow-sym: 0 0 12px #26de8188; /* Stronger green glow */
+  --glow-me: 0 0 15px #f0fff480;
+  --hover-bg: #26de8115; /* Greenish hover tint */
+}
+
+h1, h2, h3, h4, h5, h6, button, .font-heading {
+  font-family: 'Rajdhani', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Global Link Hover Styles */
+a:link,
+a:hover,
+a:active,
+a:visited {
+  color: var(--accent-sym); /* Use existing theme variable for links */
+  text-decoration: none;
+}
+
+a:hover {
+  cursor: pointer;
+  text-shadow: 0 0 8px var(--accent-sym-bright), /* Subtle glow on hover */
+               0 0 2px var(--accent-sym-bright);
+  text-decoration: underline;
+}
+
+html, body {
+  height: 100%; /* Ensure html and body take full height */
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
+  /* overflow: hidden; -- REMOVED to allow scrolling */
+  width: 100vw;
+}
+#root {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto; /* Allow scrolling for main content */
+}
+button {
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: var(--bg-mist); /* Ensure button bg isn't black on white theme */
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.25s;
+}
+button:hover {
+  border-color: var(--accent-sym);
+  box-shadow: var(--glow-sym);
+  background-color: var(--hover-bg);
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto #26de8166;
+}
+input, textarea {
+  background: var(--bg-mist);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-family: inherit;
+}
+input:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent-sym);
+  box-shadow: 0 0 5px #26de8133;
+}
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color); 
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-asym); 
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+.overlay-ui {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  z-index: var(--z-ui-base);
+  background: rgba(10, 11, 16, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  pointer-events: none; /* Allow clicks to pass through empty areas */
+  transition: all 0.3s ease-in-out;
+}
+
+.overlay-ui > * {
+  pointer-events: auto;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: var(--z-modal);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.glass-panel {
+  background: var(--drawer-bg); /* Use theme variable */
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  color: var(--text-primary);
+}
+
+/* Mobile Menu Fix */
+.nav-dropdown {
+  right: 1rem !important; /* Force right alignment */
+  left: auto !important;
+  max-width: 90vw; /* Prevent overflow */
+  width: 250px;
+}
+
+/* Sticky Modal Header */
+.modal-header-sticky {
+  position: sticky;
+  top: 0;
+  background: inherit; /* Matches parent glass-panel */
+  z-index: 10;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 20px;
+  backdrop-filter: blur(16px); /* Ensure content behind is blurred */
+}
+
+.page-content-spacer {
+  padding-top: 80px; /* Adjust based on header height */
+}
+
+.auth-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 1rem;
+  background: radial-gradient(circle at center, #1a1c24ff 0%, #0a0b10ff 70%);
+}
+.auth-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 300px;
+}
+
+/* Responsive adjustments for global typography */
+h1 { font-size: 2.5rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.25rem; }
+
+@media (max-width: 1200px) {
+    h1 { font-size: 2.2rem; }
+    h2 { font-size: 1.5rem; }
+    h3 { font-size: 1.1rem; }
+}
+
+@media (max-width: 992px) {
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.4rem; }
+    h3 { font-size: 1rem; }
+}
+
+@media (max-width: 768px) {
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 0.9rem; }
+}
+
+@media (max-width: 576px) {
+    h1 { font-size: 1.5rem; }
+    h2 { font-size: 1.2rem; }
+    h3 { font-size: 0.8rem; }
+}
+
+@media (max-width: 400px) {
+    h1 { font-size: 1.2rem; }
+    h2 { font-size: 1rem; }
+    h3 { font-size: 0.75rem; }
+}
+
+@media (max-width: 300px) {
+    h1 { font-size: 1rem; }
+    h2 { font-size: 0.9rem; }
+    h3 { font-size: 0.7rem; }
+}
+
+@media (max-width: 600px) {
+  .desktop-only {
+    display: none !important;
+  }
+  .overlay-ui h1 {
+    font-size: 1rem;
+  }
+}
+
+.mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  .mobile-only {
+    display: flex !important;
+  }
+}
+
+@keyframes radar-pulse {
+  0% { r: 0; opacity: 0.8; stroke-width: 2px; }
+  100% { r: 500; opacity: 0; stroke-width: 0px; }
+}
+.radar-scan {
+  animation: radar-pulse 4s infinite linear;
+  transform-origin: center;
+}
+
+@keyframes drift-pulse-opacity {
+  0% { opacity: 0.4; }
+  50% { opacity: 0.9; }
+  100% { opacity: 0.4; }
+}
+
+.drift-pulse {
+  animation: drift-pulse-opacity 3s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+  100% { opacity: 0.3; }
+}
+.skeleton-pulse {
+  animation: pulse 1.5s infinite ease-in-out;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.icon-spin {
+  animation: spin 1s linear infinite;
+}
+

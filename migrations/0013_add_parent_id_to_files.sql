@@ -1,0 +1,3 @@
+-- Migration number: 0013 	 2025-12-20T00:00:00.000Z
+
+ALTER TABLE files ADD COLUMN parent_id INTEGER REFERENCES files(id) ON DELETE SET NULL;

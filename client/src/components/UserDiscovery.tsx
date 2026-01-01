@@ -2,28 +2,39 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconSearch, IconDice, IconX } from '@tabler/icons-react';
+import { IconSearch, IconDice, IconX, IconLoader } from '@tabler/icons-react';
+import Skeleton from './Skeleton';
 
 export const SearchBar: React.FC = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{id: number, username: string, avatar_url: string}[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const navigate = useNavigate();
   // const wrapperRef = useRef<HTMLDivElement>(null); // Removed as we use a modal now
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (query.length >= 2) {
+        setLoading(true);
+        setHasSearched(true);
         try {
           const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
           if (res.ok) {
             const data = await res.json();
             setResults(data.users || []);
+          } else {
+             setResults([]);
           }
         } catch (error) {
           console.error('Search failed:', error);
+          setResults([]);
+        } finally {
+          setLoading(false);
         }
       } else {
-        setResults([]); // Clear results if query is short, but we might want to keep the modal open if user just cleared text? No, let's keep it simple.
+        setResults([]);
+        setHasSearched(false);
       }
     }, 300);
 
@@ -33,6 +44,7 @@ export const SearchBar: React.FC = () => {
   const closeSearch = () => {
       setQuery('');
       setResults([]);
+      setHasSearched(false);
   };
 
   return (
@@ -51,16 +63,25 @@ export const SearchBar: React.FC = () => {
               border: 'none', 
               color: 'var(--text-primary)', 
               padding: '6px 8px', 
-              width: '120px', // Slightly smaller to save space
+              width: '120px',
               outline: 'none',
               fontSize: '0.9rem'
             }}
           />
-          {query && <button onClick={closeSearch} style={{background: 'none', border:'none', padding: 0, color: 'var(--text-secondary)', cursor: 'pointer'}}><IconX size={14}/></button>}
+          {loading && <div className="icon-spin" style={{ marginRight: '5px' }}><IconLoader size={14} color="var(--text-secondary)" /></div>}
+          {query && !loading && (
+             <button
+                onClick={closeSearch}
+                aria-label="Clear search"
+                style={{background: 'none', border:'none', padding: 0, color: 'var(--text-secondary)', cursor: 'pointer'}}
+             >
+                <IconX size={14}/>
+             </button>
+          )}
         </div>
       </div>
 
-      {results.length > 0 && (
+      {(results.length > 0 || (hasSearched && loading) || (hasSearched && results.length === 0 && query.length >= 2)) && (
         <div className="search-modal-overlay fade-in" style={{
           position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
           background: 'rgba(0,0,0,0.7)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center',
@@ -72,10 +93,24 @@ export const SearchBar: React.FC = () => {
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Search Results</h3>
-                <button onClick={closeSearch} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}><IconX size={20} /></button>
+                <button onClick={closeSearch} aria-label="Close search results" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}><IconX size={20} /></button>
             </div>
             
-            {results.map((user) => (
+            {loading && (
+                <div style={{ padding: '20px' }}>
+                    <Skeleton height="40px" marginBottom="10px" />
+                    <Skeleton height="40px" marginBottom="10px" />
+                    <Skeleton height="40px" />
+                </div>
+            )}
+
+            {!loading && results.length === 0 && (
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <p>No frequencies found matching "{query}"</p>
+                </div>
+            )}
+
+            {!loading && results.map((user) => (
               <div
                 key={user.id}
                 role="button"

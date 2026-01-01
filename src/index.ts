@@ -39,10 +39,11 @@ const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 // Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
-  if (!upgradeHeader || upgradeHeader !== 'websocket') {
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
     return c.text('Expected Upgrade: websocket', 426);
   }
   const fileId = c.req.param('fileId');
+  console.log("Collab WebSocket connection attempt for file:", fileId);
 
   try {
     // Map fileId to a unique DocumentRoom DO instance
@@ -618,25 +619,6 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   }
 });
 
-// Document Collaboration WebSocket endpoint
-app.get('/api/collab/:fileId', authMiddleware, async (c) => {
-  const upgradeHeader = c.req.header('Upgrade');
-  if (!upgradeHeader || upgradeHeader !== 'websocket') {
-    return c.text('Expected Upgrade: websocket', 426);
-  }
-  const fileId = c.req.param('fileId');
-
-  try {
-    // Map fileId to a unique DocumentRoom DO instance
-    const doId = c.env.DOCUMENT_ROOM.idFromName(fileId);
-    const doStub = c.env.DOCUMENT_ROOM.get(doId);
-
-    return doStub.fetch(c.req.raw);
-  } catch (error) {
-    console.error("Error proxying Collab WebSocket:", error);
-    return c.text('Collab WebSocket proxy failed', 500);
-  }
-});
 
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {

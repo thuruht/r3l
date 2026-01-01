@@ -1623,7 +1623,7 @@ app.get('/api/files/:id/content', async (c) => {
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('Content-Disposition', `attachment; filename="${file.filename}"`);
+    headers.set('Content-Disposition', `attachment; filename="${file.filename.replace(/"/g, '\\"')}"`);
 
     // Handle Burn On Read (Ephemeral)
     if (file.burn_on_read) {

@@ -107,9 +107,13 @@ function Main() {
                       return next;
                   });
               } else if (msg.type === 'new_notification') {
-                  showToast(`New Notification: ${msg.notificationType}`, 'info');
-                  setUnreadCount(prev => prev + 1); // Simple increment
-                  refreshNetwork(); // Refresh graph to show new links
+                  if (msg.notificationType === 'system_alert') {
+                      showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error'); // Using 'error' for high visibility, or custom 'alert' type
+                  } else {
+                      showToast(`New Notification: ${msg.notificationType}`, 'info');
+                      setUnreadCount(prev => prev + 1); // Simple increment
+                      refreshNetwork(); // Refresh graph to show new links
+                  }
               } else if (msg.type === 'new_message') {
                   showToast(`New Whisper from user ${msg.sender_id}`, 'info');
                   setUnreadCount(prev => prev + 1);

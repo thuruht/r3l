@@ -138,7 +138,7 @@ const CustomizationSettings: React.FC = () => {
 
       <div style={{ marginBottom: '12px' }}>
           <button
-            onClick={() => updateCustomization({ theme_preferences: { ...theme_preferences, backgroundUrl: undefined } })}
+            onClick={() => updateCustomization({ theme_preferences: { ...theme_preferences, backgroundUrl: null as any } })}
             disabled={!theme_preferences.backgroundUrl}
             style={{ width: '100%', fontSize: '0.8rem' }}
           >

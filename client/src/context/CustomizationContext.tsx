@@ -64,7 +64,10 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       let themePrefsStr = undefined;
       if (updates.theme_preferences) {
           const cleanPreferences = {
-              mistDensity: updates.theme_preferences.mistDensity
+              mistDensity: updates.theme_preferences.mistDensity,
+              navOpacity: updates.theme_preferences.navOpacity,
+              backgroundUrl: updates.theme_preferences.backgroundUrl,
+              backgroundType: updates.theme_preferences.backgroundType
           };
           themePrefsStr = JSON.stringify(cleanPreferences);
       }

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers } from '@tabler/icons-react';
+import React, { useState, useEffect } from 'react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -27,15 +27,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
-  const { addToCollection } = CollectionsManager({ mode: 'select', onClose: () => {}, onSelect: () => {} }); // Hacky usage, refactor ideally
+  const [showMenu, setShowMenu] = useState(false);
 
-  // Collaboration State
-  const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
+  // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
 
-  // Collaboration State
+  // Collaboration State - Using useState for re-rendering CodeEditor (Fix from mobile-fixes branch)
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
@@ -136,20 +133,23 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
 
   // --- Collab Setup ---
   useEffect(() => {
+    let currentProvider: WebsocketProvider | null = null;
+    let currentDoc: Y.Doc | null = null;
+
     if (isEditing && isText) {
        // Initialize Yjs
        setCollabStatus('connecting');
-       const newYdoc = new Y.Doc();
+       const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
 
        // Note: In real production, authentication token should be passed here
-       const newProvider = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), newYdoc);
+       const prov = new WebsocketProvider(`${wsUrl}/api/collab`, String(fileId), doc);
 
-       newProvider.on('status', (event: any) => {
+       prov.on('status', (event: any) => {
          setCollabStatus(event.status); // 'connected' or 'disconnected'
        });
 
-       const yText = newYdoc.getText('codemirror'); // Standard Yjs text type name
+       const yText = doc.getText('codemirror'); // Standard Yjs text type name
 
        // Initial sync: set local content to Yjs doc if empty
        // Ensure we don't overwrite if data exists (naive check)
@@ -162,34 +162,86 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
            setEditContent(yText.toString());
        });
 
-       setYdoc(newYdoc);
-       setProvider(newProvider);
+       setYdoc(doc);
+       setProvider(prov);
+       currentProvider = prov;
+       currentDoc = doc;
 
     } else {
-        // Cleanup
-        setYdoc(prev => {
-            if (prev) prev.destroy();
-            return null;
-        });
-        setProvider(prev => {
-            if (prev) prev.destroy();
-            return null;
-        });
         setCollabStatus('disconnected');
+        setYdoc(null);
+        setProvider(null);
     }
 
     return () => {
-        // Cleanup function for effect unmount
-        // Note: state setters might not run if component unmounts, but we should destroy objects
-        // However, we can't access current state easily in cleanup without refs.
-        // But since we set state, React will re-render if we change deps.
-        // Ideally we keep a ref for cleanup purposes ONLY.
+        if (currentProvider) currentProvider.destroy();
+        if (currentDoc) currentDoc.destroy();
     };
   }, [isEditing, isText, fileId]);
 
   // Note: handleTextChange is no longer needed as CodeEditor handles it via Yjs extension or props
 
   const isMobile = window.innerWidth < 768;
+
+  const handleDownload = () => {
+      const link = document.createElement('a');
+      link.href = `/api/files/${fileId}/content`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+  };
+
+  const actionButtons = (
+      <>
+        <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+            <IconRefresh size={18} /> {isMobile && 'Keep Alive'}
+        </button>
+        <button onClick={handleBoost} disabled={boosted} aria-label="Boost Signal" style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+            <IconBolt size={18} /> {vitality} {isMobile && 'Boost'}
+        </button>
+        <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+            <IconFolderPlus size={18} /> {isMobile && 'Add to Collection'}
+        </button>
+        <button onClick={handleDownload} title="Download" aria-label="Download" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+            <IconDownload size={18} /> {isMobile && 'Download'}
+        </button>
+        {(isImage || isVideo) && (
+            <button
+            onClick={() => {
+                updateCustomization({
+                    theme_preferences: {
+                    ...theme_preferences,
+                    backgroundUrl: `/api/files/${fileId}/content`,
+                    backgroundType: isVideo ? 'video' : 'image'
+                    }
+                });
+                showToast('Background updated', 'success');
+            }}
+            title="Set as Background"
+            aria-label="Set as Background"
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}
+            >
+            <IconWallpaper size={18} /> {isMobile && 'Set Background'}
+            </button>
+        )}
+        {isText && !isEditing && (
+            <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                <IconEdit size={18}/> {isMobile && 'Edit'}
+            </button>
+        )}
+        {isEditing && (
+            <>
+                <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? '8px' : '0' }}>
+                    <IconUsers size={14} /> {collabStatus}
+                </div>
+                <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                    <IconDeviceFloppy size={18}/> {isMobile && 'Save'}
+                </button>
+            </>
+        )}
+      </>
+  );
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
@@ -235,40 +287,46 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
             <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{filename}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', maxWidth: isMobile ? '120px' : 'auto', paddingRight: '5px', scrollbarWidth: 'none' }}>
-              <button onClick={handleRefresh} title="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconRefresh size={18} /></button>
-              <button onClick={handleBoost} disabled={boosted} style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0 }}>
-                  <IconBolt size={18} /> {vitality}
-              </button>
-              <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconFolderPlus size={18} /></button>
-              {(isImage || isVideo) && (
-                  <button
-                    onClick={() => {
-                        updateCustomization({
-                          theme_preferences: {
-                            ...theme_preferences,
-                            backgroundUrl: `/api/files/${fileId}/content`,
-                            backgroundType: isVideo ? 'video' : 'image'
-                          }
-                        });
-                        showToast('Background updated', 'success');
-                    }}
-                    title="Set as Background"
-                    style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}
-                  >
-                    <IconWallpaper size={18} />
-                  </button>
-              )}
-              {isText && !isEditing && <button onClick={() => setIsEditing(true)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0 }}><IconEdit size={18}/></button>}
-              {isEditing && (
-                  <>
-                      <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0 }}>
-                          <IconUsers size={14} /> {collabStatus}
-                      </div>
-                      <button onClick={handleSave} style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0 }}><IconDeviceFloppy size={18}/></button>
-                  </>
-              )}
-            </div>
+             {/* Desktop Controls */}
+             {!isMobile && (
+                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                     {actionButtons}
+                 </div>
+             )}
+
+             {/* Mobile Menu Trigger */}
+             {isMobile && (
+                 <div style={{ position: 'relative' }}>
+                     <button
+                        onClick={() => setShowMenu(!showMenu)}
+                        aria-label="More options"
+                        style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}
+                     >
+                         <IconDotsVertical size={20} />
+                     </button>
+                     {showMenu && (
+                         <div style={{
+                             position: 'absolute',
+                             top: '100%',
+                             right: 0,
+                             marginTop: '5px',
+                             background: 'var(--modal-bg)',
+                             border: '1px solid var(--border-color)',
+                             borderRadius: '4px',
+                             padding: '10px',
+                             display: 'flex',
+                             flexDirection: 'column',
+                             gap: '8px',
+                             zIndex: 3005,
+                             minWidth: '150px',
+                             backdropFilter: 'blur(10px)',
+                             boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+                         }}>
+                             {actionButtons}
+                         </div>
+                     )}
+                 </div>
+             )}
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={20} /></button>
           </div>
         </div>
@@ -315,8 +373,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose }) 
                      content={editContent}
                      onChange={(val) => setEditContent(val)}
                      filename={filename}
-                     ydoc={ydocRef.current}
-                     provider={providerRef.current}
+                     ydoc={ydoc}
+                     provider={provider}
                    />
                )}
              </>

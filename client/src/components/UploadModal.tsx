@@ -26,6 +26,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
 
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
+    console.log("Selected files:", newFiles.length);
     const newUploads: FileUploadState[] = Array.from(newFiles).map(f => ({
       id: Math.random().toString(36).substring(7),
       file: f,
@@ -33,6 +34,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       status: 'pending'
     }));
     setFiles(prev => [...prev, ...newUploads]);
+
+    // Reset input so same file can be selected again if needed
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const uploadFile = async (upload: FileUploadState) => {
@@ -185,8 +189,8 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         >
             <IconUpload size={48} color="var(--text-secondary)" />
             <p style={{ color: 'var(--text-secondary)' }}>Drag & Drop files here or click to select</p>
-            <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
         </div>
+        <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <input
@@ -200,10 +204,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             </label>
         </div>
 
-        <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ maxHeight: '200px', minHeight: files.length > 0 ? '100px' : '0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {files.map(f => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '4px' }}>
-                    <IconFile size={20} />
+                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '4px', color: 'var(--text-primary)' }}>
+                    <IconFile size={20} color="var(--text-primary)" />
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontSize: '0.9em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.file.name}</div>
                         <div style={{ height: '4px', background: '#333', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>

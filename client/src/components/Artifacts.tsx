@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX, IconLoader2 } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX, IconLoader2, IconLock } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
@@ -23,6 +23,8 @@ interface FileData {
   created_at: string;
   r2_key: string;
   vitality: number;
+  is_encrypted?: number;
+  is_client_encrypted?: boolean;
 }
 
 const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) => {
@@ -230,9 +232,23 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) =
 
   return (
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
-      <h5 style={{ color: 'var(--text-secondary)', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <IconFile size={16} /> Artifacts {files.length > 0 && `(${files.length})`}
-      </h5>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '5px', marginBottom: '10px' }}>
+        <h5 style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+          <IconFile size={16} /> Artifacts {files.length > 0 && `(${files.length})`}
+        </h5>
+        {isOwner && (
+          <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85rem', padding: '6px 12px' }}>
+            <IconUpload size={16} /> Upload
+          </button>
+        )}
+      </div>
+
+      {remixTarget && (
+        <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px', padding: '8px', background: '#ffffff0d', borderRadius: '4px' }}>
+          <span>Remixing: <strong>{remixTarget.filename}</strong></span>
+          <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={12} /> Cancel</button>
+        </div>
+      )}
 
       {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em' }}>{error}</div>}
 
@@ -264,7 +280,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) =
             cursor: 'pointer'
           }} onClick={() => setPreviewFile(file)}>
             <div
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', outline: 'none' }}
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
               role="button"
               tabIndex={0}
               aria-label={`Preview ${file.filename}`}
@@ -278,8 +294,13 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) =
               onClick={(e) => e.stopPropagation()} /* Prevent double firing if clicking directly on text */
               onClickCapture={() => setPreviewFile(file)} /* Handle click explicitly */
             >
-              <div style={{ color: 'var(--text-primary)' }}>{file.filename}</div>
-              <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
+              {(file.is_encrypted || file.is_client_encrypted) && (
+                <IconLock size={14} color="var(--accent-sym)" title="Encrypted" />
+              )}
+              <div>
+                <div style={{ color: 'var(--text-primary)' }}>{file.filename}</div>
+                <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '2px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
@@ -386,21 +407,6 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) =
           </React.Fragment>
         ))}
       </div>
-
-      {isOwner && (
-        <div style={{ marginTop: '15px' }}>
-          {remixTarget && (
-            <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>Remixing: <strong>{remixTarget.filename}</strong></span>
-              <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={12} /> Cancel</button>
-            </div>
-          )}
-          
-          <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <IconUpload size={16} /> Upload Artifacts
-          </button>
-        </div>
-      )}
 
       {showUploadModal && (
         <UploadModal 

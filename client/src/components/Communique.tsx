@@ -59,7 +59,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
   // Fetch relationship status
   useEffect(() => {
     const fetchRelationshipStatus = async () => {
-      if (!currentUser || !userId || isOwner) { // No relationship to fetch if it's our own communique
+      if (!currentUser || !userId || isOwner) {
         setRelationshipStatus(null);
         return;
       }
@@ -69,50 +69,48 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
         if (res.ok) {
           const { outgoing, incoming, mutual } = await res.json();
           
-          const targetId = userId;
+          const targetId = parseInt(userId);
 
-          // Check if currentUser follows this userId
-          const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow');
-          if (isFollowing) {
-            setRelationshipStatus('following');
+          // Check mutual first (highest priority)
+          const isMutual = mutual.some((r: any) => r.user_id === targetId);
+          if (isMutual) {
+            setRelationshipStatus('sym_accepted');
             return;
           }
 
           // Check for pending sym request from currentUser to this userId
-          const symRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
+          const symRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === 'sym_request' && r.status === 'pending');
           if (symRequested) {
             setRelationshipStatus('sym_requested');
             return;
           }
 
           // Check for incoming sym request from this userId to currentUser
-          const incomingSymRequest = incoming.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
+          const incomingSymRequest = incoming.some((r: any) => r.user_id === targetId && r.type === 'sym_request' && r.status === 'pending');
           if (incomingSymRequest) {
             setRelationshipStatus('incoming_sym_request');
             return;
           }
 
-          // Check for mutual (sym) connection
-          const isMutual = mutual.some((r: any) => r.user_id === targetId);
-          if (isMutual) {
-            setRelationshipStatus('sym_accepted');
+          // Check if currentUser follows this userId
+          const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow' && r.status === 'accepted');
+          if (isFollowing) {
+            setRelationshipStatus('following');
             return;
           }
           
-          setRelationshipStatus('none'); // No specific relationship found
+          setRelationshipStatus('none');
         } else {
-          showToast('Failed to load relationship status.', 'error');
           setRelationshipStatus(null);
         }
       } catch (err) {
         console.error("Failed to load relationship status", err);
-        showToast('Error loading relationship status.', 'error');
         setRelationshipStatus(null);
       }
     };
 
     fetchRelationshipStatus();
-  }, [userId, currentUser, isOwner, showToast]);
+  }, [userId, currentUser, isOwner]);
 
   useEffect(() => {
     if (isEditing && editorRef.current) {

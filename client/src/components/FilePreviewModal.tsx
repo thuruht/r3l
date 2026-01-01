@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye } from '@tabler/icons-react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -31,6 +31,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('me');
+  const [showPreview, setShowPreview] = useState(false);
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -66,8 +67,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         setVitality(meta.vitality);
         setVisibility(meta.visibility);
 
-        // Fetch Content if text
-        if (meta.mime_type.startsWith('text/') || meta.mime_type === 'application/json' || meta.mime_type.includes('javascript') || meta.mime_type.includes('typescript')) {
+        // Fetch Content if text-based
+        const textTypes = [
+          'text/', 'application/json', 'application/xml', 'application/javascript',
+          'application/typescript', 'application/x-sh', 'application/x-python'
+        ];
+        const isTextFile = textTypes.some(t => meta.mime_type.includes(t)) || 
+                          filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i);
+        
+        if (isTextFile) {
             const contentRes = await fetch(`/api/files/${fileId}/content`);
             if (contentRes.ok) {
                 const text = await contentRes.text();
@@ -83,13 +91,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     };
 
     fetchFile();
-  }, [fileId]);
+  }, [fileId, filename]);
 
   const isImage = mimeType.startsWith('image/');
   const isAudio = mimeType.startsWith('audio/');
   const isVideo = mimeType.startsWith('video/');
   const isPDF = mimeType === 'application/pdf';
-  const isText = mimeType.startsWith('text/') || mimeType === 'application/json' || mimeType.includes('xml') || mimeType.includes('javascript') || mimeType.includes('typescript') || mimeType.includes('code');
+  const isZip = mimeType.match(/zip|compressed|archive/);
+  const isText = mimeType.startsWith('text/') || 
+                 mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
+                 filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i);
+  const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
+  const isWebCode = isHTML || filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
 
   const handleBoost = async () => {
     try {
@@ -273,6 +286,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 <IconEdit size={18}/> {isMobile && 'Edit'}
             </button>
         )}
+        {isWebCode && !isEditing && (
+            <button onClick={() => setShowPreview(!showPreview)} aria-label="Preview" style={{ background: 'transparent', border: 'none', color: showPreview ? 'var(--accent-sym)' : 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                <IconCode size={18}/> {isMobile && 'Preview'}
+            </button>
+        )}
         {isEditing && (
             <>
                 <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? '8px' : '0' }}>
@@ -422,7 +440,30 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                  />
                )}
 
-               {isText && !isEditing && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
+               {isZip && (
+                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                   <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📦</div>
+                   <div>Archive file - use download button to save</div>
+                 </div>
+               )}
+
+               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && (
+                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                   <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📄</div>
+                   <div>Binary file - use download button to save</div>
+                   <div style={{ fontSize: '0.8rem', marginTop: '10px' }}>{mimeType}</div>
+                 </div>
+               )}
+
+               {isText && !isEditing && !showPreview && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
+               {isText && !isEditing && showPreview && isWebCode && (
+                   <iframe
+                       srcDoc={content || ''}
+                       style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
+                       sandbox="allow-scripts"
+                       title="Code Preview"
+                   />
+               )}
                {isText && isEditing && (
                    <CodeEditor
                      content={editContent}

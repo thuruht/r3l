@@ -40,7 +40,9 @@ r3l-main/
 
 **Components** (`client/src/components/`)
 - `AssociationWeb.tsx`: D3.js-powered social graph visualization
-- UI components for artifacts, collections, inbox, profiles
+- `Inbox.tsx`: Notifications and direct messaging
+- `GroupChat.tsx`: Group conversation management
+- UI components for artifacts, collections, profiles
 - Reusable form elements and modals
 
 **Context** (`client/src/context/`)
@@ -96,6 +98,8 @@ Sequential SQL migrations for D1 database:
 - `0004_create_files.sql`: Artifact storage metadata
 - `0005_create_notifications.sql`: Notification system
 - `0006-0017`: Incremental schema updates (vitality, collections, messages, encryption, indexes)
+- `0018_message_requests.sql`: Message request system
+- `0019_group_chat.sql`: Group chat infrastructure
 
 ## Architectural Patterns
 
@@ -139,7 +143,9 @@ Sequential SQL migrations for D1 database:
 - **Users** → **Artifacts** (file ownership)
 - **Artifacts** → **Collections** (organization)
 - **Users** ↔ **Notifications** (inbox system)
-- **Users** ↔ **Messages** (Whispers/DMs)
+- **Users** ↔ **Messages** (Whispers/DMs with message requests)
+- **Users** ↔ **Groups** (group chat membership)
+- **Groups** → **GroupMessages** (conversation history)
 - **Users** → **Communiques** (profiles)
 
 ### Security Layers

@@ -1,13 +1,16 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconSettings, IconUsers, IconArchive
 } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
+import GroupChat from './components/GroupChat';
+import ArchiveVote from './components/ArchiveVote';
 import CommuniquePage from './pages/CommuniquePage';
+import SettingsPage from './pages/SettingsPage';
 import About from './components/About';
 import FAQ from './components/FAQ';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -17,7 +20,7 @@ import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { CustomizationProvider } from './context/CustomizationContext';
+import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
@@ -36,11 +39,14 @@ interface User {
 
 function Main() {
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
@@ -57,6 +63,7 @@ function Main() {
   const reconnectTimeoutRef = useRef<number | null>(null);
 
   const { theme, toggleTheme } = useTheme();
+  const { theme_preferences } = useCustomization();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -370,7 +377,10 @@ function Main() {
         <>
             <KeyManager />
             {/* Header / Nav */}
-            <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
+            <div className="header glass-panel" style={{ 
+              background: `rgba(${theme === 'light' ? '255, 255, 255' : '20, 25, 32'}, ${theme_preferences.navOpacity ?? 0.8})`,
+              backdropFilter: 'blur(12px)'
+            }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
@@ -517,6 +527,18 @@ function Main() {
                         <IconFolder size={18} /> Collections
                     </button>
 
+                    <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconUsers size={18} /> Groups
+                    </button>
+
+                    <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconArchive size={18} /> Community Archive
+                    </button>
+
+                    <button onClick={() => { setIsSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconSettings size={18} /> Settings
+                    </button>
+
                     <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
@@ -549,8 +571,11 @@ function Main() {
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
             {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
+            {isGroupChatOpen && currentUser && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser.id} />}
+            {isArchiveOpen && <ArchiveVote onClose={() => setIsArchiveOpen(false)} />}
             {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
             {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
+            {isSettingsOpen && <SettingsPage onClose={() => setIsSettingsOpen(false)} currentUser={currentUser} onUpdateUser={setCurrentUser} />}
             {previewFile && (
               <FilePreviewModal
                   fileId={previewFile.id}

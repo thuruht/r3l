@@ -582,6 +582,113 @@ app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
   }
 });
 
+// PUT /api/users/me/username: Update username
+app.put('/api/users/me/username', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { username } = await c.req.json();
+
+  if (!username || typeof username !== 'string' || username.trim().length < 3) {
+    return c.json({ error: 'Username must be at least 3 characters' }, 400);
+  }
+
+  try {
+    const { success } = await c.env.DB.prepare(
+      'UPDATE users SET username = ? WHERE id = ?'
+    ).bind(username.trim(), user_id).run();
+    
+    if (success) {
+      return c.json({ message: 'Username updated successfully' });
+    } else {
+      return c.json({ error: 'Failed to update username' }, 500);
+    }
+  } catch (e: any) {
+    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+      return c.json({ error: 'Username already taken' }, 409);
+    }
+    console.error("Error updating username:", e);
+    return c.json({ error: 'Failed to update username' }, 500);
+  }
+});
+
+// PUT /api/users/me/password: Update password
+app.put('/api/users/me/password', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { currentPassword, newPassword } = await c.req.json();
+
+  if (!currentPassword || !newPassword) {
+    return c.json({ error: 'Missing fields' }, 400);
+  }
+
+  if (newPassword.length < 8) {
+    return c.json({ error: 'New password must be at least 8 characters' }, 400);
+  }
+
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT password, salt FROM users WHERE id = ?'
+    ).bind(user_id).first();
+
+    if (!user) return c.json({ error: 'User not found' }, 404);
+
+    const { hash: currentHash } = await hashPassword(currentPassword, user.salt as string);
+    if (currentHash !== user.password) {
+      return c.json({ error: 'Current password is incorrect' }, 401);
+    }
+
+    const { hash: newHash } = await hashPassword(newPassword, user.salt as string);
+    const { success } = await c.env.DB.prepare(
+      'UPDATE users SET password = ? WHERE id = ?'
+    ).bind(newHash, user_id).run();
+
+    if (success) {
+      return c.json({ message: 'Password updated successfully' });
+    } else {
+      return c.json({ error: 'Failed to update password' }, 500);
+    }
+  } catch (e: any) {
+    console.error("Error updating password:", e);
+    return c.json({ error: 'Failed to update password' }, 500);
+  }
+});
+
+// DELETE /api/users/me: Delete account
+app.delete('/api/users/me', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+
+  if (user_id === ADMIN_USER_ID) {
+    return c.json({ error: 'Cannot delete admin account' }, 400);
+  }
+
+  try {
+    const { results: files } = await c.env.DB.prepare(
+      'SELECT r2_key FROM files WHERE user_id = ?'
+    ).bind(user_id).all();
+
+    for (const file of files) {
+      if (file.r2_key) {
+        await c.env.BUCKET.delete(file.r2_key as string);
+      }
+    }
+
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM communiques WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM collections WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?').bind(user_id, user_id)
+    ]);
+
+    deleteCookie(c, 'auth_token');
+    return c.json({ message: 'Account deleted successfully' });
+  } catch (e: any) {
+    console.error("Error deleting account:", e);
+    return c.json({ error: 'Failed to delete account' }, 500);
+  }
+});
+
 // PUT /api/users/me/public-key: Update user's public key for E2EE
 app.put('/api/users/me/public-key', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -2311,13 +2418,17 @@ app.post('/api/messages', async (c) => {
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
 
   try {
-    // Verify mutual connection (Optional: Rel F allows messaging anyone? 
-    // Let's restrict to Sym connections for anti-spam/safety, matching the ethos)
+    // Check relationship: Allow Sym (mutual), A-Sym (following), or no relationship (Drift message)
     const mutual = await c.env.DB.prepare(
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
 
-    if (!mutual) return c.json({ error: 'Must be mutually connected (Sym) to whisper.' }, 403);
+    const asymFollow = await c.env.DB.prepare(
+      'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ?'
+    ).bind(sender_id, receiver_id, 'asym_follow').first();
+
+    // If no relationship, mark as message_request
+    const isRequest = !mutual && !asymFollow;
 
     let finalContent = content;
     let is_encrypted = 0;
@@ -2334,24 +2445,20 @@ app.post('/api/messages', async (c) => {
     }
 
     const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv) VALUES (?, ?, ?, ?, ?)'
-    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv).run();
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, is_request) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv, isRequest ? 1 : 0).run();
 
     if (success) {
       const messageId = meta.last_row_id;
-      // Send the ORIGINAL content via WebSocket so the recipient sees it immediately without needing to decrypt
-      // (WSS provides transport security). The DB stores it encrypted.
       const messagePayload = {
         id: messageId,
         sender_id,
         receiver_id,
-        content: content, // Send clear text to active session
-        created_at: new Date().toISOString()
+        content: content,
+        created_at: new Date().toISOString(),
+        is_request: isRequest
       };
 
-      // Notify Recipient via WebSocket
-      // We use the existing 'new_notification' type or a dedicated 'new_message' type.
-      // Let's use 'new_message' for cleaner frontend handling.
       const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
       const doStub = c.env.DO_NAMESPACE.get(doId);
       
@@ -2364,7 +2471,7 @@ app.post('/api/messages', async (c) => {
         }),
       });
 
-      return c.json({ message: 'Whisper sent', data: messagePayload });
+      return c.json({ message: isRequest ? 'Message request sent' : 'Whisper sent', data: messagePayload });
     } else {
       return c.json({ error: 'Failed to send message' }, 500);
     }
@@ -2389,6 +2496,150 @@ app.put('/api/messages/:partner_id/read', async (c) => {
   }
 });
 
+
+// --- Group Chat Routes ---
+
+// POST /api/groups: Create a group
+app.post('/api/groups', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { name, description, visibility } = await c.req.json();
+
+  if (!name) return c.json({ error: 'Name required' }, 400);
+
+  try {
+    const { success, meta } = await c.env.DB.prepare(
+      'INSERT INTO groups (name, description, creator_id, visibility) VALUES (?, ?, ?, ?)'
+    ).bind(name, description || '', user_id, visibility || 'private').run();
+
+    if (success) {
+      const groupId = meta.last_row_id;
+      await c.env.DB.prepare(
+        'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
+      ).bind(groupId, user_id, 'admin').run();
+
+      return c.json({ message: 'Group created', group_id: groupId });
+    } else {
+      return c.json({ error: 'Failed to create group' }, 500);
+    }
+  } catch (e: any) {
+    console.error('Error creating group:', e);
+    return c.json({ error: 'Failed to create group' }, 500);
+  }
+});
+
+// GET /api/groups: List user's groups
+app.get('/api/groups', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT g.*, gm.role FROM groups g
+       JOIN group_members gm ON g.id = gm.group_id
+       WHERE gm.user_id = ?
+       ORDER BY g.updated_at DESC`
+    ).bind(user_id).all();
+
+    return c.json({ groups: results });
+  } catch (e: any) {
+    console.error('Error listing groups:', e);
+    return c.json({ error: 'Failed to list groups' }, 500);
+  }
+});
+
+// POST /api/groups/:id/members: Add member to group
+app.post('/api/groups/:id/members', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+  const { user_id: new_member_id } = await c.req.json();
+
+  if (!new_member_id) return c.json({ error: 'user_id required' }, 400);
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member || member.role !== 'admin') {
+      return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    await c.env.DB.prepare(
+      'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
+    ).bind(group_id, new_member_id, 'member').run();
+
+    return c.json({ message: 'Member added' });
+  } catch (e: any) {
+    if (e.message && e.message.includes('UNIQUE constraint')) {
+      return c.json({ error: 'User already in group' }, 409);
+    }
+    console.error('Error adding member:', e);
+    return c.json({ error: 'Failed to add member' }, 500);
+  }
+});
+
+// GET /api/groups/:id/messages: Get group messages
+app.get('/api/groups/:id/messages', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member) return c.json({ error: 'Not a member' }, 403);
+
+    const { results } = await c.env.DB.prepare(
+      `SELECT gm.*, u.username, u.avatar_url FROM group_messages gm
+       JOIN users u ON gm.sender_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY gm.created_at ASC
+       LIMIT 100`
+    ).bind(group_id).all();
+
+    return c.json({ messages: results });
+  } catch (e: any) {
+    console.error('Error fetching group messages:', e);
+    return c.json({ error: 'Failed to fetch messages' }, 500);
+  }
+});
+
+// POST /api/groups/:id/messages: Send group message
+app.post('/api/groups/:id/messages', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+  const { content } = await c.req.json();
+
+  if (!content) return c.json({ error: 'Content required' }, 400);
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member) return c.json({ error: 'Not a member' }, 403);
+
+    const { success } = await c.env.DB.prepare(
+      'INSERT INTO group_messages (group_id, sender_id, content) VALUES (?, ?, ?)'
+    ).bind(group_id, user_id, content).run();
+
+    if (success) {
+      await c.env.DB.prepare(
+        'UPDATE groups SET updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+      ).bind(group_id).run();
+
+      return c.json({ message: 'Message sent' });
+    } else {
+      return c.json({ error: 'Failed to send message' }, 500);
+    }
+  } catch (e: any) {
+    console.error('Error sending group message:', e);
+    return c.json({ error: 'Failed to send message' }, 500);
+  }
+});
+
+app.use('/api/groups', authMiddleware);
+app.use('/api/groups/*', authMiddleware);
 
 // POST /api/users/me/avatar: Upload user avatar to R2
 app.post('/api/users/me/avatar', async (c) => {
@@ -2532,3 +2783,265 @@ export default {
     }
   }
 };
+
+
+// --- Group File Sharing Routes ---
+
+// POST /api/groups/:id/files: Share file with group
+app.post('/api/groups/:id/files', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+  const { file_id, can_edit } = await c.req.json();
+
+  if (!file_id) return c.json({ error: 'file_id required' }, 400);
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member) return c.json({ error: 'Not a member' }, 403);
+
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    await c.env.DB.prepare(
+      'INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)'
+    ).bind(group_id, file_id, user_id, can_edit ? 1 : 0).run();
+
+    return c.json({ message: 'File shared with group' });
+  } catch (e: any) {
+    if (e.message && e.message.includes('UNIQUE constraint')) {
+      return c.json({ error: 'File already shared' }, 409);
+    }
+    console.error('Error sharing file:', e);
+    return c.json({ error: 'Failed to share file' }, 500);
+  }
+});
+
+// GET /api/groups/:id/files: List group files
+app.get('/api/groups/:id/files', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member) return c.json({ error: 'Not a member' }, 403);
+
+    const { results } = await c.env.DB.prepare(
+      `SELECT f.*, gf.can_edit, gf.shared_by, u.username as shared_by_name
+       FROM files f
+       JOIN group_files gf ON f.id = gf.file_id
+       JOIN users u ON gf.shared_by = u.id
+       WHERE gf.group_id = ?
+       ORDER BY gf.shared_at DESC`
+    ).bind(group_id).all();
+
+    return c.json({ files: results });
+  } catch (e: any) {
+    console.error('Error fetching group files:', e);
+    return c.json({ error: 'Failed to fetch files' }, 500);
+  }
+});
+
+// DELETE /api/groups/:id/files/:file_id: Remove file from group
+app.delete('/api/groups/:id/files/:file_id', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+  const file_id = Number(c.req.param('file_id'));
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    const groupFile = await c.env.DB.prepare(
+      'SELECT shared_by FROM group_files WHERE group_id = ? AND file_id = ?'
+    ).bind(group_id, file_id).first();
+
+    if (!groupFile) return c.json({ error: 'File not in group' }, 404);
+    if (member?.role !== 'admin' && groupFile.shared_by !== user_id) {
+      return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    await c.env.DB.prepare(
+      'DELETE FROM group_files WHERE group_id = ? AND file_id = ?'
+    ).bind(group_id, file_id).run();
+
+    return c.json({ message: 'File removed from group' });
+  } catch (e: any) {
+    console.error('Error removing file:', e);
+    return c.json({ error: 'Failed to remove file' }, 500);
+  }
+});
+
+// --- Community Archiving Routes ---
+
+// POST /api/files/:id/archive-vote: Vote to archive file
+app.post('/api/files/:id/archive-vote', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+
+  try {
+    const file = await c.env.DB.prepare('SELECT visibility FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    if (file.visibility === 'me') return c.json({ error: 'Cannot vote on private files' }, 403);
+
+    await c.env.DB.prepare(
+      'INSERT INTO archive_votes (file_id, user_id, vote_weight) VALUES (?, ?, 1)'
+    ).bind(file_id, user_id).run();
+
+    const { results } = await c.env.DB.prepare(
+      'SELECT SUM(vote_weight) as total FROM archive_votes WHERE file_id = ?'
+    ).bind(file_id).all();
+
+    const total = results[0]?.total || 0;
+
+    await c.env.DB.prepare(
+      'UPDATE files SET archive_votes = ? WHERE id = ?'
+    ).bind(total, file_id).run();
+
+    if (total >= VITALITY_ARCHIVE_THRESHOLD) {
+      await c.env.DB.prepare(
+        'UPDATE files SET is_community_archived = 1, is_archived = 1 WHERE id = ?'
+      ).bind(file_id).run();
+      return c.json({ message: 'File community archived!', votes: total });
+    }
+
+    return c.json({ message: 'Vote recorded', votes: total });
+  } catch (e: any) {
+    if (e.message && e.message.includes('UNIQUE constraint')) {
+      return c.json({ error: 'Already voted' }, 409);
+    }
+    console.error('Error voting:', e);
+    return c.json({ error: 'Failed to vote' }, 500);
+  }
+});
+
+// GET /api/files/community-archived: List community archived files
+app.get('/api/files/community-archived', authMiddleware, async (c) => {
+  try {
+    const { results } = await c.env.DB.prepare(
+      `SELECT f.*, u.username as owner_name, f.archive_votes
+       FROM files f
+       JOIN users u ON f.user_id = u.id
+       WHERE f.is_community_archived = 1
+       ORDER BY f.archive_votes DESC
+       LIMIT 50`
+    ).bind().all();
+
+    return c.json({ files: results });
+  } catch (e: any) {
+    console.error('Error fetching archived files:', e);
+    return c.json({ error: 'Failed to fetch archived files' }, 500);
+  }
+});
+
+// POST /api/groups/create-sym-group: Create group from Sym connections
+app.post('/api/groups/create-sym-group', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { name, description, member_ids } = await c.req.json();
+
+  if (!name || !member_ids || !Array.isArray(member_ids)) {
+    return c.json({ error: 'Name and member_ids required' }, 400);
+  }
+
+  try {
+    for (const mid of member_ids) {
+      const mutual = await c.env.DB.prepare(
+        'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+      ).bind(Math.min(user_id, mid), Math.max(user_id, mid), Math.min(user_id, mid), Math.max(user_id, mid)).first();
+
+      if (!mutual) {
+        return c.json({ error: `User ${mid} is not a Sym connection` }, 403);
+      }
+    }
+
+    const { success, meta } = await c.env.DB.prepare(
+      'INSERT INTO groups (name, description, creator_id, visibility, group_type) VALUES (?, ?, ?, ?, ?)'
+    ).bind(name, description || '', user_id, 'sym', 'sym_group').run();
+
+    if (success) {
+      const groupId = meta.last_row_id;
+      const statements = [
+        c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)').bind(groupId, user_id, 'admin'),
+        ...member_ids.map((mid: number) =>
+          c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)').bind(groupId, mid, 'member')
+        )
+      ];
+
+      await c.env.DB.batch(statements);
+
+      return c.json({ message: 'Sym group created', group: { id: groupId, name, group_type: 'sym_group' } });
+    } else {
+      return c.json({ error: 'Failed to create group' }, 500);
+    }
+  } catch (e: any) {
+    console.error('Error creating Sym group:', e);
+    return c.json({ error: 'Failed to create Sym group' }, 500);
+  }
+});
+
+// GET /api/groups/:id/members: List group members
+app.get('/api/groups/:id/members', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member) return c.json({ error: 'Not a member' }, 403);
+
+    const { results } = await c.env.DB.prepare(
+      `SELECT gm.*, u.username, u.avatar_url
+       FROM group_members gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.group_id = ?
+       ORDER BY gm.role DESC, gm.joined_at ASC`
+    ).bind(group_id).all();
+
+    const members = results.map((m: any) => ({
+      ...m,
+      avatar_url: (m.avatar_url && typeof m.avatar_url === 'string' && m.avatar_url.startsWith('avatars/'))
+        ? getR2PublicUrl(c, m.avatar_url)
+        : m.avatar_url
+    }));
+
+    return c.json({ members });
+  } catch (e: any) {
+    console.error('Error fetching members:', e);
+    return c.json({ error: 'Failed to fetch members' }, 500);
+  }
+});
+
+// DELETE /api/groups/:id/members/:user_id: Remove member
+app.delete('/api/groups/:id/members/:member_id', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const group_id = Number(c.req.param('id'));
+  const member_id = Number(c.req.param('member_id'));
+
+  try {
+    const member = await c.env.DB.prepare(
+      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, user_id).first();
+
+    if (!member || member.role !== 'admin') {
+      return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    await c.env.DB.prepare(
+      'DELETE FROM group_members WHERE group_id = ? AND user_id = ?'
+    ).bind(group_id, member_id).run();
+
+    return c.json({ message: 'Member removed' });
+  } catch (e: any) {
+    console.error('Error removing member:', e);
+    return c.json({ error: 'Failed to remove member' }, 500);
+  }
+});

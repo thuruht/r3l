@@ -47,7 +47,9 @@ Rel F is a Cloudflare-native platform prioritizing user agency, organic discover
 *   **Unified Comms**: All signals—connection requests, file shares, system alerts—arrive here.
 *   **Real-Time**: WebSocket integration ensures instant delivery.
 *   **Swipe Gestures**: Mobile-friendly swipe to accept/decline/delete.
-*   **Whispers**: Direct messaging with Sym connections.
+*   **Whispers**: Direct messaging with Sym connections, A-Sym followers, and Drift users.
+*   **Message Requests**: Instagram-style message request system for non-mutual connections.
+*   **Group Chat**: Create group conversations with multiple Sym connections.
 *   **Control**: Accept/Decline connection requests or delete notifications.
 
 ### 🔍 Discovery
@@ -62,18 +64,24 @@ Rel F is a Cloudflare-native platform prioritizing user agency, organic discover
 *   **Node Aesthetics**: Customize graph node colors and sizes.
 *   **Custom CSS**: Per-user CSS for Communique pages.
 
-### 📦 Collections
+### 📦 Collections & Groups
 *   **Organize**: Group related artifacts into collections.
 *   **Share**: Collections can be public, sym-only, or private.
 *   **Download**: Export entire collections as ZIP files.
 *   **Reorder**: Drag-and-drop file ordering.
+*   **Group Sharing**: Share files with groups for collaborative access.
+*   **Sym Groups**: Create groups exclusively from Sym connections.
+*   **Community Archiving**: Vote to permanently preserve public files.
 
 ### 🔐 Security
 *   **JWT Authentication**: Secure, httpOnly cookie-based sessions.
 *   **Email Verification**: Required for account activation.
 *   **Password Reset**: Secure token-based password recovery.
 *   **Rate Limiting**: Protection against abuse on all endpoints.
-*   **E2EE Support**: Client-side encryption with RSA key pairs.
+*   **E2EE Support**: RSA-OAEP 2048-bit + AES-GCM 256-bit client-side encryption.
+*   **Key Management**: Generate, export, import, and backup encryption keys.
+*   **Encrypted Files**: Lock icon indicators for encrypted artifacts.
+*   **Privacy Settings**: Default visibility, lurker mode, online status controls.
 *   **Admin Controls**: System statistics, user management, broadcast alerts.
 
 ---
@@ -113,12 +121,12 @@ Built entirely on the **Cloudflare Developer Platform**:
 *   ✅ **Auth**: Complete (JWT, Email Verification, Password Reset)
 *   ✅ **Graph**: Complete (D3.js, Drift Pulse, Presence)
 *   ✅ **Files**: Complete (Upload, Edit, Expiration, Vitality, Remix, Burn-on-Read)
-*   ✅ **Social**: Complete (Sym/A-Sym, Inbox, Sharing, Messaging)
-*   ✅ **Collections**: Complete (Create, Share, ZIP export)
-*   ✅ **Customization**: Complete (Themes, Node aesthetics, Custom CSS)
+*   ✅ **Social**: Complete (Sym/A-Sym, Inbox, Sharing, Messaging, Message Requests, Group Chat, Group File Sharing)
+*   ✅ **Collections**: Complete (Create, Share, ZIP export, Community Archiving)
+*   ✅ **Customization**: Complete (Themes, Node aesthetics, Custom CSS, Settings)
 *   ✅ **Real-time**: Complete (WebSockets, Presence, Notifications)
 *   ✅ **Collaboration**: Complete (Yjs document editing via DocumentRoom DO)
-*   ✅ **Security**: Complete (E2EE, Rate limiting, Admin controls)
+*   ✅ **Security**: Complete (E2EE with key management, Rate limiting, Privacy settings, Admin controls)
 *   🚧 **Next Steps**: See ROADMAP.md for planned enhancements
 
 ## Getting Started (Dev)

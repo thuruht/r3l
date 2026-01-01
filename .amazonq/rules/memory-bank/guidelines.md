@@ -359,6 +359,36 @@ const getVitalityOpacity = (d: D3Node) => {
 
 ## Frequently Used Code Idioms
 
+### Message Request Pattern
+```typescript
+// Check if message is a request (non-mutual connection)
+const mutual = await c.env.DB.prepare(
+  'SELECT id FROM mutual_connections WHERE ...'
+).bind(...).first();
+
+const is_request = mutual ? 0 : 1;
+
+await c.env.DB.prepare(
+  'INSERT INTO messages (sender_id, receiver_id, content, is_request) VALUES (?, ?, ?, ?)'
+).bind(sender_id, receiver_id, content, is_request).run();
+```
+
+### Group Chat Pattern
+```typescript
+// Create group with members
+await c.env.DB.batch([
+  c.env.DB.prepare('INSERT INTO groups (name, created_by) VALUES (?, ?)').bind(name, user_id),
+  ...member_ids.map(id => 
+    c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)').bind(group_id, id, 'member')
+  )
+]);
+
+// Check group membership before operations
+const member = await c.env.DB.prepare(
+  'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+).bind(group_id, user_id).first();
+```
+
 ### Ternary for Conditional Rendering
 ```typescript
 {isLoading ? <Spinner /> : <Content />}

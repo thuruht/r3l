@@ -38,7 +38,11 @@ Rel F is a counter-concept to permanent, corporate social media where:
 
 ### Communication
 - **Inbox**: Unified notification system for connection requests, file shares, and alerts
-- **Whispers**: Direct messaging with Sym connections
+- **Whispers**: Direct messaging with Sym connections, A-Sym followers, and Drift users
+- **Message Requests**: Instagram-style message request system for non-mutual connections
+- **Group Chat**: Create group conversations with multiple Sym connections
+- **Group File Sharing**: Share files with groups for collaborative access and editing
+- **Sym Groups**: Create groups exclusively from Sym connections for trusted collaboration
 - **Real-Time**: WebSocket integration for instant delivery
 - **Swipe Gestures**: Mobile-friendly interaction patterns
 
@@ -52,13 +56,18 @@ Rel F is a counter-concept to permanent, corporate social media where:
 - **Collections**: Group related artifacts with public/sym-only/private visibility
 - **ZIP Export**: Download entire collections
 - **Drag-and-Drop Reordering**: Organize collection contents
+- **Community Archiving**: Vote to permanently preserve valuable public files
+- **Collaborative Editing**: Real-time document editing with group members
 
 ### Security & Privacy
 - **JWT Authentication**: Secure, httpOnly cookie-based sessions
 - **Email Verification**: Required account activation
 - **Password Reset**: Token-based recovery
 - **Rate Limiting**: Abuse protection on all endpoints
-- **E2EE Support**: RSA key pairs for client-side encryption
+- **E2EE Support**: RSA-OAEP 2048-bit + AES-GCM 256-bit client-side encryption
+- **Key Management**: Generate, export, import, and backup encryption keys
+- **Encrypted Files**: Lock icon indicators for encrypted artifacts
+- **Privacy Settings**: Default visibility, lurker mode, online status controls
 - **Admin Controls**: System statistics, user management, broadcast alerts
 
 ## Target Users

@@ -488,8 +488,9 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       {tooltip.content && (
         <div style={{
           position: 'absolute', left: tooltip.x + 10, top: tooltip.y + 10,
-          background: '#000000cc', border: '1px solid var(--accent-sym)', padding: '5px 10px',
-          borderRadius: '4px', fontSize: '12px', pointerEvents: 'none', zIndex: 100
+          background: 'var(--drawer-bg)', border: '1px solid var(--accent-sym)', padding: '5px 10px',
+          borderRadius: '4px', fontSize: '12px', pointerEvents: 'none', zIndex: 100,
+          color: 'var(--text-primary)', backdropFilter: 'blur(8px)'
         }}>
           {tooltip.content}
         </div>

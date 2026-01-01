@@ -25,15 +25,17 @@ const PrivacyPolicy: React.FC = () => {
           <h3>1. Data Collection</h3>
           <p>We collect only the absolute minimum required to function:</p>
           <ul>
-            <li><strong>Authentication:</strong> Username, password (hashed), and email (for verification and notifications only).</li>
-            <li><strong>Content:</strong> The files and text you explicitly upload.</li>
-            <li><strong>Graph Data:</strong> Who you follow and who you connect with (Sym/Asym).</li>
+            <li><strong>Authentication:</strong> Username, password (hashed with bcrypt), and email (for verification and password reset only).</li>
+            <li><strong>Content:</strong> Files and text you explicitly upload (artifacts, communiques, messages).</li>
+            <li><strong>Graph Data:</strong> Relationships (Sym/A-Sym connections), group memberships.</li>
+            <li><strong>Metadata:</strong> Upload timestamps, file sizes, MIME types, visibility settings.</li>
           </ul>
           <p>We <strong>do not</strong> collect:</p>
           <ul>
-            <li>IP addresses for logging purposes (transiently used for rate-limiting only).</li>
-            <li>Device fingerprints.</li>
-            <li>Third-party analytics data.</li>
+            <li>IP addresses for logging (transiently used for rate-limiting only, stored in KV with TTL).</li>
+            <li>Device fingerprints or browser tracking data.</li>
+            <li>Third-party analytics or advertising data.</li>
+            <li>Location data.</li>
           </ul>
 
           <h3>2. Ephemerality (The Void)</h3>
@@ -42,23 +44,49 @@ const PrivacyPolicy: React.FC = () => {
             Once deleted from our database and storage buckets, <strong>it is gone forever</strong>. We do not maintain "soft delete" backups for expired content.
           </p>
 
-          <h3>3. Private vs. Public</h3>
+          <h3>3. Encryption & Security</h3>
           <p>
-            <strong>Private:</strong> Visible only to you. <br/>
-            <strong>Sym:</strong> Visible to mutual connections.<br/>
-            <strong>Public:</strong> Visible to anyone on the network.
-          </p>
-          <p>
-            You control the visibility of every artifact.
-          </p>
-
-          <h3>4. Third Parties</h3>
-          <p>
-            We use <strong>Cloudflare</strong> for infrastructure (hosting, database, storage) and <strong>Resend</strong> for transactional emails. 
-            Both providers are bound by strict data processing agreements. We use no other third-party processors.
+            <strong>Client-Side Encryption:</strong> You can generate RSA-OAEP 2048-bit key pairs locally. Encrypted files use AES-GCM 256-bit encryption. 
+            Your private keys are stored in browser localStorage and never transmitted to our servers. We cannot decrypt your encrypted content.<br/>
+            <strong>Server-Side Encryption:</strong> Files can be encrypted server-side with AES-GCM before storage in R2. Encryption keys are derived from environment secrets.<br/>
+            <strong>Transport Security:</strong> All connections use HTTPS/TLS. Passwords are hashed with bcrypt before storage.<br/>
+            <strong>JWT Tokens:</strong> Stored in httpOnly cookies to prevent XSS attacks.
           </p>
 
-          <h3>5. Contact</h3>
+          <h3>4. Visibility & Privacy Controls</h3>
+          <p>
+            <strong>Private (Me):</strong> Visible only to you.<br/>
+            <strong>Sym:</strong> Visible to mutual connections only.<br/>
+            <strong>Public:</strong> Visible to anyone on the network, including Drift discovery.<br/>
+            <strong>Lurker Mode:</strong> Hide from Drift discovery while remaining visible to Sym connections.<br/>
+            <strong>Online Status:</strong> Control whether others see when you're online.
+          </p>
+          <p>
+            You control the visibility of every artifact, collection, and communique.
+          </p>
+
+          <h3>5. Messaging & Communication</h3>
+          <p>
+            <strong>Whispers (DMs):</strong> Direct messages between users. Sym connections can message freely. A-Sym followers and Drift users can send message requests.<br/>
+            <strong>Group Chats:</strong> Multi-user conversations with Sym connections. Group creators are admins.<br/>
+            <strong>Message Requests:</strong> Non-mutual connections send requests (like Instagram). You can accept or ignore.<br/>
+            <strong>Retention:</strong> Messages are stored until manually deleted or account deletion.
+          </p>
+
+          <h3>6. Third Parties</h3>
+          <p>
+            We use <strong>Cloudflare</strong> for infrastructure (Workers, D1 database, R2 storage, KV cache, Durable Objects) and <strong>Resend</strong> for transactional emails (verification, password reset). 
+            Both providers are bound by strict data processing agreements. We use <strong>no other third-party processors</strong>. No analytics, no tracking pixels, no ad networks.
+          </p>
+
+          <h3>7. Data Deletion & Account Removal</h3>
+          <p>
+            <strong>Self-Service:</strong> Delete individual artifacts, messages, or your entire account from Settings.<br/>
+            <strong>Cascade Deletion:</strong> Account deletion removes all your data: artifacts (from R2 and D1), messages, relationships, notifications, group memberships.<br/>
+            <strong>Irreversible:</strong> Once deleted, data cannot be recovered. We do not maintain backups of user content.
+          </p>
+
+          <h3>8. Contact</h3>
           <p>
             For privacy concerns or data removal requests (beyond the self-service tools provided), contact the administrator at: <br/>
             <a href="mailto:lowlyserf@distorted.work" style={{ color: 'var(--accent-sym)' }}>lowlyserf@distorted.work</a>

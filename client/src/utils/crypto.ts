@@ -120,3 +120,37 @@ export async function unwrapKey(wrappedKeyBase64: string, privateKey: CryptoKey)
         ["encrypt", "decrypt"]
     );
 }
+
+
+// --- Text Encryption (for messages) ---
+
+export async function encryptText(text: string, key: CryptoKey): Promise<{ encrypted: string, iv: string }> {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+
+  const encryptedBuffer = await window.crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    data
+  );
+
+  return {
+    encrypted: btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer))),
+    iv: btoa(String.fromCharCode(...new Uint8Array(iv)))
+  };
+}
+
+export async function decryptText(encryptedBase64: string, ivBase64: string, key: CryptoKey): Promise<string> {
+  const encrypted = Uint8Array.from(atob(encryptedBase64), c => c.charCodeAt(0));
+  const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
+
+  const decryptedBuffer = await window.crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encrypted
+  );
+
+  const decoder = new TextDecoder();
+  return decoder.decode(decryptedBuffer);
+}

@@ -9,6 +9,7 @@ import { EditorView } from '@codemirror/view';
 import * as Y from 'yjs';
 import { yCollab } from 'y-codemirror.next';
 import { WebsocketProvider } from 'y-websocket';
+import { useTheme } from '../context/ThemeContext';
 
 interface CodeEditorProps {
   content: string; // Initial content
@@ -20,38 +21,63 @@ interface CodeEditorProps {
 
 const CodeEditor: React.FC<CodeEditorProps> = ({ content, onChange, filename, ydoc, provider }) => {
   const editorRef = useRef<any>(null);
+  const { theme } = useTheme();
 
   // Determine language extension based on filename
   const getExtensions = () => {
     const ext = filename.split('.').pop()?.toLowerCase();
+    const isDark = theme === 'dark';
     const baseExtensions = [EditorView.theme({
         "&": { height: "100%", backgroundColor: "transparent" },
         ".cm-content": { caretColor: "var(--accent-sym)" },
         ".cm-scroller": { fontFamily: "monospace" }
-    }, { dark: true })];
+    }, { dark: isDark })];
 
     if (ydoc && provider) {
-        // Add Yjs collaboration extension
         const ytext = ydoc.getText('codemirror');
-        // Note: y-codemirror.next handles binding automatically via this extension
-        // We pass 'null' for undoManager to let CodeMirror handle history or manage it externally if needed
         baseExtensions.push(yCollab(ytext, provider.awareness));
     }
 
     switch (ext) {
       case 'js':
       case 'jsx':
+      case 'mjs':
+      case 'cjs':
+        return [...baseExtensions, javascript({ jsx: true })];
       case 'ts':
       case 'tsx':
         return [...baseExtensions, javascript({ jsx: true, typescript: true })];
       case 'py':
         return [...baseExtensions, python()];
       case 'md':
+      case 'markdown':
         return [...baseExtensions, markdown()];
       case 'html':
+      case 'htm':
+      case 'xml':
+      case 'svg':
         return [...baseExtensions, html()];
       case 'css':
+      case 'scss':
+      case 'sass':
+      case 'less':
         return [...baseExtensions, css()];
+      case 'json':
+      case 'rs':
+      case 'java':
+      case 'cpp':
+      case 'c':
+      case 'h':
+      case 'php':
+      case 'rb':
+      case 'go':
+      case 'swift':
+      case 'kt':
+      case 'scala':
+      case 'sh':
+      case 'bash':
+      case 'sql':
+        return [...baseExtensions, javascript()];
       default:
         return baseExtensions;
     }
@@ -60,13 +86,11 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ content, onChange, filename, yd
   return (
     <div style={{ height: '100%', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
       <CodeMirror
-        value={content} // Always pass content initially. If Yjs is active, yCollab will take over, but this ensures initial render is not empty if yText is synced.
+        value={content}
         height="100%"
-        theme="dark"
+        theme={theme === 'dark' ? 'dark' : 'light'}
         extensions={getExtensions()}
         onChange={(val) => {
-            // If not collaborative, we need to bubble up changes manually.
-            // If collaborative, y-codemirror handles sync, but we might still want to update local state for 'save' button.
             onChange(val);
         }}
         basicSetup={{

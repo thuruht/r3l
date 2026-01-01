@@ -7,7 +7,7 @@ import {
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
-import CommuniquePage from './components/CommuniquePage';
+import CommuniquePage from './pages/CommuniquePage';
 import About from './components/About';
 import FAQ from './components/FAQ';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -23,6 +23,7 @@ import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import AmbientBackground from './components/AmbientBackground';
 import CustomizationSettings from './components/CustomizationSettings';
+import KeyManager from './components/KeyManager';
 
 import './styles/global.css';
 import './styles/App.css';
@@ -53,6 +54,7 @@ function Main() {
   // Websocket state
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
+  const reconnectTimeoutRef = useRef<number | null>(null);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -83,8 +85,13 @@ function Main() {
 
   // Websocket Connection
   const connectWebSocket = () => {
+      if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+      }
+
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host; // e.g. localhost:8787 or r3l.distorted.work
+      const host = window.location.host;
       const wsUrl = `${protocol}//${host}/api/do-websocket`;
 
       const socket = new WebSocket(wsUrl);
@@ -109,19 +116,18 @@ function Main() {
                   });
               } else if (msg.type === 'new_notification') {
                   if (msg.notificationType === 'system_alert') {
-                      showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error'); // Using 'error' for high visibility, or custom 'alert' type
+                      showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error');
                   } else {
                       showToast(`New Notification: ${msg.notificationType}`, 'info');
-                      setUnreadCount(prev => prev + 1); // Simple increment
-                      refreshNetwork(); // Refresh graph to show new links
+                      setUnreadCount(prev => prev + 1);
                   }
+                  refreshNetwork();
               } else if (msg.type === 'new_message') {
                   showToast(`New Whisper from user ${msg.sender_id}`, 'info');
                   setUnreadCount(prev => prev + 1);
               } else if (msg.type === 'signal_artifact') {
-                   // Only if drifting? Or show faint pulse?
                    if (isDrifting) {
-                       fetchDrift(); // Refresh drift data
+                       fetchDrift(driftType);
                    }
               }
           } catch (e) {
@@ -131,7 +137,8 @@ function Main() {
 
       socket.onclose = () => {
           console.log('Signal Stream lost. Reconnecting...');
-          setTimeout(connectWebSocket, 3000);
+          setWs(null);
+          reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 3000);
       };
   };
 
@@ -185,10 +192,9 @@ function Main() {
     onlineUserIds
   });
 
-  const refreshNetworkRef = useRef(refreshNetwork);
   useEffect(() => {
-    refreshNetworkRef.current = refreshNetwork;
-  }, [refreshNetwork]);
+    refreshNetwork();
+  }, [currentUser, isDrifting, driftData]);
 
   const playNotificationSound = () => {
     try {
@@ -197,6 +203,17 @@ function Main() {
         audio.play().catch(e => console.log('Audio play failed', e));
     } catch (e) {}
   };
+
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [ws]);
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
@@ -254,7 +271,7 @@ function Main() {
 
   const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
-       try {
+      try {
           const res = await fetch('/api/register', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
@@ -270,7 +287,7 @@ function Main() {
       } catch (err) {
           showToast('Registration failed', 'error');
       }
-  }
+  };
 
   // Admin Check
   const isAdmin = currentUser?.id === 1; // Hardcoded admin ID for now
@@ -351,6 +368,7 @@ function Main() {
         </div>
       ) : (
         <>
+            <KeyManager />
             {/* Header / Nav */}
             <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
@@ -407,7 +425,11 @@ function Main() {
                       </div>
                     </div>
                     
-                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
+                    <button onClick={() => { 
+                      if (!isInboxOpen) setIsMenuOpen(false); 
+                      setIsInboxOpen(!isInboxOpen); 
+                      setUnreadCount(0); 
+                    }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
                     Inbox
                     {unreadCount > 0 && (
                         <span style={{
@@ -423,7 +445,10 @@ function Main() {
                     )}
                     </button>
     
-                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
+                    <button onClick={() => {
+                        if (!isMenuOpen) setIsInboxOpen(false);
+                        setIsMenuOpen(!isMenuOpen);
+                    }} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
                         {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
                     </button>
                 </div>
@@ -565,7 +590,7 @@ function Main() {
                     />
                 )
               } />
-              <Route path="/communique/:userId" element={<CommuniquePage />} />
+              <Route path="/communique/:userId" element={<CommuniquePage currentUser={currentUser} onUpdateUser={(user) => setCurrentUser(user)} />} />
             </Routes>
 
             {currentUser && <CustomizationSettings />}

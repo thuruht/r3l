@@ -15,7 +15,7 @@ interface Notification {
   type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert';
   actor_name?: string;
   actor_id?: number;
-  payload: string;
+  payload: any;
   is_read: number;
   created_at: string;
 }
@@ -83,7 +83,11 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const res = await fetch('/api/notifications');
       if (res.ok) {
         const data = await res.json();
-        setNotifications(data.notifications || []);
+        const parsed = (data.notifications || []).map((n: any) => ({
+          ...n,
+          payload: typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload
+        }));
+        setNotifications(parsed);
       }
     } catch (err) {
       console.error(err);
@@ -231,10 +235,109 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     switch (n.type) {
       case 'sym_request': return <>{actorLink} requests a signal connection.</>;
       case 'sym_accepted': return <>Connection established with {actorLink}.</>;
-      case 'file_shared': return <>{actorLink} shared an artifact.</>;
-      case 'system_alert': return 'System Alert';
+      case 'file_shared': {
+        const filename = n.payload?.filename || 'an artifact';
+        return <>{actorLink} shared {filename}.</>;
+      }
+      case 'system_alert': return <>{n.payload?.message || 'System Alert'}</>;
       default: return 'New signal received.';
     }
+  };
+
+  const SwipeableNotificationItem = ({ n }: { n: Notification }) => {
+      const [offsetX, setOffsetX] = useState(0);
+      const [startX, setStartX] = useState(0);
+      const [isSwiping, setIsSwiping] = useState(false);
+
+      const handleTouchStart = (e: React.TouchEvent) => {
+          setStartX(e.touches[0].clientX);
+          setIsSwiping(true);
+      };
+
+      const handleTouchMove = (e: React.TouchEvent) => {
+          if (!isSwiping) return;
+          const currentX = e.touches[0].clientX;
+          const diff = currentX - startX;
+          // Clamp
+          if (diff > 100) setOffsetX(100);
+          else if (diff < -100) setOffsetX(-100);
+          else setOffsetX(diff);
+      };
+
+              const handleTouchEnd = () => {
+          setIsSwiping(false);
+          const threshold = Math.min(80, window.innerWidth * 0.2);
+          if (offsetX > threshold) {
+              if (n.type === 'sym_request') handleAction(n, 'accept');
+              else if (!n.is_read) markAsRead(n.id);
+          } else if (offsetX < -threshold) {
+              if (n.type === 'sym_request') handleAction(n, 'decline');
+              else handleDelete(n.id);
+          }
+          setOffsetX(0);
+      };
+
+      const bg = offsetX > 30 ? 'rgba(0, 255, 0, 0.1)' : (offsetX < -30 ? 'rgba(255, 0, 0, 0.1)' : 'transparent');
+      
+      return (
+          <div 
+              style={{ overflow: 'hidden', position: 'relative', marginBottom: '8px' }}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+          >
+              <div 
+                  className="notification-bg"
+                  style={{
+                      position: 'absolute', inset: 0,
+                      background: bg,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0 20px', borderRadius: '0 4px 4px 0',
+                      opacity: Math.abs(offsetX) / 100
+                  }}
+              >
+                 {offsetX > 0 && <IconCheck size={20} color="var(--accent-sym)" />}
+                 {offsetX < 0 && <IconTrash size={20} color="var(--accent-alert)" />}
+              </div>
+              <div 
+                role="button" tabIndex={0}
+                style={{ 
+                    padding: '10px', 
+                    background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)',
+                    borderLeft: n.is_read ? '2px solid transparent' : '2px solid var(--accent-sym)',
+                    fontSize: '0.9em', borderRadius: '0 4px 4px 0',
+                    transform: `translateX(${offsetX}px)`,
+                    transition: isSwiping ? 'none' : 'transform 0.3s ease',
+                    position: 'relative'
+                }} 
+                onClick={() => !n.is_read && markAsRead(n.id)}
+                onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === ' ') && !n.is_read) {
+                        e.preventDefault();
+                        markAsRead(n.id);
+                    }
+                }}
+            >
+                <div style={{ marginBottom: '5px' }}>{renderMessage(n)}</div>
+                <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>{new Date(n.created_at).toLocaleTimeString()}</span>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ background: 'none', border: 'none', color: '#666' }} aria-label="Delete">
+                        <IconTrash size={12} />
+                    </button>
+                </div>
+                {n.type === 'sym_request' && (
+                    <div style={{ marginTop: '5px', display: 'flex', gap: '5px' }}>
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'accept'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <IconCheck size={12} /> Accept
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'decline'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+                            <IconX size={12} /> Decline
+                        </button>
+                    </div>
+                )}
+            </div>
+          </div>
+      );
   };
 
   // --- Render Logic ---
@@ -313,40 +416,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 )}
 
                 {notifications.map(n => (
-                    <div key={n.id} 
-                        role="button" tabIndex={0}
-                        style={{ 
-                            padding: '10px', marginBottom: '8px', 
-                            background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)',
-                            borderLeft: n.is_read ? '2px solid transparent' : '2px solid var(--accent-sym)',
-                            fontSize: '0.9em', borderRadius: '0 4px 4px 0'
-                        }} 
-                        onClick={() => !n.is_read && markAsRead(n.id)}
-                        onKeyDown={(e) => {
-                            if ((e.key === 'Enter' || e.key === ' ') && !n.is_read) {
-                                e.preventDefault();
-                                markAsRead(n.id);
-                            }
-                        }}
-                    >
-                        <div style={{ marginBottom: '5px' }}>{renderMessage(n)}</div>
-                        <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                            <span>{new Date(n.created_at).toLocaleTimeString()}</span>
-                            <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ background: 'none', border: 'none', color: '#666' }} aria-label="Delete">
-                                <IconTrash size={12} />
-                            </button>
-                        </div>
-                        {n.type === 'sym_request' && (
-                            <div style={{ marginTop: '5px', display: 'flex', gap: '5px' }}>
-                                <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'accept'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <IconCheck size={12} /> Accept
-                                </button>
-                                <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'decline'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
-                                    <IconX size={12} /> Decline
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <SwipeableNotificationItem key={n.id} n={n} />
                 ))}
 
                 {/* Sym Links Footer */}

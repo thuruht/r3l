@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
@@ -60,7 +60,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ content, onChange, filename, yd
   return (
     <div style={{ height: '100%', overflow: 'auto', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
       <CodeMirror
-        value={ydoc ? undefined : content} // If collaborative, let Yjs handle value. If not, use prop.
+        value={content} // Always pass content initially. If Yjs is active, yCollab will take over, but this ensures initial render is not empty if yText is synced.
         height="100%"
         theme="dark"
         extensions={getExtensions()}

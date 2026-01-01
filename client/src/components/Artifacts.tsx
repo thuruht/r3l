@@ -12,6 +12,7 @@ import { useToast } from '../context/ToastContext';
 interface ArtifactsProps {
   userId: string;
   isOwner: boolean;
+  currentUser?: any;
 }
 
 interface FileData {
@@ -24,7 +25,7 @@ interface FileData {
   vitality: number;
 }
 
-const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
+const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner, currentUser }) => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -131,7 +132,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('visibility', 'private'); // 'private' in DB schema
+    formData.append('visibility', 'private');
     if (remixTarget) {
       formData.append('parent_id', remixTarget.id.toString());
     }
@@ -143,8 +144,9 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       });
 
       if (res.ok) {
-        await fetchFiles(); // Refresh list
+        await fetchFiles();
         showToast('Artifact uploaded successfully!', 'success');
+        setRemixTarget(null);
       } else {
         const err = await res.json();
         setError(err.error || 'Upload failed');
@@ -156,7 +158,6 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
     finally {
       setUploading(false);
-      setRemixTarget(null);
       e.target.value = '';
     }
   };
@@ -299,12 +300,13 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
-                     minWidth: '20px'
+                     minWidth: '20px',
+                     opacity: boostingIds.has(file.id) ? 0.5 : 1
                    }}
                    title="Boost Signal"
                    aria-label="Boost Signal"
                  >
-                   {boostingIds.has(file.id) ? <IconLoader2 size={12} className="icon-spin" /> : "+"}
+                   {boostingIds.has(file.id) ? '...' : "+"}
                  </button>
               </div>
 
@@ -402,7 +404,10 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       {showUploadModal && (
         <UploadModal 
-            onClose={() => setShowUploadModal(false)}
+            onClose={() => {
+              setShowUploadModal(false);
+              setRemixTarget(null);
+            }}
             onUploadComplete={fetchFiles}
             parentId={remixTarget?.id}
         />
@@ -411,6 +416,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       {previewFile && (
         <FilePreviewModal
             fileId={previewFile.id}
+            currentUser={currentUser}
             filename={previewFile.filename}
             mimeType={previewFile.mime_type}
             onClose={() => setPreviewFile(null)}

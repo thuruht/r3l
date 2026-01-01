@@ -6,7 +6,7 @@ import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';
-import JSZip from 'jszip';
+import { FILE_EXPIRATION_HOURS, VITALITY_ARCHIVE_THRESHOLD, MESSAGE_PURGE_DAYS, RATE_LIMITS, ADMIN_USER_ID } from './constants';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
@@ -192,7 +192,7 @@ function getR2PublicUrl(c: any, r2_key: string): string {
 // --- Auth Routes ---
 
 app.post('/api/register', async (c) => {
-  if (!await checkRateLimit(c, 'register', 5, 3600)) { // 5 per hour
+  if (!await checkRateLimit(c, 'register', RATE_LIMITS.register.limit, RATE_LIMITS.register.window)) {
     return c.json({ error: 'Too many registration attempts. Please try again later.' }, 429);
   }
   const { username, password, email, avatar_url, public_key, encrypted_private_key } = await c.req.json();
@@ -251,7 +251,7 @@ app.post('/api/register', async (c) => {
 });
 
 app.post('/api/login', async (c) => {
-  if (!await checkRateLimit(c, 'login', 10, 600)) { // 10 per 10 mins
+  if (!await checkRateLimit(c, 'login', RATE_LIMITS.login.limit, RATE_LIMITS.login.window)) {
     return c.json({ error: 'Too many login attempts. Please wait.' }, 429);
   }
   const { username, password } = await c.req.json();
@@ -314,7 +314,7 @@ app.post('/api/logout', (c) => {
 });
 
 app.post('/api/forgot-password', async (c) => {
-  if (!await checkRateLimit(c, 'forgot', 3, 3600)) { // 3 per hour
+  if (!await checkRateLimit(c, 'forgot', RATE_LIMITS.forgot.limit, RATE_LIMITS.forgot.window)) {
     return c.json({ error: 'Too many attempts. Please try again later.' }, 429);
   }
   const { email } = await c.req.json();
@@ -360,7 +360,7 @@ app.post('/api/forgot-password', async (c) => {
 });
 
 app.post('/api/reset-password', async (c) => {
-  if (!await checkRateLimit(c, 'reset', 3, 3600)) { // 3 per hour
+  if (!await checkRateLimit(c, 'reset', RATE_LIMITS.reset.limit, RATE_LIMITS.reset.window)) {
     return c.json({ error: 'Too many attempts.' }, 429);
   }
   const { token, newPassword } = await c.req.json();
@@ -582,12 +582,33 @@ app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
   }
 });
 
+// PUT /api/users/me/public-key: Update user's public key for E2EE
+app.put('/api/users/me/public-key', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { public_key } = await c.req.json();
+
+  if (!public_key || typeof public_key !== 'string') {
+    return c.json({ error: 'Invalid public key' }, 400);
+  }
+
+  try {
+    await c.env.DB.prepare(
+      'UPDATE users SET public_key = ? WHERE id = ?'
+    ).bind(public_key, user_id).run();
+    
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error("Error updating public key:", e);
+    return c.json({ error: 'Failed to update public key' }, 500);
+  }
+});
+
 // Apply middleware to protected routes
 app.use('/api/drift', authMiddleware);
 app.use('/api/relationships', authMiddleware); // Ensure root /api/relationships is protected
 app.use('/api/relationships/*', authMiddleware);
 app.use('/api/notifications', authMiddleware);
-app.use('/api/notifications/*', authMiddleware); // Added wildcart
+app.use('/api/notifications/*', authMiddleware); // Added wildcard
 app.use('/api/files', authMiddleware); // Ensure root /api/files is protected
 app.use('/api/files/*', authMiddleware);
 app.use('/api/communiques', authMiddleware);
@@ -628,8 +649,7 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  // Simple admin check: assume user ID 1 is the admin
-  if (user_id !== 1) {
+  if (user_id !== ADMIN_USER_ID) {
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -653,7 +673,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -668,10 +688,10 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
   const targetId = Number(c.req.param('id'));
 
-  if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
+  if (targetId === ADMIN_USER_ID) return c.json({ error: 'Cannot delete admin' }, 400);
 
   try {
     // Cascade delete manually if foreign keys aren't set
@@ -690,7 +710,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);
@@ -833,14 +853,14 @@ async function broadcastSignal(
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
     const doStub = env.DO_NAMESPACE.get(doId);
     
+    const message = type === 'system_alert' 
+      ? { type: 'new_notification', notificationType: 'system_alert', actorId: userId, payload }
+      : { type, userId, payload };
+    
     await doStub.fetch('http://do-stub/broadcast-signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        type, 
-        userId, 
-        payload 
-      }),
+      body: JSON.stringify(message),
     });
   } catch (e) {
     console.error("Failed to broadcast signal:", e);
@@ -1243,7 +1263,7 @@ app.get('/api/relationships', authMiddleware, async (c) => {
 
 // GET /api/drift: Fetch a random sample of public data (users and files)
 app.get('/api/drift', authMiddleware, async (c) => {
-    if (!await checkRateLimit(c, 'drift', 20, 600)) { // 20 per 10 mins
+    if (!await checkRateLimit(c, 'drift', RATE_LIMITS.drift.limit, RATE_LIMITS.drift.window)) {
         return c.json({ error: 'Drifting too fast. Please wait.' }, 429);
     }
     const user_id = c.get('user_id');
@@ -1410,12 +1430,12 @@ app.get('/api/users/:target_user_id/files', async (c) => {
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(user_id, target_user_id), Math.max(user_id, target_user_id), Math.min(user_id, target_user_id), Math.max(user_id, target_user_id)).first();
 
-    let query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND visibility = "public"';
+    let query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public"';
     
-    // If mutual, allow 'sym' visibility too
     if (mutual) {
-        query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public" OR visibility = "sym")';
+        query += ' OR visibility = "sym"';
     }
+    query += ')';
 
     const { results } = await c.env.DB.prepare(query + ' ORDER BY created_at DESC').bind(target_user_id).all();
     return c.json({ files: results });
@@ -1480,7 +1500,7 @@ app.post('/api/files', async (c) => {
     });
 
     // Record in D1
-    const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
+    const expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
 
     // Check for burn_on_read flag in formData (default false)
     const burn_on_read = formData['burn_on_read'] === 'true';
@@ -1488,10 +1508,8 @@ app.post('/api/files', async (c) => {
     // Map allowed visibility values
     // DB Constraint: visibility IN ('public', 'sym', 'me')
     // Frontend currently sends 'private', so map it to 'me'.
-    let dbVisibility = visibility;
-    if (dbVisibility === 'private') {
-      dbVisibility = 'me';
-    } else if (!['public', 'sym', 'me'].includes(dbVisibility)) {
+    let dbVisibility = visibility === 'private' ? 'me' : visibility;
+    if (!['public', 'sym', 'me'].includes(dbVisibility)) {
       dbVisibility = 'me'; // Default safe fallback
     }
 
@@ -1545,7 +1563,7 @@ app.get('/api/files/:id/metadata', async (c) => {
     if (!file) return c.json({ error: 'File not found' }, 404);
 
     // Permission check (same as download)
-    if (file.user_id !== user_id && file.visibility === 'private') {
+    if (file.user_id !== user_id && (file.visibility === 'private' || file.visibility === 'me')) {
          return c.json({ error: 'Unauthorized' }, 403);
     }
     // If 'sym', check mutual (omitted for brevity, but ideally should be here or frontend handles it via error on content fetch)
@@ -1586,7 +1604,7 @@ app.get('/api/files/:id/content', async (c) => {
     // 'public' files can be downloaded by anyone (authenticated for now)
     
     if (file.user_id !== user_id) {
-        if (file.visibility === 'private') {
+        if (file.visibility === 'private' || file.visibility === 'me') {
             return c.json({ error: 'Unauthorized access to file' }, 403);
         }
         if (file.visibility === 'sym') {
@@ -1602,7 +1620,7 @@ app.get('/api/files/:id/content', async (c) => {
     }
 
     // 3. Fetch from R2
-  const object = await c.env.BUCKET.get(file.r2_key, {
+  const object = await c.env.BUCKET.get(file.r2_key as string, {
     range: c.req.header('Range') // Pass Range header for seeking
   });
 
@@ -1629,13 +1647,11 @@ app.get('/api/files/:id/content', async (c) => {
 
     // Handle Burn On Read (Ephemeral)
     if (file.burn_on_read) {
-        // Schedule deletion after response (or immediately if we trust the buffer is in memory)
-        // Since this is a Worker, we can use waitUntil to perform background tasks
-        c.executionCtx.waitUntil(async function() {
+        c.executionCtx.waitUntil((async () => {
             await c.env.BUCKET.delete(file.r2_key as string);
             await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
             console.log(`Burned file ${file_id} after read.`);
-        }());
+        })());
     }
 
     return new Response(body, {
@@ -1707,8 +1723,8 @@ app.post('/api/files/:id/share', async (c) => {
 
     if (!mutual) return c.json({ error: 'Must be mutually connected to share' }, 403);
 
-    // 3. Ensure file is visible (upgrade to 'sym' if 'private')
-    if (file.visibility === 'private') {
+    // 3. Ensure file is visible (upgrade to 'sym' if 'private' or 'me')
+    if (file.visibility === 'private' || file.visibility === 'me') {
       await c.env.DB.prepare("UPDATE files SET visibility = 'sym' WHERE id = ?").bind(file_id).run();
     }
 
@@ -1723,6 +1739,35 @@ app.post('/api/files/:id/share', async (c) => {
   } catch (e: any) {
     console.error("Error sharing file:", e);
     return c.json({ error: 'Failed to share file' }, 500);
+  }
+});
+
+// PUT /api/files/:id/metadata: Update file metadata (visibility)
+app.put('/api/files/:id/metadata', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+  const { visibility } = await c.req.json();
+
+  if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
+
+  // Validate visibility
+  if (visibility && !['public', 'sym', 'me'].includes(visibility)) {
+      return c.json({ error: 'Invalid visibility mode' }, 400);
+  }
+
+  try {
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
+    if (visibility) {
+        await c.env.DB.prepare('UPDATE files SET visibility = ? WHERE id = ?').bind(visibility, file_id).run();
+    }
+
+    return c.json({ success: true });
+  } catch (e: any) {
+    console.error("Error updating file metadata:", e);
+    return c.json({ error: 'Failed to update metadata' }, 500);
   }
 });
 
@@ -1777,7 +1822,7 @@ app.post('/api/files/:id/refresh', async (c) => {
     // Simplest: Check if user has access.
     
     // Update expires_at to 7 days from now
-    const new_expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
+    const new_expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
     
     const { success } = await c.env.DB.prepare(
       'UPDATE files SET expires_at = ? WHERE id = ?'
@@ -1798,7 +1843,12 @@ app.post('/api/files/:id/refresh', async (c) => {
 app.post('/api/files/:id/vitality', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
-  const { amount } = await c.req.json().catch(() => ({ amount: 1 })); // Default +1
+  
+  if (!await checkRateLimit(c, `vitality:${user_id}`, RATE_LIMITS.vitality.limit, RATE_LIMITS.vitality.window)) {
+    return c.json({ error: 'Too many boost attempts. Please wait.' }, 429);
+  }
+  
+  const { amount } = await c.req.json().catch(() => ({ amount: 1 }));
 
   if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
 
@@ -1815,7 +1865,7 @@ app.post('/api/files/:id/vitality', async (c) => {
     if (success) {
       // Check if threshold reached for auto-archive
       const file = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first();
-      if (file && (file.vitality as number) >= 10) { // Threshold 10
+      if (file && (file.vitality as number) >= VITALITY_ARCHIVE_THRESHOLD) {
          await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
          return c.json({ message: 'Vitality boosted. File archived due to high vitality!' });
       }
@@ -2230,11 +2280,16 @@ app.get('/api/messages/:partner_id', async (c) => {
     const decryptedResults = await Promise.all(results.map(async (msg: any) => {
         if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {
             try {
-                const encryptedBuffer = Buffer.from(msg.content, 'base64');
+                const base64Decoded = atob(msg.content);
+                const encryptedBuffer = new Uint8Array(base64Decoded.length);
+                for (let i = 0; i < base64Decoded.length; i++) {
+                    encryptedBuffer[i] = base64Decoded.charCodeAt(i);
+                }
                 const decryptedBuffer = await decryptData(encryptedBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
                 const decryptedText = new TextDecoder().decode(decryptedBuffer);
                 return { ...msg, content: decryptedText };
             } catch (e) {
+                console.error('Message decryption error:', e);
                 return { ...msg, content: '[Decryption Error]' };
             }
         }
@@ -2270,8 +2325,10 @@ app.post('/api/messages', async (c) => {
 
     if (encrypt === true && c.env.ENCRYPTION_SECRET) {
         const encryptedData = await encryptData(content, c.env.ENCRYPTION_SECRET);
-        // Store as base64 string
-        finalContent = Buffer.from(encryptedData.encrypted).toString('base64');
+        finalContent = Array.from(new Uint8Array(encryptedData.encrypted))
+          .map(b => String.fromCharCode(b))
+          .join('');
+        finalContent = btoa(finalContent);
         iv = encryptedData.iv;
         is_encrypted = 1;
     }
@@ -2380,7 +2437,7 @@ app.post('/api/users/me/avatar', async (c) => {
 
 // POST /api/feedback: Send feedback to admin
 app.post('/api/feedback', async (c) => {
-  if (!await checkRateLimit(c, 'feedback', 3, 3600)) { // 3 per hour
+  if (!await checkRateLimit(c, 'feedback', RATE_LIMITS.feedback.limit, RATE_LIMITS.feedback.window)) {
     return c.json({ error: 'Too many feedback attempts. Please try again later.' }, 429);
   }
   
@@ -2463,7 +2520,7 @@ export default {
       }
 
       // 2. Purge Old Messages (Inbox/Outgoing unarchived > 30 days)
-      const messagePurgeThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const messagePurgeThreshold = new Date(Date.now() - MESSAGE_PURGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
       const { meta: msgMeta } = await env.DB.prepare(
         'DELETE FROM messages WHERE is_archived = 0 AND created_at < ?'
       ).bind(messagePurgeThreshold).run();

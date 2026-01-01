@@ -50,3 +50,73 @@ export async function decryptFile(encryptedBlob: Blob, iv: Uint8Array, key: Cryp
 
   return new Blob([decryptedBuffer], { type: encryptedBlob.type });
 }
+
+// --- RSA (Asymmetric) Logic for Key Sharing ---
+
+export async function generateRSAKeyPair(): Promise<CryptoKeyPair> {
+    return window.crypto.subtle.generateKey(
+        {
+            name: "RSA-OAEP",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: "SHA-256"
+        },
+        true,
+        ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
+    );
+}
+
+export async function exportPublicKey(key: CryptoKey): Promise<string> {
+    const exported = await window.crypto.subtle.exportKey("spki", key);
+    return btoa(String.fromCharCode(...new Uint8Array(exported)));
+}
+
+export async function exportPrivateKey(key: CryptoKey): Promise<string> {
+    const exported = await window.crypto.subtle.exportKey("pkcs8", key);
+    return btoa(String.fromCharCode(...new Uint8Array(exported)));
+}
+
+export async function importPublicKey(base64Key: string): Promise<CryptoKey> {
+    const binaryDer = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+    return window.crypto.subtle.importKey(
+        "spki",
+        binaryDer,
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        true,
+        ["encrypt", "wrapKey"]
+    );
+}
+
+export async function importPrivateKey(base64Key: string): Promise<CryptoKey> {
+    const binaryDer = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+    return window.crypto.subtle.importKey(
+        "pkcs8",
+        binaryDer,
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        true,
+        ["decrypt", "unwrapKey"]
+    );
+}
+
+export async function wrapKey(symmetricKey: CryptoKey, publicKey: CryptoKey): Promise<string> {
+    const wrapped = await window.crypto.subtle.wrapKey(
+        "raw",
+        symmetricKey,
+        publicKey,
+        { name: "RSA-OAEP" }
+    );
+    return btoa(String.fromCharCode(...new Uint8Array(wrapped)));
+}
+
+export async function unwrapKey(wrappedKeyBase64: string, privateKey: CryptoKey): Promise<CryptoKey> {
+    const wrappedKey = Uint8Array.from(atob(wrappedKeyBase64), c => c.charCodeAt(0));
+    return window.crypto.subtle.unwrapKey(
+        "raw",
+        wrappedKey,
+        privateKey,
+        { name: "RSA-OAEP" },
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt", "decrypt"]
+    );
+}

@@ -7,8 +7,10 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
 
 interface CommuniqueProps {
-  userId: number; // Changed to number to match typical usage, though strict string/number handling is good
-  onClose?: () => void; // Optional now if we use routes
+  userId: string;
+  isOwner: boolean;
+  currentUser: any;
+  onUpdateUser?: (user: any) => void;
 }
 
 interface CommuniqueData {
@@ -23,38 +25,20 @@ interface UserProfile {
     avatar_url?: string;
 }
 
-const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
+const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, onUpdateUser }) => {
   const [data, setData] = useState<CommuniqueData>({ content: '', theme_prefs: '{}', updated_at: null });
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
-
-  const isOwner = currentUser?.id === Number(userId);
-
-  useEffect(() => {
-    const fetchMe = async () => {
-        try {
-            const res = await fetch('/api/users/me');
-            if (res.ok) {
-                const json = await res.json();
-                setCurrentUser(json.user);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    };
-    fetchMe();
-  }, []);
 
   useEffect(() => {
       const fetchTargetUser = async () => {
@@ -181,9 +165,9 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
         if (res.ok) {
             const data = await res.json();
             showToast('Avatar uploaded successfully!', 'success');
-            // Optimistically update current user state if we had a global store,
-            // but here we just update local state which might not reflect everywhere until reload.
-            setCurrentUser(prev => prev ? ({ ...prev, avatar_url: data.avatar_url }) : null);
+            if (onUpdateUser) {
+                onUpdateUser({ ...currentUser, avatar_url: data.avatar_url });
+            }
         } else {
             const err = await res.json();
             showToast(err.error || 'Failed to upload avatar', 'error');
@@ -465,7 +449,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
         </div>
       )}
       
-      <Artifacts userId={userId.toString()} isOwner={isOwner} />
+      <Artifacts userId={userId} isOwner={isOwner} currentUser={currentUser} />
     </div>
   );
 };

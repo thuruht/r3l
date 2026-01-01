@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rel-F: The Rel &amp; Ephemeral File Network</title>
+  <!-- Google Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+body {
+    padding: 1rem;
+    margin: 0.5rem auto;
+    box-sizing: border-box;
+    min-width: 896px;
+    max-width: 896px;
+    width: 896px;
+    min-height:100vh;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    font-weight: 500;
+    background-color: #0e1f21;
+    color: #d0efb0;
+
+}
+h1, h2, h3, h4, section, footer, p, li, ul, ol, div, dt,  dd {
+    box-sizing: border-box;
+margin-top:0.33rem;
+margin-bottom: 0.33rem;
+}
+
+.underlne {
+    text-decoration: underline;
+}
+
+h2 {
+    /* padding: 0.5rem; */
+    /* margin: 0 auto; */
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+
+/* ========= MATERIAL ICONS ========= */
+.material-icons {
+  color: #d0efff;
+}
+
+/* ========= HEADER & TYPOGRAPHY ========= */
+header {
+  text-align: center;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  border-bottom: 1px dotted #1f3f3f;
+  background-color: #1f2f3f;
+  border-radius: 8px;
+}
+
+h1 {
+  font-size: 4rem;
+  color: #d0efb0;
+  background-color: #1f3f33;
+  border-radius: 8px;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  text-align: center;
+  text-shadow: 1px 1px 6px #d0efb0,
+               1px 1px 0 #0e1f21,
+               1px -1px 0 #0e1f21,
+               -1px 1px 0 #0e1f21,
+               -1px -1px 0 #0e1f21;
+  -webkit-text-stroke: 1px #0e1f21;
+}
+
+hr {
+  color: transparent;
+  border-top: 1px dotted #7fd8d8;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+p,
+li {
+  font-size: 1rem;
+  color: #d0efb0;
+}
+
+ul,
+ol {
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+a:link,
+a:hover,
+a:active,
+a:visited {
+  color: #7fd8d8;
+  text-decoration: none;
+}
+
+a:hover {
+  cursor: pointer;
+  text-shadow: 1px 1px 6px #d0efb0aa,
+               1px 1px 0 #0e1f21,
+               1px -1px 0 #0e1f21,
+               -1px 1px 0 #0e1f21,
+               -1px -1px 0 #0e1f21;
+  -webkit-text-stroke: 1px #c0ffc0;
+  text-decoration: underline;
+}
+
+/* ========= LAYOUT SECTIONS ========= */
+section {
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+#short-version p {
+  border: 0;
+  background-color: transparent;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  width: auto;
+  height: auto;
+  vertical-align: middle;
+  /* margin-left: 0 auto; */
+  /* margin-right: 0 auto; */
+}
+
+footer {
+  text-align: center;
+  font-size: 0.875rem;
+  border-top: 1px dotted #1f3f3f;
+  color: #d0efb0;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+/* Short-Version 2x2 Layout */
+#short-version {
+  background-color: transparent;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  grid-auto-rows: minmax(200px, auto);
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+#short-version section {
+  background-color: #1f3f33;
+  border: 2px solid #1f3f3f;
+  border-radius: 8px;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+/* Table of Contents & Glossary */
+#toc,
+#glossary {
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  background-color: transparent;
+  border-radius: 8px;
+}
+
+
+
+/* Unified Overview Section - Headings & Multi-column Lists */
+#unified-overview h3 {
+  font-size: 1.5rem;
+  color: #d0efb0;
+  border-bottom: 1px dotted #1f3f3f;
+  background-color: #1f3f33;
+  border-radius: 8px;
+  text-align: center;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+#unified-overview ul {
+  background-color: transparent;
+  column-count: 2;
+  column-gap: 1rem;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  list-style-type: none;
+  border-radius: 8px;
+}
+
+#unified-overview ul li {
+  background-color: #1f2f3f;
+  break-inside: avoid;
+  border-radius: 8px;
+  line-height: 1.4;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+/* Glossary styling for dt and dd */
+dt:nth-child(odd) {
+  background-color: #1f3f33;
+  border-radius: 8px;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+dt:nth-child(even) {
+  background-color: #1f3f2f;
+  border-radius: 8px;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+dt {
+  font-weight: 700;
+}
+
+dd {
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+}
+
+h3 {
+  text-align: center;
+  background-color: #1f2f3f;
+}
+
+/* ========= COLLAPSIBLE SECTIONS ========= */
+/* Each collapsible has: .collapsible-header + .collapsible-content */
+.collapsible-header {
+  cursor: pointer;
+  background-color: #1f3f33;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.collapsible-header h2 {
+  flex: 1;
+  font-size: 1.33rem;
+  color: #d0efb0;
+  text-align: left;
+}
+
+.icon-left {
+  margin-right: 0.5rem;
+  font-family: 'Material Icons';
+}
+
+.toggle-icon {
+  margin-left: auto;
+  font-family: 'Material Icons';
+}
+
+.collapsible-content {
+  height: 0;
+  overflow: hidden;
+  /* padding: 0.5rem; */
+  /* margin: 0 auto; */
+  background-color: transparent;
+  border-radius: 8px;
+}
+
+/* Additional responsiveness for unified overview & short-version */
+@media (max-width: 666px) {
+  #unified-overview ul {
+    column-count: 1;
+  }
+  #short-version {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 400px) {
+  #short-version {
+    grid-template-columns: 1fr;
+  }
+}
+/* Adjustments for smaller screens */
+@media (max-width: 400px) {
+  body {
+    padding: 0.5rem;
+  }
+  h1 {
+    font-size: 1.5rem;
+  }
+  h2 {
+    font-size: 1.25rem;
+  }
+  h3 {
+    font-size: 1rem;
+  }
+}
+/* Adjustments for very small screens */
+@media (max-width: 300px) {
+  body {
+    padding: 0.25rem;
+  }
+  h1 {
+    font-size: 1.2rem;
+  }
+  h2 {
+    font-size: 1rem;
+  }
+  h3 {
+    font-size: 0.9rem;
+  }
+}
+/* Adjustments for extremely small screens */
+@media (max-width: 200px) {
+  body {
+    padding: 0.1rem;
+  }
+  h1 {
+    font-size: 1rem;
+  }
+  h2 {
+    font-size: 0.8rem;
+  }
+  h3 {
+    font-size: 0.7rem;
+  }
+}
+/* Adjustments for very large screens */
+@media (min-width: 1200px) {
+  body {
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 3rem;
+  }
+  h2 {
+    font-size: 2rem;
+  }
+  h3 {
+    font-size: 1.5rem;
+  }
+}
+/* Adjustments for large screens */
+@media (min-width: 800px) {
+  body {
+    padding: 1.5rem;
+  }
+  h1 {
+    font-size: 2.5rem;
+  }
+  h2 {
+    font-size: 1.75rem;
+  }
+  h3 {
+    font-size: 1.25rem;
+  }
+}
+/* Adjustments for medium screens */
+@media (min-width: 600px) {
+  body {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 2rem;
+  }
+  h2 {
+    font-size: 1.5rem;
+  }
+  h3 {
+    font-size: 1.2rem;
+  }
+}
+
+</style>
+</head>
+<body>
+  <header>
+    <h1>
+      <span class="material-icons" aria-hidden="true">public</span>
+      Rel-F: The Rel &amp; Ephemeral File Network
+    </h1>
+    <p id="rsym">
+      <small>
+        <strong>the rel</strong> is what you make it. <em>Know</em> what you share and when it expires. <span class="underlne">Choose</span> who you’re sym with.
+      </small>
+    </p>
+    <hr />
+    <p id="tagline">
+      <span class="material-icons" aria-hidden="true">star_border</span>
+      <strong>the rel</strong> – a peer-driven, privacy-first network where you control your connections and content.
+    </p>
+  </header>
+
+  <!-- Table of Contents -->
+  <nav id="toc">
+    <div class="collapsible-header">
+      <span class="material-icons icon-left" aria-hidden="true">menu</span>
+      <h2>Table of Contents</h2>
+      <span class="material-icons toggle-icon">arrow_drop_down</span>
+    </div>
+    <div class="collapsible-content" data-expanded="false">
+      <ul>
+        <li><a href="#platform-core"><span class="material-icons" aria-hidden="true">account_tree</span> Platform Architecture &amp; Core Concepts</a></li>
+        <li><a href="#interaction-modes"><span class="material-icons" aria-hidden="true">group</span> Interaction Modes &amp; Community Formation</a></li>
+        <li><a href="#file-mgmt"><span class="material-icons" aria-hidden="true">folder</span> File Management, Communication &amp; Ephemerality</a></li>
+        <li><a href="#navigation-sec"><span class="material-icons" aria-hidden="true">security</span> Navigation &amp; Security</a></li>
+        <li><a href="#philosophy-design"><span class="material-icons" aria-hidden="true">lightbulb</span> Philosophy &amp; Design Principles</a></li>
+        <li><a href="#ideological-overview"><span class="material-icons" aria-hidden="true">dashboard</span> Ideological Overview</a></li>
+        <li><a href="#official-readme"><span class="material-icons" aria-hidden="true">description</span> Official README</a></li>
+        <li><a href="#iconography"><span class="material-icons" aria-hidden="true">star</span> Iconography</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Scannable Overview -->
+  <div class="collapsible-header">
+    <span class="material-icons icon-left" aria-hidden="true">visibility</span>
+    <h2>Scannable Overview</h2>
+    <span class="material-icons toggle-icon">arrow_drop_down</span>
+  </div>
+  <div class="collapsible-content" data-expanded="false">
+    <div id="short-version">
+      <section>
+        <h3>Platform Identity</h3>
+        <p>
+          <strong><a href="#platform-core">the rel</a></strong> is a peer-driven network built for sharing files and fostering genuine connections. Its design uses temporary content and user‑managed relationships.
+        </p>
+      </section>
+      <section>
+        <h3 id="interaction-modes">Interactions &amp; Community</h3>
+        <p>
+          Choose your connections and form sym‑groups—whether for short‑term projects or long‑term collaboration. Our system supports clear, reciprocal, and serendipitous connections.
+        </p>
+      </section>
+      <section>
+        <h3 id="file-mgmt">Communication &amp; Ephemerality</h3>
+        <p>
+          Share files via your public <strong><a href="#rcc">RCC ("wrick")</a></strong> or store them privately in your <strong><a href="#rpc">RPC</a></strong>. Files expire automatically (typically after 7 days) unless you choose to save them.
+        </p>
+      </section>
+      <section>
+        <h3 id="navigation-sec">Navigation &amp; Visualization</h3>
+        <p>
+          Explore your network using <strong><a href="#rrc">RRC ("wreck")</a></strong>, our interactive map that displays your connections.
+        </p>
+      </section>
+    </div>
+  </div>
+
+  <!-- Glossary -->
+  <section id="glossary">
+    <div class="collapsible-header">
+      <span class="material-icons icon-left" aria-hidden="true">book</span>
+      <h2>Glossary</h2>
+      <span class="material-icons toggle-icon">arrow_drop_down</span>
+    </div>
+    <div class="collapsible-content" data-expanded="false">
+      <dl>
+        <dt id="the-rel"><a href="#the-rel"><em>the rel</em></a></dt>
+        <dd>
+          <strong>the rel</strong> is the official short form for Rel-F—a network built on voluntary, temporary interactions and genuine, user‑controlled connections.
+        </dd>
+        <dt id="rel-definition"><a href="#rel-definition"><em>REL</em></a></dt>
+        <dd>
+          <strong>REL</strong> is not an acronym—it’s a connotative term embodying the spirit of organic, authentic social interactions.
+        </dd>
+        <dt id="symgroups"><a href="#symgroups"><em>Sym‑Groups</em></a></dt>
+        <dd>
+          <strong>Sym‑Groups</strong> are user‑formed collectives for collaborative projects or communities.
+        </dd>
+        <dt id="modes"><a href="#modes"><em>s/a/3 Modes</em></a></dt>
+        <dd>
+          <strong>s/a/3 Modes</strong> refer to three interaction types:
+          <br /><em>Sym (s,1):</em> Clear, reciprocal interactions.
+          <br /><em>A‑Sym (a,2):</em> Casual, serendipitous connections.
+          <br /><em>Third Space (3,3):</em> Secure, private collaborations.
+        </dd>
+        <dt id="r3c"><a href="#r3c"><em>R3C</em></a></dt>
+        <dd>
+          <strong>R3C</strong> stands for <em>R3LF Cache</em>—your personal hub for storing files and managing communications.
+        </dd>
+        <dt id="rcc"><a href="#rcc"><em>RCC</em></a></dt>
+        <dd>
+          <strong>RCC</strong> stands for <em>R3LF Cache Communique</em>—your public space for sharing content and communicating.
+        </dd>
+        <dt id="rpc"><a href="#rpc"><em>RPC</em></a></dt>
+        <dd>
+          <strong>RPC</strong> stands for <em>R3LF Private Cache</em>—the secure area for sensitive or private files.
+        </dd>
+        <dt id="rrc"><a href="#rrc"><em>RRC</em></a></dt>
+        <dd>
+          <strong>RRC</strong> stands for <em>Rel‑F Relational Construct</em> (also known as “wreck”)—an interactive map of your network connections.
+        </dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- Ideological Overview (Columnar Layout) -->
+  <section id="ideological-overview">
+    <div class="collapsible-header">
+      <span class="material-icons icon-left" aria-hidden="true">dashboard</span>
+      <h2>Ideological Overview</h2>
+      <span class="material-icons toggle-icon">arrow_drop_down</span>
+    </div>
+    <div class="collapsible-content" data-expanded="false">
+      <div class="columns">
+        <!-- Column 1: Ephemeral Content & User‑Curated Connections -->
+        <div class="column">
+          <section>
+            <h3>Ephemeral Content: Freedom in the Moment</h3>
+            <p>
+              In traditional villages and oral cultures, conversations drift into the air and vanish; they aren’t archived to haunt you years later. Modern social media never forgets—every post sticks like a fly in amber, ready to be data‑mined. This permanence creates self‑censorship and anxiety, forcing people to perform for an invisible audience.
+            </p>
+            <p>
+              Ephemerality is our antidote. By making content transient, the rel encourages genuine, in‑the‑moment expression without the fear of an eternal digital record.
+            </p>
+            <p>
+              Humans have always cherished the right to be forgotten. Features like Snapchat’s self‑destructing snaps and Instagram Stories’ 24‑hour lifespan shrink the exploitable data footprint.
+            </p>
+          </section>
+          <section>
+            <h3>User‑Curated Connections: Your Network, Your Tribe</h3>
+            <p>
+              Imagine if a billionaire’s AI dictated your friendships. Mainstream platforms flood you with algorithmic, shallow connections. In contrast, user‑curated networks empower you to choose who truly matters—building your network through trust, mutual interest, and deliberate choice.
+            </p>
+            <p>
+              Research, including Robin Dunbar’s theory that humans can maintain roughly 150 stable relationships, supports the idea that smaller, self‑selected networks are healthier and more resilient. The rel revives the grassroots spirit of early internet communities, where quality and consent trump sheer numbers.
+            </p>
+          </section>
+        </div>
+        <!-- Column 2: Mutual Visibility, Rejecting Engagement Farming, Conclusion -->
+        <div class="column">
+          <section>
+            <h3>Mutual Visibility: No Gods, No Influencers</h3>
+            <p>
+              Modern platforms thrive on asymmetry—the influencer versus the influenced—which breeds power imbalances and dehumanizes interactions. The rel ensures that if you’re connected, both parties see and know each other. No unilateral follows; only honest, reciprocal relationships.
+            </p>
+            <p>
+              This horizontal, democratic approach is like a town hall meeting where every voice is heard, fostering accountability and empathy.
+            </p>
+          </section>
+          <section>
+            <h3>Rejecting Engagement Farming: Quality Over Clicks</h3>
+            <p>
+              Scroll, click, like, share—an endless cycle designed to harvest your attention. Big Tech’s engagement farming exploits your psychology like a slot machine engineered to keep you hooked. The rel rejects this model by surfacing content based on genuine relevance rather than endless optimization.
+            </p>
+            <p>
+              Studies show that sensational content spreads faster than nuanced truth. By prioritizing meaningful interactions over addictive metrics, the rel reclaims our digital lives for thoughtful exchange.
+            </p>
+          </section>
+          <section>
+            <h3>Conclusion: A Digital Rebellion</h3>
+            <p>
+              Weaving these principles together, the rel is more than a network—it’s a digital rebellion. Every design choice, from ephemeral content to user‑curated connections and mutual visibility, defies systems that commodify our identities.
+            </p>
+            <p>
+              Drawing on examples from decentralized movements and historical grassroots resistance, the rel reclaims the internet as a space for genuine interaction. Every deliberate connection and every moment away from the endless scroll is a small revolution—a call to reclaim our agency.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Official README Section -->
+  <section id="official-readme">
+    <div class="collapsible-header">
+      <span class="material-icons icon-left" aria-hidden="true">description</span>
+      <h2>Official README</h2>
+      <span class="material-icons toggle-icon">arrow_drop_down</span>
+    </div>
+    <div class="collapsible-content" data-expanded="false">
+      <article>
+        <header>
+          <h2>Rel-F: The Rel &amp; Ephemeral File Network</h2>
+        </header>
+        <section>
+          <h3>Overview</h3>
+          <p>
+            Rel-F is a decentralized file‑sharing and social network built on voluntary and temporary interactions. It avoids automated engagement and tracking, giving you full control over your connections, content, and presence.
+          </p>
+          <p>
+            Unlike many mainstream platforms that monetize your digital past, Rel‑F is built around genuine relationships, temporary content, and community‑led archiving. It’s a space for peer‑to‑peer exchange rather than chasing likes or followers.
+          </p>
+        </section>
+        <section>
+          <h3 id="platform-core">Core Concepts</h3>
+          <article>
+            <h4>Relational</h4>
+            <p>
+              Users interact through a visual association web that reflects real, agreed‑upon relationships. There is no forced connection or hidden ranking—visibility is mutual.
+            </p>
+          </article>
+          <article>
+            <h4>Ephemeral</h4>
+            <p>
+              Content automatically expires unless saved, ensuring data remains current and uncluttered.
+            </p>
+          </article>
+          <article>
+            <h4>Filenet</h4>
+            <p>
+              A social file‑sharing system where documents, music, videos, code, and creative work form the basis of interaction.
+            </p>
+          </article>
+        </section>
+        <section id="interaction-modes">
+          <h3>Interaction Modes &amp; Community Formation</h3>
+          <p>
+            Choose your connections and form sym‑groups—whether for short‑term projects or long‑term collaboration. Interaction modes facilitate clear, reciprocal, and serendipitous connections.
+          </p>
+        </section>
+        <section id="file-mgmt">
+          <h3>File Management, Communication &amp; Ephemerality</h3>
+          <p>
+            Our system lets you store, share, and manage files effortlessly while ensuring that content is ephemeral unless you choose to save it. This design minimizes data footprint and respects your privacy.
+          </p>
+        </section>
+        <section id="navigation-sec">
+          <h3>Navigation &amp; Security</h3>
+          <p>
+            The network is built with robust encryption and controlled access. Explore your connections safely with intuitive navigation features and custom search tools.
+          </p>
+        </section>
+        <section id="philosophy-design">
+          <h3>Philosophy &amp; Design Principles</h3>
+          <p>
+            Our approach centers on user empowerment, authenticity, and openness. We reject corporate tracking and algorithmic manipulation in favor of voluntary, human‑curated interactions and ephemeral content that protects your privacy.
+          </p>
+        </section>
+        <section>
+          <h3>Features</h3>
+          <article>
+            <h4>🗃 Personal Archive (Drawer / RCC)</h4>
+            <ul>
+              <li>Each user has a <strong>drawer</strong> (their <strong>RCC – R3LF Cache Communique</strong>): a public, customizable space for sharing content.</li>
+              <li>If a user hasn’t set up their drawer, it displays only a generic avatar and name.</li>
+              <li>Content in the drawer expires after one week unless archived or marked as community content.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>📂 File Management, Communication &amp; Ephemerality</h4>
+            <ul>
+              <li><strong>R3C (R3LF Cache):</strong> The personal hub for storing files and managing interactions.</li>
+              <li><strong>RCC (R3LF Cache Communique / "wrick"):</strong> A public space for sharing content and communication.</li>
+              <li><strong>RPC (R3LF Private Cache):</strong> A secure area for sensitive files.</li>
+              <li><strong>Automatic Expiration:</strong> Files and messages self‑delete after reaching the expiration threshold (typically 7 days) unless manually saved.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>🔗 Association Web (D3.js Visualization)</h4>
+            <ul>
+              <li>Automatically generated from public contact lists.</li>
+              <li>Connection strength is based on interaction frequency—stronger links mean more engagement.</li>
+              <li>Users in “Lurker in the Mist” mode appear muted.</li>
+              <li>Clicking a node opens the user’s profile and stored content.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>📢 Posting &amp; Engagement</h4>
+            <ul>
+              <li>Markdown/WYSIWYG editor for long‑form posts, writing, and creative work.</li>
+              <li>Threaded comments for focused, minimal discussions.</li>
+              <li>Bookmarks let users save and revisit content (without tracking).</li>
+              <li>Voting and reactions contribute to community‑led content archiving without boosting visibility.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>👥 Contacts &amp; Social Features</h4>
+            <ul>
+              <li>
+                <strong>Public &amp; Private Contacts:</strong>
+                <ul>
+                  <li>Public contacts appear in the association web.</li>
+                  <li>Private contacts remain hidden.</li>
+                </ul>
+              </li>
+              <li><strong>Collaborative Workspaces:</strong> Shared file spaces and interaction zones agreed upon by users.</li>
+              <li><strong>“Lurker in the Mist” mode:</strong> For users who prefer minimal exposure.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>✉️ Inbox &amp; Notifications</h4>
+            <ul>
+              <li>All notifications appear in the inbox—no pop-ups.</li>
+              <li>Mutual connection prompts occur when:
+                <ul>
+                  <li>Users frequently engage with the same people.</li>
+                  <li>Users repeatedly view each other’s content.</li>
+                  <li>Users co‑archive 5 to 10 shared files.</li>
+                </ul>
+              </li>
+              <li><strong>Undo Window for History Wipes:</strong>
+                <ul>
+                  <li>Users have 24 hours to restore erased data.</li>
+                  <li>A final warning is issued in the last hour.</li>
+                </ul>
+              </li>
+            </ul>
+          </article>
+          <article>
+            <h4>🔍 Search &amp; Discovery</h4>
+            <ul>
+              <li><strong>Global Community Archive:</strong> Browse permanently saved content.</li>
+              <li><strong>Advanced Filtering:</strong>
+                <ul>
+                  <li>By file type (MIME/extension)</li>
+                  <li>By user‑defined categories and tags</li>
+                  <li>Using “match all” or “match any” criteria</li>
+                </ul>
+              </li>
+              <li><strong>No automated ranking:</strong> Search results are driven solely by user input.</li>
+            </ul>
+          </article>
+          <article>
+            <h4>🛑 Privacy &amp; Moderation</h4>
+            <ul>
+              <li><strong>Mutual Contributor Opt‑Out:</strong> Users can hide their name from co‑archived files.</li>
+              <li><strong>No Forced Labels:</strong> Relationships are explicitly agreed upon.</li>
+              <li><strong>Permanent Hide List:</strong> Users can permanently ignore unwanted connections.</li>
+              <li><strong>Manual History Wipe:</strong> Requires a multi‑step confirmation (e.g., typing “DELETE”).</li>
+              <li><strong>Anonymous Profiles Not Supported:</strong>
+                <ul>
+                  <li>Pseudonymous users participate fully.</li>
+                  <li>Unconfigured drawers show only the RCC display.</li>
+                </ul>
+              </li>
+            </ul>
+          </article>
+        </section>
+        <section>
+          <h3>Technical Stack</h3>
+          <p>
+            Rel-F runs entirely on Cloudflare’s technology, ensuring speed, security, and decentralization:
+          </p>
+          <ul>
+            <li><strong>Cloudflare Pages</strong> – Frontend hosting (HTML/CSS/JS)</li>
+            <li><strong>Cloudflare Workers</strong> – Backend logic and API processing</li>
+            <li><strong>Cloudflare KV</strong> – Fast data lookups (sessions, settings)</li>
+            <li><strong>Cloudflare R2</strong> – File storage (archives, shared content)</li>
+            <li><strong>Cloudflare D1</strong> – SQL database (profiles, posts, associations)</li>
+            <li><strong>Cloudflare Durable Objects</strong> – Real‑time collaboration (DMs, shared files)</li>
+            <li><strong>D3.js</strong> – Association web visualization</li>
+            <li><strong>Workers‑based Messaging</strong> – Handles inbox, notifications, and connection requests</li>
+          </ul>
+        </section>
+        <section>
+          <h3>Development Roadmap</h3>
+          <article>
+            <h4>🔹 Backend (Cloudflare Workers + D1/KV/R2)</h4>
+            <ol>
+              <li><strong>User Profiles &amp; Authentication:</strong> JWT‑based authentication with session tracking.</li>
+              <li><strong>File Storage &amp; Expiration:</strong> Automated deletion unless content is saved.</li>
+              <li><strong>Inbox &amp; Notifications:</strong> Message handling with timely prompts.</li>
+              <li><strong>Association Web:</strong> Dynamic network visualization via D3.js.</li>
+            </ol>
+          </article>
+          <article>
+            <h4>🔹 Frontend (Cloudflare Pages + HTML/CSS/JS)</h4>
+            <ol>
+              <li><strong>User Drawer (RCC) UI:</strong> A modular, themeable interface with an embedded communique.</li>
+              <li><strong>Association Web:</strong> An interactive map of relationships.</li>
+              <li><strong>Inbox &amp; Notifications:</strong> A direct messaging UI with content tracking.</li>
+              <li><strong>File &amp; Archive System:</strong> File browsing, uploads, and expiration management.</li>
+            </ol>
+          </article>
+        </section>
+        <section>
+          <h3>Contributing</h3>
+          <p>
+            Rel-F follows a DIY, anti‑corporate ethos. Contributions should support:
+          </p>
+          <ul>
+            <li>No chasing likes or engagement metrics</li>
+            <li>User‑controlled, non‑invasive interactions</li>
+            <li>Privacy‑first, temporary sharing</li>
+            <li>Community‑led content archiving</li>
+          </ul>
+        </section>
+        <footer>
+          <h3>Final Thoughts</h3>
+          <p>
+            Rel-F isn’t traditional social media—it’s a file-sharing network where users interact through shared content, voluntary relationships, and temporary archiving. There’s no chasing followers or artificial metrics.
+          </p>
+          <blockquote>
+            <p>🚀 <em>Rel how you want. Know what you share. Choose who you’re sym with.</em></p>
+            <p><strong>Rel-F</strong></p>
+          </blockquote>
+        </footer>
+      </article>
+    </div>
+  </section>
+
+  <!-- Iconography Section -->
+  <section id="iconography">
+    <div class="collapsible-header">
+      <span class="material-icons icon-left" aria-hidden="true">star</span>
+      <h2>Prospective/Tentative Iconography</h2>
+      <span class="material-icons toggle-icon">arrow_drop_down</span>
+    </div>
+    <div class="collapsible-content" data-expanded="false">
+      <div class="icon-container">
+        <p>
+          <strong>the rel (represents the overall network):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="the rel network">public</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="the rel network alternative">group</span>
+        </p>
+        <p>
+          <strong>ephemeral (temporary or ever-changing content):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="ephemeral content">autorenew</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="ephemeral content alternative">timer</span>
+        </p>
+        <p>
+          <strong>file sharing (files being shared or uploaded):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="file sharing">folder_shared</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="file sharing alternative">cloud_upload</span>
+        </p>
+        <p>
+          <strong>network (system connectivity and structure):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="network connectivity">device_hub</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="network connectivity alternative">data_usage</span>
+        </p>
+        <p>
+          <strong>the relational web or tree (the wreck – interactive map of relationships):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="relational web">account_tree</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="relational web alternative">call_split</span>
+        </p>
+        <p>
+          <strong>the wrick (public sharing space/digital drawer):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="digital drawer">description</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="digital drawer alternative">menu_book</span>
+        </p>
+        <p>
+          <strong>the inbox (direct messaging):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="direct messaging">group</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="direct messaging alternative">email</span>
+        </p>
+        <p>
+          <strong>the notifications (notification system):</strong><br>
+          Primary Option:
+          <span class="material-icons" role="img" aria-label="notification system">notifications</span><br>
+          Secondary Option:
+          <span class="material-icons" role="img" aria-label="notification system alternative">notifications_active</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>&copy; 2025 Rel‑F Project - Built with Cloudflare</p>
+  </footer>
+
+  <!-- GSAP + Expand Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", () => {
+    const headers = document.querySelectorAll('.collapsible-header');
+
+    // Attach click listeners for manual toggling
+    headers.forEach(header => {
+      header.addEventListener('click', () => {
+        toggleSection(header);
+      });
+    });
+
+    // Check if a hash is present on load
+    if (window.location.hash) {
+      expandSectionForAnchor(window.location.hash);
+    }
+
+    // Optionally, listen for hash changes (if users click links that change the hash)
+    window.addEventListener('hashchange', () => {
+      if (window.location.hash) {
+        expandSectionForAnchor(window.location.hash);
+      }
+    });
+  });
+
+  /**
+   * Toggles the collapsible section for the given header.
+   */
+  function toggleSection(header) {
+    const content = header.nextElementSibling;
+    const icon = header.querySelector('.toggle-icon');
+
+    if (content.dataset.expanded === "true") {
+      // Collapse the section
+      gsap.to(content, {
+        height: 0,
+        duration: 0.5,
+        ease: "power1.inOut",
+        onComplete: () => {
+          content.dataset.expanded = "false";
+          content.style.height = "0";
+        }
+      });
+      icon.textContent = 'arrow_drop_down';
+    } else {
+      // Expand the section
+      // Temporarily set height to auto to measure full height
+      content.style.height = "auto";
+      const fullHeight = content.clientHeight;
+      content.style.height = "0";
+      content.dataset.expanded = "true";
+      gsap.to(content, {
+        height: fullHeight,
+        duration: 0.5,
+        ease: "power1.inOut",
+        onComplete: () => {
+          content.style.height = "auto"; // clear inline style for responsiveness
+        }
+      });
+      icon.textContent = 'arrow_drop_up';
+    }
+  }
+
+  /**
+   * Expands the collapsible section that contains the anchor matching the provided hash.
+   */
+  function expandSectionForAnchor(hash) {
+    // Find the element with the matching id
+    const targetElem = document.getElementById(hash.substring(1));
+    if (targetElem) {
+      // Check if the target is inside a collapsible-content container
+      const collapsible = targetElem.closest('.collapsible-content');
+      if (collapsible && collapsible.dataset.expanded !== "true") {
+        // Find the associated header (assumed to be the previous sibling)
+        const header = collapsible.previousElementSibling;
+        if (header && header.classList.contains('collapsible-header')) {
+          // Expand the section using our toggle function
+          toggleSection(header);
+        }
+      }
+    }
+  }
+  </script>
+</body>
+</html>

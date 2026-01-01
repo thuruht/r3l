@@ -86,8 +86,8 @@ This document outlines the strategic roadmap for implementing advanced Collabora
 
 **Checklist:**
 - [x] Create `client/src/utils/crypto.ts`.
-- [ ] Generate User RSA Keypairs on registration (store Public in DB, Private in LocalStorage/Encrypted in DB).
-- [ ] Add `burn_on_read` column to `files`.
+- [x] Generate User RSA Keypairs on registration (Implemented via KeyManager component).
+- [x] Add `burn_on_read` column to `files` (Verified).
 - [x] Implement deletion trigger on file access.
 
 ---

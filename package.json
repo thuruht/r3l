@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "npm run build:client && wrangler deploy --minify",
-    "build:client": "vite build --outDir dist",
+    "build:client": "vite build --outDir ../dist",
     "build": "npm run build:client",
     "rollback": "wrangler deployments rollback"
   },

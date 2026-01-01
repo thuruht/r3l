@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload } from '@tabler/icons-react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -19,7 +19,7 @@ interface FilePreviewModalProps {
   onDownload: () => void;
 }
 
-const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, currentUser, filename, mimeType }) => {
+const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, currentUser, filename, mimeType, onDownload }) => {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +30,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [editContent, setEditContent] = useState('');
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('me');
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -63,6 +64,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         if (!metaRes.ok) throw new Error('Failed to load metadata');
         const meta = await metaRes.json();
         setVitality(meta.vitality);
+        setVisibility(meta.visibility);
 
         // Fetch Content if text
         if (meta.mime_type.startsWith('text/') || meta.mime_type === 'application/json' || meta.mime_type.includes('javascript') || meta.mime_type.includes('typescript')) {
@@ -131,6 +133,23 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           showToast('Error saving changes.', 'error');
       }
   };
+  
+  const handleVisibilityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newVis = e.target.value as 'public' | 'sym' | 'me';
+      try {
+          const res = await fetch(`/api/files/${fileId}/metadata`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ visibility: newVis })
+          });
+          if (res.ok) {
+              setVisibility(newVis);
+              showToast('Audience updated.', 'success');
+          }
+      } catch(err) {
+          showToast('Failed to update audience.', 'error');
+      }
+  };
 
   // --- Collab Setup ---
   useEffect(() => {
@@ -171,6 +190,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        if (editContent && yText.length === 0) {
            yText.insert(0, editContent);
        }
+       
+       // Force sync just in case
+       if (yText.toString() === '' && editContent !== '') {
+           yText.insert(0, editContent);
+       }
 
        // Observe changes from other peers
        yText.observe(event => {
@@ -192,14 +216,27 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         if (currentProvider) currentProvider.destroy();
         if (currentDoc) currentDoc.destroy();
     };
-  }, [isEditing, isText, fileId]);
-
-  // Note: handleTextChange is no longer needed as CodeEditor handles it via Yjs extension or props
+  }, [isEditing, isText, fileId]); // Removed editContent from dep array to avoid loops, handled inside
 
   const isMobile = window.innerWidth < 768;
 
   const actionButtons = (
       <>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 5px' }}>
+            <IconEye size={18} color="var(--text-secondary)" />
+            <select 
+                value={visibility} 
+                onChange={handleVisibilityChange}
+                style={{ 
+                    background: 'transparent', border: 'none', color: 'var(--text-primary)', 
+                    fontSize: '0.8rem', padding: '5px', outline: 'none', cursor: 'pointer'
+                }}
+            >
+                <option value="public">A-Sym (Public)</option>
+                <option value="sym">Sym (Connections)</option>
+                <option value="me">3rd Space (Private)</option>
+            </select>
+        </div>
         <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
             <IconRefresh size={18} /> {isMobile && 'Keep Alive'}
         </button>
@@ -285,7 +322,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '10px'
+            gap: '10px',
+            flexWrap: 'wrap'
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
@@ -349,7 +387,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: 'auto', padding: '20px', background: 'rgba(0,0,0,0.2)' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(0,0,0,0.2)' }}>
           {loading && <Skeleton height="100%" width="100%" />}
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (

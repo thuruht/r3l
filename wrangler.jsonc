@@ -14,7 +14,7 @@
     "head_sampling_rate": 1
   },
   "assets": {
-    "directory": "./client/dist",
+    "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },

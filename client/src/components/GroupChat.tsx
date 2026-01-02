@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCrown, IconFile, IconShare, IconEdit } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCrown, IconFile, IconShare, IconEdit, IconMoodSmile } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+
+const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface GroupChatProps {
   onClose: () => void;
@@ -49,6 +51,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
   const [newGroupName, setNewGroupName] = useState('');
   const [connections, setConnections] = useState<any[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [showEmoji, setShowEmoji] = useState(false);
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -493,7 +496,17 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
             </div>
 
             {/* Input */}
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', gap: '10px' }}>
+            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', gap: '10px', position: 'relative' }}>
+              {showEmoji && (
+                <Suspense fallback={<div>...</div>}>
+                  <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 1000 }}>
+                    <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
+                  </div>
+                </Suspense>
+              )}
+              <button onClick={() => setShowEmoji(!showEmoji)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <IconMoodSmile size={20} />
+              </button>
               <input
                 type="text"
                 value={newMessage}

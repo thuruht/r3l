@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { IconSend, IconUsers, IconDoorExit, IconHash } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+
+const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 const ROOMS = [
   { name: 'global', label: 'Global', category: 'public' },
@@ -22,6 +24,7 @@ const GlobalChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [online, setOnline] = useState<{ userId: number; username: string }[]>([]);
   const [typing, setTyping] = useState<Set<string>>(new Set());
+  const [showEmoji, setShowEmoji] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -92,23 +95,24 @@ const GlobalChat: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-primary)' }}>
-      <div style={{ width: '200px', borderRight: '1px solid var(--border-color)', padding: '20px' }}>
-        <h3 style={{ marginBottom: '15px' }}>Rooms</h3>
+    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-primary)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'relative', zIndex: 1000 }}>
+      <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
+        {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (
           <button
             key={r.name}
             onClick={() => setRoom(r.name)}
             style={{
-              width: '100%',
+              width: window.innerWidth < 768 ? 'auto' : '100%',
               textAlign: 'left',
               padding: '10px',
-              marginBottom: '5px',
-              background: room === r.name ? 'var(--accent-sym)' : 'transparent',
+              marginBottom: window.innerWidth < 768 ? '0' : '5px',
+              background: room === r.name ? 'var(--accent-sym)' : 'var(--bg-secondary)',
               border: 'none',
               borderRadius: '4px',
               color: 'var(--text-primary)',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             <IconHash size={16} style={{ marginRight: '5px' }} />
@@ -117,9 +121,9 @@ const GlobalChat: React.FC = () => {
         ))}
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>#{room}</h2>
+          <h2 style={{ color: 'var(--text-primary)' }}>#{room}</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
             <IconUsers size={20} />
             {online.length}
@@ -129,13 +133,13 @@ const GlobalChat: React.FC = () => {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
           {messages.map((msg, i) => (
             <div key={i} style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <strong style={{ color: 'var(--accent-sym)' }}>{msg.username}</strong>
                 <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                   {new Date(msg.timestamp).toLocaleTimeString()}
                 </span>
               </div>
-              <div style={{ color: 'var(--text-primary)' }}>{msg.content}</div>
+              <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>{msg.content}</div>
             </div>
           ))}
           {typing.size > 0 && (
@@ -146,7 +150,17 @@ const GlobalChat: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px' }}>
+        <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', position: 'relative', background: 'var(--bg-primary)' }}>
+          {showEmoji && (
+            <Suspense fallback={<div>Loading...</div>}>
+              <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1001 }}>
+                <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
+              </div>
+            </Suspense>
+          )}
+          <button onClick={() => setShowEmoji(!showEmoji)} style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}>
+            <IconMoodSmile size={20} color="var(--text-primary)" />
+          </button>
           <input
             type="text"
             value={input}
@@ -161,15 +175,17 @@ const GlobalChat: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ width: '200px', borderLeft: '1px solid var(--border-color)', padding: '20px' }}>
-        <h3 style={{ marginBottom: '15px' }}>Online ({online.length})</h3>
-        {online.map(u => (
-          <div key={u.userId} style={{ padding: '5px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981ff' }} />
-            {u.username}
-          </div>
-        ))}
-      </div>
+      {window.innerWidth >= 1024 && (
+        <div style={{ width: '200px', borderLeft: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto' }}>
+          <h3 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>Online ({online.length})</h3>
+          {online.map(u => (
+            <div key={u.userId} style={{ padding: '5px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981ff' }} />
+              {u.username}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

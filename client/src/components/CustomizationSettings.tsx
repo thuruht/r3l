@@ -104,15 +104,16 @@ const CustomizationSettings: React.FC = () => {
   return (
     <div style={{
       position: 'absolute',
-      bottom: '60px',
-      left: '20px',
-      width: 'min(280px, calc(100vw - 40px))',
-      maxHeight: 'calc(100vh - 100px)',
+      bottom: window.innerWidth < 768 ? '10px' : window.innerHeight < 600 ? '10px' : '60px',
+      left: window.innerWidth < 768 ? '10px' : '20px',
+      right: window.innerWidth < 768 ? '10px' : 'auto',
+      width: window.innerWidth < 768 ? 'auto' : 'min(280px, calc(100vw - 40px))',
+      maxHeight: window.innerWidth < 768 ? 'calc(100vh - 20px)' : window.innerHeight < 600 ? 'calc(100vh - 20px)' : 'calc(100vh - 100px)',
       overflowY: 'auto',
       background: 'var(--drawer-bg)',
       border: '1px solid var(--border-color)',
       borderRadius: '8px',
-      padding: '16px',
+      padding: window.innerWidth < 768 ? '12px' : '16px',
       zIndex: 101,
       boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
     }}>

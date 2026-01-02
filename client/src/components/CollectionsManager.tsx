@@ -3,6 +3,7 @@ import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconA
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
+import ConfirmModal from './ConfirmModal';
 
 interface CollectionsManagerProps {
   onClose: () => void;
@@ -29,6 +30,9 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   const [isEditingColl, setIsEditingColl] = useState(false);
   const [editName, setEditName] = useState('');
   const [editVisibility, setEditVisibility] = useState<'private' | 'public' | 'sym'>('private');
+
+  // Confirmation State
+  const [confirmAction, setConfirmAction] = useState<{ type: 'deleteCollection' | 'removeFile', id: number } | null>(null);
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -58,11 +62,33 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (confirm('Are you sure you want to delete this collection?')) {
-          const success = await deleteCollection(id);
+      setConfirmAction({ type: 'deleteCollection', id });
+  };
+
+  const executeConfirm = async () => {
+      if (!confirmAction) return;
+
+      if (confirmAction.type === 'deleteCollection') {
+          const success = await deleteCollection(confirmAction.id);
           if (success) showToast('Collection deleted', 'success');
           else showToast('Failed to delete', 'error');
+      } else if (confirmAction.type === 'removeFile') {
+          if (!selectedCollection) return;
+          try {
+              const res = await fetch(`/api/collections/${selectedCollection.id}/files/${confirmAction.id}`, {
+                  method: 'DELETE'
+              });
+              if (res.ok) {
+                  setCollectionFiles(prev => prev.filter(f => f.id !== confirmAction.id));
+                  showToast('File removed', 'success');
+              } else {
+                  showToast('Failed to remove file', 'error');
+              }
+          } catch (e) {
+              showToast('Error removing file', 'error');
+          }
       }
+      setConfirmAction(null);
   };
 
   const startEdit = (e: React.MouseEvent, collection: Collection) => {
@@ -163,22 +189,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   };
 
   const removeFile = async (fileId: number) => {
-      if (!selectedCollection) return;
-      if (!confirm('Remove file from collection?')) return;
-
-      try {
-          const res = await fetch(`/api/collections/${selectedCollection.id}/files/${fileId}`, {
-              method: 'DELETE'
-          });
-          if (res.ok) {
-              setCollectionFiles(prev => prev.filter(f => f.id !== fileId));
-              showToast('File removed', 'success');
-          } else {
-              showToast('Failed to remove file', 'error');
-          }
-      } catch (e) {
-          showToast('Error removing file', 'error');
-      }
+      setConfirmAction({ type: 'removeFile', id: fileId });
   };
 
   return (
@@ -431,6 +442,17 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
               }}
           />
       )}
+
+      <ConfirmModal
+          isOpen={confirmAction !== null}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={executeConfirm}
+          title={confirmAction?.type === 'deleteCollection' ? 'Delete Collection' : 'Remove File'}
+          message={confirmAction?.type === 'deleteCollection'
+              ? 'Are you sure you want to delete this collection? Contents will not be deleted.'
+              : 'Remove this file from the collection?'}
+          confirmText="Confirm"
+      />
     </div>
   );
 };

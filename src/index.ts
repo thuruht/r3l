@@ -2463,29 +2463,10 @@ app.get('/api/messages/:partner_id', async (c) => {
       `SELECT * FROM messages 
        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
        ORDER BY created_at ASC 
-       LIMIT 100` // Cap at 100 for now
+       LIMIT 100`
     ).bind(user_id, partner_id, partner_id, user_id).all();
 
-    const decryptedResults = await Promise.all(results.map(async (msg: any) => {
-        if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {
-            try {
-                const base64Decoded = atob(msg.content);
-                const encryptedBuffer = new Uint8Array(base64Decoded.length);
-                for (let i = 0; i < base64Decoded.length; i++) {
-                    encryptedBuffer[i] = base64Decoded.charCodeAt(i);
-                }
-                const decryptedBuffer = await decryptData(encryptedBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
-                const decryptedText = new TextDecoder().decode(decryptedBuffer);
-                return { ...msg, content: decryptedText };
-            } catch (e) {
-                console.error('Message decryption error:', e);
-                return { ...msg, content: '[Decryption Error]' };
-            }
-        }
-        return msg;
-    }));
-
-    return c.json({ messages: decryptedResults });
+    return c.json({ messages: results });
   } catch (e: any) {
     console.error("Error fetching messages:", e);
     return c.json({ error: 'Failed to fetch messages' }, 500);
@@ -2495,12 +2476,11 @@ app.get('/api/messages/:partner_id', async (c) => {
 // POST /api/messages: Send a message
 app.post('/api/messages', async (c) => {
   const sender_id = c.get('user_id');
-  const { receiver_id, content, encrypt } = await c.req.json();
+  const { receiver_id, content, encrypt, encrypted_key } = await c.req.json();
 
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
 
   try {
-    // Check relationship: Allow Sym (mutual), A-Sym (following), or no relationship (Drift message)
     const mutual = await c.env.DB.prepare(
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
@@ -2509,26 +2489,11 @@ app.post('/api/messages', async (c) => {
       'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ?'
     ).bind(sender_id, receiver_id, 'asym_follow').first();
 
-    // If no relationship, mark as message_request
     const isRequest = !mutual && !asymFollow;
 
-    let finalContent = content;
-    let is_encrypted = 0;
-    let iv: string | null = null;
-
-    if (encrypt === true && c.env.ENCRYPTION_SECRET) {
-        const encryptedData = await encryptData(content, c.env.ENCRYPTION_SECRET);
-        finalContent = Array.from(new Uint8Array(encryptedData.encrypted))
-          .map(b => String.fromCharCode(b))
-          .join('');
-        finalContent = btoa(finalContent);
-        iv = encryptedData.iv;
-        is_encrypted = 1;
-    }
-
     const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, is_request) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv, isRequest ? 1 : 0).run();
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, encrypted_key, is_request) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, content, encrypt ? 1 : 0, encrypted_key || null, isRequest ? 1 : 0).run();
 
     if (success) {
       const messageId = meta.last_row_id;
@@ -2536,7 +2501,9 @@ app.post('/api/messages', async (c) => {
         id: messageId,
         sender_id,
         receiver_id,
-        content: content,
+        content,
+        is_encrypted: encrypt ? 1 : 0,
+        encrypted_key,
         created_at: new Date().toISOString(),
         is_request: isRequest
       };

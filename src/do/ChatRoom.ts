@@ -90,7 +90,7 @@ export class ChatRoom {
   broadcast(message: any, exclude?: WebSocket) {
     const msg = JSON.stringify(message);
     this.sessions.forEach((_, ws) => {
-      if (ws !== exclude) {
+      if (ws !== exclude && ws.readyState === 1) {
         try { ws.send(msg); } catch {}
       }
     });

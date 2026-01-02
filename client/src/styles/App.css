@@ -1,44 +1,45 @@
 
 /* Login / Landing Page Styles */
 .login-container {
-    height: 100vh;
-    width: 100vw;
+    min-height: 100vh;
+    width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     background: radial-gradient(circle at center, var(--bg-mist) 0%, var(--bg-color) 80%);
-    overflow: hidden;
-    position: relative;
-    padding: 20px;
+    padding: 40px 20px;
+    box-sizing: border-box;
 }
 
 .glitch {
-    font-size: 5rem;
+    font-size: clamp(2rem, 8vw, 5rem);
     font-weight: 700;
     text-transform: uppercase;
     position: relative;
     text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), 0.025em 0.05em 0 rgba(0,0,255,0.75);
     animation: glitch 500ms infinite;
-    margin: 0;
-    letter-spacing: 10px;
+    margin: 0 0 10px 0;
+    letter-spacing: clamp(3px, 2vw, 10px);
     color: var(--text-primary);
+    text-align: center;
 }
 
 .subtitle {
-    font-size: 1rem;
+    font-size: clamp(0.6rem, 2vw, 1rem);
     color: var(--text-secondary);
-    letter-spacing: 5px;
-    margin-bottom: 50px;
+    letter-spacing: clamp(1px, 1vw, 5px);
+    margin-bottom: 40px;
     text-align: center;
 }
 
 .login-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
     width: 100%;
     max-width: 1200px;
+    align-items: start;
 }
 
 .info-card {
@@ -67,12 +68,14 @@
 .login-form-card {
     background: var(--drawer-bg);
     border: 1px solid var(--border-color);
-    padding: 40px;
+    padding: 30px;
     border-radius: 8px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .login-form-card h2 {
@@ -187,37 +190,26 @@
 }
 
 /* Responsive adjustments for overall layout and typography */
-@media (max-width: 1200px) {
-    .glitch { font-size: 4rem; }
-}
-
-@media (max-width: 992px) {
-    .glitch { font-size: 3.5rem; }
-    .subtitle { font-size: 0.9rem; letter-spacing: 4px; }
-}
-
 @media (max-width: 768px) {
-    .glitch { font-size: 3rem; letter-spacing: 8px; }
-    .subtitle { font-size: 0.8rem; letter-spacing: 3px; }
+    .login-container {
+        padding: 20px 15px;
+    }
     .login-grid {
         grid-template-columns: 1fr;
+        gap: 15px;
     }
     .info-card {
-        display: none; /* Hide info cards on smaller mobile to focus on login */
+        display: none;
+    }
+    .login-form-card {
+        padding: 25px 20px;
     }
     .header { padding: 0 10px; }
 }
 
 @media (max-width: 576px) {
-    .glitch { font-size: 2.5rem; letter-spacing: 5px; }
-    .subtitle { font-size: 0.7rem; letter-spacing: 2px; }
-    .login-form-card { padding: 20px; }
-    .primary-btn, .text-btn { font-size: 0.85rem; padding: 10px; }
-}
-
-@media (max-width: 400px) {
-    .glitch { font-size: 2rem; letter-spacing: 3px; }
-    .subtitle { font-size: 0.6rem; letter-spacing: 1px; }
+    .login-form-card { padding: 20px 15px; }
+    .primary-btn, .text-btn { font-size: 0.9rem; }
 }
 
 

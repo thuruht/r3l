@@ -49,7 +49,8 @@ const GlobalChat: React.FC = () => {
     const ws = new WebSocket(`${protocol}//${window.location.host}/api/chat/${roomName}`);
 
     ws.onmessage = (e) => {
-      const data = JSON.parse(e.data);
+      try {
+        const data = JSON.parse(e.data);
       
       if (data.type === 'online') {
         setOnline(data.users);
@@ -69,6 +70,9 @@ const GlobalChat: React.FC = () => {
           data.typing ? next.add(data.username) : next.delete(data.username);
           return next;
         });
+      }
+      } catch (err) {
+        console.error('WebSocket parse error:', err, e.data);
       }
     };
 
@@ -95,7 +99,7 @@ const GlobalChat: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-primary)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'relative', zIndex: 1000 }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - 60px)', width: '100vw', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: '60px', left: 0, zIndex: 900, overflow: 'hidden' }}>
       <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
         {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (
@@ -150,7 +154,7 @@ const GlobalChat: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', position: 'relative', background: 'var(--bg-primary)' }}>
+        <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', position: 'relative', background: 'var(--bg-color)' }}>
           {showEmoji && (
             <Suspense fallback={<div>Loading...</div>}>
               <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1001 }}>

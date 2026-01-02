@@ -130,6 +130,25 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const res = await fetch(`/api/messages/${partnerId}`);
       if (res.ok) {
         const data = await res.json();
+        const storedKeys = localStorage.getItem('relf_keys');
+        if (storedKeys) {
+          try {
+            const { decryptMessageWithKey, importPrivateKey } = await import('../utils/crypto');
+            const keys = JSON.parse(storedKeys);
+            const privateKey = await importPrivateKey(keys.privateKey);
+            const decrypted = await Promise.all(data.messages.map(async (msg: any) => {
+              if (msg.is_encrypted && msg.encrypted_key) {
+                try {
+                  const content = await decryptMessageWithKey(msg.content, msg.encrypted_key, privateKey);
+                  return { ...msg, content };
+                } catch { return msg; }
+              }
+              return msg;
+            }));
+            setMessages(decrypted);
+            return;
+          } catch {}
+        }
         setMessages(data.messages || []);
       }
     } catch (err) {
@@ -142,14 +161,29 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeConversationId) return;
     try {
+      const partner = conversations.find(c => c.partner_id === activeConversationId);
+      let payload: any = { receiver_id: activeConversationId, content: newMessage };
+      
+      const storedKeys = localStorage.getItem('relf_keys');
+      if (storedKeys && partner) {
+        try {
+          const { encryptMessageForUser } = await import('../utils/crypto');
+          const partnerKey = await fetch(`/api/users/${activeConversationId}`).then(r => r.json()).then(d => d.user?.public_key);
+          if (partnerKey) {
+            const { encryptedContent, encryptedKey } = await encryptMessageForUser(newMessage, partnerKey);
+            payload = { receiver_id: activeConversationId, content: encryptedContent, encrypt: true, encrypted_key: encryptedKey };
+          }
+        } catch {}
+      }
+      
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ receiver_id: activeConversationId, content: newMessage })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const data = await res.json();
-        setMessages(prev => [...prev, data.data]); // Optimistic update from response
+        setMessages(prev => [...prev, { ...data.data, content: newMessage }]);
         setNewMessage('');
       } else {
         showToast('Failed to send', 'error');

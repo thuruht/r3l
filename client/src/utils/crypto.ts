@@ -154,3 +154,28 @@ export async function decryptText(encryptedBase64: string, ivBase64: string, key
   const decoder = new TextDecoder();
   return decoder.decode(decryptedBuffer);
 }
+
+
+export async function encryptMessageForUser(message: string, recipientPublicKey: string): Promise<{ encryptedContent: string; encryptedKey: string }> {
+  const messageKey = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, messageKey, new TextEncoder().encode(message));
+  
+  const publicKey = await crypto.subtle.importKey('spki', base64ToArrayBuffer(recipientPublicKey), { name: 'RSA-OAEP', hash: 'SHA-256' }, false, ['wrapKey']);
+  const wrappedKey = await crypto.subtle.wrapKey('raw', messageKey, publicKey, { name: 'RSA-OAEP' });
+  
+  return {
+    encryptedContent: arrayBufferToBase64(encrypted) + ':' + arrayBufferToBase64(iv.buffer),
+    encryptedKey: arrayBufferToBase64(wrappedKey)
+  };
+}
+
+export async function decryptMessageWithKey(encryptedContent: string, encryptedKey: string, privateKey: CryptoKey): Promise<string> {
+  const [content, ivStr] = encryptedContent.split(':');
+  const iv = new Uint8Array(base64ToArrayBuffer(ivStr));
+  
+  const unwrappedKey = await crypto.subtle.unwrapKey('raw', base64ToArrayBuffer(encryptedKey), privateKey, { name: 'RSA-OAEP' }, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, unwrappedKey, base64ToArrayBuffer(content));
+  
+  return new TextDecoder().decode(decrypted);
+}

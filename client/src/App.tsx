@@ -322,7 +322,7 @@ function Main() {
     <>
       {!currentUser && location.pathname !== '/verify' ? (
         <div className="login-container">
-            <h1 className="glitch" data-text="REL F">REL F</h1>
+            <h1 className="glitch" data-text="r3L-f">r3L-f</h1>
             <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
 
             <div className="login-grid">
@@ -384,7 +384,7 @@ function Main() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>r3L-f <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
                     <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
                          <SearchBar />
                          <RandomUserButton />

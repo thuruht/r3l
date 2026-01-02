@@ -11,8 +11,10 @@ import { FILE_EXPIRATION_HOURS, VITALITY_ARCHIVE_THRESHOLD, MESSAGE_PURGE_DAYS, 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
 import { DocumentRoom } from './do/DocumentRoom';
+import { ChatRoom } from './do/ChatRoom';
 export { RelfDO } from './do';
 export { DocumentRoom } from './do/DocumentRoom';
+export { ChatRoom } from './do/ChatRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -26,6 +28,7 @@ interface Env {
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
   DOCUMENT_ROOM: DurableObjectNamespace;
+  CHAT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -70,20 +73,38 @@ app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   console.log("Collab WebSocket connection attempt for file:", fileId);
 
   try {
-    // Map fileId to a unique DocumentRoom DO instance
     const doId = c.env.DOCUMENT_ROOM.idFromName(fileId);
     const doStub = c.env.DOCUMENT_ROOM.get(doId);
-
-    // Create a new request with the User ID header for the DO
     const url = new URL(c.req.url);
     const newRequest = new Request(url.toString(), c.req.raw);
     newRequest.headers.set('X-User-ID', String(c.get('user_id')));
-
     return doStub.fetch(newRequest);
   } catch (error) {
     console.error("Error proxying Collab WebSocket:", error);
     return c.text('Collab WebSocket proxy failed', 500);
   }
+});
+
+// Chat Room WebSocket endpoint
+app.get('/api/chat/:roomName', authMiddleware, async (c) => {
+  if (c.req.header('Upgrade') !== 'websocket') {
+    return c.text('Expected WebSocket', 400);
+  }
+
+  const roomName = c.req.param('roomName');
+  const user_id = c.get('user_id');
+  
+  const user = await c.env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(user_id).first();
+  if (!user) return c.json({ error: 'User not found' }, 404);
+
+  const doId = c.env.CHAT_ROOM.idFromName(roomName);
+  const doStub = c.env.CHAT_ROOM.get(doId);
+  
+  const url = new URL(c.req.url);
+  url.searchParams.set('userId', String(user_id));
+  url.searchParams.set('username', user.username as string);
+  
+  return doStub.fetch(new Request(url.toString(), c.req.raw));
 });
 
 // Enable CORS for API routes
@@ -1559,6 +1580,62 @@ app.get('/api/users/:target_user_id/files', async (c) => {
 // verifying auth and quota.
 // For larger files, we would use the S3 compatible API with aws-sdk-js-v3.
 
+// POST /api/files/upload-chunk: Upload file chunk
+app.post('/api/files/upload-chunk', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const formData = await c.req.parseBody();
+  
+  const chunk = formData['chunk'] as File;
+  const uploadId = formData['uploadId'] as string;
+  const chunkIndex = parseInt(formData['chunkIndex'] as string);
+  const totalChunks = parseInt(formData['totalChunks'] as string);
+  const filename = formData['filename'] as string;
+  const mimeType = formData['mimeType'] as string;
+
+  if (!chunk || !uploadId) return c.json({ error: 'Missing data' }, 400);
+
+  try {
+    const chunkKey = `uploads/${user_id}/${uploadId}/${chunkIndex}`;
+    await c.env.BUCKET.put(chunkKey, chunk.stream());
+
+    if (chunkIndex === totalChunks - 1) {
+      const finalKey = `${user_id}/${crypto.randomUUID()}-${filename}`;
+      const parts: ArrayBuffer[] = [];
+
+      for (let i = 0; i < totalChunks; i++) {
+        const partKey = `uploads/${user_id}/${uploadId}/${i}`;
+        const part = await c.env.BUCKET.get(partKey);
+        if (part) parts.push(await part.arrayBuffer());
+        await c.env.BUCKET.delete(partKey);
+      }
+
+      const combined = new Uint8Array(parts.reduce((acc, p) => acc + p.byteLength, 0));
+      let offset = 0;
+      parts.forEach(p => {
+        combined.set(new Uint8Array(p), offset);
+        offset += p.byteLength;
+      });
+
+      await c.env.BUCKET.put(finalKey, combined, {
+        httpMetadata: { contentType: mimeType },
+        customMetadata: { originalName: filename, userId: String(user_id) }
+      });
+
+      const expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
+      await c.env.DB.prepare(
+        'INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      ).bind(user_id, finalKey, filename, combined.byteLength, mimeType, 'me', expires_at).run();
+
+      return c.json({ message: 'Upload complete', r2_key: finalKey });
+    }
+
+    return c.json({ message: 'Chunk uploaded' });
+  } catch (e: any) {
+    console.error('Chunk upload error:', e);
+    return c.json({ error: 'Chunk upload failed' }, 500);
+  }
+});
+
 // POST /api/files: Upload a file
 app.post('/api/files', async (c) => {
   const user_id = c.get('user_id');
@@ -1583,12 +1660,17 @@ app.post('/api/files', async (c) => {
     let size = file.size;
 
     if (shouldEncrypt && c.env.ENCRYPTION_SECRET) {
-      const arrayBuffer = await file.arrayBuffer();
-      const encryptedData = await encryptData(arrayBuffer, c.env.ENCRYPTION_SECRET);
-      body = encryptedData.encrypted;
-      iv = encryptedData.iv;
-      is_encrypted = 1;
-      size = encryptedData.encrypted.byteLength;
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const encryptedData = await encryptData(arrayBuffer, c.env.ENCRYPTION_SECRET);
+        body = encryptedData.encrypted;
+        iv = encryptedData.iv;
+        is_encrypted = 1;
+        size = encryptedData.encrypted.byteLength;
+      } catch (e) {
+        console.error('Encryption failed for large file:', e);
+        return c.json({ error: 'File too large for encryption. Try uploading without encryption.' }, 413);
+      }
     }
 
     // Generate a unique key for R2

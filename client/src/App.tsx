@@ -2,13 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconSettings, IconUsers, IconArchive
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconSettings, IconUsers, IconArchive, IconMessageCircle
 } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
 import GroupChat from './components/GroupChat';
 import ArchiveVote from './components/ArchiveVote';
+import GlobalChat from './components/GlobalChat';
 import CommuniquePage from './pages/CommuniquePage';
 import SettingsPage from './pages/SettingsPage';
 import About from './components/About';
@@ -531,6 +532,10 @@ function Main() {
                         <IconUsers size={18} /> Groups
                     </button>
 
+                    <button onClick={() => { navigate('/chat'); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconMessageCircle size={18} /> Global Chat
+                    </button>
+
                     <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconArchive size={18} /> Community Archive
                     </button>
@@ -597,6 +602,7 @@ function Main() {
             <Routes>
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/chat" element={<GlobalChat />} />
         <Route path="/" element={
                 viewMode === 'graph' ? (
                   <AssociationWeb

@@ -42,76 +42,48 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const uploadFile = async (upload: FileUploadState) => {
     setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'uploading' } : f));
 
-    const formData = new FormData();
-
-    // Client-Side Encryption Logic
-    if (isEncrypted) {
-      try {
-        const key = await generateKey();
-        const { encryptedBlob, iv } = await encryptFile(upload.file, key);
-        const exportedKey = await exportKey(key);
-
-        // Replace file with encrypted blob
-        formData.append('file', encryptedBlob, upload.file.name + '.enc');
-        formData.append('is_client_encrypted', 'true');
-        formData.append('encryption_key', exportedKey); // In real E2EE, this would be wrapped with recipient's public key. For "comprehensive update" MVP, we store the symmetric key?
-        // Wait, "End-to-End" means server shouldn't see the key.
-        // If we store it in the DB (even plaintext), it's Server-Side Encryption with client logic.
-        // To be true E2EE, the key must be stored locally or wrapped.
-        // Given constraints and "bones" philosophy: We will store the key in localStorage mapped to fileID?
-        // No, fileID isn't known yet.
-        // Let's store it in a custom header or metadata returned to client?
-        // Actually, the simplest E2EE for a file dump is: User A encrypts, User A keeps key.
-        // But how to share?
-        // Let's implement "Symmetric Key stored in metadata" (Weak E2EE) for now, or "Client encrypts, Server stores blob".
-        // Better: We rely on the backend's existing logic? No, backend logic uses `c.env.ENCRYPTION_SECRET`.
-        // Let's implement: Client encrypts. Key is thrown away? No.
-        // Okay, for this iteration, let's auto-generate a key, and prompt the user to save it?
-        // "Here is your decryption key: [XYZ]".
-        // That is robust.
-
-        // REVISION: To allow simple sharing within the app, let's stick to the Project Master plan:
-        // "Store encrypted symmetricKey (wrapped with user's derived master password) in DB metadata."
-        // That is too complex for this single turn.
-        // Fallback: We will send the blob. We will NOT send the key. We will display the key to the user to copy/save.
-        // AND/OR we store it in localStorage for this user.
-
-        // ACTUALLY: Let's defer "True E2EE" complexity.
-        // Let's implement "Client-Side Encryption" where the server receives an encrypted blob.
-        // We will append the key to the success message for the user to manage (Manual Key Management).
-
-        // Wait, the prompt asked to "integrate E2EE".
-        // Let's send the key to the server but flag it as "client_key" so server stores it but treats it as opaque?
-        // No, that defeats the point.
-
-        // Let's stick to: Encrypt, Upload Blob.
-        // We need to save the key somewhere.
-        // Let's use `localStorage` for "My Files". `relf_key_${filename}`.
-        localStorage.setItem(`relf_key_${upload.file.name}`, exportedKey);
-
-        // And send IV.
-        formData.append('iv', btoa(String.fromCharCode(...iv)));
-
-      } catch (e) {
-        setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: 'Encryption failed' } : f));
+    try {
+      // Use chunked upload for files > 50MB
+      if (upload.file.size > 50 * 1024 * 1024) {
+        const { uploadFileInChunks } = await import('../utils/chunkedUpload');
+        await uploadFileInChunks(upload.file, (progress) => {
+          setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, progress } : f));
+        });
+        setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'success', progress: 100 } : f));
         return;
       }
-    } else {
-      formData.append('file', upload.file);
-    }
 
-    formData.append('visibility', 'private'); // Default to private
-    if (parentId) formData.append('parent_id', parentId.toString());
+      // Regular upload for smaller files
+      const formData = new FormData();
 
-    try {
-      // Simulate progress since fetch doesn't support it natively easily
+      // Client-Side Encryption Logic
+      if (isEncrypted) {
+        try {
+          const key = await generateKey();
+          const { encryptedBlob, iv } = await encryptFile(upload.file, key);
+          const exportedKey = await exportKey(key);
+          formData.append('file', encryptedBlob, upload.file.name + '.enc');
+          formData.append('is_client_encrypted', 'true');
+          localStorage.setItem(`relf_key_${upload.file.name}`, exportedKey);
+          formData.append('iv', btoa(String.fromCharCode(...iv)));
+        } catch (e) {
+          setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: 'Encryption failed' } : f));
+          return;
+        }
+      } else {
+        formData.append('file', upload.file);
+      }
+
+      formData.append('visibility', 'private');
+      if (parentId) formData.append('parent_id', parentId.toString());
+
       const progressInterval = setInterval(() => {
         setFiles(prev => prev.map(f => {
-            if (f.id === upload.id && f.status === 'uploading') {
-                const newProg = Math.min(f.progress + 10, 90);
-                return { ...f, progress: newProg };
-            }
-            return f;
+          if (f.id === upload.id && f.status === 'uploading') {
+            const newProg = Math.min(f.progress + 10, 90);
+            return { ...f, progress: newProg };
+          }
+          return f;
         }));
       }, 200);
 
@@ -126,11 +98,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'success', progress: 100 } : f));
         if (isEncrypted) showToast(`Encrypted. Key saved locally for ${upload.file.name}`, 'success');
       } else {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}: ${res.statusText}` }));
+        console.error('Upload failed:', res.status, err);
         throw new Error(err.error || 'Upload failed');
       }
     } catch (e: any) {
-        setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: e.message } : f));
+      console.error('Upload error:', e);
+      setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: e.message || 'Network error' } : f));
     }
   };
 

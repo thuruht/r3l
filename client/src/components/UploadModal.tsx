@@ -24,6 +24,10 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
+  const removeFile = (id: string) => {
+    setFiles(prev => prev.filter(f => f.id !== id));
+  };
+
   const handleFiles = (newFiles: FileList | null) => {
     if (!newFiles) return;
     console.log("Selected files:", newFiles.length);
@@ -190,6 +194,16 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
                     </div>
                     {f.status === 'success' && <IconCheck size={16} color="var(--accent-sym)" />}
                     {f.status === 'error' && <IconAlertCircle size={16} color="var(--accent-alert)" title={f.error} role="img" aria-label={f.error} />}
+                    {f.status !== 'uploading' && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
+                            aria-label={`Remove ${f.file.name}`}
+                            title="Remove file"
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', marginLeft: 'auto' }}
+                        >
+                            <IconX size={16} />
+                        </button>
+                    )}
                 </div>
             ))}
         </div>

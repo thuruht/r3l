@@ -240,6 +240,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             <select 
                 value={visibility} 
                 onChange={handleVisibilityChange}
+                aria-label="Visibility"
                 style={{ 
                     background: 'transparent', border: 'none', color: 'var(--text-primary)', 
                     fontSize: '0.8rem', padding: '5px', outline: 'none', cursor: 'pointer'
@@ -400,7 +401,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                      )}
                  </div>
              )}
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={20} /></button>
+            <button onClick={onClose} aria-label="Close preview" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={20} /></button>
           </div>
         </div>
 
@@ -410,7 +411,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (
              <>
-               {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="" />}
+               {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
 
                {isAudio && (
                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>

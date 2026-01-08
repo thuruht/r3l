@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode } from '@tabler/icons-react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode, IconCopy } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -146,6 +146,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           showToast('Error saving changes.', 'error');
       }
   };
+
+  const handleCopy = async () => {
+    try {
+      if (content) {
+        await navigator.clipboard.writeText(content);
+        showToast('Content copied to clipboard', 'success');
+      }
+    } catch (err) {
+      showToast('Failed to copy content', 'error');
+    }
+  };
   
   const handleVisibilityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
       const newVis = e.target.value as 'public' | 'sym' | 'me';
@@ -282,9 +293,14 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             </button>
         )}
         {isText && !isEditing && (
-            <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                <IconEdit size={18}/> {isMobile && 'Edit'}
-            </button>
+            <>
+                <button onClick={handleCopy} aria-label="Copy content" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                    <IconCopy size={18} /> {isMobile && 'Copy'}
+                </button>
+                <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                    <IconEdit size={18}/> {isMobile && 'Edit'}
+                </button>
+            </>
         )}
         {isWebCode && !isEditing && (
             <button onClick={() => setShowPreview(!showPreview)} aria-label="Preview" style={{ background: 'transparent', border: 'none', color: showPreview ? 'var(--accent-sym)' : 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>

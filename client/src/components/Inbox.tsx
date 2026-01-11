@@ -390,8 +390,12 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       {/* Header / Tabs */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between' }}>
         {activeConversationId === null ? (
-            <div style={{ display: 'flex', gap: '15px' }}>
+            <div style={{ display: 'flex', gap: '15px' }} role="tablist" aria-label="Inbox views">
                 <button 
+                    id="tab-alerts"
+                    role="tab"
+                    aria-selected={activeTab === 'alerts'}
+                    aria-controls="panel-alerts"
                     onClick={() => setActiveTab('alerts')}
                     style={{ 
                         background: 'transparent', border: 'none', 
@@ -402,9 +406,13 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                 >
-                    <IconBell size={16} /> Alerts
+                    <IconBell size={16} aria-hidden="true" /> Alerts
                 </button>
                 <button 
+                    id="tab-messages"
+                    role="tab"
+                    aria-selected={activeTab === 'messages'}
+                    aria-controls="panel-messages"
                     onClick={() => setActiveTab('messages')}
                     style={{ 
                         background: 'transparent', border: 'none', 
@@ -415,7 +423,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                 >
-                    <IconMessage size={16} /> Signals
+                    <IconMessage size={16} aria-hidden="true" /> Signals
                 </button>
             </div>
         ) : (
@@ -445,11 +453,13 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         
         {/* === ALERTS TAB === */}
         {activeTab === 'alerts' && (
-            <>
+            <div id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts">
                 {loading && <div style={{ padding: '10px' }}><Skeleton height="20px" width="100%" marginBottom="10px" /></div>}
                 
                 {!loading && notifications.length === 0 && (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>Silence...</div>
+                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                        Silence... No new alerts.
+                    </div>
                 )}
 
                 {notifications.map(n => (
@@ -492,15 +502,15 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         {connections.length === 0 && <span style={{ color: '#555', fontSize: '0.8em' }}>No connections yet.</span>}
                     </div>
                 </div>
-            </>
+            </div>
         )}
 
         {/* === MESSAGES TAB (List) === */}
         {activeTab === 'messages' && activeConversationId === null && (
-            <>
+            <div id="panel-messages" role="tabpanel" aria-labelledby="tab-messages">
                 {loading && <div style={{ padding: '10px' }}>Loading signals...</div>}
                 {!loading && conversations.length === 0 && (
-                    <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
                         No active signals. <br/>Start a whisper from your Sym Links.
                     </div>
                 )}
@@ -537,7 +547,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         )}
                     </div>
                 ))}
-            </>
+            </div>
         )}
 
         {/* === CHAT THREAD === */}

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IconSearch, IconDice, IconX, IconLoader } from '@tabler/icons-react';
+import { IconSearch, IconDice, IconX, IconLoader, IconBroadcast } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 
 export const SearchBar: React.FC = () => {
@@ -105,8 +105,10 @@ export const SearchBar: React.FC = () => {
             )}
 
             {!loading && results.length === 0 && (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <p>No frequencies found matching "{query}"</p>
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', opacity: 0.7 }}>
+                    <IconBroadcast size={48} stroke={1} />
+                    <p style={{ margin: 0, fontSize: '1.1em' }}>No frequencies found</p>
+                    <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Signal "{query}" returned no echoes.</p>
                 </div>
             )}
 

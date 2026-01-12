@@ -5,7 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import { IconSearch, IconDice, IconX, IconLoader, IconBroadcast } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 
-export const SearchBar: React.FC = () => {
+interface DiscoveryProps {
+  onNavigate?: () => void;
+}
+
+export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<{id: number, username: string, avatar_url: string}[]>([]);
   const [loading, setLoading] = useState(false);
@@ -120,11 +124,13 @@ export const SearchBar: React.FC = () => {
                 onClick={() => {
                   navigate(`/communique/${user.id}`);
                   closeSearch();
+                  if (onNavigate) onNavigate();
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     navigate(`/communique/${user.id}`);
                     closeSearch();
+                    if (onNavigate) onNavigate();
                   }
                 }}
                 style={{ 
@@ -145,14 +151,17 @@ export const SearchBar: React.FC = () => {
   );
 };
 
-export const RandomUserButton: React.FC = () => {
+export const RandomUserButton: React.FC<DiscoveryProps> = ({ onNavigate }) => {
   const navigate = useNavigate();
   const handleRandom = async () => {
     try {
       const res = await fetch('/api/users/random');
       if (res.ok) {
         const data = await res.json();
-        if (data.user) navigate(`/communique/${data.user.id}`);
+        if (data.user) {
+          navigate(`/communique/${data.user.id}`);
+          if (onNavigate) onNavigate();
+        }
       }
     } catch (e) { console.error(e); }
   };

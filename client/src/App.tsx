@@ -482,7 +482,7 @@ function Main() {
                   overflowY: 'auto'
                 }}>
                     <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-                        <SearchBar />
+                        <SearchBar onNavigate={() => setIsMenuOpen(false)} />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View Mode:</span>
                              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
@@ -520,7 +520,7 @@ function Main() {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Discover:</span>
-                             <RandomUserButton />
+                             <RandomUserButton onNavigate={() => setIsMenuOpen(false)} />
                         </div>
                     </div>
 

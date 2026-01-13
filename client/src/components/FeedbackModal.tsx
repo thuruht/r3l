@@ -11,10 +11,18 @@ const MAX_CHARS = 1000;
 const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   const [message, setMessage] = useState('');
   const [type, setType] = useState('general');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
   const { showToast } = useToast();
   const modalRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLSelectElement>(null);
+
+  // Auto-fill user data if available in global context (simplified here)
+  useEffect(() => {
+      // In a real implementation, this would pull from AuthContext
+      // For now, we rely on the backend to append the authenticated user's ID/Username
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -40,7 +48,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, type })
+        body: JSON.stringify({ message, type, name, email })
       });
 
       if (res.ok) {
@@ -80,7 +88,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       <div
         ref={modalRef}
         className="glass-panel"
-        style={{ width: '500px', maxWidth: '90%', padding: '0', display: 'flex', flexDirection: 'column' }}
+        style={{ width: '500px', maxWidth: '95vw', padding: '0', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
@@ -111,6 +119,31 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
               <option value="feature">Feature Request</option>
               <option value="other">Other</option>
             </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ flex: 1 }}>
+                  <label htmlFor="feedback-name" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Name (Optional)</label>
+                  <input
+                    type="text"
+                    id="feedback-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your Name"
+                    style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                  />
+              </div>
+              <div style={{ flex: 1 }}>
+                  <label htmlFor="feedback-email" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Email (Optional)</label>
+                  <input
+                    type="email"
+                    id="feedback-email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                  />
+              </div>
           </div>
 
           <div>

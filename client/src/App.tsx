@@ -17,10 +17,12 @@ import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { CustomizationProvider } from './context/CustomizationContext';
+import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
+import AmbientBackground from './components/AmbientBackground';
+import { generateIdentityKeys, wrapPrivateKey, exportPublicKey } from './utils/crypto';
 
 import './styles/global.css';
 import './styles/App.css';
@@ -41,6 +43,7 @@ function Main() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
+  const [driftType, setDriftType] = useState<string>(''); // '' = all, 'image', 'audio', 'text'
   const [driftData, setDriftData] = useState<{users: any[], files: any[]}>({ users: [], files: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -52,6 +55,7 @@ function Main() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
 
   const { theme, toggleTheme } = useTheme();
+  const { theme_preferences } = useCustomization();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -129,9 +133,10 @@ function Main() {
   };
 
 
-  const fetchDrift = async () => {
+  const fetchDrift = async (type: string = '') => {
       try {
-          const res = await fetch('/api/drift');
+          const query = type ? `?type=${type}` : '';
+          const res = await fetch(`/api/drift${query}`);
           if (res.ok) {
               const data = await res.json();
               setDriftData(data);
@@ -145,11 +150,26 @@ function Main() {
       const newState = !isDrifting;
       setIsDrifting(newState);
       if (newState) {
-          fetchDrift();
+          fetchDrift(driftType);
           showToast('Drift Mode: Scanning frequency...', 'info');
           navigate('/');
       } else {
           showToast('Drift Mode: Disengaged.', 'info');
+      }
+  };
+
+  const cycleDriftType = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const types = ['', 'image', 'audio', 'text'];
+      const currentIndex = types.indexOf(driftType);
+      const nextType = types[(currentIndex + 1) % types.length];
+      setDriftType(nextType);
+
+      const label = nextType === '' ? 'All' : nextType.charAt(0).toUpperCase() + nextType.slice(1);
+      showToast(`Drift Filter: ${label}`, 'info');
+
+      if (isDrifting) {
+          fetchDrift(nextType);
       }
   };
 
@@ -225,10 +245,24 @@ function Main() {
   const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
        try {
+          showToast('Generating secure identity...', 'info');
+
+          // Generate E2EE Keys
+          const keys = await generateIdentityKeys();
+          const publicKey = await exportPublicKey(keys.publicKey);
+          const wrappedPrivate = await wrapPrivateKey(keys.privateKey, loginPassword);
+          const encryptedPrivateKey = JSON.stringify(wrappedPrivate);
+
           const res = await fetch('/api/register', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
-              body: JSON.stringify({ username: loginUsername, password: loginPassword, email: regEmail })
+              body: JSON.stringify({
+                  username: loginUsername,
+                  password: loginPassword,
+                  email: regEmail,
+                  public_key: publicKey,
+                  encrypted_private_key: encryptedPrivateKey
+              })
           });
           const data = await res.json();
           if (res.ok) {
@@ -238,6 +272,7 @@ function Main() {
               showToast(data.error, 'error');
           }
       } catch (err) {
+          console.error(err);
           showToast('Registration failed', 'error');
       }
   }
@@ -266,7 +301,7 @@ function Main() {
   return (
     <>
       {!currentUser && location.pathname !== '/verify' ? (
-        <div className="login-container">
+        <div className="login-container" style={{ background: theme_preferences.navOpacity ? `rgba(16, 18, 23, ${theme_preferences.navOpacity})` : undefined }}>
             <h1 className="glitch" data-text="REL F">REL F</h1>
             <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
 
@@ -322,7 +357,7 @@ function Main() {
       ) : (
         <>
             {/* Header / Nav */}
-            <div className="header glass-panel">
+            <div className="header glass-panel" style={{ background: `rgba(16, 18, 23, ${theme_preferences.navOpacity || 0.7})` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
@@ -367,9 +402,14 @@ function Main() {
                         </button>
                       </div>
 
-                      <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px' }}>
-                        <IconRadar2 size={20} aria-hidden="true" />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', background: isDrifting ? 'rgba(50, 255, 100, 0.1)' : 'transparent', borderRadius: '4px' }}>
+                          <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
+                            <IconRadar2 size={20} aria-hidden="true" />
+                          </button>
+                          <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} style={{ padding: '8px 6px', fontSize: '0.7rem', minWidth: '40px', color: isDrifting ? 'var(--accent-sym)' : 'var(--text-secondary)' }}>
+                              {driftType ? driftType.toUpperCase() : 'ALL'}
+                          </button>
+                      </div>
                     </div>
                     
                     <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
@@ -542,6 +582,10 @@ function App() {
     <ThemeProvider>
       <CustomizationProvider>
         <ToastProvider>
+          <AmbientBackground
+            // Optional: Pass videoSrc="/assets/nebula_loop.webm" if available
+            // Optional: audioSrc="/assets/drone_ambient.mp3"
+          />
           <Main />
         </ToastProvider>
       </CustomizationProvider>

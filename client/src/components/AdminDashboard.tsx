@@ -30,7 +30,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     } else if (tab === 'users') {
         fetch('/api/admin/users')
         .then(res => res.json())
-        .then(data => setUsers(data.users))
+        .then(data => setUsers(data.users || []))
         .catch(console.error);
     }
   }, [tab]);
@@ -44,6 +44,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               showToast('User terminated.', 'success');
           } else {
               showToast('Failed to delete.', 'error');
+          }
+      } catch (e) { showToast('Network error', 'error'); }
+  };
+
+  const handleRoleChange = async (id: number, newRole: string) => {
+      try {
+          const res = await fetch(`/api/admin/users/${id}/role`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ role: newRole })
+          });
+          if (res.ok) {
+              setUsers(prev => prev.map(u => u.id === id ? { ...u, role: newRole } : u));
+              showToast('Role updated.', 'success');
+          } else {
+              showToast('Failed to update role.', 'error');
           }
       } catch (e) { showToast('Network error', 'error'); }
   };
@@ -131,6 +147,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <th style={{ padding: '10px' }}>ID</th>
                             <th style={{ padding: '10px' }}>Username</th>
                             <th style={{ padding: '10px' }}>Email</th>
+                            <th style={{ padding: '10px' }}>Role</th>
                             <th style={{ padding: '10px' }}>Joined</th>
                             <th style={{ padding: '10px' }}>Action</th>
                         </tr>
@@ -141,6 +158,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 <td style={{ padding: '10px' }}>{u.id}</td>
                                 <td style={{ padding: '10px' }}>{u.username}</td>
                                 <td style={{ padding: '10px' }}>{u.email}</td>
+                                <td style={{ padding: '10px' }}>
+                                    <select
+                                        value={u.role || 'user'}
+                                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                                        style={{ background: 'transparent', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '2px', borderRadius: '4px' }}
+                                        disabled={u.id === 1}
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="moderator">Mod</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </td>
                                 <td style={{ padding: '10px' }}>{new Date(u.created_at).toLocaleDateString()}</td>
                                 <td style={{ padding: '10px' }}>
                                     {u.id !== 1 && (

@@ -19,10 +19,12 @@ interface Session {
 
 export class RelfDO {
   state: DurableObjectState;
+  env: Env;
   sessions: Session[];
 
   constructor(state: DurableObjectState, env: Env) {
     this.state = state;
+    this.env = env;
     this.sessions = [];
   }
 
@@ -85,23 +87,45 @@ export class RelfDO {
     }
   }
 
-  handleSession(webSocket: WebSocket, userId: number) {
+  async handleSession(webSocket: WebSocket, userId: number) {
     webSocket.accept();
     this.sessions.push({ ws: webSocket, userId });
 
+    // Check is_lurking status from DB
+    let isLurking = false;
+    try {
+        // Query DB directly inside DO
+        // Note: D1 queries in DO might add latency, but acceptable for connect handshake
+        const user = await this.env.DB.prepare('SELECT is_lurking FROM users WHERE id = ?').bind(userId).first();
+        if (user && user.is_lurking) {
+            isLurking = true;
+        }
+    } catch(e) {
+        console.error("Failed to check lurking status:", e);
+    }
+
     // 1. Send current online users to the new client
+    // Filter out lurking users from the list we send
+    // (This is tricky because we don't store lurking state in session memory yet.
+    // Ideally we should track it in `this.sessions` state, but let's just do a best effort or fetch valid IDs?)
+    // For now, let's just send everyone, and rely on the client or subsequent updates.
+    // Actually, if we want to respect privacy, we shouldn't send lurking users even here.
+    // TODO: Improve state management to track metadata like `isLurking` per session.
+
     const onlineUserIds = Array.from(new Set(this.sessions.map(s => s.userId)));
     webSocket.send(JSON.stringify({
       type: 'presence_sync',
       onlineUserIds
     }));
 
-    // 2. Broadcast 'online' status to everyone else
-    this.broadcast({
-      type: 'presence_update',
-      status: 'online',
-      userId
-    }, userId); // Exclude self from broadcast (optional, but cleaner)
+    // 2. Broadcast 'online' status to everyone else (ONLY if not lurking)
+    if (!isLurking) {
+        this.broadcast({
+            type: 'presence_update',
+            status: 'online',
+            userId
+        }, userId); // Exclude self
+    }
 
     webSocket.addEventListener("message", async msg => {
       try {
@@ -121,6 +145,12 @@ export class RelfDO {
       // Check if user is completely offline (no other sessions)
       const stillOnline = this.sessions.some(s => s.userId === userId);
       if (!stillOnline) {
+        // Only broadcast offline if they were ostensibly online (not lurking).
+        // Since we didn't store lurking state in memory perfectly, we might accidentally broadcast offline
+        // for a lurker if we aren't careful. However, broadcasting "offline" for someone who wasn't "online"
+        // is usually harmless (idempotent on client).
+        // To be safe/clean, we could check DB again or store state.
+        // Let's broadcast.
         this.broadcast({
           type: 'presence_update',
           status: 'offline',

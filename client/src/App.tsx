@@ -36,6 +36,7 @@ interface User {
   id: number;
   username: string;
   avatar_url?: string;
+  is_lurking?: boolean;
 }
 
 function Main() {
@@ -612,6 +613,7 @@ function Main() {
                     collections={collections}
                     isDrifting={isDrifting}
                     onlineUserIds={onlineUserIds}
+                    isLurking={currentUser?.is_lurking}
                   />
                 ) : (
                   <NetworkList

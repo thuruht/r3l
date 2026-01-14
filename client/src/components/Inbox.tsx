@@ -40,9 +40,10 @@ interface Message {
 }
 
 const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
-  const [activeTab, setActiveTab] = useState<'alerts' | 'messages'>('alerts');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'messages' | 'requests'>('alerts');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [requests, setRequests] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -115,7 +116,42 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const res = await fetch('/api/messages/conversations');
       if (res.ok) {
         const data = await res.json();
-        setConversations(data.conversations || []);
+        const allConvos = data.conversations || [];
+
+        // Filter out requests (assuming we had a way to distinguish,
+        // e.g. via connection status or explicit is_request flag in conversation projection.
+        // For now, let's assume we filter by connection status if available,
+        // or check if we have a mutual connection.
+        // Since `api/messages/conversations` doesn't explicitly return `is_request`,
+        // we might need to rely on the filtering client side if we fetch connections.
+
+        // Better approach: Let's assume the conversations endpoint returns minimal info.
+        // We'll separate based on whether they are in `connections` (mutuals).
+
+        // Fetch connections first if empty
+        let currentConnections = connections;
+        if (currentConnections.length === 0) {
+             const relRes = await fetch('/api/relationships');
+             const relData = await relRes.json();
+             currentConnections = relData.mutual || [];
+             setConnections(currentConnections);
+        }
+
+        const mutualIds = new Set(currentConnections.map(c => c.user_id));
+
+        const regConvos: Conversation[] = [];
+        const reqConvos: Conversation[] = [];
+
+        allConvos.forEach((c: Conversation) => {
+            if (mutualIds.has(c.partner_id)) {
+                regConvos.push(c);
+            } else {
+                reqConvos.push(c);
+            }
+        });
+
+        setConversations(regConvos);
+        setRequests(reqConvos);
       }
     } catch (err) {
       console.error(err);
@@ -425,6 +461,24 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 >
                     <IconMessage size={16} aria-hidden="true" /> Signals
                 </button>
+                <button
+                    id="tab-requests"
+                    role="tab"
+                    aria-selected={activeTab === 'requests'}
+                    aria-controls="panel-requests"
+                    onClick={() => setActiveTab('requests')}
+                    style={{
+                        background: 'transparent', border: 'none',
+                        color: activeTab === 'requests' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                        fontWeight: activeTab === 'requests' ? 'bold' : 'normal',
+                        borderBottom: activeTab === 'requests' ? '2px solid var(--accent-sym)' : '2px solid transparent',
+                        paddingBottom: '5px',
+                        display: 'flex', alignItems: 'center', gap: '5px'
+                    }}
+                >
+                    <IconUser size={16} aria-hidden="true" /> Reqs
+                    {requests.length > 0 && <span style={{fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 4px', borderRadius: '4px', color: 'black'}}>{requests.length}</span>}
+                </button>
             </div>
         ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -550,8 +604,49 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
             </div>
         )}
 
+        {/* === REQUESTS TAB (List) === */}
+        {activeTab === 'requests' && activeConversationId === null && (
+            <div id="panel-requests" role="tabpanel" aria-labelledby="tab-requests">
+                {loading && <div style={{ padding: '10px' }}>Loading requests...</div>}
+                {!loading && requests.length === 0 && (
+                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                        No message requests.
+                    </div>
+                )}
+                {requests.map(c => (
+                    <div key={c.partner_id}
+                        role="button" tabIndex={0}
+                        onClick={() => setActiveConversationId(c.partner_id)}
+                        style={{
+                            padding: '12px', borderBottom: '1px solid #ffffff11', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '10px'
+                        }}
+                    >
+                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.partner_avatar ? `url(${c.partner_avatar}) center/cover` : '#333', flexShrink: 0 }}></div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '0.95em' }}>{c.partner_name}</span>
+                                <span style={{ fontSize: '0.75em', color: '#666' }}>{new Date(c.last_message_at).toLocaleDateString()}</span>
+                            </div>
+                             <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
+                                {c.last_message_snippet}
+                            </div>
+                            <div style={{ fontSize: '0.7em', color: 'var(--accent-alert)', marginTop: '2px' }}>
+                                Non-Sym Connection
+                            </div>
+                        </div>
+                         {c.unread_count > 0 && (
+                            <div style={{ background: 'var(--accent-alert)', color: 'black', fontSize: '0.7em', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                                {c.unread_count}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        )}
+
         {/* === CHAT THREAD === */}
-        {activeTab === 'messages' && activeConversationId !== null && (
+        {(activeTab === 'messages' || activeTab === 'requests') && activeConversationId !== null && (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '10px' }}>
                     {chatLoading && <div>Loading history...</div>}

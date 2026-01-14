@@ -3,6 +3,7 @@ import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconA
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
+import ConfirmModal from './ConfirmModal';
 
 interface CollectionsManagerProps {
   onClose: () => void;
@@ -29,6 +30,18 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   const [isEditingColl, setIsEditingColl] = useState(false);
   const [editName, setEditName] = useState('');
   const [editVisibility, setEditVisibility] = useState<'private' | 'public' | 'sym'>('private');
+
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   // Handle Escape key to close modal
   useEffect(() => {
@@ -58,11 +71,17 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (confirm('Are you sure you want to delete this collection?')) {
-          const success = await deleteCollection(id);
-          if (success) showToast('Collection deleted', 'success');
-          else showToast('Failed to delete', 'error');
-      }
+      setConfirmState({
+          isOpen: true,
+          title: 'Delete Collection',
+          message: 'Are you sure you want to delete this collection? This action cannot be undone.',
+          onConfirm: async () => {
+              const success = await deleteCollection(id);
+              if (success) showToast('Collection deleted', 'success');
+              else showToast('Failed to delete', 'error');
+              setConfirmState(prev => ({ ...prev, isOpen: false }));
+          }
+      });
   };
 
   const startEdit = (e: React.MouseEvent, collection: Collection) => {
@@ -164,21 +183,28 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
 
   const removeFile = async (fileId: number) => {
       if (!selectedCollection) return;
-      if (!confirm('Remove file from collection?')) return;
 
-      try {
-          const res = await fetch(`/api/collections/${selectedCollection.id}/files/${fileId}`, {
-              method: 'DELETE'
-          });
-          if (res.ok) {
-              setCollectionFiles(prev => prev.filter(f => f.id !== fileId));
-              showToast('File removed', 'success');
-          } else {
-              showToast('Failed to remove file', 'error');
+      setConfirmState({
+          isOpen: true,
+          title: 'Remove File',
+          message: 'Remove this file from the collection? The original artifact will remain.',
+          onConfirm: async () => {
+            try {
+                const res = await fetch(`/api/collections/${selectedCollection.id}/files/${fileId}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    setCollectionFiles(prev => prev.filter(f => f.id !== fileId));
+                    showToast('File removed', 'success');
+                } else {
+                    showToast('Failed to remove file', 'error');
+                }
+            } catch (e) {
+                showToast('Error removing file', 'error');
+            }
+            setConfirmState(prev => ({ ...prev, isOpen: false }));
           }
-      } catch (e) {
-          showToast('Error removing file', 'error');
-      }
+      });
   };
 
   return (
@@ -431,6 +457,16 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
               }}
           />
       )}
+
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText="Confirm"
+        cancelText="Cancel"
+      />
     </div>
   );
 };

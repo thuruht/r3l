@@ -1,7 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { NetworkNode } from '../hooks/useNetworkData';
-import { IconUser, IconFile, IconUsers } from '@tabler/icons-react';
+import { IconUser, IconFile, IconUsers, IconBroadcast, IconDice } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
+import { useToast } from '../context/ToastContext';
 
 interface NetworkListProps {
   nodes: NetworkNode[];
@@ -10,6 +12,9 @@ interface NetworkListProps {
 }
 
 const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }) => {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+
   // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
     const order = { me: 0, sym: 1, asym: 2, drift_user: 3, drift_file: 4, lurker: 5 };
@@ -38,14 +43,57 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
         </div>
       )}
 
-      {!loading && sortedNodes.length === 0 && (
+      {!loading && sortedNodes.filter(n => n.group !== 'me').length === 0 && (
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7
+          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7,
+          animation: 'fadeIn 0.5s ease-out'
         }}>
-          <IconUsers size={48} stroke={1.5} style={{ marginBottom: '10px', opacity: 0.5 }} />
-          <p>No connections found.</p>
-          <p style={{ fontSize: '0.8em' }}>Explore the Drift to find others.</p>
+          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '15px', opacity: 0.5 }} />
+          <p style={{ margin: '0 0 5px 0', fontSize: '1.1em' }}>Sector Silent</p>
+          <p style={{ fontSize: '0.9em', maxWidth: '200px', margin: '0 0 15px 0', opacity: 0.7 }}>
+            No local signals detected. Drift to a random coordinate?
+          </p>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/users/random');
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.user) navigate(`/communique/${data.user.id}`);
+                } else {
+                  showToast('Drift signal weak. Try again.', 'error');
+                }
+              } catch (e) {
+                console.error(e);
+                showToast('Drift error.', 'error');
+              }
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--accent-asym)',
+              color: 'var(--accent-asym)',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9em',
+              transition: 'all 0.2s'
+            }}
+            aria-label="Drift to random signal"
+            onMouseEnter={(e) => {
+               e.currentTarget.style.borderColor = 'var(--accent-sym)';
+               e.currentTarget.style.color = 'var(--accent-sym)';
+            }}
+            onMouseLeave={(e) => {
+               e.currentTarget.style.borderColor = 'var(--accent-asym)';
+               e.currentTarget.style.color = 'var(--accent-asym)';
+            }}
+          >
+            <IconDice size={18} /> Drift to Random Signal
+          </button>
         </div>
       )}
 

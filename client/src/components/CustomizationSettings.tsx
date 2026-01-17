@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
-import { IconSettings, IconX, IconRefresh } from '@tabler/icons-react';
+import { IconSettings, IconX, IconRefresh, IconEyeOff, IconKey } from '@tabler/icons-react';
+import KeyManager from './KeyManager';
 
 const CustomizationSettings: React.FC = () => {
   const {
@@ -19,9 +20,18 @@ const CustomizationSettings: React.FC = () => {
       mistDensity: theme_preferences.mistDensity || 0.5,
       navOpacity: theme_preferences.navOpacity || 0.8
   });
+  const [isLurking, setIsLurking] = useState(false);
+  const [showKeyManager, setShowKeyManager] = useState(false);
 
   const DEFAULT_PRIMARY = '#10b981';
   const DEFAULT_SECONDARY = '#8b5cf6';
+
+  useEffect(() => {
+      // Fetch initial lurking status
+      fetch('/api/users/me').then(res => res.json()).then(data => {
+          if (data.user?.is_lurking) setIsLurking(true);
+      }).catch(console.error);
+  }, []);
 
   useEffect(() => {
       setLocalState(prev => {
@@ -76,6 +86,18 @@ const CustomizationSettings: React.FC = () => {
           node_primary_color: DEFAULT_PRIMARY,
           node_secondary_color: DEFAULT_SECONDARY
       }));
+  };
+
+  const toggleLurking = async () => {
+      const newVal = !isLurking;
+      try {
+          const res = await fetch('/api/users/me/privacy', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_lurking: newVal })
+          });
+          if (res.ok) setIsLurking(newVal);
+      } catch(e) { console.error(e); }
   };
 
   if (!isOpen) {
@@ -228,6 +250,34 @@ const CustomizationSettings: React.FC = () => {
           <IconRefresh size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
           Reset Colors
         </button>
+      </div>
+
+      <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+            Privacy & Security
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <label htmlFor="lurking-toggle" style={{ fontSize: '11px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <IconEyeOff size={14} /> Lurker Mode
+              </label>
+              <input
+                  id="lurking-toggle"
+                  type="checkbox"
+                  checked={isLurking}
+                  onChange={toggleLurking}
+                  style={{ accentColor: 'var(--accent-sym)' }}
+              />
+          </div>
+          <button onClick={() => setShowKeyManager(true)} style={{ width: '100%', fontSize: '0.75rem', padding: '6px', background: '#ffffff11' }}>
+             <IconKey size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Manage Keys
+          </button>
+          {showKeyManager && (
+            <div style={{ marginTop: '10px', padding: '10px', background: '#000', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                <KeyManager />
+                <div style={{ fontSize: '0.8em', color: 'var(--accent-sym)' }}>Keys generated/checked. (See console)</div>
+                <button onClick={() => setShowKeyManager(false)} style={{ fontSize: '0.7em', marginTop: '5px' }}>Close</button>
+            </div>
+          )}
       </div>
 
     </div>

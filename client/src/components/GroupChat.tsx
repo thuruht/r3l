@@ -200,7 +200,8 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
     }
 
     try {
-      const res = await fetch('/api/groups', {
+      // Use create-sym-group for all groups as per requirements
+      const res = await fetch('/api/groups/create-sym-group', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newGroupName, member_ids: selectedMembers })
@@ -208,7 +209,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
 
       if (res.ok) {
         const data = await res.json();
-        showToast('Group created', 'success');
+        showToast('Sym Group created', 'success');
         setShowCreateModal(false);
         setNewGroupName('');
         setSelectedMembers([]);
@@ -388,8 +389,9 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
               style={{ width: '100%', marginBottom: '15px', padding: '8px', background: '#00000044', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white' }}
             />
             <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: 'var(--text-secondary)' }}>Select Members</h4>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: 'var(--text-secondary)' }}>Select Members (Sym Only)</h4>
               <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                {connections.length === 0 && <div style={{ color: '#666', fontSize: '0.85em' }}>No Sym connections available.</div>}
                 {connections.map(c => (
                   <label key={c.user_id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px', cursor: 'pointer' }}>
                     <input

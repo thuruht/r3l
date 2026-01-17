@@ -43,60 +43,6 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
         </div>
       )}
 
-      {!loading && sortedNodes.filter(n => n.group !== 'me').length === 0 && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7,
-          animation: 'fadeIn 0.5s ease-out'
-        }}>
-          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '15px', opacity: 0.5 }} />
-          <p style={{ margin: '0 0 5px 0', fontSize: '1.1em' }}>Sector Silent</p>
-          <p style={{ fontSize: '0.9em', maxWidth: '200px', margin: '0 0 15px 0', opacity: 0.7 }}>
-            No local signals detected. Drift to a random coordinate?
-          </p>
-          <button
-            onClick={async () => {
-              try {
-                const res = await fetch('/api/users/random');
-                if (res.ok) {
-                  const data = await res.json();
-                  if (data.user) navigate(`/communique/${data.user.id}`);
-                } else {
-                  showToast('Drift signal weak. Try again.', 'error');
-                }
-              } catch (e) {
-                console.error(e);
-                showToast('Drift error.', 'error');
-              }
-            }}
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--accent-asym)',
-              color: 'var(--accent-asym)',
-              padding: '8px 16px',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              fontSize: '0.9em',
-              transition: 'all 0.2s'
-            }}
-            aria-label="Drift to random signal"
-            onMouseEnter={(e) => {
-               e.currentTarget.style.borderColor = 'var(--accent-sym)';
-               e.currentTarget.style.color = 'var(--accent-sym)';
-            }}
-            onMouseLeave={(e) => {
-               e.currentTarget.style.borderColor = 'var(--accent-asym)';
-               e.currentTarget.style.color = 'var(--accent-asym)';
-            }}
-          >
-            <IconDice size={18} /> Drift to Random Signal
-          </button>
-        </div>
-      )}
-
       {!loading && sortedNodes.length > 0 && (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
         {sortedNodes.map(node => (
@@ -151,6 +97,61 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           </div>
         ))}
       </div>
+      )}
+
+      {!loading && sortedNodes.filter(n => n.group !== 'me').length === 0 && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7,
+          animation: 'fadeIn 0.5s ease-out',
+          marginTop: '20px'
+        }}>
+          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '15px', opacity: 0.5 }} aria-hidden="true" />
+          <p style={{ margin: '0 0 5px 0', fontSize: '1.1em' }}>Sector Silent</p>
+          <p style={{ fontSize: '0.9em', maxWidth: '200px', margin: '0 0 15px 0', opacity: 0.7 }}>
+            No local signals detected. Drift to a random coordinate?
+          </p>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/users/random');
+                if (res.ok) {
+                  const data = await res.json();
+                  if (data.user) navigate(`/communique/${data.user.id}`);
+                } else {
+                  showToast('Drift signal weak. Try again.', 'error');
+                }
+              } catch (e) {
+                console.error(e);
+                showToast('Drift error.', 'error');
+              }
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--accent-asym)',
+              color: 'var(--accent-asym)',
+              padding: '8px 16px',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9em',
+              transition: 'all 0.2s'
+            }}
+            aria-label="Drift to random signal"
+            onMouseEnter={(e) => {
+               e.currentTarget.style.borderColor = 'var(--accent-sym)';
+               e.currentTarget.style.color = 'var(--accent-sym)';
+            }}
+            onMouseLeave={(e) => {
+               e.currentTarget.style.borderColor = 'var(--accent-asym)';
+               e.currentTarget.style.color = 'var(--accent-asym)';
+            }}
+          >
+            <IconDice size={18} /> Drift to Random Signal
+          </button>
+        </div>
       )}
     </div>
   );

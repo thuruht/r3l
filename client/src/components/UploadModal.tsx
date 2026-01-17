@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 import { generateKey, encryptFile, exportKey } from '../utils/crypto';
@@ -6,7 +6,7 @@ import { generateKey, encryptFile, exportKey } from '../utils/crypto';
 interface UploadModalProps {
   onClose: () => void;
   onUploadComplete: () => void;
-  parentId?: number; // For remixing
+  parentId?: string | null; // For remixing (backend expects number, but frontend might pass string, we'll convert)
 }
 
 interface FileUploadState {
@@ -20,9 +20,21 @@ interface FileUploadState {
 const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, parentId }) => {
   const [files, setFiles] = useState<FileUploadState[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    // Focus drop zone on mount
+    dropZoneRef.current?.focus();
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const removeFile = (id: string) => {
     setFiles(prev => prev.filter(f => f.id !== id));
@@ -138,6 +150,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         </div>
 
         <div 
+            ref={dropZoneRef}
             role="button"
             tabIndex={0}
             aria-label="Upload file drop zone. Drag and drop files here or press Enter to select files."
@@ -156,35 +169,49 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             }}
             onClick={() => fileInputRef.current?.click()}
             style={{
-                border: `2px dashed ${isDragOver ? 'var(--accent-sym)' : 'var(--border-color)'}`,
+                border: `2px dashed ${isDragOver || isFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
                 borderRadius: '8px',
                 padding: '40px',
                 textAlign: 'center',
                 cursor: 'pointer',
                 background: isDragOver ? 'rgba(38, 222, 129, 0.1)' : 'transparent',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                outline: 'none',
+                boxShadow: isFocused ? 'var(--glow-sym)' : 'none'
             }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
         >
             <IconUpload size={48} color="var(--text-secondary)" />
             <p style={{ color: 'var(--text-secondary)' }}>Drag & Drop files here or click to select</p>
         </div>
         <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <input
-              type="checkbox"
-              id="encrypt-check"
-              checked={isEncrypted}
-              onChange={e => setIsEncrypted(e.target.checked)}
-            />
-            <label htmlFor="encrypt-check" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', cursor: 'pointer', color: isEncrypted ? 'var(--accent-sym)' : 'inherit' }}>
-                <IconLock size={16} /> Client-Side Encryption
-            </label>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input
+                type="checkbox"
+                id="encrypt-check"
+                checked={isEncrypted}
+                onChange={e => setIsEncrypted(e.target.checked)}
+                aria-describedby="encrypt-desc"
+              />
+              <label htmlFor="encrypt-check" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', cursor: 'pointer', color: isEncrypted ? 'var(--accent-sym)' : 'inherit' }}>
+                  <IconLock size={16} /> Client-Side Encryption
+              </label>
+            </div>
+            <p id="encrypt-desc" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '24px' }}>
+              Files are encrypted in your browser before upload. You are responsible for managing the encryption key.
+            </p>
         </div>
 
-        <div style={{ maxHeight: '200px', minHeight: files.length > 0 ? '100px' : '0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <ul style={{
+          listStyle: 'none', padding: 0, margin: 0,
+          maxHeight: '200px', minHeight: files.length > 0 ? '100px' : '0',
+          overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px'
+        }}>
             {files.map(f => (
-                <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '4px', color: 'var(--text-primary)' }}>
+                <li key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '4px', color: 'var(--text-primary)' }}>
                     <IconFile size={20} color="var(--text-primary)" />
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontSize: '0.9em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.file.name}</div>
@@ -204,15 +231,30 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
                             <IconX size={16} />
                         </button>
                     )}
-                </div>
+                </li>
             ))}
-        </div>
+        </ul>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             {allDone ? (
-                <button onClick={() => { onUploadComplete(); onClose(); }}>Done</button>
+                <button
+                  onClick={() => { onUploadComplete(); onClose(); }}
+                  style={{ background: 'var(--accent-sym)', color: '#000', border: 'none', fontWeight: 'bold' }}
+                >
+                  Done
+                </button>
             ) : (
-                <button onClick={startUploads} disabled={files.length === 0 || files.some(f => f.status === 'uploading')}>
+                <button
+                  onClick={startUploads}
+                  disabled={files.length === 0 || files.some(f => f.status === 'uploading')}
+                  style={{
+                    background: files.length > 0 ? 'var(--accent-sym)' : 'var(--bg-mist)',
+                    color: files.length > 0 ? '#000' : 'var(--text-secondary)',
+                    borderColor: files.length > 0 ? 'var(--accent-sym)' : 'var(--border-color)',
+                    cursor: files.length > 0 ? 'pointer' : 'not-allowed',
+                    fontWeight: 'bold'
+                  }}
+                >
                     {files.some(f => f.status === 'uploading') ? 'Uploading...' : 'Start Upload'}
                 </button>
             )}

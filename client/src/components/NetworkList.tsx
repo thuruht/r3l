@@ -16,6 +16,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
   const { showToast } = useToast();
 
   // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
+  // Thematic empty state logic handles "just me" case
   const sortedNodes = [...nodes].sort((a, b) => {
     const order = { me: 0, sym: 1, asym: 2, drift_user: 3, drift_file: 4, lurker: 5 };
     return order[a.group] - order[b.group];

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NetworkNode } from '../hooks/useNetworkData';
-import { IconUser, IconFile, IconUsers } from '@tabler/icons-react';
+import { IconUser, IconFile, IconUsers, IconBroadcast } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 
 interface NetworkListProps {
@@ -35,17 +35,6 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           <Skeleton height="60px" marginBottom="10px" />
           <Skeleton height="60px" marginBottom="10px" />
           <Skeleton height="60px" marginBottom="10px" />
-        </div>
-      )}
-
-      {!loading && sortedNodes.length === 0 && (
-        <div style={{
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7
-        }}>
-          <IconUsers size={48} stroke={1.5} style={{ marginBottom: '10px', opacity: 0.5 }} />
-          <p>No connections found.</p>
-          <p style={{ fontSize: '0.8em' }}>Explore the Drift to find others.</p>
         </div>
       )}
 
@@ -103,6 +92,19 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           </div>
         ))}
       </div>
+      )}
+
+      {!loading && sortedNodes.filter(n => n.group !== 'me').length === 0 && (
+        <div
+          role="status"
+          style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7
+        }}>
+          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '10px', opacity: 0.5 }} aria-hidden="true" />
+          <p style={{ margin: 0, fontSize: '1.1em' }}>Sector Silent</p>
+          <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '5px' }}>No signals detected. Drift to find new frequencies.</p>
+        </div>
       )}
     </div>
   );

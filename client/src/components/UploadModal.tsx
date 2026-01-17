@@ -6,7 +6,7 @@ import { generateKey, encryptFile, exportKey } from '../utils/crypto';
 interface UploadModalProps {
   onClose: () => void;
   onUploadComplete: () => void;
-  parentId?: number; // For remixing
+  parentId?: string | null; // For remixing (backend expects number, but frontend might pass string, we'll convert)
 }
 
 interface FileUploadState {

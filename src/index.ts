@@ -56,6 +56,12 @@ const authMiddleware = async (c: any, next: any) => {
 
     // Attach user ID to context variables for downstream routes
     c.set('user_id', payload.id as number);
+
+    // Also attach role if available in payload (future proofing) or fetch fresh if critical
+    // Ideally we put role in JWT to avoid DB hit every request, but for now let's keep it simple.
+    // The route handler can check the DB if it needs strict role info, or we can fetch it here.
+    // For admin routes, we'll fetch it.
+
     await next();
   } catch (e) {
     console.error("JWT verification failed:", e);
@@ -450,7 +456,7 @@ app.get('/api/users/me', async (c) => {
     
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
-      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
+      'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -461,11 +467,34 @@ app.get('/api/users/me', async (c) => {
         username: user.username, 
         avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
         public_key: user.public_key,
-        encrypted_private_key: user.encrypted_private_key
+        encrypted_private_key: user.encrypted_private_key,
+        role: user.role,
+        is_lurking: user.is_lurking
       } 
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
+  }
+});
+
+// PUT /api/users/me/privacy: Update privacy settings (Lurker Mode)
+app.put('/api/users/me/privacy', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { is_lurking } = await c.req.json();
+
+  if (typeof is_lurking !== 'boolean' && typeof is_lurking !== 'number') {
+    return c.json({ error: 'Invalid value for is_lurking' }, 400);
+  }
+
+  try {
+    await c.env.DB.prepare(
+      'UPDATE users SET is_lurking = ? WHERE id = ?'
+    ).bind(is_lurking ? 1 : 0, user_id).run();
+
+    return c.json({ message: 'Privacy settings updated', is_lurking: !!is_lurking });
+  } catch (e) {
+    console.error("Error updating privacy:", e);
+    return c.json({ error: 'Failed to update privacy settings' }, 500);
   }
 });
 
@@ -777,7 +806,10 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) {
+
+  // Check role
+  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
+  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -801,11 +833,16 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+
+  // Check role
+  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
+  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin' && user?.role !== 'moderator') {
+      return c.json({ error: 'Unauthorized' }, 403);
+  }
 
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT id, username, email, created_at, is_verified FROM users ORDER BY created_at DESC LIMIT 100'
+      'SELECT id, username, email, created_at, is_verified, role FROM users ORDER BY created_at DESC LIMIT 100'
     ).all();
     return c.json({ users: results });
   } catch (e) {
@@ -813,10 +850,39 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
   }
 });
 
+// PUT /api/admin/users/:id/role: Change user role (Admin only)
+app.put('/api/admin/users/:id/role', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const targetId = Number(c.req.param('id'));
+    const { role } = await c.req.json();
+
+    // Check role
+    const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
+    if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
+        return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    if (targetId === ADMIN_USER_ID) return c.json({ error: 'Cannot change root admin role' }, 400);
+    if (!['user', 'moderator', 'admin'].includes(role)) return c.json({ error: 'Invalid role' }, 400);
+
+    try {
+        await c.env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, targetId).run();
+        return c.json({ message: 'User role updated' });
+    } catch (e) {
+        return c.json({ error: 'Failed to update role' }, 500);
+    }
+});
+
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+
+  // Check role
+  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
+  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
+      return c.json({ error: 'Unauthorized' }, 403);
+  }
+
   const targetId = Number(c.req.param('id'));
 
   if (targetId === ADMIN_USER_ID) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -838,7 +904,12 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+
+  // Check role
+  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
+  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
+      return c.json({ error: 'Unauthorized' }, 403);
+  }
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);

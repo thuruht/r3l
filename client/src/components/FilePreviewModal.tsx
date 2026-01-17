@@ -24,6 +24,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vitality, setVitality] = useState(0);
+  const [ownerId, setOwnerId] = useState<number | null>(null);
   const [boosted, setBoosted] = useState(false);
   const { showToast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -32,6 +33,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [showMenu, setShowMenu] = useState(false);
   const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('me');
   const [showPreview, setShowPreview] = useState(false);
+  const [showRemixUpload, setShowRemixUpload] = useState(false);
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -66,6 +68,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         const meta = await metaRes.json();
         setVitality(meta.vitality);
         setVisibility(meta.visibility);
+        setOwnerId(meta.user_id);
 
         // Fetch Content if text-based
         const textTypes = [
@@ -147,6 +150,33 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
       }
   };
 
+  // Remix Logic (Text/Code) - Save as NEW file
+  const handleRemixSave = async () => {
+      try {
+          // Create new file with content
+          const blob = new Blob([editContent], { type: mimeType });
+          const formData = new FormData();
+          formData.append('file', blob, `remix-${filename}`);
+          formData.append('visibility', 'private'); // Default to private
+          if (fileId) formData.append('parent_id', fileId);
+
+          const res = await fetch('/api/files', {
+              method: 'POST',
+              body: formData
+          });
+
+          if (res.ok) {
+              showToast('Remix created!', 'success');
+              setIsEditing(false); // Exit edit mode
+              // Ideally navigate to new file or just close
+          } else {
+               showToast('Failed to create remix.', 'error');
+          }
+      } catch(e) {
+          showToast('Error creating remix.', 'error');
+      }
+  };
+
   const handleCopy = async () => {
     try {
       if (content) {
@@ -172,6 +202,27 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           }
       } catch(err) {
           showToast('Failed to update audience.', 'error');
+      }
+  };
+
+  const handleArchiveVote = async () => {
+      if (!fileId) return;
+      const key = `voted_${fileId}`;
+      if (localStorage.getItem(key)) {
+          showToast('You already voted recently.', 'error');
+          return;
+      }
+      try {
+          const res = await fetch(`/api/files/${fileId}/archive-vote`, { method: 'POST' });
+          if (res.ok) {
+              localStorage.setItem(key, 'true');
+              showToast('Vote recorded.', 'success');
+          } else {
+               const err = await res.json();
+               showToast(err.error || 'Vote failed', 'error');
+          }
+      } catch (e) {
+          showToast('Vote failed', 'error');
       }
   };
 
@@ -313,8 +364,25 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? '8px' : '0' }}>
                     <IconUsers size={14} /> {collabStatus}
                 </div>
-                <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                    <IconDeviceFloppy size={18}/> {isMobile && 'Save'}
+                {/* Check if user is owner to determine if it's Save or Remix Save */}
+                {currentUser?.id === ownerId ? (
+                    <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                        <IconDeviceFloppy size={18}/> {isMobile && 'Save'}
+                    </button>
+                ) : (
+                    <button onClick={handleRemixSave} aria-label="Save Remix" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                        <IconDeviceFloppy size={18}/> {isMobile && 'Save Copy'}
+                    </button>
+                )}
+            </>
+        )}
+        {!isEditing && (
+            <>
+                <button onClick={() => isText ? setIsEditing(true) : setShowRemixUpload(true)} title="Remix" aria-label="Remix" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                    <IconFolderPlus size={18} style={{ transform: 'rotate(180deg)' }}/> {isMobile && 'Remix'}
+                </button>
+                <button onClick={handleArchiveVote} title="Vote to Archive" aria-label="Vote to Archive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
+                    <IconUsers size={18} /> {isMobile && 'Vote'}
                 </button>
             </>
         )}
@@ -505,6 +573,13 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
       </div>
       {showCollectionSelect && (
           <CollectionsManager mode="select" onClose={() => setShowCollectionSelect(false)} onSelect={(cid) => { addToCollection(cid, fileId); setShowCollectionSelect(false); }} />
+      )}
+      {showRemixUpload && (
+          <UploadModal
+            onClose={() => setShowRemixUpload(false)}
+            onUploadComplete={() => { showToast('Remix uploaded', 'success'); setShowRemixUpload(false); }}
+            parentId={fileId}
+          />
       )}
     </div>
   );

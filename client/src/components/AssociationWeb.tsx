@@ -16,6 +16,7 @@ interface AssociationWebProps {
   isDrifting: boolean;
   onlineUserIds: Set<number>;
   signal?: any; // New prop for incoming signals
+  isLurking?: boolean; // New prop for visual feedback
 }
 
 interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
@@ -25,7 +26,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift' | 'collection';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal, isLurking }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
@@ -98,6 +99,46 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
         }
     }
   }, [signal]);
+
+  // Animation for Drift Nodes (Ghostly/Pulsating)
+  useGSAP(() => {
+      // Select all drift-user and drift-file nodes.
+      // Note: Nodes are re-rendered by D3, so GSAP targeting needs to handle DOM updates.
+      // D3 transition takes priority for position/opacity usually, but we can animate stroke or scale using CSS classes or ref selection
+      // However, since D3 controls the DOM, it's safer to use D3's transition or just requestAnimationFrame in the tick.
+      // But let's try GSAP on the group elements if possible.
+
+      // We'll target classes we assign in D3 render.
+      // Currently we assign .node, but let's make sure we can distinguish them.
+      // The D3 render logic below uses inline styles. Let's add specific classes in the D3 render loop.
+
+      // Actually, standard CSS animation in global.css might be cleaner for continuous pulsing.
+      // But GSAP is requested.
+
+      if (!gRef.current) return;
+
+      const driftNodes = gRef.current.selectAll('.drift-node');
+
+      // We can't easily use GSAP here because D3 might be creating/destroying them.
+      // Let's implement this inside the D3 tick or data join for consistency,
+      // OR use a GSAP tween on the selection if they are stable.
+      // Since drift nodes change on refresh, they are somewhat stable.
+
+      // Alternative: Use a D3 transition loop for "breathing"
+      driftNodes.transition()
+        .duration(2000)
+        .ease(d3.easeSinInOut)
+        .attrTween("opacity", () => d3.interpolateNumber(0.4, 0.8))
+        .on("end", function repeat() {
+            d3.select(this)
+                .transition()
+                .duration(2000)
+                .ease(d3.easeSinInOut)
+                .attrTween("opacity", () => d3.interpolateNumber(0.8, 0.4))
+                .on("end", repeat);
+        });
+
+  }, [nodes]); // Re-run when nodes change (e.g. drift refresh)
 
 
   // Resize Handler
@@ -260,7 +301,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       nodeSelection.exit().transition().duration(300).attr('opacity', 0).remove();
 
       const nodeEnter = nodeSelection.enter().append('g')
-          .attr('class', 'node')
+          // Add class for specific targeting (drift-node)
+          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''}`)
           .call(drag(simulation) as any)
           .on('click', (event, d) => { event.stopPropagation(); onNodeClick(d.id); })
           .on('mouseover', (event, d) => handleMouseOver(event, d, allLinks, allNodes))
@@ -270,7 +312,9 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       nodeEnter.append('circle').attr('class', 'ring-circle').attr('fill', 'transparent');
       nodeEnter.append('text').attr('dy', 25).attr('text-anchor', 'middle').attr('font-size', '10px').style('pointer-events', 'none');
 
-      const allNodes = nodeEnter.merge(nodeSelection);
+      const allNodes = nodeEnter.merge(nodeSelection)
+          // Ensure class is updated on merge
+          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''}`);
 
       // Helper for Vitality Decay
       const getVitalityOpacity = (d: D3Node) => {
@@ -317,13 +361,17 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           })
           .attr('fill', (d) => {
               if (d.avatar_url) return `url(#avatar-${d.id})`;
-              if (d.group === 'me') return 'var(--accent-me)';
-              if (d.group === 'collection') return 'var(--accent-online)'; // Use cyan for collections
+              if (d.group === 'me') return isLurking ? '#444' : 'var(--accent-me)'; // Visual feedback for Lurker
+              if (d.group === 'collection') return 'var(--accent-online)';
               if (d.group === 'sym') return node_primary_color;
               if (d.group === 'asym') return node_secondary_color;
               if (d.group === 'drift_user') return '#555555';
               if (d.group === 'drift_file' || d.group === 'artifact') return '#888888';
               return '#333333ff';
+          })
+          .attr('opacity', (d) => {
+              if (d.group === 'me' && isLurking) return 0.5; // Dim "me" if lurking
+              return 1;
           });
 
       allNodes.select('.ring-circle')

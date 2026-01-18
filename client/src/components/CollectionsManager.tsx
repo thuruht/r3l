@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown, IconFolderOff } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -242,7 +242,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {activeView === 'list' && (
                 <>
                     {loadingColls && <p>Loading...</p>}
-                    {!loadingColls && collections.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No collections found.</p>}
+                    {!loadingColls && collections.length === 0 && (
+                        <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', opacity: 0.7 }}>
+                            <IconFolderOff size={48} stroke={1} />
+                            <p style={{ margin: 0, fontSize: '1.1em' }}>No collections found</p>
+                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Create a collection to organize your artifacts.</p>
+                        </div>
+                    )}
 
                     {collections.map(c => {
                         const isEditingThis = isEditingColl && selectedCollection?.id === c.id;
@@ -348,7 +354,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {activeView === 'detail' && (
                 <>
                     {loadingFiles && <p>Loading files...</p>}
-                    {!loadingFiles && collectionFiles.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>This collection is empty.</p>}
+                    {!loadingFiles && collectionFiles.length === 0 && (
+                        <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', opacity: 0.7 }}>
+                            <IconFolderOff size={48} stroke={1} />
+                            <p style={{ margin: 0, fontSize: '1.1em' }}>Empty Archives</p>
+                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>This collection contains no artifacts yet.</p>
+                        </div>
+                    )}
 
                     {collectionFiles.map((f, index) => (
                         <div key={f.id} style={{
@@ -360,14 +372,40 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                     disabled={index === 0}
                                     onClick={() => moveFile(index, 'up')}
                                     aria-label="Move Up"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
-                                >▲</button>
+                                    title="Move Up"
+                                    style={{
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: 'none',
+                                        padding: '4px',
+                                        borderRadius: '4px',
+                                        opacity: index === 0 ? 0.2 : 0.7,
+                                        cursor: index === 0 ? 'default' : 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                    onMouseEnter={(e) => index !== 0 && (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                                    onMouseLeave={(e) => index !== 0 && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                >
+                                    <IconChevronUp size={14} />
+                                </button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
                                     aria-label="Move Down"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
-                                >▼</button>
+                                    title="Move Down"
+                                    style={{
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: 'none',
+                                        padding: '4px',
+                                        borderRadius: '4px',
+                                        opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7,
+                                        cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                    onMouseEnter={(e) => index !== collectionFiles.length - 1 && (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+                                    onMouseLeave={(e) => index !== collectionFiles.length - 1 && (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                >
+                                    <IconChevronDown size={14} />
+                                </button>
                             </div>
 
                             <IconFile size={20} style={{ opacity: 0.7 }} />

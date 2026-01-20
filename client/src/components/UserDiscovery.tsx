@@ -14,6 +14,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
   const [results, setResults] = useState<{id: number, username: string, avatar_url: string}[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const navigate = useNavigate();
   // const wrapperRef = useRef<HTMLDivElement>(null); // Removed as we use a modal now
 
@@ -54,14 +55,25 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
   return (
     <>
       <div style={{ position: 'relative', marginRight: '10px', zIndex: 2000 }}>
-        <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 8px' }}>
-          <IconSearch size={16} color="var(--text-secondary)" />
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.05)',
+            border: `1px solid ${isFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
+            borderRadius: '4px',
+            padding: '0 8px',
+            boxShadow: isFocused ? 'var(--glow-sym)' : 'none',
+            transition: 'all 0.2s'
+        }}>
+          <IconSearch size={16} color={isFocused ? 'var(--accent-sym)' : 'var(--text-secondary)'} />
           <input
             type="text"
             placeholder="Search..."
             aria-label="Search users"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             style={{ 
               background: 'transparent', 
               border: 'none', 

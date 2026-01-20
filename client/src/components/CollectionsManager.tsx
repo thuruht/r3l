@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -242,7 +242,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {activeView === 'list' && (
                 <>
                     {loadingColls && <p>Loading...</p>}
-                    {!loadingColls && collections.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>No collections found.</p>}
+                    {!loadingColls && collections.length === 0 && (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                            <IconFolderOff size={48} stroke={1} />
+                            <p style={{ margin: 0, fontSize: '1.1em' }}>No Collections Manifested</p>
+                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Gather your artifacts into new structures.</p>
+                        </div>
+                    )}
 
                     {collections.map(c => {
                         const isEditingThis = isEditingColl && selectedCollection?.id === c.id;
@@ -348,7 +354,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {activeView === 'detail' && (
                 <>
                     {loadingFiles && <p>Loading files...</p>}
-                    {!loadingFiles && collectionFiles.length === 0 && <p style={{ color: 'var(--text-secondary)' }}>This collection is empty.</p>}
+                    {!loadingFiles && collectionFiles.length === 0 && (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                            <IconFolderOpen size={48} stroke={1} />
+                            <p style={{ margin: 0, fontSize: '1.1em' }}>Empty Archive</p>
+                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>This vessel waits for your discoveries.</p>
+                        </div>
+                    )}
 
                     {collectionFiles.map((f, index) => (
                         <div key={f.id} style={{

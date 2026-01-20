@@ -9,6 +9,7 @@ import { useCustomization } from '../context/CustomizationContext';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useCollections } from '../hooks/useCollections';
+import UploadModal from './UploadModal';
 
 interface FilePreviewModalProps {
   fileId: string | null;

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NetworkNode } from '../hooks/useNetworkData';
-import { IconUser, IconFile, IconUsers, IconBroadcast } from '@tabler/icons-react';
+import { IconUser, IconFile, IconUsers, IconBroadcast, IconDice } from '@tabler/icons-react';
+import { useNavigate } from 'react-router-dom';
 import Skeleton from './Skeleton';
+import { useToast } from '../context/ToastContext';
 
 interface NetworkListProps {
   nodes: NetworkNode[];
@@ -10,11 +12,37 @@ interface NetworkListProps {
 }
 
 const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }) => {
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  const [drifting, setDrifting] = useState(false);
+
   // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
     const order = { me: 0, sym: 1, asym: 2, drift_user: 3, drift_file: 4, lurker: 5 };
     return order[a.group] - order[b.group];
   });
+
+  const handleDrift = async () => {
+    setDrifting(true);
+    try {
+      const res = await fetch('/api/users/random');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          navigate(`/communique/${data.user.id}`);
+        } else {
+            showToast('No one else is here.', 'info');
+        }
+      } else {
+        showToast('Drift failed.', 'error');
+      }
+    } catch (e) {
+        console.error(e);
+        showToast('Connection error.', 'error');
+    } finally {
+        setDrifting(false);
+    }
+  };
 
   return (
     <div className="network-list fade-in page-content-spacer" style={{
@@ -99,11 +127,47 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           role="status"
           style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          height: '200px', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7
+          height: '250px', color: 'var(--text-secondary)', textAlign: 'center'
         }}>
-          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '10px', opacity: 0.5 }} aria-hidden="true" />
+          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '10px', opacity: 0.7 }} aria-hidden="true" />
           <p style={{ margin: 0, fontSize: '1.1em' }}>Sector Silent</p>
-          <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '5px' }}>No signals detected. Drift to find new frequencies.</p>
+          <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '5px', maxWidth: '300px' }}>No signals detected in your immediate network.</p>
+
+          <button
+            onClick={handleDrift}
+            disabled={drifting}
+            style={{
+                marginTop: '20px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--accent-asym)',
+                color: 'var(--accent-asym)',
+                padding: '10px 20px',
+                borderRadius: '4px',
+                cursor: drifting ? 'wait' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                transition: 'all 0.2s',
+                fontSize: '0.95rem'
+            }}
+            onMouseEnter={(e) => {
+                if (!drifting) {
+                    e.currentTarget.style.borderColor = 'var(--accent-sym)';
+                    e.currentTarget.style.color = 'var(--accent-sym)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                }
+            }}
+            onMouseLeave={(e) => {
+                if (!drifting) {
+                    e.currentTarget.style.borderColor = 'var(--accent-asym)';
+                    e.currentTarget.style.color = 'var(--accent-asym)';
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                }
+            }}
+          >
+            <IconDice size={18} className={drifting ? 'icon-spin' : ''} />
+            {drifting ? 'Scanning...' : 'Drift to Random Signal'}
+          </button>
         </div>
       )}
     </div>

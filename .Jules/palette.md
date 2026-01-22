@@ -5,3 +5,7 @@
 ## 2025-12-28 - Focus State Visibility
 **Learning:** Removing `outline: none` from inputs for aesthetic reasons breaks accessibility if not replaced. We can satisfy both by lifting the focus state to the parent container, adding a thematic "glow" (`box-shadow`) and border color change. This makes the search bar feel like it "activates" rather than just being selected.
 **Action:** When using custom input styles, always implement a `focus` state on the wrapper element to maintain keyboard visibility.
+
+## 2025-12-29 - Chat Empty States
+**Learning:** Chat interfaces often look broken when empty. A "Frequency Silent" message with an icon not only fixes the "is this working?" confusion but encourages the user to be the first to speak ("Be the first to broadcast").
+**Action:** In social components, treat empty states as "invitations" rather than just lack of content.

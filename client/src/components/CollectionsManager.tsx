@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -283,6 +283,16 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                             }}
                             onMouseEnter={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'var(--accent-sym)')}
                             onMouseLeave={(e) => !isEditingThis && (e.currentTarget.style.borderColor = 'transparent')}
+                            onFocus={(e) => {
+                                if (isEditingThis) return;
+                                e.currentTarget.style.borderColor = 'var(--accent-sym)';
+                                e.currentTarget.style.boxShadow = 'var(--glow-sym)';
+                            }}
+                            onBlur={(e) => {
+                                if (isEditingThis) return;
+                                e.currentTarget.style.borderColor = 'transparent';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
                                 <IconFolder size={24} color="var(--accent-sym)" />
@@ -371,15 +381,17 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 <button
                                     disabled={index === 0}
                                     onClick={() => moveFile(index, 'up')}
-                                    aria-label="Move Up"
+                                    aria-label="Move file up"
+                                    title="Move Up"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
-                                >▲</button>
+                                ><IconChevronUp size={16} /></button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
-                                    aria-label="Move Down"
+                                    aria-label="Move file down"
+                                    title="Move Down"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
-                                >▼</button>
+                                ><IconChevronDown size={16} /></button>
                             </div>
 
                             <IconFile size={20} style={{ opacity: 0.7 }} />

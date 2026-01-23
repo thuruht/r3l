@@ -17,21 +17,40 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const { showToast } = useToast();
 
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
   useEffect(() => {
+    setErrorMsg(null);
     if (tab === 'status') {
+        setLoading(true);
         fetch('/api/admin/stats')
-        .then(res => {
-            if (!res.ok) throw new Error('Unauthorized');
+        .then(async res => {
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Error ${res.status}: ${text || res.statusText}`);
+            }
             return res.json();
         })
         .then(data => setStats(data))
-        .catch(err => console.error(err))
+        .catch(err => {
+            console.error(err);
+            setErrorMsg(err.message);
+        })
         .finally(() => setLoading(false));
     } else if (tab === 'users') {
         fetch('/api/admin/users')
-        .then(res => res.json())
+        .then(async res => {
+             if (!res.ok) {
+                 const text = await res.text();
+                 throw new Error(`Error ${res.status}: ${text || res.statusText}`);
+             }
+             return res.json();
+        })
         .then(data => setUsers(data.users || []))
-        .catch(console.error);
+        .catch(err => {
+            console.error(err);
+            showToast(err.message, 'error');
+        });
     }
   }, [tab]);
 
@@ -127,6 +146,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         {tab === 'status' && (
             loading ? (
             <div style={{ padding: '20px', textAlign: 'center' }}>Loading telemetry...</div>
+            ) : errorMsg ? (
+                <div style={{ color: 'var(--accent-alert)', padding: '20px', textAlign: 'center', border: '1px solid var(--accent-alert)', borderRadius: '4px' }}>
+                    <strong>Access Denied or Failed to Fetch</strong><br/>
+                    <span style={{ fontSize: '0.9em' }}>{errorMsg}</span>
+                </div>
             ) : stats ? (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '30px' }}>
                 <StatCard icon={IconUsers} label="Total Users" value={stats.users} color="#26de81" />
@@ -134,9 +158,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                 <StatCard icon={IconFiles} label="Active Signals" value={stats.active_files} color="#26de81" />
                 <StatCard icon={IconArchive} label="Archived" value={stats.archived_files} color="#a55eea" />
             </div>
-            ) : (
-            <div style={{ color: 'var(--accent-alert)' }}>Access Denied or Failed to Fetch.</div>
-            )
+            ) : null
         )}
 
         {tab === 'users' && (

@@ -71,25 +71,40 @@ function Main() {
   const location = useLocation();
 
   useEffect(() => {
-    // Check Auth
-    fetch('/api/users/me')
-      .then(res => {
-        if (res.ok) return res.json();
-        throw new Error('Unauthorized');
-      })
-      .then(data => {
-        setCurrentUser(data.user);
-        setLoadingUser(false);
-        // Connect WS
-        connectWebSocket();
-      })
-      .catch(() => {
-        setLoadingUser(false);
-        if (location.pathname !== '/verify') { // Don't redirect if verifying
-             // Allow unauthenticated landing view (Drift only mode?)
-             // For now, simple auth gate, but maybe show "Connect" button
+    // Check Auth with Retry
+    const checkAuth = async (retries = 3) => {
+        try {
+            const res = await fetch('/api/users/me');
+            if (res.status === 401) {
+                // Definite logout
+                setLoadingUser(false);
+                return;
+            }
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentUser(data.user);
+                setLoadingUser(false);
+                // Connect WS
+                connectWebSocket();
+                return;
+            }
+            throw new Error(`Status: ${res.status}`);
+        } catch (e) {
+            if (retries > 0) {
+                console.log("Auth check failed, retrying...", e);
+                // Retry after delay
+                setTimeout(() => checkAuth(retries - 1), 500);
+            } else {
+                console.error("Auth check failed after retries", e);
+                setLoadingUser(false);
+                if (location.pathname !== '/verify') {
+                    // Stay on login screen
+                }
+            }
         }
-      });
+    };
+
+    checkAuth();
   }, []); // Run once
 
   // Websocket Connection

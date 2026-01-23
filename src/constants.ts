@@ -12,4 +12,4 @@ export const RATE_LIMITS = {
   feedback: { limit: 3, window: 3600 },
   vitality: { limit: 10, window: 60 }
 };
-export const ADMIN_USER_ID = parseInt(process.env.ADMIN_USER_ID || '1');
+export const ADMIN_USER_ID = parseInt(typeof process !== 'undefined' ? process.env?.ADMIN_USER_ID || '1' : '1');

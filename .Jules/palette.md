@@ -5,3 +5,7 @@
 ## 2025-12-28 - Focus State Visibility
 **Learning:** Removing `outline: none` from inputs for aesthetic reasons breaks accessibility if not replaced. We can satisfy both by lifting the focus state to the parent container, adding a thematic "glow" (`box-shadow`) and border color change. This makes the search bar feel like it "activates" rather than just being selected.
 **Action:** When using custom input styles, always implement a `focus` state on the wrapper element to maintain keyboard visibility.
+
+## 2025-12-29 - Iconography for Actions
+**Learning:** Using text characters (like ▲/▼) for interface actions creates inconsistent touch targets and visual noise. Replacing them with standardized icons (ChevronUp/Down) not only improves the "Mist & Glow" aesthetic but ensures predictable hit areas, especially when combined with adequate spacing (increased from 2px to 6px).
+**Action:** Avoid unicode characters for interactive controls; standard icons provide better scalability and accessibility.

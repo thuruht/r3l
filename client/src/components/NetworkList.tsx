@@ -73,6 +73,8 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
             key={node.id} 
             role="button"
             tabIndex={0}
+            className="network-list-item"
+            data-faint={node.group.startsWith('drift')}
             aria-label={`View profile of ${node.name}`}
             onClick={() => onNodeClick(node.id)}
             onKeyDown={(e) => {
@@ -80,17 +82,6 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
                 e.preventDefault();
                 onNodeClick(node.id);
               }
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px',
-              background: 'var(--drawer-bg)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              opacity: node.group.startsWith('drift') ? 0.7 : 1
             }}
           >
             <div style={{ 
@@ -170,6 +161,32 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           </button>
         </div>
       )}
+      <style>{`
+        .network-list-item {
+          display: flex;
+          align-items: center;
+          padding: 12px;
+          background: var(--drawer-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 4px;
+          cursor: pointer;
+          transition: all 0.2s;
+          outline: none;
+          opacity: 1;
+        }
+        .network-list-item[data-faint="true"] {
+          opacity: 0.7;
+        }
+        .network-list-item:hover {
+          border-color: var(--accent-sym);
+          opacity: 1;
+        }
+        .network-list-item:focus {
+          border-color: var(--accent-sym);
+          box-shadow: var(--glow-sym);
+          opacity: 1;
+        }
+      `}</style>
     </div>
   );
 };

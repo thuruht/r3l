@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -56,7 +56,10 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   }, [onClose, activeView]);
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+        showToast('Please enter a collection name', 'error');
+        return;
+    }
     
     const success = await createCollection(newName, newDesc, newVisibility);
     if (success) {
@@ -292,12 +295,14 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                             value={editName}
                                             onChange={e => setEditName(e.target.value)}
                                             onClick={e => e.stopPropagation()}
+                                            aria-label="Collection Name"
                                             style={{ flex: 1, padding: '2px 5px' }}
                                         />
                                         <select
                                             value={editVisibility}
                                             onChange={e => setEditVisibility(e.target.value as any)}
                                             onClick={e => e.stopPropagation()}
+                                            aria-label="Collection Visibility"
                                             style={{ padding: '2px' }}
                                         >
                                             <option value="private">Private</option>
@@ -372,14 +377,16 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                     disabled={index === 0}
                                     onClick={() => moveFile(index, 'up')}
                                     aria-label="Move Up"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
-                                >▲</button>
+                                    title="Move Up"
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer', color: 'var(--text-primary)' }}
+                                ><IconChevronUp size={16} /></button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
                                     aria-label="Move Down"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
-                                >▼</button>
+                                    title="Move Down"
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer', color: 'var(--text-primary)' }}
+                                ><IconChevronDown size={16} /></button>
                             </div>
 
                             <IconFile size={20} style={{ opacity: 0.7 }} />

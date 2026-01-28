@@ -5,3 +5,7 @@
 ## 2025-12-28 - Focus State Visibility
 **Learning:** Removing `outline: none` from inputs for aesthetic reasons breaks accessibility if not replaced. We can satisfy both by lifting the focus state to the parent container, adding a thematic "glow" (`box-shadow`) and border color change. This makes the search bar feel like it "activates" rather than just being selected.
 **Action:** When using custom input styles, always implement a `focus` state on the wrapper element to maintain keyboard visibility.
+
+## 2025-02-18 - Consistent Loading States
+**Learning:** Replacing text-based loading indicators ("Loading...") with `Skeleton` loaders that match the content layout significantly improves the perception of speed and polish. It avoids layout shifts and maintains the immersive "glass" aesthetic of the application.
+**Action:** When implementing lists or data-heavy views, always prefer `Skeleton` components over text placeholders.

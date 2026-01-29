@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile } from '@tabler/icons-react';
+import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile, IconBroadcast } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -25,6 +25,7 @@ const GlobalChat: React.FC = () => {
   const [online, setOnline] = useState<{ userId: number; username: string }[]>([]);
   const [typing, setTyping] = useState<Set<string>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -106,6 +107,8 @@ const GlobalChat: React.FC = () => {
           <button
             key={r.name}
             onClick={() => setRoom(r.name)}
+            aria-pressed={room === r.name}
+            aria-label={`Join ${r.label} room`}
             style={{
               width: window.innerWidth < 768 ? 'auto' : '100%',
               textAlign: 'left',
@@ -135,6 +138,16 @@ const GlobalChat: React.FC = () => {
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+          {messages.length === 0 && (
+             <div style={{
+               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+               height: '100%', color: 'var(--text-secondary)', textAlign: 'center', opacity: 0.7
+             }}>
+               <IconBroadcast size={48} stroke={1} style={{ marginBottom: '10px' }} />
+               <p style={{ margin: 0, fontSize: '1.1em' }}>Frequency Silent</p>
+               <p style={{ margin: 0, fontSize: '0.9em' }}>Be the first to transmit.</p>
+             </div>
+          )}
           {messages.map((msg, i) => (
             <div key={i} style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -162,7 +175,11 @@ const GlobalChat: React.FC = () => {
               </div>
             </Suspense>
           )}
-          <button onClick={() => setShowEmoji(!showEmoji)} style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}>
+          <button
+            onClick={() => setShowEmoji(!showEmoji)}
+            aria-label="Open emoji picker"
+            style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
+          >
             <IconMoodSmile size={20} color="var(--text-primary)" />
           </button>
           <input
@@ -170,10 +187,28 @@ const GlobalChat: React.FC = () => {
             value={input}
             onChange={e => handleTyping(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && sendMessage()}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             placeholder={`Message #${room}`}
-            style={{ flex: 1, padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)' }}
+            aria-label={`Message #${room}`}
+            style={{
+              flex: 1,
+              padding: '10px',
+              background: 'var(--bg-secondary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              boxShadow: isFocused ? 'var(--glow-sym)' : 'none',
+              transition: 'box-shadow 0.2s'
+            }}
           />
-          <button onClick={sendMessage} disabled={!input.trim()} style={{ padding: '10px 20px' }}>
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            aria-label="Send message"
+            style={{ padding: '10px 20px' }}
+          >
             <IconSend size={20} />
           </button>
         </div>

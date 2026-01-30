@@ -5,3 +5,7 @@
 ## 2025-12-28 - Focus State Visibility
 **Learning:** Removing `outline: none` from inputs for aesthetic reasons breaks accessibility if not replaced. We can satisfy both by lifting the focus state to the parent container, adding a thematic "glow" (`box-shadow`) and border color change. This makes the search bar feel like it "activates" rather than just being selected.
 **Action:** When using custom input styles, always implement a `focus` state on the wrapper element to maintain keyboard visibility.
+
+## 2025-12-30 - Icon Consistency & Immersion
+**Learning:** In "high-tech" interfaces, mixing system text glyphs (▲) with custom vector icons (Tabler) creates subtle visual friction that breaks the "futuristic" illusion.
+**Action:** Rigorously replace all functional text characters with their icon equivalents to maintain the visual language of the design system.

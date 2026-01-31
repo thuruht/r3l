@@ -243,3 +243,31 @@
     50% { background-color: var(--accent-sym); } /* Use theme accent for blinking */
     100% { background-color: transparent; }
 }
+
+/* Network List Items */
+.network-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--drawer-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 1;
+}
+
+.network-item.drift {
+    opacity: 0.7;
+}
+
+.network-item:hover,
+.network-item:focus {
+    border-color: var(--accent-sym);
+    opacity: 1;
+    outline: none;
+}
+
+.network-item:focus {
+    box-shadow: var(--glow-sym);
+}

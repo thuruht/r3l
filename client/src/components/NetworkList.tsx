@@ -81,17 +81,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
                 onNodeClick(node.id);
               }
             }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px',
-              background: 'var(--drawer-bg)',
-              border: '1px solid var(--border-color)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              opacity: node.group.startsWith('drift') ? 0.7 : 1
-            }}
+            className={`network-item ${node.group.startsWith('drift') ? 'drift' : ''}`}
           >
             <div style={{ 
               width: '40px', height: '40px', borderRadius: '50%', 

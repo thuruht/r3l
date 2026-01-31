@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy } from '@tabler/icons-react';
+import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
 import ConfirmModal from './ConfirmModal';
+import Skeleton from './Skeleton';
 
 interface CollectionsManagerProps {
   onClose: () => void;
@@ -241,7 +242,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {/* VIEW: LIST */}
             {activeView === 'list' && (
                 <>
-                    {loadingColls && <p>Loading...</p>}
+                    {loadingColls && (
+                        <div style={{ padding: '10px' }}>
+                            <Skeleton height="50px" marginBottom="10px" />
+                            <Skeleton height="50px" marginBottom="10px" />
+                            <Skeleton height="50px" />
+                        </div>
+                    )}
                     {!loadingColls && collections.length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                             <IconFolderOff size={48} stroke={1} />
@@ -353,7 +360,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {/* VIEW: DETAIL */}
             {activeView === 'detail' && (
                 <>
-                    {loadingFiles && <p>Loading files...</p>}
+                    {loadingFiles && (
+                        <div style={{ padding: '10px' }}>
+                            <Skeleton height="40px" marginBottom="8px" />
+                            <Skeleton height="40px" marginBottom="8px" />
+                            <Skeleton height="40px" />
+                        </div>
+                    )}
                     {!loadingFiles && collectionFiles.length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                             <IconFolderOpen size={48} stroke={1} />
@@ -372,14 +385,20 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                     disabled={index === 0}
                                     onClick={() => moveFile(index, 'up')}
                                     aria-label="Move Up"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
-                                >▲</button>
+                                    title="Move Up"
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer', color: 'var(--text-primary)' }}
+                                >
+                                    <IconChevronUp size={16} />
+                                </button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
                                     aria-label="Move Down"
-                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
-                                >▼</button>
+                                    title="Move Down"
+                                    style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer', color: 'var(--text-primary)' }}
+                                >
+                                    <IconChevronDown size={16} />
+                                </button>
                             </div>
 
                             <IconFile size={20} style={{ opacity: 0.7 }} />

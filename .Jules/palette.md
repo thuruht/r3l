@@ -5,3 +5,7 @@
 ## 2025-12-28 - Focus State Visibility
 **Learning:** Removing `outline: none` from inputs for aesthetic reasons breaks accessibility if not replaced. We can satisfy both by lifting the focus state to the parent container, adding a thematic "glow" (`box-shadow`) and border color change. This makes the search bar feel like it "activates" rather than just being selected.
 **Action:** When using custom input styles, always implement a `focus` state on the wrapper element to maintain keyboard visibility.
+
+## 2025-12-30 - Iconic Controls & Loading Skeletons
+**Learning:** Text-based controls (like `▲`/`▼`) feel raw and break the visual language of an icon-heavy interface. Replacing them with standard icons (`IconChevronUp`) paired with `title` tooltips improves both consistency and mouse-user accessibility. Additionally, replacing raw "Loading..." text with `Skeleton` components prevents layout shifts and maintains immersion during async operations.
+**Action:** Audit for text-based interactive elements and replace with icons + tooltips. Replace all raw text loading states with Skeletons.

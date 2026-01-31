@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile } from '@tabler/icons-react';
+import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile, IconBroadcast } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
@@ -25,6 +25,7 @@ const GlobalChat: React.FC = () => {
   const [online, setOnline] = useState<{ userId: number; username: string }[]>([]);
   const [typing, setTyping] = useState<Set<string>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -106,17 +107,26 @@ const GlobalChat: React.FC = () => {
           <button
             key={r.name}
             onClick={() => setRoom(r.name)}
+            aria-pressed={room === r.name}
             style={{
               width: window.innerWidth < 768 ? 'auto' : '100%',
               textAlign: 'left',
               padding: '10px',
               marginBottom: window.innerWidth < 768 ? '0' : '5px',
               background: room === r.name ? 'var(--accent-sym)' : 'var(--bg-secondary)',
-              border: 'none',
+              border: room === r.name ? '1px solid var(--accent-sym)' : '1px solid transparent',
               borderRadius: '4px',
               color: 'var(--text-primary)',
               cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+              fontWeight: room === r.name ? 'bold' : 'normal'
+            }}
+            onMouseEnter={(e) => {
+               if (room !== r.name) e.currentTarget.style.background = 'var(--bg-mist)';
+            }}
+            onMouseLeave={(e) => {
+               if (room !== r.name) e.currentTarget.style.background = 'var(--bg-secondary)';
             }}
           >
             <IconHash size={16} style={{ marginRight: '5px' }} />
@@ -134,7 +144,15 @@ const GlobalChat: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+          {messages.length === 0 && (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.7 }}>
+               <IconBroadcast size={48} stroke={1} />
+               <p style={{ marginTop: '10px', fontStyle: 'italic' }}>Frequency Silent</p>
+               <p style={{ fontSize: '0.8em' }}>Be the first to broadcast.</p>
+            </div>
+          )}
+
           {messages.map((msg, i) => (
             <div key={i} style={{ marginBottom: '15px' }}>
               <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline', flexWrap: 'wrap' }}>
@@ -162,18 +180,41 @@ const GlobalChat: React.FC = () => {
               </div>
             </Suspense>
           )}
-          <button onClick={() => setShowEmoji(!showEmoji)} style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}>
+          <button
+            onClick={() => setShowEmoji(!showEmoji)}
+            aria-label="Toggle emoji picker"
+            title="Add Emoji"
+            style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
+          >
             <IconMoodSmile size={20} color="var(--text-primary)" />
           </button>
           <input
             type="text"
             value={input}
             onChange={e => handleTyping(e.target.value)}
+            onFocus={() => setIsInputFocused(true)}
+            onBlur={() => setIsInputFocused(false)}
             onKeyDown={e => e.key === 'Enter' && sendMessage()}
             placeholder={`Message #${room}`}
-            style={{ flex: 1, padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-primary)' }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              background: 'var(--bg-secondary)',
+              border: `1px solid ${isInputFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
+              borderRadius: '4px',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              boxShadow: isInputFocused ? 'var(--glow-sym)' : 'none',
+              transition: 'all 0.2s'
+            }}
           />
-          <button onClick={sendMessage} disabled={!input.trim()} style={{ padding: '10px 20px' }}>
+          <button
+            onClick={sendMessage}
+            disabled={!input.trim()}
+            aria-label="Send message"
+            title="Send"
+            style={{ padding: '10px 20px', cursor: input.trim() ? 'pointer' : 'not-allowed', opacity: input.trim() ? 1 : 0.5 }}
+          >
             <IconSend size={20} />
           </button>
         </div>

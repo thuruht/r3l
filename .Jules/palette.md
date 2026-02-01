@@ -9,3 +9,7 @@
 ## 2025-12-29 - Chat Empty States
 **Learning:** Chat interfaces often look broken when empty. A "Frequency Silent" message with an icon not only fixes the "is this working?" confusion but encourages the user to be the first to speak ("Be the first to broadcast").
 **Action:** In social components, treat empty states as "invitations" rather than just lack of content.
+
+## 2025-01-05 - Group Chat Empty State
+**Learning:** Generic "No items" text is a missed opportunity for world-building. Replacing "No groups yet" with "No Clusters Found" and a faint `IconUsers` maintains immersion and guides the user.
+**Action:** When designing empty states, ask "What is the thematic equivalent of 'empty' in this context?" (e.g., Silent, Void, Uncharted).

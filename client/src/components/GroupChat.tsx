@@ -333,8 +333,16 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
           <>
             {loading && <div style={{ padding: '10px' }}>Loading groups...</div>}
             {!loading && groups.length === 0 && (
-              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
-                No groups yet. Create one to start.
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                <IconUsers size={48} stroke={1} style={{ opacity: 0.5 }} aria-hidden="true" />
+                <p style={{ margin: 0, fontSize: '1.1em', fontWeight: 'bold' }}>No Clusters Found</p>
+                <p style={{ margin: 0, fontSize: '0.9em' }}>Form a new sympathy group to begin transmission.</p>
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  style={{ marginTop: '10px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
+                >
+                  Create Group
+                </button>
               </div>
             )}
             {groups.map(g => (
@@ -386,6 +394,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group name"
+              autoFocus
               style={{ width: '100%', marginBottom: '15px', padding: '8px', background: '#00000044', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white' }}
             />
             <div style={{ marginBottom: '15px' }}>

@@ -46,9 +46,13 @@ const authMiddleware = async (c: any, next: any) => {
     return c.json({ error: 'Unauthorized: No token provided' }, 401);
   }
 
+  if (!c.env.JWT_SECRET) {
+    console.error("JWT_SECRET is not set in environment");
+    return c.json({ error: 'Internal Server Error' }, 500);
+  }
+
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
+    const payload = await verify(token, c.env.JWT_SECRET);
 
     if (!payload || !payload.id) {
       return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
@@ -446,18 +450,14 @@ app.get('/api/verify-email', async (c) => {
   }
 });
 
-app.get('/api/users/me', async (c) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) return c.json({ error: 'Unauthorized' }, 401);
+app.get('/api/users/me', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-    
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-    ).bind(payload.id).first();
+    ).bind(user_id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
 
@@ -473,7 +473,7 @@ app.get('/api/users/me', async (c) => {
       } 
     });
   } catch (e) {
-    return c.json({ error: 'Invalid token' }, 401);
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 

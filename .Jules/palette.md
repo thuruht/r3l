@@ -9,3 +9,7 @@
 ## 2025-12-29 - Chat Empty States
 **Learning:** Chat interfaces often look broken when empty. A "Frequency Silent" message with an icon not only fixes the "is this working?" confusion but encourages the user to be the first to speak ("Be the first to broadcast").
 **Action:** In social components, treat empty states as "invitations" rather than just lack of content.
+
+## 2026-02-02 - In-Place Editing Accessibility
+**Learning:** In-place edit inputs often lose their context when replacing text. Explicit `aria-label`s (e.g., "Edit Collection Name") are mandatory to keep screen reader users informed of what they are editing. `autoFocus` is also critical to move focus to the input immediately.
+**Action:** Always add `aria-label` and `autoFocus` to conditional edit inputs.

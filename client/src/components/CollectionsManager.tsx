@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
+import Skeleton from './Skeleton';
 import FilePreviewModal from './FilePreviewModal';
 import ConfirmModal from './ConfirmModal';
 
@@ -241,7 +242,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
             {/* VIEW: LIST */}
             {activeView === 'list' && (
                 <>
-                    {loadingColls && <p>Loading...</p>}
+                    {loadingColls && (
+                        <div style={{ padding: '10px' }}>
+                            <Skeleton height="50px" marginBottom="10px" />
+                            <Skeleton height="50px" marginBottom="10px" />
+                            <Skeleton height="50px" />
+                        </div>
+                    )}
                     {!loadingColls && collections.length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                             <IconFolderOff size={48} stroke={1} />
@@ -303,12 +310,15 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                             onChange={e => setEditName(e.target.value)}
                                             onClick={e => e.stopPropagation()}
                                             style={{ flex: 1, padding: '2px 5px' }}
+                                            aria-label="Collection Name"
+                                            autoFocus
                                         />
                                         <select
                                             value={editVisibility}
                                             onChange={e => setEditVisibility(e.target.value as any)}
                                             onClick={e => e.stopPropagation()}
                                             style={{ padding: '2px' }}
+                                            aria-label="Visibility"
                                         >
                                             <option value="private">Private</option>
                                             <option value="public">Public</option>

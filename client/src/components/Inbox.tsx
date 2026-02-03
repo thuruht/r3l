@@ -1,7 +1,7 @@
 // Inbox.tsx
 
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 
@@ -49,6 +49,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const [newMessage, setNewMessage] = useState('');
   const [connections, setConnections] = useState<any[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
@@ -511,8 +512,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 {loading && <div style={{ padding: '10px' }}><Skeleton height="20px" width="100%" marginBottom="10px" /></div>}
                 
                 {!loading && notifications.length === 0 && (
-                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
-                        Silence... No new alerts.
+                    <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <IconBellOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <p style={{ margin: 0, fontSize: '1.1em' }}>Silence...</p>
+                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>No signals detected on this frequency.</p>
                     </div>
                 )}
 
@@ -564,8 +567,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
             <div id="panel-messages" role="tabpanel" aria-labelledby="tab-messages">
                 {loading && <div style={{ padding: '10px' }}>Loading signals...</div>}
                 {!loading && conversations.length === 0 && (
-                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
-                        No active signals. <br/>Start a whisper from your Sym Links.
+                    <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <IconMessageOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <p style={{ margin: 0, fontSize: '1.1em' }}>No Active Channels</p>
+                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Initiate a whisper from your Sym Links.</p>
                     </div>
                 )}
                 {conversations.map(c => (
@@ -609,8 +614,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
             <div id="panel-requests" role="tabpanel" aria-labelledby="tab-requests">
                 {loading && <div style={{ padding: '10px' }}>Loading requests...</div>}
                 {!loading && requests.length === 0 && (
-                    <div role="status" style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
-                        No message requests.
+                    <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <IconUserOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <p style={{ margin: 0, fontSize: '1.1em' }}>No Signal Requests</p>
+                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The void is quiet.</p>
                     </div>
                 )}
                 {requests.map(c => (
@@ -680,18 +687,36 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                     <button onClick={() => setShowEmoji(!showEmoji)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <IconMoodSmile size={20} />
                     </button>
-                    <input 
-                        type="text" 
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-                        placeholder="Whisper..."
-                        aria-label="Type a message"
-                        style={{ 
-                            flex: 1, background: '#00000044', border: '1px solid var(--border-color)', 
-                            borderRadius: '20px', padding: '8px 15px', color: 'white' 
-                        }}
-                    />
+                    <div style={{
+                        flex: 1,
+                        background: '#00000044',
+                        border: `1px solid ${isInputFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
+                        borderRadius: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '0 15px',
+                        boxShadow: isInputFocused ? 'var(--glow-sym)' : 'none',
+                        transition: 'all 0.2s'
+                    }}>
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+                            onFocus={() => setIsInputFocused(true)}
+                            onBlur={() => setIsInputFocused(false)}
+                            placeholder="Whisper..."
+                            aria-label="Type a message"
+                            style={{
+                                flex: 1,
+                                background: 'transparent',
+                                border: 'none',
+                                padding: '8px 0',
+                                color: 'white',
+                                outline: 'none'
+                            }}
+                        />
+                    </div>
                     <button onClick={sendMessage} disabled={!newMessage.trim()} aria-label="Send message" style={{ background: 'transparent', border: 'none', color: newMessage.trim() ? 'var(--accent-sym)' : '#555' }}>
                         <IconSend size={20} />
                     </button>

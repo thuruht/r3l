@@ -13,3 +13,7 @@
 ## 2025-01-05 - Group Chat Empty State
 **Learning:** Generic "No items" text is a missed opportunity for world-building. Replacing "No groups yet" with "No Clusters Found" and a faint `IconUsers` maintains immersion and guides the user.
 **Action:** When designing empty states, ask "What is the thematic equivalent of 'empty' in this context?" (e.g., Silent, Void, Uncharted).
+
+## 2025-01-07 - Inbox Thematic Consistency
+**Learning:** The Inbox overlay, being a central hub, requires consistent thematic empty states (Alerts: "Silence...", Messages: "No Active Channels"). Icon-heavy, centered empty states (using `IconBellOff`, `IconMessageOff`) communicate status more effectively and engagingly than plain text.
+**Action:** Ensure all tabs or sub-views within a modal share the same high-fidelity empty state patterns to maintain a cohesive experience.

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconArchive, IconX } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+import Skeleton from './Skeleton';
 
 interface ArchiveVoteProps {
   onClose: () => void;
@@ -37,14 +38,22 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
           <h2 style={{ margin: 0, color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <IconArchive size={24} /> Community Archive
           </h2>
-          <button onClick={onClose} className="icon-btn"><IconX size={24} /></button>
+          <button onClick={onClose} className="icon-btn" aria-label="Close"><IconX size={24} /></button>
         </div>
 
-        {loading && <div>Loading...</div>}
+        {loading && (
+          <div style={{ padding: '20px' }}>
+            <Skeleton height="60px" marginBottom="10px" />
+            <Skeleton height="60px" marginBottom="10px" />
+            <Skeleton height="60px" />
+          </div>
+        )}
         
         {!loading && files.length === 0 && (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-            No community archived files yet.
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <IconArchive size={48} stroke={1} style={{ opacity: 0.7 }} />
+            <p style={{ margin: 0, fontSize: '1.1em' }}>No Artifacts Preserved</p>
+            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The community has not yet elevated any signals to the permanent archive.</p>
           </div>
         )}
 

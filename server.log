@@ -1,0 +1,40 @@
+127.0.0.1 - - [04/Feb/2026 02:29:06] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:06] "GET /assets/index-Dx3cHdnm.css HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:06] "GET /assets/index-qfk00ues.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:06] "GET /registerSW.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /workbox-3105ea8d.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /registerSW.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /manual-contrast-test.html HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /api/do-websocket HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /assets/emoji-picker-react.esm-Xpyk8u8_.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /assets/chunkedUpload-QR39zdln.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:07] "GET /manifest.webmanifest HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:29:08] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:29:08] "GET /api/files HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:29:08] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:29:08] "GET /api/files HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:29:08] code 501, message Unsupported method ('PUT')
+127.0.0.1 - - [04/Feb/2026 02:29:08] "PUT /api/users/me/public-key HTTP/1.1" 501 -
+127.0.0.1 - - [04/Feb/2026 02:32:12] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:12] "GET /assets/index-Dx3cHdnm.css HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:12] "GET /assets/index-7hTkxDff.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:12] "GET /registerSW.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /sw.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /workbox-3105ea8d.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /registerSW.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /api/do-websocket HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /manual-contrast-test.html HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /index.html HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /api/files HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] code 404, message File not found
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /api/files HTTP/1.1" 404 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /assets/emoji-picker-react.esm-D17II9qx.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /assets/chunkedUpload-QR39zdln.js HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:13] "GET /manifest.webmanifest HTTP/1.1" 200 -
+127.0.0.1 - - [04/Feb/2026 02:32:14] code 501, message Unsupported method ('PUT')
+127.0.0.1 - - [04/Feb/2026 02:32:14] "PUT /api/users/me/public-key HTTP/1.1" 501 -

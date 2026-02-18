@@ -31,27 +31,28 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
 
   // CSS Nebula Generator (Fallback if no video)
   const getNebulaStyle = () => {
-      const isLight = theme === 'light';
-      const density = theme_preferences.mistDensity ?? 0.5;
+      const isVerdant = theme === 'verdant';
 
-      const baseColor = isLight ? '#d4ebe3' : '#0a1a14';
+      // Mist: Deep Space (Violet, Magenta, Cyan, Black)
+      // Verdant: Lush Forest (Emerald, Lime, Teal, Dark Green)
+      const baseColor = isVerdant ? '#0a2a1a' : '#05070a'; // Lighter base for Verdant, Darker for Mist
 
-      const layers = isLight ? [
-          `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, ${0.2 * density}) 0%, transparent 60%)`,
-          `radial-gradient(circle at 85% 15%, rgba(6, 182, 212, ${0.18 * density}) 0%, transparent 50%)`,
-          `radial-gradient(circle at 15% 85%, rgba(139, 92, 246, ${0.15 * density}) 0%, transparent 50%)`,
-          `radial-gradient(circle at 50% 0%, rgba(52, 211, 153, ${0.12 * density}) 0%, transparent 60%)`,
+      const layers = isVerdant ? [
+          'radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.3) 0%, transparent 60%)', // Emerald
+          'radial-gradient(circle at 85% 15%, rgba(26, 188, 156, 0.4) 0%, transparent 50%)', // Teal
+          'radial-gradient(circle at 15% 85%, rgba(155, 233, 168, 0.25) 0%, transparent 50%)', // Lime-ish
+          'radial-gradient(circle at 50% 0%, rgba(0, 255, 128, 0.2) 0%, transparent 60%)', // Bright Green Top
       ] : [
-          `radial-gradient(circle at 50% 50%, rgba(16, 185, 129, ${0.3 * density}) 0%, transparent 60%)`,
-          `radial-gradient(circle at 80% 20%, rgba(6, 182, 212, ${0.25 * density}) 0%, transparent 50%)`,
-          `radial-gradient(circle at 20% 80%, rgba(139, 92, 246, ${0.25 * density}) 0%, transparent 50%)`,
-          `radial-gradient(circle at 50% 0%, rgba(52, 211, 153, ${0.2 * density}) 0%, transparent 60%)`,
+          'radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.3) 0%, transparent 60%)', // Deep Violet
+          'radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.25) 0%, transparent 50%)', // Magenta
+          'radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.25) 0%, transparent 50%)', // Cyan
+          'radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.2) 0%, transparent 60%)', // Purple Top
       ];
 
       return {
           backgroundColor: baseColor,
           backgroundImage: layers.join(','),
-          filter: isLight ? 'blur(90px) contrast(1.3) brightness(1.05)' : 'blur(60px) contrast(1.4) brightness(1.2)',
+          filter: 'blur(60px) contrast(1.4) brightness(1.2)', // Increased blur and contrast for "cloud" effect
           transition: 'all 2s ease-in-out',
           backgroundBlendMode: 'screen'
       };
@@ -69,7 +70,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
             className="ambient-background"
             style={{
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-                zIndex: -1, pointerEvents: 'none', overflow: 'hidden',
+                zIndex: 0, pointerEvents: 'none', overflow: 'hidden',
                 ...(customBgUrl && !isVideo ? {
                     backgroundImage: `url(${customBgUrl})`,
                     backgroundSize: 'cover',

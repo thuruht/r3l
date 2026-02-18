@@ -6,15 +6,13 @@ import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';
-import { FILE_EXPIRATION_HOURS, VITALITY_ARCHIVE_THRESHOLD, MESSAGE_PURGE_DAYS, RATE_LIMITS, ADMIN_USER_ID } from './constants';
+import JSZip from 'jszip';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
 import { DocumentRoom } from './do/DocumentRoom';
-import { ChatRoom } from './do/ChatRoom';
 export { RelfDO } from './do';
 export { DocumentRoom } from './do/DocumentRoom';
-export { ChatRoom } from './do/ChatRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -28,7 +26,6 @@ interface Env {
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
   DOCUMENT_ROOM: DurableObjectNamespace;
-  CHAT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -39,6 +36,8 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
+<<<<<<< ours
+=======
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
@@ -46,13 +45,9 @@ const authMiddleware = async (c: any, next: any) => {
     return c.json({ error: 'Unauthorized: No token provided' }, 401);
   }
 
-  if (!c.env.JWT_SECRET) {
-    console.error("JWT_SECRET is not set in environment");
-    return c.json({ error: 'Internal Server Error' }, 500);
-  }
-
   try {
-    const payload = await verify(token, c.env.JWT_SECRET);
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
 
     if (!payload || !payload.id) {
       return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
@@ -60,12 +55,6 @@ const authMiddleware = async (c: any, next: any) => {
 
     // Attach user ID to context variables for downstream routes
     c.set('user_id', payload.id as number);
-
-    // Also attach role if available in payload (future proofing) or fetch fresh if critical
-    // Ideally we put role in JWT to avoid DB hit every request, but for now let's keep it simple.
-    // The route handler can check the DB if it needs strict role info, or we can fetch it here.
-    // For admin routes, we'll fetch it.
-
     await next();
   } catch (e) {
     console.error("JWT verification failed:", e);
@@ -73,6 +62,7 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
+>>>>>>> theirs
 // Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
@@ -83,38 +73,15 @@ app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   console.log("Collab WebSocket connection attempt for file:", fileId);
 
   try {
+    // Map fileId to a unique DocumentRoom DO instance
     const doId = c.env.DOCUMENT_ROOM.idFromName(fileId);
     const doStub = c.env.DOCUMENT_ROOM.get(doId);
-    const url = new URL(c.req.url);
-    const newRequest = new Request(url.toString(), c.req.raw);
-    newRequest.headers.set('X-User-ID', String(c.get('user_id')));
-    return doStub.fetch(newRequest);
+
+    return doStub.fetch(c.req.raw);
   } catch (error) {
     console.error("Error proxying Collab WebSocket:", error);
     return c.text('Collab WebSocket proxy failed', 500);
   }
-});
-
-// Chat Room WebSocket endpoint
-app.get('/api/chat/:roomName', authMiddleware, async (c) => {
-  if (c.req.header('Upgrade') !== 'websocket') {
-    return c.text('Expected WebSocket', 400);
-  }
-
-  const roomName = c.req.param('roomName');
-  const user_id = c.get('user_id');
-  
-  const user = await c.env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(user_id).first();
-  if (!user) return c.json({ error: 'User not found' }, 404);
-
-  const doId = c.env.CHAT_ROOM.idFromName(roomName);
-  const doStub = c.env.CHAT_ROOM.get(doId);
-  
-  const url = new URL(c.req.url);
-  url.searchParams.set('userId', String(user_id));
-  url.searchParams.set('username', user.username as string);
-  
-  return doStub.fetch(new Request(url.toString(), c.req.raw));
 });
 
 // Enable CORS for API routes
@@ -220,10 +187,34 @@ function getR2PublicUrl(c: any, r2_key: string): string {
     return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
 
+// --- Authentication Middleware ---
+const authMiddleware = async (c: any, next: any) => {
+  const token = getCookie(c, 'auth_token');
+  if (!token) {
+    return c.json({ error: 'Unauthorized: No token provided' }, 401);
+  }
+
+  try {
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
+
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
+    }
+
+    // Attach user ID to context variables for downstream routes
+    c.set('user_id', payload.id as number);
+    await next();
+  } catch (e) {
+    console.error("JWT verification failed:", e);
+    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+  }
+};
+
 // --- Auth Routes ---
 
 app.post('/api/register', async (c) => {
-  if (!await checkRateLimit(c, 'register', RATE_LIMITS.register.limit, RATE_LIMITS.register.window)) {
+  if (!await checkRateLimit(c, 'register', 5, 3600)) { // 5 per hour
     return c.json({ error: 'Too many registration attempts. Please try again later.' }, 429);
   }
   const { username, password, email, avatar_url, public_key, encrypted_private_key } = await c.req.json();
@@ -232,7 +223,7 @@ app.post('/api/register', async (c) => {
   try {
     const { hash, salt } = await hashPassword(password);
     const verificationToken = crypto.randomUUID();
-    const defaultAvatar = '/default-avatar.svg';
+    const defaultAvatar = 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg';
     
     // Store the hash, salt, email, verification token, and E2EE keys
     const { success } = await c.env.DB.prepare(
@@ -282,7 +273,7 @@ app.post('/api/register', async (c) => {
 });
 
 app.post('/api/login', async (c) => {
-  if (!await checkRateLimit(c, 'login', RATE_LIMITS.login.limit, RATE_LIMITS.login.window)) {
+  if (!await checkRateLimit(c, 'login', 10, 600)) { // 10 per 10 mins
     return c.json({ error: 'Too many login attempts. Please wait.' }, 429);
   }
   const { username, password } = await c.req.json();
@@ -345,7 +336,7 @@ app.post('/api/logout', (c) => {
 });
 
 app.post('/api/forgot-password', async (c) => {
-  if (!await checkRateLimit(c, 'forgot', RATE_LIMITS.forgot.limit, RATE_LIMITS.forgot.window)) {
+  if (!await checkRateLimit(c, 'forgot', 3, 3600)) { // 3 per hour
     return c.json({ error: 'Too many attempts. Please try again later.' }, 429);
   }
   const { email } = await c.req.json();
@@ -391,7 +382,7 @@ app.post('/api/forgot-password', async (c) => {
 });
 
 app.post('/api/reset-password', async (c) => {
-  if (!await checkRateLimit(c, 'reset', RATE_LIMITS.reset.limit, RATE_LIMITS.reset.window)) {
+  if (!await checkRateLimit(c, 'reset', 3, 3600)) { // 3 per hour
     return c.json({ error: 'Too many attempts.' }, 429);
   }
   const { token, newPassword } = await c.req.json();
@@ -450,14 +441,52 @@ app.get('/api/verify-email', async (c) => {
   }
 });
 
-app.get('/api/users/me', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
+app.get('/api/users/me', async (c) => {
+  const token = getCookie(c, 'auth_token');
+  if (!token) return c.json({ error: 'Unauthorized' }, 401);
 
   try {
+    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const payload = await verify(token, secret);
+
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
+<<<<<<< ours
+      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
+=======
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-    ).bind(user_id).first();
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+    ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
 
@@ -467,13 +496,43 @@ app.get('/api/users/me', authMiddleware, async (c) => {
         username: user.username, 
         avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
         public_key: user.public_key,
-        encrypted_private_key: user.encrypted_private_key,
-        role: user.role,
-        is_lurking: user.is_lurking
+        encrypted_private_key: user.encrypted_private_key
       } 
     });
   } catch (e) {
-    return c.json({ error: 'Internal Server Error' }, 500);
+    return c.json({ error: 'Invalid token' }, 401);
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+=======
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
   }
 });
 
@@ -495,6 +554,7 @@ app.put('/api/users/me/privacy', authMiddleware, async (c) => {
   } catch (e) {
     console.error("Error updating privacy:", e);
     return c.json({ error: 'Failed to update privacy settings' }, 500);
+>>>>>>> theirs
   }
 });
 
@@ -632,140 +692,12 @@ app.put('/api/users/me/profile-aesthetics', authMiddleware, async (c) => {
   }
 });
 
-// PUT /api/users/me/username: Update username
-app.put('/api/users/me/username', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const { username } = await c.req.json();
-
-  if (!username || typeof username !== 'string' || username.trim().length < 3) {
-    return c.json({ error: 'Username must be at least 3 characters' }, 400);
-  }
-
-  try {
-    const { success } = await c.env.DB.prepare(
-      'UPDATE users SET username = ? WHERE id = ?'
-    ).bind(username.trim(), user_id).run();
-    
-    if (success) {
-      return c.json({ message: 'Username updated successfully' });
-    } else {
-      return c.json({ error: 'Failed to update username' }, 500);
-    }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
-      return c.json({ error: 'Username already taken' }, 409);
-    }
-    console.error("Error updating username:", e);
-    return c.json({ error: 'Failed to update username' }, 500);
-  }
-});
-
-// PUT /api/users/me/password: Update password
-app.put('/api/users/me/password', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const { currentPassword, newPassword } = await c.req.json();
-
-  if (!currentPassword || !newPassword) {
-    return c.json({ error: 'Missing fields' }, 400);
-  }
-
-  if (newPassword.length < 8) {
-    return c.json({ error: 'New password must be at least 8 characters' }, 400);
-  }
-
-  try {
-    const user = await c.env.DB.prepare(
-      'SELECT password, salt FROM users WHERE id = ?'
-    ).bind(user_id).first();
-
-    if (!user) return c.json({ error: 'User not found' }, 404);
-
-    const { hash: currentHash } = await hashPassword(currentPassword, user.salt as string);
-    if (currentHash !== user.password) {
-      return c.json({ error: 'Current password is incorrect' }, 401);
-    }
-
-    const { hash: newHash } = await hashPassword(newPassword, user.salt as string);
-    const { success } = await c.env.DB.prepare(
-      'UPDATE users SET password = ? WHERE id = ?'
-    ).bind(newHash, user_id).run();
-
-    if (success) {
-      return c.json({ message: 'Password updated successfully' });
-    } else {
-      return c.json({ error: 'Failed to update password' }, 500);
-    }
-  } catch (e: any) {
-    console.error("Error updating password:", e);
-    return c.json({ error: 'Failed to update password' }, 500);
-  }
-});
-
-// DELETE /api/users/me: Delete account
-app.delete('/api/users/me', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-
-  if (user_id === ADMIN_USER_ID) {
-    return c.json({ error: 'Cannot delete admin account' }, 400);
-  }
-
-  try {
-    const { results: files } = await c.env.DB.prepare(
-      'SELECT r2_key FROM files WHERE user_id = ?'
-    ).bind(user_id).all();
-
-    for (const file of files) {
-      if (file.r2_key) {
-        await c.env.BUCKET.delete(file.r2_key as string);
-      }
-    }
-
-    await c.env.DB.batch([
-      c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user_id),
-      c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(user_id),
-      c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(user_id, user_id),
-      c.env.DB.prepare('DELETE FROM communiques WHERE user_id = ?').bind(user_id),
-      c.env.DB.prepare('DELETE FROM collections WHERE user_id = ?').bind(user_id),
-      c.env.DB.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').bind(user_id, user_id),
-      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(user_id, user_id),
-      c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?').bind(user_id, user_id)
-    ]);
-
-    deleteCookie(c, 'auth_token');
-    return c.json({ message: 'Account deleted successfully' });
-  } catch (e: any) {
-    console.error("Error deleting account:", e);
-    return c.json({ error: 'Failed to delete account' }, 500);
-  }
-});
-
-// PUT /api/users/me/public-key: Update user's public key for E2EE
-app.put('/api/users/me/public-key', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const { public_key } = await c.req.json();
-
-  if (!public_key || typeof public_key !== 'string') {
-    return c.json({ error: 'Invalid public key' }, 400);
-  }
-
-  try {
-    await c.env.DB.prepare(
-      'UPDATE users SET public_key = ? WHERE id = ?'
-    ).bind(public_key, user_id).run();
-    
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error("Error updating public key:", e);
-    return c.json({ error: 'Failed to update public key' }, 500);
-  }
-});
-
 // Apply middleware to protected routes
 app.use('/api/drift', authMiddleware);
 app.use('/api/relationships', authMiddleware); // Ensure root /api/relationships is protected
 app.use('/api/relationships/*', authMiddleware);
 app.use('/api/notifications', authMiddleware);
-app.use('/api/notifications/*', authMiddleware); // Added wildcard
+app.use('/api/notifications/*', authMiddleware); // Added wildcart
 app.use('/api/files', authMiddleware); // Ensure root /api/files is protected
 app.use('/api/files/*', authMiddleware);
 app.use('/api/communiques', authMiddleware);
@@ -806,10 +738,16 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-
-  // Check role
-  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
-  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
+<<<<<<< ours
+<<<<<<< ours
+  // Simple admin check: assume user ID 1 is the admin
+  if (user_id !== 1) {
+=======
+  if (user_id !== ADMIN_USER_ID) {
+>>>>>>> theirs
+=======
+  if (user_id !== ADMIN_USER_ID) {
+>>>>>>> theirs
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -833,16 +771,19 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-
-  // Check role
-  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
-  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin' && user?.role !== 'moderator') {
-      return c.json({ error: 'Unauthorized' }, 403);
-  }
+<<<<<<< ours
+<<<<<<< ours
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
 
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT id, username, email, created_at, is_verified, role FROM users ORDER BY created_at DESC LIMIT 100'
+      'SELECT id, username, email, created_at, is_verified FROM users ORDER BY created_at DESC LIMIT 100'
     ).all();
     return c.json({ users: results });
   } catch (e) {
@@ -850,42 +791,21 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
   }
 });
 
-// PUT /api/admin/users/:id/role: Change user role (Admin only)
-app.put('/api/admin/users/:id/role', authMiddleware, async (c) => {
-    const user_id = c.get('user_id');
-    const targetId = Number(c.req.param('id'));
-    const { role } = await c.req.json();
-
-    // Check role
-    const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
-    if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
-        return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    if (targetId === ADMIN_USER_ID) return c.json({ error: 'Cannot change root admin role' }, 400);
-    if (!['user', 'moderator', 'admin'].includes(role)) return c.json({ error: 'Invalid role' }, 400);
-
-    try {
-        await c.env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, targetId).run();
-        return c.json({ message: 'User role updated' });
-    } catch (e) {
-        return c.json({ error: 'Failed to update role' }, 500);
-    }
-});
-
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-
-  // Check role
-  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
-  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
-      return c.json({ error: 'Unauthorized' }, 403);
-  }
-
+<<<<<<< ours
+<<<<<<< ours
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
   const targetId = Number(c.req.param('id'));
 
-  if (targetId === ADMIN_USER_ID) return c.json({ error: 'Cannot delete admin' }, 400);
+  if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
 
   try {
     // Cascade delete manually if foreign keys aren't set
@@ -904,12 +824,15 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-
-  // Check role
-  const user = await c.env.DB.prepare('SELECT role FROM users WHERE id = ?').bind(user_id).first();
-  if (user_id !== ADMIN_USER_ID && user?.role !== 'admin') {
-      return c.json({ error: 'Unauthorized' }, 403);
-  }
+<<<<<<< ours
+<<<<<<< ours
+  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
+=======
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+>>>>>>> theirs
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);
@@ -954,24 +877,9 @@ app.get('/api/users/search', authMiddleware, async (c) => {
 app.get('/api/users/random', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
   try {
-    // 1. Get total count of eligible users (excluding current user)
-    const countResult = await c.env.DB.prepare(
-      'SELECT COUNT(*) as count FROM users WHERE id != ?'
-    ).bind(user_id).first<{ count: number }>();
-
-    const totalUsers = countResult?.count || 0;
-
-    if (totalUsers === 0) {
-      return c.json({ error: 'No other users found' }, 404);
-    }
-
-    // 2. Generate a random offset
-    const randomOffset = Math.floor(Math.random() * totalUsers);
-
-    // 3. Fetch one user at the random offset
     const user = await c.env.DB.prepare(
-      'SELECT id, username, avatar_url FROM users WHERE id != ? LIMIT 1 OFFSET ?'
-    ).bind(user_id, randomOffset).first();
+      'SELECT id, username, avatar_url FROM users WHERE id != ? ORDER BY RANDOM() LIMIT 1'
+    ).bind(user_id).first();
 
     if (!user) return c.json({ error: 'No other users found' }, 404);
 
@@ -1044,7 +952,7 @@ async function createNotification(
 
 async function broadcastSignal(
   env: Env,
-  type: 'signal_communique' | 'signal_artifact' | 'system_alert',
+  type: 'signal_communique' | 'signal_artifact',
   userId: number,
   payload: any = {}
 ) {
@@ -1052,14 +960,14 @@ async function broadcastSignal(
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
     const doStub = env.DO_NAMESPACE.get(doId);
     
-    const message = type === 'system_alert' 
-      ? { type: 'new_notification', notificationType: 'system_alert', actorId: userId, payload }
-      : { type, userId, payload };
-    
     await doStub.fetch('http://do-stub/broadcast-signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message),
+      body: JSON.stringify({
+        type,
+        userId,
+        payload
+      }),
     });
   } catch (e) {
     console.error("Failed to broadcast signal:", e);
@@ -1462,7 +1370,7 @@ app.get('/api/relationships', authMiddleware, async (c) => {
 
 // GET /api/drift: Fetch a random sample of public data (users and files)
 app.get('/api/drift', authMiddleware, async (c) => {
-    if (!await checkRateLimit(c, 'drift', RATE_LIMITS.drift.limit, RATE_LIMITS.drift.window)) {
+    if (!await checkRateLimit(c, 'drift', 20, 600)) { // 20 per 10 mins
         return c.json({ error: 'Drifting too fast. Please wait.' }, 429);
     }
     const user_id = c.get('user_id');
@@ -1629,12 +1537,12 @@ app.get('/api/users/:target_user_id/files', async (c) => {
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(user_id, target_user_id), Math.max(user_id, target_user_id), Math.min(user_id, target_user_id), Math.max(user_id, target_user_id)).first();
 
-    let query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public"';
+    let query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND visibility = "public"';
     
+    // If mutual, allow 'sym' visibility too
     if (mutual) {
-        query += ' OR visibility = "sym"';
+        query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public" OR visibility = "sym")';
     }
-    query += ')';
 
     const { results } = await c.env.DB.prepare(query + ' ORDER BY created_at DESC').bind(target_user_id).all();
     return c.json({ files: results });
@@ -1650,62 +1558,6 @@ app.get('/api/users/:target_user_id/files', async (c) => {
 // we will implement a direct upload via Worker for simplicity in this phase, 
 // verifying auth and quota.
 // For larger files, we would use the S3 compatible API with aws-sdk-js-v3.
-
-// POST /api/files/upload-chunk: Upload file chunk
-app.post('/api/files/upload-chunk', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const formData = await c.req.parseBody();
-  
-  const chunk = formData['chunk'] as File;
-  const uploadId = formData['uploadId'] as string;
-  const chunkIndex = parseInt(formData['chunkIndex'] as string);
-  const totalChunks = parseInt(formData['totalChunks'] as string);
-  const filename = formData['filename'] as string;
-  const mimeType = formData['mimeType'] as string;
-
-  if (!chunk || !uploadId) return c.json({ error: 'Missing data' }, 400);
-
-  try {
-    const chunkKey = `uploads/${user_id}/${uploadId}/${chunkIndex}`;
-    await c.env.BUCKET.put(chunkKey, chunk.stream());
-
-    if (chunkIndex === totalChunks - 1) {
-      const finalKey = `${user_id}/${crypto.randomUUID()}-${filename}`;
-      const parts: ArrayBuffer[] = [];
-
-      for (let i = 0; i < totalChunks; i++) {
-        const partKey = `uploads/${user_id}/${uploadId}/${i}`;
-        const part = await c.env.BUCKET.get(partKey);
-        if (part) parts.push(await part.arrayBuffer());
-        await c.env.BUCKET.delete(partKey);
-      }
-
-      const combined = new Uint8Array(parts.reduce((acc, p) => acc + p.byteLength, 0));
-      let offset = 0;
-      parts.forEach(p => {
-        combined.set(new Uint8Array(p), offset);
-        offset += p.byteLength;
-      });
-
-      await c.env.BUCKET.put(finalKey, combined, {
-        httpMetadata: { contentType: mimeType },
-        customMetadata: { originalName: filename, userId: String(user_id) }
-      });
-
-      const expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
-      await c.env.DB.prepare(
-        'INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).bind(user_id, finalKey, filename, combined.byteLength, mimeType, 'me', expires_at).run();
-
-      return c.json({ message: 'Upload complete', r2_key: finalKey });
-    }
-
-    return c.json({ message: 'Chunk uploaded' });
-  } catch (e: any) {
-    console.error('Chunk upload error:', e);
-    return c.json({ error: 'Chunk upload failed' }, 500);
-  }
-});
 
 // POST /api/files: Upload a file
 app.post('/api/files', async (c) => {
@@ -1731,17 +1583,12 @@ app.post('/api/files', async (c) => {
     let size = file.size;
 
     if (shouldEncrypt && c.env.ENCRYPTION_SECRET) {
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const encryptedData = await encryptData(arrayBuffer, c.env.ENCRYPTION_SECRET);
-        body = encryptedData.encrypted;
-        iv = encryptedData.iv;
-        is_encrypted = 1;
-        size = encryptedData.encrypted.byteLength;
-      } catch (e) {
-        console.error('Encryption failed for large file:', e);
-        return c.json({ error: 'File too large for encryption. Try uploading without encryption.' }, 413);
-      }
+      const arrayBuffer = await file.arrayBuffer();
+      const encryptedData = await encryptData(arrayBuffer, c.env.ENCRYPTION_SECRET);
+      body = encryptedData.encrypted;
+      iv = encryptedData.iv;
+      is_encrypted = 1;
+      size = encryptedData.encrypted.byteLength;
     }
 
     // Generate a unique key for R2
@@ -1760,7 +1607,7 @@ app.post('/api/files', async (c) => {
     });
 
     // Record in D1
-    const expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
+    const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString(); // Default 168h (7 days) life
 
     // Check for burn_on_read flag in formData (default false)
     const burn_on_read = formData['burn_on_read'] === 'true';
@@ -1768,8 +1615,10 @@ app.post('/api/files', async (c) => {
     // Map allowed visibility values
     // DB Constraint: visibility IN ('public', 'sym', 'me')
     // Frontend currently sends 'private', so map it to 'me'.
-    let dbVisibility = visibility === 'private' ? 'me' : visibility;
-    if (!['public', 'sym', 'me'].includes(dbVisibility)) {
+    let dbVisibility = visibility;
+    if (dbVisibility === 'private') {
+      dbVisibility = 'me';
+    } else if (!['public', 'sym', 'me'].includes(dbVisibility)) {
       dbVisibility = 'me'; // Default safe fallback
     }
 
@@ -1823,7 +1672,7 @@ app.get('/api/files/:id/metadata', async (c) => {
     if (!file) return c.json({ error: 'File not found' }, 404);
 
     // Permission check (same as download)
-    if (file.user_id !== user_id && (file.visibility === 'private' || file.visibility === 'me')) {
+    if (file.user_id !== user_id && file.visibility === 'private') {
          return c.json({ error: 'Unauthorized' }, 403);
     }
     // If 'sym', check mutual (omitted for brevity, but ideally should be here or frontend handles it via error on content fetch)
@@ -1864,7 +1713,7 @@ app.get('/api/files/:id/content', async (c) => {
     // 'public' files can be downloaded by anyone (authenticated for now)
     
     if (file.user_id !== user_id) {
-        if (file.visibility === 'private' || file.visibility === 'me') {
+        if (file.visibility === 'private') {
             return c.json({ error: 'Unauthorized access to file' }, 403);
         }
         if (file.visibility === 'sym') {
@@ -1880,7 +1729,7 @@ app.get('/api/files/:id/content', async (c) => {
     }
 
     // 3. Fetch from R2
-  const object = await c.env.BUCKET.get(file.r2_key as string, {
+  const object = await c.env.BUCKET.get(file.r2_key, {
     range: c.req.header('Range') // Pass Range header for seeking
   });
 
@@ -1907,11 +1756,13 @@ app.get('/api/files/:id/content', async (c) => {
 
     // Handle Burn On Read (Ephemeral)
     if (file.burn_on_read) {
-        c.executionCtx.waitUntil((async () => {
+        // Schedule deletion after response (or immediately if we trust the buffer is in memory)
+        // Since this is a Worker, we can use waitUntil to perform background tasks
+        c.executionCtx.waitUntil(async function() {
             await c.env.BUCKET.delete(file.r2_key as string);
             await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
             console.log(`Burned file ${file_id} after read.`);
-        })());
+        }());
     }
 
     return new Response(body, {
@@ -1983,8 +1834,8 @@ app.post('/api/files/:id/share', async (c) => {
 
     if (!mutual) return c.json({ error: 'Must be mutually connected to share' }, 403);
 
-    // 3. Ensure file is visible (upgrade to 'sym' if 'private' or 'me')
-    if (file.visibility === 'private' || file.visibility === 'me') {
+    // 3. Ensure file is visible (upgrade to 'sym' if 'private')
+    if (file.visibility === 'private') {
       await c.env.DB.prepare("UPDATE files SET visibility = 'sym' WHERE id = ?").bind(file_id).run();
     }
 
@@ -1999,35 +1850,6 @@ app.post('/api/files/:id/share', async (c) => {
   } catch (e: any) {
     console.error("Error sharing file:", e);
     return c.json({ error: 'Failed to share file' }, 500);
-  }
-});
-
-// PUT /api/files/:id/metadata: Update file metadata (visibility)
-app.put('/api/files/:id/metadata', async (c) => {
-  const user_id = c.get('user_id');
-  const file_id = Number(c.req.param('id'));
-  const { visibility } = await c.req.json();
-
-  if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
-
-  // Validate visibility
-  if (visibility && !['public', 'sym', 'me'].includes(visibility)) {
-      return c.json({ error: 'Invalid visibility mode' }, 400);
-  }
-
-  try {
-    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
-    if (!file) return c.json({ error: 'File not found' }, 404);
-    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
-
-    if (visibility) {
-        await c.env.DB.prepare('UPDATE files SET visibility = ? WHERE id = ?').bind(visibility, file_id).run();
-    }
-
-    return c.json({ success: true });
-  } catch (e: any) {
-    console.error("Error updating file metadata:", e);
-    return c.json({ error: 'Failed to update metadata' }, 500);
   }
 });
 
@@ -2082,7 +1904,7 @@ app.post('/api/files/:id/refresh', async (c) => {
     // Simplest: Check if user has access.
     
     // Update expires_at to 7 days from now
-    const new_expires_at = new Date(Date.now() + FILE_EXPIRATION_HOURS * 60 * 60 * 1000).toISOString();
+    const new_expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
     
     const { success } = await c.env.DB.prepare(
       'UPDATE files SET expires_at = ? WHERE id = ?'
@@ -2103,12 +1925,7 @@ app.post('/api/files/:id/refresh', async (c) => {
 app.post('/api/files/:id/vitality', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
-  
-  if (!await checkRateLimit(c, `vitality:${user_id}`, RATE_LIMITS.vitality.limit, RATE_LIMITS.vitality.window)) {
-    return c.json({ error: 'Too many boost attempts. Please wait.' }, 429);
-  }
-  
-  const { amount } = await c.req.json().catch(() => ({ amount: 1 }));
+  const { amount } = await c.req.json().catch(() => ({ amount: 1 })); // Default +1
 
   if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
 
@@ -2125,7 +1942,7 @@ app.post('/api/files/:id/vitality', async (c) => {
     if (success) {
       // Check if threshold reached for auto-archive
       const file = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first();
-      if (file && (file.vitality as number) >= VITALITY_ARCHIVE_THRESHOLD) {
+      if (file && (file.vitality as number) >= 10) { // Threshold 10
          await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
          return c.json({ message: 'Vitality boosted. File archived due to high vitality!' });
       }
@@ -2534,10 +2351,24 @@ app.get('/api/messages/:partner_id', async (c) => {
       `SELECT * FROM messages 
        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
        ORDER BY created_at ASC 
-       LIMIT 100`
+       LIMIT 100` // Cap at 100 for now
     ).bind(user_id, partner_id, partner_id, user_id).all();
 
-    return c.json({ messages: results });
+    const decryptedResults = await Promise.all(results.map(async (msg: any) => {
+        if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {
+            try {
+                const encryptedBuffer = Buffer.from(msg.content, 'base64');
+                const decryptedBuffer = await decryptData(encryptedBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
+                const decryptedText = new TextDecoder().decode(decryptedBuffer);
+                return { ...msg, content: decryptedText };
+            } catch (e) {
+                return { ...msg, content: '[Decryption Error]' };
+            }
+        }
+        return msg;
+    }));
+
+    return c.json({ messages: decryptedResults });
   } catch (e: any) {
     console.error("Error fetching messages:", e);
     return c.json({ error: 'Failed to fetch messages' }, 500);
@@ -2547,38 +2378,50 @@ app.get('/api/messages/:partner_id', async (c) => {
 // POST /api/messages: Send a message
 app.post('/api/messages', async (c) => {
   const sender_id = c.get('user_id');
-  const { receiver_id, content, encrypt, encrypted_key } = await c.req.json();
+  const { receiver_id, content, encrypt } = await c.req.json();
 
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
 
   try {
+    // Verify mutual connection (Optional: Rel F allows messaging anyone?
+    // Let's restrict to Sym connections for anti-spam/safety, matching the ethos)
     const mutual = await c.env.DB.prepare(
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
 
-    const asymFollow = await c.env.DB.prepare(
-      'SELECT id FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type = ?'
-    ).bind(sender_id, receiver_id, 'asym_follow').first();
+    if (!mutual) return c.json({ error: 'Must be mutually connected (Sym) to whisper.' }, 403);
 
-    const isRequest = !mutual && !asymFollow;
+    let finalContent = content;
+    let is_encrypted = 0;
+    let iv: string | null = null;
+
+    if (encrypt === true && c.env.ENCRYPTION_SECRET) {
+        const encryptedData = await encryptData(content, c.env.ENCRYPTION_SECRET);
+        // Store as base64 string
+        finalContent = Buffer.from(encryptedData.encrypted).toString('base64');
+        iv = encryptedData.iv;
+        is_encrypted = 1;
+    }
 
     const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, encrypted_key, is_request) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(sender_id, receiver_id, content, encrypt ? 1 : 0, encrypted_key || null, isRequest ? 1 : 0).run();
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv) VALUES (?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv).run();
 
     if (success) {
       const messageId = meta.last_row_id;
+      // Send the ORIGINAL content via WebSocket so the recipient sees it immediately without needing to decrypt
+      // (WSS provides transport security). The DB stores it encrypted.
       const messagePayload = {
         id: messageId,
         sender_id,
         receiver_id,
-        content,
-        is_encrypted: encrypt ? 1 : 0,
-        encrypted_key,
-        created_at: new Date().toISOString(),
-        is_request: isRequest
+        content: content, // Send clear text to active session
+        created_at: new Date().toISOString()
       };
 
+      // Notify Recipient via WebSocket
+      // We use the existing 'new_notification' type or a dedicated 'new_message' type.
+      // Let's use 'new_message' for cleaner frontend handling.
       const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
       const doStub = c.env.DO_NAMESPACE.get(doId);
       
@@ -2591,7 +2434,7 @@ app.post('/api/messages', async (c) => {
         }),
       });
 
-      return c.json({ message: isRequest ? 'Message request sent' : 'Whisper sent', data: messagePayload });
+      return c.json({ message: 'Whisper sent', data: messagePayload });
     } else {
       return c.json({ error: 'Failed to send message' }, 500);
     }
@@ -2616,150 +2459,6 @@ app.put('/api/messages/:partner_id/read', async (c) => {
   }
 });
 
-
-// --- Group Chat Routes ---
-
-// POST /api/groups: Create a group
-app.post('/api/groups', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const { name, description, visibility } = await c.req.json();
-
-  if (!name) return c.json({ error: 'Name required' }, 400);
-
-  try {
-    const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO groups (name, description, creator_id, visibility) VALUES (?, ?, ?, ?)'
-    ).bind(name, description || '', user_id, visibility || 'private').run();
-
-    if (success) {
-      const groupId = meta.last_row_id;
-      await c.env.DB.prepare(
-        'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
-      ).bind(groupId, user_id, 'admin').run();
-
-      return c.json({ message: 'Group created', group_id: groupId });
-    } else {
-      return c.json({ error: 'Failed to create group' }, 500);
-    }
-  } catch (e: any) {
-    console.error('Error creating group:', e);
-    return c.json({ error: 'Failed to create group' }, 500);
-  }
-});
-
-// GET /api/groups: List user's groups
-app.get('/api/groups', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-
-  try {
-    const { results } = await c.env.DB.prepare(
-      `SELECT g.*, gm.role FROM groups g
-       JOIN group_members gm ON g.id = gm.group_id
-       WHERE gm.user_id = ?
-       ORDER BY g.updated_at DESC`
-    ).bind(user_id).all();
-
-    return c.json({ groups: results });
-  } catch (e: any) {
-    console.error('Error listing groups:', e);
-    return c.json({ error: 'Failed to list groups' }, 500);
-  }
-});
-
-// POST /api/groups/:id/members: Add member to group
-app.post('/api/groups/:id/members', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-  const { user_id: new_member_id } = await c.req.json();
-
-  if (!new_member_id) return c.json({ error: 'user_id required' }, 400);
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member || member.role !== 'admin') {
-      return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    await c.env.DB.prepare(
-      'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
-    ).bind(group_id, new_member_id, 'member').run();
-
-    return c.json({ message: 'Member added' });
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint')) {
-      return c.json({ error: 'User already in group' }, 409);
-    }
-    console.error('Error adding member:', e);
-    return c.json({ error: 'Failed to add member' }, 500);
-  }
-});
-
-// GET /api/groups/:id/messages: Get group messages
-app.get('/api/groups/:id/messages', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member) return c.json({ error: 'Not a member' }, 403);
-
-    const { results } = await c.env.DB.prepare(
-      `SELECT gm.*, u.username, u.avatar_url FROM group_messages gm
-       JOIN users u ON gm.sender_id = u.id
-       WHERE gm.group_id = ?
-       ORDER BY gm.created_at ASC
-       LIMIT 100`
-    ).bind(group_id).all();
-
-    return c.json({ messages: results });
-  } catch (e: any) {
-    console.error('Error fetching group messages:', e);
-    return c.json({ error: 'Failed to fetch messages' }, 500);
-  }
-});
-
-// POST /api/groups/:id/messages: Send group message
-app.post('/api/groups/:id/messages', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-  const { content } = await c.req.json();
-
-  if (!content) return c.json({ error: 'Content required' }, 400);
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member) return c.json({ error: 'Not a member' }, 403);
-
-    const { success } = await c.env.DB.prepare(
-      'INSERT INTO group_messages (group_id, sender_id, content) VALUES (?, ?, ?)'
-    ).bind(group_id, user_id, content).run();
-
-    if (success) {
-      await c.env.DB.prepare(
-        'UPDATE groups SET updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-      ).bind(group_id).run();
-
-      return c.json({ message: 'Message sent' });
-    } else {
-      return c.json({ error: 'Failed to send message' }, 500);
-    }
-  } catch (e: any) {
-    console.error('Error sending group message:', e);
-    return c.json({ error: 'Failed to send message' }, 500);
-  }
-});
-
-app.use('/api/groups', authMiddleware);
-app.use('/api/groups/*', authMiddleware);
 
 // POST /api/users/me/avatar: Upload user avatar to R2
 app.post('/api/users/me/avatar', async (c) => {
@@ -2808,7 +2507,7 @@ app.post('/api/users/me/avatar', async (c) => {
 
 // POST /api/feedback: Send feedback to admin
 app.post('/api/feedback', async (c) => {
-  if (!await checkRateLimit(c, 'feedback', RATE_LIMITS.feedback.limit, RATE_LIMITS.feedback.window)) {
+  if (!await checkRateLimit(c, 'feedback', 3, 3600)) { // 3 per hour
     return c.json({ error: 'Too many feedback attempts. Please try again later.' }, 429);
   }
   
@@ -2891,7 +2590,7 @@ export default {
       }
 
       // 2. Purge Old Messages (Inbox/Outgoing unarchived > 30 days)
-      const messagePurgeThreshold = new Date(Date.now() - MESSAGE_PURGE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const messagePurgeThreshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { meta: msgMeta } = await env.DB.prepare(
         'DELETE FROM messages WHERE is_archived = 0 AND created_at < ?'
       ).bind(messagePurgeThreshold).run();
@@ -2903,265 +2602,3 @@ export default {
     }
   }
 };
-
-
-// --- Group File Sharing Routes ---
-
-// POST /api/groups/:id/files: Share file with group
-app.post('/api/groups/:id/files', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-  const { file_id, can_edit } = await c.req.json();
-
-  if (!file_id) return c.json({ error: 'file_id required' }, 400);
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member) return c.json({ error: 'Not a member' }, 403);
-
-    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
-    if (!file) return c.json({ error: 'File not found' }, 404);
-    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
-
-    await c.env.DB.prepare(
-      'INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)'
-    ).bind(group_id, file_id, user_id, can_edit ? 1 : 0).run();
-
-    return c.json({ message: 'File shared with group' });
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint')) {
-      return c.json({ error: 'File already shared' }, 409);
-    }
-    console.error('Error sharing file:', e);
-    return c.json({ error: 'Failed to share file' }, 500);
-  }
-});
-
-// GET /api/groups/:id/files: List group files
-app.get('/api/groups/:id/files', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member) return c.json({ error: 'Not a member' }, 403);
-
-    const { results } = await c.env.DB.prepare(
-      `SELECT f.*, gf.can_edit, gf.shared_by, u.username as shared_by_name
-       FROM files f
-       JOIN group_files gf ON f.id = gf.file_id
-       JOIN users u ON gf.shared_by = u.id
-       WHERE gf.group_id = ?
-       ORDER BY gf.shared_at DESC`
-    ).bind(group_id).all();
-
-    return c.json({ files: results });
-  } catch (e: any) {
-    console.error('Error fetching group files:', e);
-    return c.json({ error: 'Failed to fetch files' }, 500);
-  }
-});
-
-// DELETE /api/groups/:id/files/:file_id: Remove file from group
-app.delete('/api/groups/:id/files/:file_id', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-  const file_id = Number(c.req.param('file_id'));
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    const groupFile = await c.env.DB.prepare(
-      'SELECT shared_by FROM group_files WHERE group_id = ? AND file_id = ?'
-    ).bind(group_id, file_id).first();
-
-    if (!groupFile) return c.json({ error: 'File not in group' }, 404);
-    if (member?.role !== 'admin' && groupFile.shared_by !== user_id) {
-      return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    await c.env.DB.prepare(
-      'DELETE FROM group_files WHERE group_id = ? AND file_id = ?'
-    ).bind(group_id, file_id).run();
-
-    return c.json({ message: 'File removed from group' });
-  } catch (e: any) {
-    console.error('Error removing file:', e);
-    return c.json({ error: 'Failed to remove file' }, 500);
-  }
-});
-
-// --- Community Archiving Routes ---
-
-// POST /api/files/:id/archive-vote: Vote to archive file
-app.post('/api/files/:id/archive-vote', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const file_id = Number(c.req.param('id'));
-
-  try {
-    const file = await c.env.DB.prepare('SELECT visibility FROM files WHERE id = ?').bind(file_id).first();
-    if (!file) return c.json({ error: 'File not found' }, 404);
-    if (file.visibility === 'me') return c.json({ error: 'Cannot vote on private files' }, 403);
-
-    await c.env.DB.prepare(
-      'INSERT INTO archive_votes (file_id, user_id, vote_weight) VALUES (?, ?, 1)'
-    ).bind(file_id, user_id).run();
-
-    const { results } = await c.env.DB.prepare(
-      'SELECT SUM(vote_weight) as total FROM archive_votes WHERE file_id = ?'
-    ).bind(file_id).all();
-
-    const total = results[0]?.total || 0;
-
-    await c.env.DB.prepare(
-      'UPDATE files SET archive_votes = ? WHERE id = ?'
-    ).bind(total, file_id).run();
-
-    if (total >= VITALITY_ARCHIVE_THRESHOLD) {
-      await c.env.DB.prepare(
-        'UPDATE files SET is_community_archived = 1, is_archived = 1 WHERE id = ?'
-      ).bind(file_id).run();
-      return c.json({ message: 'File community archived!', votes: total });
-    }
-
-    return c.json({ message: 'Vote recorded', votes: total });
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint')) {
-      return c.json({ error: 'Already voted' }, 409);
-    }
-    console.error('Error voting:', e);
-    return c.json({ error: 'Failed to vote' }, 500);
-  }
-});
-
-// GET /api/files/community-archived: List community archived files
-app.get('/api/files/community-archived', authMiddleware, async (c) => {
-  try {
-    const { results } = await c.env.DB.prepare(
-      `SELECT f.*, u.username as owner_name, f.archive_votes
-       FROM files f
-       JOIN users u ON f.user_id = u.id
-       WHERE f.is_community_archived = 1
-       ORDER BY f.archive_votes DESC
-       LIMIT 50`
-    ).bind().all();
-
-    return c.json({ files: results });
-  } catch (e: any) {
-    console.error('Error fetching archived files:', e);
-    return c.json({ error: 'Failed to fetch archived files' }, 500);
-  }
-});
-
-// POST /api/groups/create-sym-group: Create group from Sym connections
-app.post('/api/groups/create-sym-group', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const { name, description, member_ids } = await c.req.json();
-
-  if (!name || !member_ids || !Array.isArray(member_ids)) {
-    return c.json({ error: 'Name and member_ids required' }, 400);
-  }
-
-  try {
-    for (const mid of member_ids) {
-      const mutual = await c.env.DB.prepare(
-        'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
-      ).bind(Math.min(user_id, mid), Math.max(user_id, mid), Math.min(user_id, mid), Math.max(user_id, mid)).first();
-
-      if (!mutual) {
-        return c.json({ error: `User ${mid} is not a Sym connection` }, 403);
-      }
-    }
-
-    const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO groups (name, description, creator_id, visibility, group_type) VALUES (?, ?, ?, ?, ?)'
-    ).bind(name, description || '', user_id, 'sym', 'sym_group').run();
-
-    if (success) {
-      const groupId = meta.last_row_id;
-      const statements = [
-        c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)').bind(groupId, user_id, 'admin'),
-        ...member_ids.map((mid: number) =>
-          c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)').bind(groupId, mid, 'member')
-        )
-      ];
-
-      await c.env.DB.batch(statements);
-
-      return c.json({ message: 'Sym group created', group: { id: groupId, name, group_type: 'sym_group' } });
-    } else {
-      return c.json({ error: 'Failed to create group' }, 500);
-    }
-  } catch (e: any) {
-    console.error('Error creating Sym group:', e);
-    return c.json({ error: 'Failed to create Sym group' }, 500);
-  }
-});
-
-// GET /api/groups/:id/members: List group members
-app.get('/api/groups/:id/members', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT id FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member) return c.json({ error: 'Not a member' }, 403);
-
-    const { results } = await c.env.DB.prepare(
-      `SELECT gm.*, u.username, u.avatar_url
-       FROM group_members gm
-       JOIN users u ON gm.user_id = u.id
-       WHERE gm.group_id = ?
-       ORDER BY gm.role DESC, gm.joined_at ASC`
-    ).bind(group_id).all();
-
-    const members = results.map((m: any) => ({
-      ...m,
-      avatar_url: (m.avatar_url && typeof m.avatar_url === 'string' && m.avatar_url.startsWith('avatars/'))
-        ? getR2PublicUrl(c, m.avatar_url)
-        : m.avatar_url
-    }));
-
-    return c.json({ members });
-  } catch (e: any) {
-    console.error('Error fetching members:', e);
-    return c.json({ error: 'Failed to fetch members' }, 500);
-  }
-});
-
-// DELETE /api/groups/:id/members/:user_id: Remove member
-app.delete('/api/groups/:id/members/:member_id', authMiddleware, async (c) => {
-  const user_id = c.get('user_id');
-  const group_id = Number(c.req.param('id'));
-  const member_id = Number(c.req.param('member_id'));
-
-  try {
-    const member = await c.env.DB.prepare(
-      'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, user_id).first();
-
-    if (!member || member.role !== 'admin') {
-      return c.json({ error: 'Unauthorized' }, 403);
-    }
-
-    await c.env.DB.prepare(
-      'DELETE FROM group_members WHERE group_id = ? AND user_id = ?'
-    ).bind(group_id, member_id).run();
-
-    return c.json({ message: 'Member removed' });
-  } catch (e: any) {
-    console.error('Error removing member:', e);
-    return c.json({ error: 'Failed to remove member' }, 500);
-  }
-});

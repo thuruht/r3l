@@ -1,25 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap');
-
 :root {
-  /* Dark Theme - Low Light Optimized */
-  --bg-color: #0a0e14;
-  --bg-mist: #141920;
-  --text-primary: #d4dae0;
-  --text-secondary: #7a8694;
-  --accent-me: #ffffff;
-  --accent-sym: #10b981;
-  --accent-sym-bright: #34d399;
-  --accent-asym: #8b5cf6;
-  --accent-alert: #ff6b6b;
-  --accent-online: #06b6d4;
-  --drawer-bg: #141920f2;
-  --border-color: #2a3340;
-  --glow-sym: 0 0 12px #10b98166;
+  --bg-color: #0a0b10ff;
+  --bg-mist: #111318ff;
+  --text-primary: #e0e4e8ff;
+  --text-secondary: #7f8a96ff;
+  --accent-me: #ffffffff;
+  --accent-sym: #26de81; /* Opaque green */
+  --accent-sym-bright: #26de81; /* Added for highlighting */
+  --accent-asym: #5b6670ff;
+  --accent-alert: #ff4b4bff;
+  --accent-online: #00d2ff; /* Cyan for presence */
+  --drawer-bg: #101217f2;
+  --border-color: #2a2f3aff;
+  --glow-sym: 0 0 10px #26de8166;
   --glow-me: 0 0 15px #ffffff80;
   --hover-bg: #ffffff11;
-  --header-bg-transparent: rgba(20, 25, 32, 0.7);
-  --font-mono: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', monospace;
+  --header-bg-transparent: rgba(16, 18, 23, 0.7); /* More transparent for nebula */
   
   /* Z-Index Stack */
   --z-ui-base: 1000;
@@ -33,29 +28,22 @@
   font-weight: 400;
 }
 
-/* Light Theme - Bright Light Optimized */
-html.theme-light {
-  --bg-color: #e8f5f1;
-  --bg-mist: #f8fffe;
-  --text-primary: #0d3d2f;
-  --text-secondary: #4a6b5e;
-  --accent-me: #0d3d2f;
-  --accent-sym: #059669;
-  --accent-sym-bright: #047857;
-  --accent-asym: #7c3aed;
-  --accent-alert: #dc2626;
-  --accent-online: #0891b2;
-  --drawer-bg: #f8fffef2;
-  --border-color: #b8d4ca;
-  --glow-sym: 0 0 8px #05966944;
-  --glow-me: 0 0 10px #0d3d2f44;
-  --hover-bg: #05966915;
-  --header-bg-transparent: rgba(248, 255, 254, 0.8);
-}
-
-html.theme-light body {
-  background: linear-gradient(135deg, #d4f1e8 0%, #e8f5f1 30%, #f0e8f5 70%, #e8d4f1 100%);
-  background-attachment: fixed;
+/* Verdant Mist - Combined Theme (High Green, Mist Base) */
+html.theme-verdant {
+  --bg-color: #05140a; /* Very dark green-black base */
+  --bg-mist: #0b2416; /* Dark forest mist */
+  --text-primary: #e0e8e2; /* Cool white-green tint */
+  --text-secondary: #8a9e90; /* Desaturated sage */
+  --accent-me: #f0fff4; /* Bright mint white */
+  --accent-sym: #26de81; /* Standard Neon Green */
+  --accent-sym-bright: #00ff88; /* Even brighter green */
+  --accent-asym: #4a6652; /* Muted olive */
+  --accent-alert: #ff6b6b; /* Soft Red */
+  --drawer-bg: #0b2416f2;
+  --border-color: #1e3a29; /* Dark fern border */
+  --glow-sym: 0 0 12px #26de8188; /* Stronger green glow */
+  --glow-me: 0 0 15px #f0fff480;
+  --hover-bg: #26de8115; /* Greenish hover tint */
 }
 
 h1, h2, h3, h4, h5, h6, button, .font-heading {
@@ -63,23 +51,6 @@ h1, h2, h3, h4, h5, h6, button, .font-heading {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
-
-/* Global Link Hover Styles */
-a:link,
-a:hover,
-a:active,
-a:visited {
-  color: var(--accent-sym); /* Use existing theme variable for links */
-  text-decoration: none;
-}
-
-a:hover {
-  cursor: pointer;
-  text-shadow: 0 0 8px var(--accent-sym-bright), /* Subtle glow on hover */
-               0 0 2px var(--accent-sym-bright);
-  text-decoration: underline;
-}
-
 html, body {
   height: 100%; /* Ensure html and body take full height */
   margin: 0;
@@ -98,10 +69,10 @@ button {
   border-radius: 4px;
   border: 1px solid var(--border-color);
   padding: 0.6em 1.2em;
-  font-size: clamp(0.8rem, 2vw, 1rem);
+  font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: var(--bg-mist);
+  background-color: var(--bg-mist); /* Ensure button bg isn't black on white theme */
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.25s;
@@ -122,7 +93,6 @@ input, textarea {
   padding: 0.5rem;
   border-radius: 4px;
   font-family: inherit;
-  font-size: clamp(0.85rem, 2vw, 1rem);
 }
 input:focus, textarea:focus {
   outline: none;
@@ -195,11 +165,10 @@ input:focus, textarea:focus {
 
 /* Mobile Menu Fix */
 .nav-dropdown {
-  right: 1rem !important;
+  right: 1rem !important; /* Force right alignment */
   left: auto !important;
-  max-width: 90vw;
+  max-width: 90vw; /* Prevent overflow */
   width: 250px;
-  font-size: clamp(0.85rem, 2vw, 1rem);
 }
 
 /* Sticky Modal Header */
@@ -234,13 +203,12 @@ input:focus, textarea:focus {
   width: 300px;
 }
 
-h1 { font-size: clamp(1.2rem, 5vw, 2.5rem); }
-h2 { font-size: clamp(1rem, 3.5vw, 1.75rem); }
-h3 { font-size: clamp(0.85rem, 2.5vw, 1.25rem); }
-
 @media (max-width: 600px) {
   .desktop-only {
     display: none !important;
+  }
+  .overlay-ui h1 {
+    font-size: 1rem;
   }
 }
 
@@ -288,4 +256,3 @@ h3 { font-size: clamp(0.85rem, 2.5vw, 1.25rem); }
 .icon-spin {
   animation: spin 1s linear infinite;
 }
-

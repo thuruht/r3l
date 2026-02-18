@@ -78,19 +78,7 @@
 - [x] Live "Online" status indicators
 - [x] Visual "Signal" propagation on graph
 
-### Phase 7: Synapse (Collaboration) (Complete)
-- [x] `DocumentRoom` Durable Object with Yjs protocol & Hibernation
-- [x] Secure `userId` propagation via WebSocket headers
-- [x] Real-time text editing with `y-codemirror.next`
-- [x] Presence UI: Avatars in modal and remote cursors in editor
-- [x] Debounced persistence to D1/DO Storage
-
-### Phase 8: Deep Customization (Complete)
-- [x] Theme Engine: UI controls for Mist Density and Nav Opacity.
-- [x] Profile Aesthetics: UI controls for Node Primary/Secondary Color, Node Size.
-- [x] Background Customization: Set custom image/video background from file.
-
 ## Handover Notes
-**Last Action:** Completed Phase 8 (Deep Customization).
-**Current State:** Fully functional Social, Artifact, Discovery, Real-time Presence, Collaborative Editing, and Deep Customization systems.
-**Next Steps:** Proceed to **Phase 9: Collections** (Advanced grouping and visualization).
+**Last Action:** Completed Phase 6 (The Pulse). Implemented real-time presence tracking, broadcasting of communique and artifact signals, and updated frontend to visualize online users.
+**Current State:** Fully functional Social, Artifact, Discovery (Drift), and Real-time (Pulse) systems.
+**Next Steps:** Begin **Phase 7: Deep Customization** to implement theming and profile aesthetics.

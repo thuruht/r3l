@@ -200,8 +200,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
     }
 
     try {
-      // Use create-sym-group for all groups as per requirements
-      const res = await fetch('/api/groups/create-sym-group', {
+      const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newGroupName, member_ids: selectedMembers })
@@ -209,7 +208,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
 
       if (res.ok) {
         const data = await res.json();
-        showToast('Sym Group created', 'success');
+        showToast('Group created', 'success');
         setShowCreateModal(false);
         setNewGroupName('');
         setSelectedMembers([]);
@@ -333,16 +332,8 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
           <>
             {loading && <div style={{ padding: '10px' }}>Loading groups...</div>}
             {!loading && groups.length === 0 && (
-              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                <IconUsers size={48} stroke={1} style={{ opacity: 0.5 }} aria-hidden="true" />
-                <p style={{ margin: 0, fontSize: '1.1em', fontWeight: 'bold' }}>No Clusters Found</p>
-                <p style={{ margin: 0, fontSize: '0.9em' }}>Form a new sympathy group to begin transmission.</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  style={{ marginTop: '10px', background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}
-                >
-                  Create Group
-                </button>
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9em' }}>
+                No groups yet. Create one to start.
               </div>
             )}
             {groups.map(g => (
@@ -394,13 +385,11 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Group name"
-              autoFocus
               style={{ width: '100%', marginBottom: '15px', padding: '8px', background: '#00000044', border: '1px solid var(--border-color)', borderRadius: '4px', color: 'white' }}
             />
             <div style={{ marginBottom: '15px' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: 'var(--text-secondary)' }}>Select Members (Sym Only)</h4>
+              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: 'var(--text-secondary)' }}>Select Members</h4>
               <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                {connections.length === 0 && <div style={{ color: '#666', fontSize: '0.85em' }}>No Sym connections available.</div>}
                 {connections.map(c => (
                   <label key={c.user_id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '5px', cursor: 'pointer' }}>
                     <input

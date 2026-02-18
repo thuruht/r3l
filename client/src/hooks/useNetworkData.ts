@@ -3,7 +3,7 @@ import { useToast } from '../context/ToastContext';
 
 export interface NetworkNode {
   id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact' | 'collection';
+  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact';
   name: string;
   avatar_url?: string;
   online?: boolean;
@@ -90,29 +90,6 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
             newLinks.push({ source: fileId, target: currentUserId.toString(), type: 'drift' }); // Using 'drift' type for dotted line look, or create new type 'artifact'
           });
       }
-
-      // Add Collection Nodes
-      loadedCollections.forEach(c => {
-          const collectionNodeId = `collection-${c.id}`;
-          nodeMap.set(collectionNodeId, {
-              id: collectionNodeId,
-              group: 'collection',
-              name: c.name,
-              data: c,
-              online: true
-          });
-          
-          // Link Collection to Me
-          newLinks.push({ source: currentUserId.toString(), target: collectionNodeId, type: 'collection' });
-
-          // Link Collection to Files
-          c.file_ids.forEach(fid => {
-              const fileNodeId = `file-${fid}`;
-              if (nodeMap.has(fileNodeId)) {
-                  newLinks.push({ source: collectionNodeId, target: fileNodeId, type: 'collection' });
-              }
-          });
-      });
 
       // Add Social Nodes
       const processNode = (r: any, group: NetworkNode['group']) => {

@@ -17,7 +17,3 @@
 ## 2025-01-07 - Inbox Thematic Consistency
 **Learning:** The Inbox overlay, being a central hub, requires consistent thematic empty states (Alerts: "Silence...", Messages: "No Active Channels"). Icon-heavy, centered empty states (using `IconBellOff`, `IconMessageOff`) communicate status more effectively and engagingly than plain text.
 **Action:** Ensure all tabs or sub-views within a modal share the same high-fidelity empty state patterns to maintain a cohesive experience.
-
-## 2025-01-20 - Skeleton Layout Matching
-**Learning:** When loading a list or grid, a single spinner is jarring. Using multiple Skeleton components that mimic the target layout (e.g., a grid of 3 items) makes the transition to content seamless and reduces perceived latency.
-**Action:** Always match the Skeleton count and layout to the expected content structure.

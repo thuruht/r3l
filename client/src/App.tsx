@@ -2,16 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconSettings, IconUsers, IconArchive, IconMessageCircle
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard
 } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
-import GroupChat from './components/GroupChat';
-import ArchiveVote from './components/ArchiveVote';
-import GlobalChat from './components/GlobalChat';
-import CommuniquePage from './pages/CommuniquePage';
-import SettingsPage from './pages/SettingsPage';
+import CommuniquePage from './components/CommuniquePage';
 import About from './components/About';
 import FAQ from './components/FAQ';
 import PrivacyPolicy from './components/PrivacyPolicy';
@@ -21,13 +17,11 @@ import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
+import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import AmbientBackground from './components/AmbientBackground';
-import CustomizationSettings from './components/CustomizationSettings';
-import KeyManager from './components/KeyManager';
 
 import './styles/global.css';
 import './styles/App.css';
@@ -36,19 +30,15 @@ interface User {
   id: number;
   username: string;
   avatar_url?: string;
-  is_lurking?: boolean;
 }
 
 function Main() {
   const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
@@ -62,60 +52,38 @@ function Main() {
   // Websocket state
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
-  const reconnectTimeoutRef = useRef<number | null>(null);
 
   const { theme, toggleTheme } = useTheme();
-  const { theme_preferences } = useCustomization();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    // Check Auth with Retry
-    const checkAuth = async (retries = 3) => {
-        try {
-            const res = await fetch('/api/users/me');
-            if (res.status === 401) {
-                // Definite logout
-                setLoadingUser(false);
-                return;
-            }
-            if (res.ok) {
-                const data = await res.json();
-                setCurrentUser(data.user);
-                setLoadingUser(false);
-                // Connect WS
-                connectWebSocket();
-                return;
-            }
-            throw new Error(`Status: ${res.status}`);
-        } catch (e) {
-            if (retries > 0) {
-                console.log("Auth check failed, retrying...", e);
-                // Retry after delay
-                setTimeout(() => checkAuth(retries - 1), 500);
-            } else {
-                console.error("Auth check failed after retries", e);
-                setLoadingUser(false);
-                if (location.pathname !== '/verify') {
-                    // Stay on login screen
-                }
-            }
+    // Check Auth
+    fetch('/api/users/me')
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Unauthorized');
+      })
+      .then(data => {
+        setCurrentUser(data.user);
+        setLoadingUser(false);
+        // Connect WS
+        connectWebSocket();
+      })
+      .catch(() => {
+        setLoadingUser(false);
+        if (location.pathname !== '/verify') { // Don't redirect if verifying
+             // Allow unauthenticated landing view (Drift only mode?)
+             // For now, simple auth gate, but maybe show "Connect" button
         }
-    };
-
-    checkAuth();
+      });
   }, []); // Run once
 
   // Websocket Connection
   const connectWebSocket = () => {
-      if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-      }
-
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
+      const host = window.location.host; // e.g. localhost:8787 or r3l.distorted.work
       const wsUrl = `${protocol}//${host}/api/do-websocket`;
 
       const socket = new WebSocket(wsUrl);
@@ -140,18 +108,19 @@ function Main() {
                   });
               } else if (msg.type === 'new_notification') {
                   if (msg.notificationType === 'system_alert') {
-                      showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error');
+                      showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error'); // Using 'error' for high visibility, or custom 'alert' type
                   } else {
                       showToast(`New Notification: ${msg.notificationType}`, 'info');
-                      setUnreadCount(prev => prev + 1);
+                      setUnreadCount(prev => prev + 1); // Simple increment
+                      refreshNetwork(); // Refresh graph to show new links
                   }
-                  refreshNetwork();
               } else if (msg.type === 'new_message') {
                   showToast(`New Whisper from user ${msg.sender_id}`, 'info');
                   setUnreadCount(prev => prev + 1);
               } else if (msg.type === 'signal_artifact') {
+                   // Only if drifting? Or show faint pulse?
                    if (isDrifting) {
-                       fetchDrift(driftType);
+                       fetchDrift(); // Refresh drift data
                    }
               }
           } catch (e) {
@@ -161,8 +130,7 @@ function Main() {
 
       socket.onclose = () => {
           console.log('Signal Stream lost. Reconnecting...');
-          setWs(null);
-          reconnectTimeoutRef.current = window.setTimeout(connectWebSocket, 3000);
+          setTimeout(connectWebSocket, 3000);
       };
   };
 
@@ -216,9 +184,10 @@ function Main() {
     onlineUserIds
   });
 
+  const refreshNetworkRef = useRef(refreshNetwork);
   useEffect(() => {
-    refreshNetwork();
-  }, [currentUser, isDrifting, driftData]);
+    refreshNetworkRef.current = refreshNetwork;
+  }, [refreshNetwork]);
 
   const playNotificationSound = () => {
     try {
@@ -227,17 +196,6 @@ function Main() {
         audio.play().catch(e => console.log('Audio play failed', e));
     } catch (e) {}
   };
-
-  useEffect(() => {
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (ws) {
-        ws.close();
-      }
-    };
-  }, [ws]);
 
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
@@ -254,14 +212,7 @@ function Main() {
           if (node && node.data) {
               setPreviewFile(node.data);
           }
-      } else if (nodeId.startsWith('collection-')) {
-          const collectionId = nodeId.replace('collection-', '');
-          // Open CollectionsManager. For now, just open the manager,
-          // later we might add a specific view mode for a collection.
-          setIsCollectionsOpen(true);
-          // Potentially: setFocusedCollectionId(collectionId); in state and pass down
-      }
-      else {
+      } else {
          // It's a user
          navigate(`/communique/${nodeId}`);
       }
@@ -295,7 +246,7 @@ function Main() {
 
   const handleRegister = async (e: React.FormEvent) => {
       e.preventDefault();
-      try {
+       try {
           const res = await fetch('/api/register', {
               method: 'POST',
               headers: {'Content-Type': 'application/json'},
@@ -311,7 +262,7 @@ function Main() {
       } catch (err) {
           showToast('Registration failed', 'error');
       }
-  };
+  }
 
   // Admin Check
   const isAdmin = currentUser?.id === 1; // Hardcoded admin ID for now
@@ -338,7 +289,7 @@ function Main() {
     <>
       {!currentUser && location.pathname !== '/verify' ? (
         <div className="login-container">
-            <h1 className="glitch" data-text="r3L-f">r3L-f</h1>
+            <h1 className="glitch" data-text="REL F">REL F</h1>
             <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
 
             <div className="login-grid">
@@ -392,15 +343,11 @@ function Main() {
         </div>
       ) : (
         <>
-            <KeyManager />
             {/* Header / Nav */}
-            <div className="header glass-panel" style={{ 
-              background: `rgba(${theme === 'light' ? '255, 255, 255' : '20, 25, 32'}, ${theme_preferences.navOpacity ?? 0.8})`,
-              backdropFilter: 'blur(12px)'
-            }}>
+            <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>r3L-f <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
                     <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
                          <SearchBar />
                          <RandomUserButton />
@@ -452,11 +399,7 @@ function Main() {
                       </div>
                     </div>
                     
-                    <button onClick={() => { 
-                      if (!isInboxOpen) setIsMenuOpen(false); 
-                      setIsInboxOpen(!isInboxOpen); 
-                      setUnreadCount(0); 
-                    }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
+                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
                     Inbox
                     {unreadCount > 0 && (
                         <span style={{
@@ -472,10 +415,7 @@ function Main() {
                     )}
                     </button>
     
-                    <button onClick={() => {
-                        if (!isMenuOpen) setIsInboxOpen(false);
-                        setIsMenuOpen(!isMenuOpen);
-                    }} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
                         {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
                     </button>
                 </div>
@@ -498,7 +438,7 @@ function Main() {
                   overflowY: 'auto'
                 }}>
                     <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
-                        <SearchBar onNavigate={() => setIsMenuOpen(false)} />
+                        <SearchBar />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View Mode:</span>
                              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
@@ -536,28 +476,12 @@ function Main() {
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Discover:</span>
-                             <RandomUserButton onNavigate={() => setIsMenuOpen(false)} />
+                             <RandomUserButton />
                         </div>
                     </div>
 
                     <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconFolder size={18} /> Collections
-                    </button>
-
-                    <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconUsers size={18} /> Groups
-                    </button>
-
-                    <button onClick={() => { navigate('/chat'); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconMessageCircle size={18} /> Global Chat
-                    </button>
-
-                    <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconArchive size={18} /> Community Archive
-                    </button>
-
-                    <button onClick={() => { setIsSettingsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconSettings size={18} /> Settings
                     </button>
 
                     <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
@@ -592,15 +516,11 @@ function Main() {
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
             {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-            {isGroupChatOpen && currentUser && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser.id} />}
-            {isArchiveOpen && <ArchiveVote onClose={() => setIsArchiveOpen(false)} />}
             {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
             {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
-            {isSettingsOpen && <SettingsPage onClose={() => setIsSettingsOpen(false)} currentUser={currentUser} onUpdateUser={setCurrentUser} />}
             {previewFile && (
               <FilePreviewModal
                   fileId={previewFile.id}
-                  currentUser={currentUser}
                   filename={previewFile.filename}
                   mimeType={previewFile.mime_type}
                   onClose={() => setPreviewFile(null)}
@@ -618,7 +538,6 @@ function Main() {
             <Routes>
         <Route path="/verify" element={<VerifyEmail />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/chat" element={<GlobalChat />} />
         <Route path="/" element={
                 viewMode === 'graph' ? (
                   <AssociationWeb
@@ -628,7 +547,6 @@ function Main() {
                     collections={collections}
                     isDrifting={isDrifting}
                     onlineUserIds={onlineUserIds}
-                    isLurking={currentUser?.is_lurking}
                   />
                 ) : (
                   <NetworkList
@@ -638,10 +556,8 @@ function Main() {
                     />
                 )
               } />
-              <Route path="/communique/:userId" element={<CommuniquePage currentUser={currentUser} onUpdateUser={(user) => setCurrentUser(user)} />} />
+              <Route path="/communique/:userId" element={<CommuniquePage />} />
             </Routes>
-
-            {currentUser && <CustomizationSettings />}
         </>
       )}
     </>

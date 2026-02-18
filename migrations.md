@@ -18,9 +18,6 @@ This document tracks the database schema evolution for Rel F (Relational Ephemer
 | 0010 | `create_collections` | Creates `collections` and `collection_files` tables. | ✅ Applied |
 | 0011 | `create_messages` | Creates `messages` table for direct messaging. | ✅ Applied |
 | 0012 | `add_encryption_and_archive_to_messages` | Adds `is_encrypted`, `iv` to `messages` and `files`. | ✅ Applied |
-| 0013 | `add_parent_id_to_files` | Adds recursive structure to files (folders/threads). | ✅ Applied |
-| 0014 | `security_updates` | Adds E2EE keys, recovery tokens, and burn-on-read. | ✅ Applied |
-| 0015 | `refinement_phase` | Adds file tags and `file_keys` table for E2EE sharing. | ✅ Applied |
 
 ---
 
@@ -77,18 +74,3 @@ Curated sets of files.
 ### 0011_create_messages.sql & 0012
 Direct messaging system.
 - **messages**: `id`, `sender_id`, `receiver_id`, `content`, `is_read`, `created_at`, `is_archived`, `is_encrypted`, `iv`.
-
-### 0013_add_parent_id_to_files.sql
-Adds support for file hierarchy or threads.
-- **files**: `parent_id` (FK -> files.id, Nullable)
-
-### 0014_security_updates.sql
-Enhancements for security and privacy.
-- **users**: `public_key`, `encrypted_private_key`, `reset_token`, `reset_expires`.
-- **files**: `burn_on_read` (BOOLEAN).
-
-### 0015_refinement_phase.sql
-Polishing and advanced E2EE sharing features.
-- **files**: `tags` (TEXT).
-- **file_keys**: Table for storing encrypted file keys for shared users (E2EE sharing).
-    - `file_id`, `user_id`, `encrypted_key`.

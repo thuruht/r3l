@@ -28,10 +28,9 @@ const CommuniquePage: React.FC<CommuniquePageProps> = ({ currentUser, onUpdateUs
       display: 'flex', justifyContent: 'center', paddingTop: '20px', paddingBottom: '20px'
     }}>
         <div style={{
-            maxWidth: '800px', width: '90%', maxHeight: 'calc(100vh - 40px)',
+            maxWidth: '800px', width: '90%',
             background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
-            padding: '20px', position: 'relative', boxShadow: '0 0 30px #000',
-            overflowY: 'auto'
+            padding: '20px', position: 'relative', boxShadow: '0 0 30px #000'
         }}>
             <button 
                 onClick={() => navigate(-1)} 

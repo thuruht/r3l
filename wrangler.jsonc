@@ -14,7 +14,7 @@
     "head_sampling_rate": 1
   },
   "assets": {
-    "directory": "./dist",
+    "directory": "./client/dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application"
   },
@@ -46,10 +46,6 @@
       {
         "name": "DOCUMENT_ROOM",
         "class_name": "DocumentRoom"
-      },
-      {
-        "name": "CHAT_ROOM",
-        "class_name": "ChatRoom"
       }
     ]
   },
@@ -67,12 +63,6 @@
       "tag": "v2",
       "new_classes": [
         "DocumentRoom"
-      ]
-    },
-    {
-      "tag": "v3",
-      "new_classes": [
-        "ChatRoom"
       ]
     }
   ],

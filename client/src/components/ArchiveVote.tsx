@@ -38,22 +38,24 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
           <h2 style={{ margin: 0, color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <IconArchive size={24} /> Community Archive
           </h2>
-          <button onClick={onClose} className="icon-btn" aria-label="Close archive"><IconX size={24} /></button>
+          <button onClick={onClose} className="icon-btn" aria-label="Close"><IconX size={24} /></button>
         </div>
 
         {loading && (
-          <div style={{ display: 'grid', gap: '10px' }}>
-             {[1, 2, 3].map(i => (
-               <Skeleton key={i} height="80px" borderRadius="8px" />
-             ))}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <Skeleton height="80px" borderRadius="8px" />
+            <Skeleton height="80px" borderRadius="8px" />
+            <Skeleton height="80px" borderRadius="8px" />
           </div>
         )}
         
         {!loading && files.length === 0 && (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-            <IconArchive size={48} stroke={1} style={{ opacity: 0.5 }} />
-            <p style={{ margin: 0, fontSize: '1.1em' }}>No Artifacts Preserved</p>
-            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The archives are silent.</p>
+          <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
+            <IconArchive size={64} stroke={1} style={{ opacity: 0.3 }} aria-hidden="true" />
+            <div>
+              <p style={{ margin: 0, fontSize: '1.2em', fontWeight: 'bold', color: 'var(--text-primary)' }}>No Artifacts Preserved</p>
+              <p style={{ margin: '5px 0 0 0', fontSize: '0.95em', opacity: 0.7 }}>The community archives are silent.</p>
+            </div>
           </div>
         )}
 

@@ -7,10 +7,8 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
 
 interface CommuniqueProps {
-  userId: string;
-  isOwner: boolean;
-  currentUser: any;
-  onUpdateUser?: (user: any) => void;
+  userId: number; // Changed to number to match typical usage, though strict string/number handling is good
+  onClose?: () => void; // Optional now if we use routes
 }
 
 interface CommuniqueData {
@@ -25,20 +23,38 @@ interface UserProfile {
     avatar_url?: string;
 }
 
-const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, onUpdateUser }) => {
+const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [data, setData] = useState<CommuniqueData>({ content: '', theme_prefs: '{}', updated_at: null });
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null);
+  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
+
+  const isOwner = currentUser?.id === Number(userId);
+
+  useEffect(() => {
+    const fetchMe = async () => {
+        try {
+            const res = await fetch('/api/users/me');
+            if (res.ok) {
+                const json = await res.json();
+                setCurrentUser(json.user);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+    fetchMe();
+  }, []);
 
   useEffect(() => {
       const fetchTargetUser = async () => {
@@ -59,7 +75,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
   // Fetch relationship status
   useEffect(() => {
     const fetchRelationshipStatus = async () => {
-      if (!currentUser || !userId || isOwner) {
+      if (!currentUser || !userId || isOwner) { // No relationship to fetch if it's our own communique
         setRelationshipStatus(null);
         return;
       }
@@ -69,48 +85,50 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
         if (res.ok) {
           const { outgoing, incoming, mutual } = await res.json();
           
-          const targetId = parseInt(userId);
+          const targetId = userId;
 
-          // Check mutual first (highest priority)
-          const isMutual = mutual.some((r: any) => r.user_id === targetId);
-          if (isMutual) {
-            setRelationshipStatus('sym_accepted');
+          // Check if currentUser follows this userId
+          const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow');
+          if (isFollowing) {
+            setRelationshipStatus('following');
             return;
           }
 
           // Check for pending sym request from currentUser to this userId
-          const symRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === 'sym_request' && r.status === 'pending');
+          const symRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
           if (symRequested) {
             setRelationshipStatus('sym_requested');
             return;
           }
 
           // Check for incoming sym request from this userId to currentUser
-          const incomingSymRequest = incoming.some((r: any) => r.user_id === targetId && r.type === 'sym_request' && r.status === 'pending');
+          const incomingSymRequest = incoming.some((r: any) => r.user_id === targetId && r.type === 'sym_request');
           if (incomingSymRequest) {
             setRelationshipStatus('incoming_sym_request');
             return;
           }
 
-          // Check if currentUser follows this userId
-          const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow' && r.status === 'accepted');
-          if (isFollowing) {
-            setRelationshipStatus('following');
+          // Check for mutual (sym) connection
+          const isMutual = mutual.some((r: any) => r.user_id === targetId);
+          if (isMutual) {
+            setRelationshipStatus('sym_accepted');
             return;
           }
           
-          setRelationshipStatus('none');
+          setRelationshipStatus('none'); // No specific relationship found
         } else {
+          showToast('Failed to load relationship status.', 'error');
           setRelationshipStatus(null);
         }
       } catch (err) {
         console.error("Failed to load relationship status", err);
+        showToast('Error loading relationship status.', 'error');
         setRelationshipStatus(null);
       }
     };
 
     fetchRelationshipStatus();
-  }, [userId, currentUser, isOwner]);
+  }, [userId, currentUser, isOwner, showToast]);
 
   useEffect(() => {
     if (isEditing && editorRef.current) {
@@ -163,9 +181,9 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
         if (res.ok) {
             const data = await res.json();
             showToast('Avatar uploaded successfully!', 'success');
-            if (onUpdateUser) {
-                onUpdateUser({ ...currentUser, avatar_url: data.avatar_url });
-            }
+            // Optimistically update current user state if we had a global store,
+            // but here we just update local state which might not reflect everywhere until reload.
+            setCurrentUser(prev => prev ? ({ ...prev, avatar_url: data.avatar_url }) : null);
         } else {
             const err = await res.json();
             showToast(err.error || 'Failed to upload avatar', 'error');
@@ -447,7 +465,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, isOwner, currentUser, o
         </div>
       )}
       
-      <Artifacts userId={userId} isOwner={isOwner} currentUser={currentUser} />
+      <Artifacts userId={userId.toString()} isOwner={isOwner} />
     </div>
   );
 };

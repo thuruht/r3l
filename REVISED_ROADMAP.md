@@ -34,22 +34,11 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
 - [x] **Live Indicators:** Show "Online" status (glowing nodes) in the Association Web.
 - [x] **Signal Propagation:** When a user updates their Communique or uploads a file, send a visual "pulse" wave through the graph to their neighbors via WebSocket.
 
-## Phase 7: Synapse (Real-Time Collaboration) (Completed)
-*Goal: Simultaneous reality. Multiple users editing the same artifact.*
-- [x] **Backend - Durable Object:** Implement `DocumentRoom` with:
-    - [x] Yjs Sync Protocol (handling `sync-step-1`, `sync-step-2`, `update`).
-    - [x] **State Hibernation:** Use Cloudflare's WebSocket hibernation API for cost efficiency.
-    - [x] **Persistence:** Store Yjs updates in DO Storage (merging periodically to avoid fragmentation).
-- [x] **Frontend - Integration:**
-    - [x] Update `CodeEditor.tsx` to utilize `y-websocket` provider.
-    - [x] Handle connection states (offline/online) gracefully.
-    - [x] **Presence UI:** Visual avatars in FilePreviewModal and Yjs remote cursors styled.
-
-## Phase 8: Deep Customization (The "Advanced" Cue) (Completed)
+## Phase 7: Deep Customization (The "Advanced" Cue) (Completed)
 - [x] **Theme Engine:** Allow users to tweak the "Mist" parameters (color shifts, density) in their local client.
 - [x] **Profile aesthetics:** Allow custom hex codes for node colors (beyond the fixed theme).
 
-## Phase 9: Collections (Curated Chaos) (Functional)
+## Phase 8: Collections (Curated Chaos) (Functional)
 *Goal: Allow users to organize the ephemeral stream into permanent or semi-permanent sets.*
 - [x] **Backend - Core Logic**
     - [x] API: `CRUD /api/collections` (Name, Description, Visibility).
@@ -58,16 +47,12 @@ Based on the [r3l repository](https://github.com/thuruht/r3l) analysis, we are e
 - [x] **Frontend - Management**
     - [x] **Collection Manager:** A dedicated view (or modal) to create/edit collections.
     - [x] **Add to Collection:** Context menu on Files to "Add to [Collection Name]".
-- [x] **Visualization**
-    - [x] Represent Collections in the Association Web (Visualized as convex hulls around file nodes).
+- [ ] **Visualization**
+    - [ ] Represent Collections in the Association Web (perhaps as a larger "Cluster" node or a bounded hull around files).
 
 ## Future / Polish
-## Phase 10: Final Polish (Completed)
-- [x] **Mobile Optimization:**
-    - [x] Swipe Gestures for Inbox (Vanilla Touch Implementation).
-    - [x] PWA improvements (Service Worker caching verified).
-- [x] **Audio Experience:**
-    - [x] Spatial Audio Graph (Web Audio API panners for Drift nodes).
+- [ ] **Deep Visualization:** Visualizing collections as clusters in the graph.
+- [ ] **Mobile Optimization:** Ensure complex overlays work well on small screens.
 
 ---
 

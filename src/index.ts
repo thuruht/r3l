@@ -32,8 +32,8 @@ interface Env {
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
-  R2_ACCOUNT_ID: string; // Added
-  R2_BUCKET_NAME: string; // Added
+  R2_ACCOUNT_ID: string; // R2 Storage Account ID
+  R2_BUCKET_NAME: string; // R2 Bucket Name
   R2_PUBLIC_DOMAIN?: string; // Optional: Custom domain for R2
 }
 

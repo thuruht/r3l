@@ -11,8 +11,10 @@ import JSZip from 'jszip';
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
 import { DocumentRoom } from './do/DocumentRoom';
+import { ChatRoom } from './do/ChatRoom';
 export { RelfDO } from './do';
 export { DocumentRoom } from './do/DocumentRoom';
+export { ChatRoom } from './do/ChatRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -26,6 +28,7 @@ interface Env {
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
   DOCUMENT_ROOM: DurableObjectNamespace;
+  CHAT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -81,6 +84,53 @@ app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   } catch (error) {
     console.error("Error proxying Collab WebSocket:", error);
     return c.text('Collab WebSocket proxy failed', 500);
+  }
+});
+
+// Chat Room WebSocket endpoint
+app.get('/api/chat/:room', async (c) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+  const room = c.req.param('room');
+
+  // Note: Chat is currently public/open in this iteration,
+  // but we could add authMiddleware and pass user info via URL params or headers if we wanted strict auth.
+  // GlobalChat.tsx sends cookies which are handled by the browser, but WebSocket upgrade might need help.
+  // The current GlobalChat.tsx doesn't pass tokens explicitly in the URL.
+  // We'll rely on the Durable Object to handle basic identity via params if passed, or anonymous.
+  // Ideally, we should verify auth token from cookie here.
+
+  // Let's check auth from cookie manually here to pass identity to DO
+  const token = getCookie(c, 'auth_token');
+  let userId = 0;
+  let username = 'Anonymous';
+
+  if (token && c.env.JWT_SECRET) {
+      try {
+          const payload = await verify(token, c.env.JWT_SECRET);
+          if (payload.id) {
+             userId = payload.id as number;
+             username = payload.username as string;
+          }
+      } catch (e) {}
+  }
+
+  try {
+    const doId = c.env.CHAT_ROOM.idFromName(room);
+    const doStub = c.env.CHAT_ROOM.get(doId);
+
+    // Pass user info via URL params for the DO to pick up
+    const url = new URL(c.req.url);
+    url.searchParams.set('userId', userId.toString());
+    url.searchParams.set('username', username);
+
+    const newRequest = new Request(url.toString(), c.req.raw);
+    return doStub.fetch(newRequest);
+  } catch (error) {
+    console.error("Error proxying Chat WebSocket:", error);
+    return c.text('Chat WebSocket proxy failed', 500);
   }
 });
 
@@ -2574,6 +2624,13 @@ export default {
     
     const now = new Date().toISOString();
     try {
+      // 0. Vitality Decay
+      // Automatically decay vitality for active files.
+      // This ensures 'vitality' isn't just a static score but a decaying resource.
+      await env.DB.prepare(
+        'UPDATE files SET vitality = MAX(0, vitality - 1) WHERE is_archived = 0 AND vitality > 0'
+      ).run();
+
       // 1. Purge Expired Files
       const { results } = await env.DB.prepare(
         'SELECT id, r2_key FROM files WHERE is_archived = 0 AND expires_at < ?'

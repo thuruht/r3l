@@ -203,6 +203,10 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           onlineGlow.append("feGaussianBlur").attr("stdDeviation", "3").attr("result", "coloredBlur");
           onlineGlow.append("feMerge").append("feMergeNode").attr("in", "coloredBlur");
 
+          // Probabilistic Halo Filter (Blur)
+          const probBlur = defs.append("filter").attr("id", "prob-blur");
+          probBlur.append("feGaussianBlur").attr("stdDeviation", "2");
+
           defs.append('marker')
             .attr('id', 'end-asym')
             .attr('viewBox', '0 -5 10 10')
@@ -289,11 +293,15 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       const linkEnter = linkSelection.enter().append('line');
       const allLinks = linkEnter.merge(linkSelection)
           .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
-          .attr('stroke-width', (d) => d.type === 'sym' ? 2 : 1)
-          .attr('opacity', (d) => d.type === 'sym' ? 0.8 : 0.4)
-          .attr('stroke-dasharray', (d) => d.type === 'sym' ? 'none' : '4,4')
+          .attr('stroke-width', (d) => d.type === 'sym' ? 2.5 : 1)
+          .attr('opacity', (d) => d.type === 'sym' ? 0.9 : 0.3) // Sym solid, Asym faint
+          .attr('stroke-dasharray', (d) => d.type === 'sym' ? 'none' : '3,5') // Asym dashed
           .attr('marker-end', (d) => d.type === 'asym' ? 'url(#end-asym)' : null)
-          .style('filter', (d) => d.type === 'sym' ? 'url(#glow)' : 'none');
+          .style('filter', (d) => {
+              if (d.type === 'sym') return 'url(#glow)';
+              if (d.type === 'asym') return 'url(#prob-blur)'; // Probabilistic halo effect
+              return 'none';
+          });
 
       // 3. Nodes
       const nodeSelection = g.select('.nodes').selectAll<SVGGElement, D3Node>('g.node')

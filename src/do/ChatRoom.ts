@@ -46,6 +46,28 @@ export class ChatRoom {
 
     // Broadcast join
     this.broadcast({ type: "join", userId, username }, ws);
+
+    // Ensure cleanup alarm is scheduled
+    const currentAlarm = await this.state.storage.getAlarm();
+    if (currentAlarm === null) {
+      await this.state.storage.setAlarm(Date.now() + 60 * 60 * 1000); // 1 hour
+    }
+  }
+
+  async alarm() {
+    // 24-hour TTL: Delete messages older than 24 hours
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Since keys are ISO timestamps, we can range query up to cutoff
+    const oldMessages = await this.state.storage.list({ end: cutoff });
+
+    if (oldMessages.size > 0) {
+      const keysToDelete = Array.from(oldMessages.keys());
+      await this.state.storage.delete(keysToDelete);
+      // Optional: Broadcast a 'cleanup' event if UI needs to know (not critical)
+    }
+
+    // Re-schedule alarm
+    await this.state.storage.setAlarm(Date.now() + 60 * 60 * 1000);
   }
 
   async webSocketMessage(ws: WebSocket, msg: string) {

@@ -11,8 +11,11 @@ import JSZip from 'jszip';
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
 import { DocumentRoom } from './do/DocumentRoom';
+import { ChatRoom } from './do/ChatRoom';
+
 export { RelfDO } from './do';
 export { DocumentRoom } from './do/DocumentRoom';
+export { ChatRoom } from './do/ChatRoom';
 
 // Define a new Hono variable type to include user_id in c.var
 type Variables = {
@@ -26,6 +29,7 @@ interface Env {
   BUCKET: R2Bucket;
   DO_NAMESPACE: DurableObjectNamespace;
   DOCUMENT_ROOM: DurableObjectNamespace;
+  CHAT_ROOM: DurableObjectNamespace;
   JWT_SECRET: string; // Ensure this is set in .dev.vars or wrangler.toml
   RESEND_API_KEY: string;
   ENCRYPTION_SECRET: string;
@@ -36,8 +40,6 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
-<<<<<<< ours
-=======
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
@@ -62,7 +64,6 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
->>>>>>> theirs
 // Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
@@ -81,6 +82,53 @@ app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   } catch (error) {
     console.error("Error proxying Collab WebSocket:", error);
     return c.text('Collab WebSocket proxy failed', 500);
+  }
+});
+
+// Chat Room WebSocket endpoint
+app.get('/api/chat/:room', async (c) => {
+  const upgradeHeader = c.req.header('Upgrade');
+  if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
+    return c.text('Expected Upgrade: websocket', 426);
+  }
+  const room = c.req.param('room');
+
+  // Note: Chat is currently public/open in this iteration,
+  // but we could add authMiddleware and pass user info via URL params or headers if we wanted strict auth.
+  // GlobalChat.tsx sends cookies which are handled by the browser, but WebSocket upgrade might need help.
+  // The current GlobalChat.tsx doesn't pass tokens explicitly in the URL.
+  // We'll rely on the Durable Object to handle basic identity via params if passed, or anonymous.
+  // Ideally, we should verify auth token from cookie here.
+
+  // Let's check auth from cookie manually here to pass identity to DO
+  const token = getCookie(c, 'auth_token');
+  let userId = 0;
+  let username = 'Anonymous';
+
+  if (token && c.env.JWT_SECRET) {
+      try {
+          const payload = await verify(token, c.env.JWT_SECRET);
+          if (payload.id) {
+             userId = payload.id as number;
+             username = payload.username as string;
+          }
+      } catch (e) {}
+  }
+
+  try {
+    const doId = c.env.CHAT_ROOM.idFromName(room);
+    const doStub = c.env.CHAT_ROOM.get(doId);
+
+    // Pass user info via URL params for the DO to pick up
+    const url = new URL(c.req.url);
+    url.searchParams.set('userId', userId.toString());
+    url.searchParams.set('username', username);
+
+    const newRequest = new Request(url.toString(), c.req.raw);
+    return doStub.fetch(newRequest);
+  } catch (error) {
+    console.error("Error proxying Chat WebSocket:", error);
+    return c.text('Chat WebSocket proxy failed', 500);
   }
 });
 
@@ -451,41 +499,7 @@ app.get('/api/users/me', async (c) => {
 
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
-<<<<<<< ours
-      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
-=======
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -501,38 +515,6 @@ app.get('/api/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
   }
 });
 
@@ -554,7 +536,6 @@ app.put('/api/users/me/privacy', authMiddleware, async (c) => {
   } catch (e) {
     console.error("Error updating privacy:", e);
     return c.json({ error: 'Failed to update privacy settings' }, 500);
->>>>>>> theirs
   }
 });
 
@@ -738,16 +719,8 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
   // Simple admin check: assume user ID 1 is the admin
   if (user_id !== 1) {
-=======
-  if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -771,15 +744,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
   if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -794,15 +759,7 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
   if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
   const targetId = Number(c.req.param('id'));
 
   if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -824,15 +781,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
   if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);
@@ -2574,6 +2523,13 @@ export default {
     
     const now = new Date().toISOString();
     try {
+      // 0. Vitality Decay
+      // Automatically decay vitality for active files.
+      // This ensures 'vitality' isn't just a static score but a decaying resource.
+      await env.DB.prepare(
+        'UPDATE files SET vitality = MAX(0, vitality - 1) WHERE is_archived = 0 AND vitality > 0'
+      ).run();
+
       // 1. Purge Expired Files
       const { results } = await env.DB.prepare(
         'SELECT id, r2_key FROM files WHERE is_archived = 0 AND expires_at < ?'

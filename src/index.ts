@@ -235,30 +235,6 @@ function getR2PublicUrl(c: any, r2_key: string): string {
     return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
 
-// --- Authentication Middleware ---
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
-
 // --- Auth Routes ---
 
 app.post('/api/register', async (c) => {

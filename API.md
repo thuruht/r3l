@@ -572,6 +572,7 @@ Real-time collaborative editing (Yjs protocol).
 | /api/forgot-password | 3 | 1 hour |
 | /api/reset-password | 3 | 1 hour |
 | /api/drift | 20 | 10 minutes |
+| /api/messages | 60 | 10 minutes |
 | /api/feedback | 3 | 1 hour |
 | /api/files/:id/vitality | 10 | 1 minute |
 

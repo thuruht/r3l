@@ -19,7 +19,7 @@ import FilePreviewModal from './components/FilePreviewModal';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
-import { useNetworkData } from './hooks/useNetworkData';
+import { useNetworkData, DriftData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
 import AmbientBackground from './components/AmbientBackground';
 
@@ -43,7 +43,7 @@ function Main() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftType, setDriftType] = useState<string>(''); // '' = all, 'image', 'audio', 'text'
-  const [driftData, setDriftData] = useState<{users: any[], files: any[]}>({ users: [], files: [] });
+  const [driftData, setDriftData] = useState<DriftData>({ users: [], files: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);

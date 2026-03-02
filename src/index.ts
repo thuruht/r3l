@@ -426,7 +426,6 @@ app.get('/api/users/me', async (c) => {
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -442,7 +441,6 @@ app.get('/api/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
-
   }
 });
 

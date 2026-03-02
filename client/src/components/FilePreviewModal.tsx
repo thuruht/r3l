@@ -5,9 +5,8 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import CollectionsManager from './CollectionsManager';
 import CodeEditor from './CodeEditor';
+import CollaborativeCodeEditor from './CollaborativeCodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
-import * as Y from 'yjs';
-import { WebsocketProvider } from 'y-websocket';
 import { useCollections } from '../hooks/useCollections';
 import UploadModal from './UploadModal';
 
@@ -39,10 +38,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
 
-  // Collaboration State - Using useState for re-rendering CodeEditor (Fix from mobile-fixes branch)
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<any[]>([]);
 
   const { theme_preferences, updateCustomization } = useCustomization();
@@ -226,73 +222,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           showToast('Vote failed', 'error');
       }
   };
-
-  // --- Collab Setup ---
-  useEffect(() => {
-    let currentProvider: WebsocketProvider | null = null;
-    let currentDoc: Y.Doc | null = null;
-
-    if (isEditing && isText) {
-       // Initialize Yjs
-       setCollabStatus('connecting');
-       const doc = new Y.Doc();
-       const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
-
-       // Note: In real production, authentication token should be passed here
-       const prov = new WebsocketProvider(`${wsUrl}/api/collab/${fileId}`, '', doc);
-
-       // Set Awareness
-       const userColor = theme_preferences.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
-       prov.awareness.setLocalStateField('user', {
-           name: currentUser?.username || 'Anonymous',
-           color: userColor,
-           id: currentUser?.id
-       });
-
-       prov.awareness.on('change', () => {
-           const states = Array.from(prov.awareness.getStates().values());
-           const users = states.map((s: any) => s.user).filter((u: any) => u);
-           setConnectedUsers(users);
-       });
-
-       prov.on('status', (event: any) => {
-         setCollabStatus(event.status); // 'connected' or 'disconnected'
-       });
-
-       const yText = doc.getText('codemirror'); // Standard Yjs text type name
-
-       // Initial sync: set local content to Yjs doc if empty
-       // Ensure we don't overwrite if data exists (naive check)
-       if (editContent && yText.length === 0) {
-           yText.insert(0, editContent);
-       }
-       
-       // Force sync just in case
-       if (yText.toString() === '' && editContent !== '') {
-           yText.insert(0, editContent);
-       }
-
-       // Observe changes from other peers
-       yText.observe(event => {
-           setEditContent(yText.toString());
-       });
-
-       setYdoc(doc);
-       setProvider(prov);
-       currentProvider = prov;
-       currentDoc = doc;
-
-    } else {
-        setCollabStatus('disconnected');
-        setYdoc(null);
-        setProvider(null);
-    }
-
-    return () => {
-        if (currentProvider) currentProvider.destroy();
-        if (currentDoc) currentDoc.destroy();
-    };
-  }, [isEditing, isText, fileId]); // Removed editContent from dep array to avoid loops, handled inside
 
   const isMobile = window.innerWidth < 768;
 
@@ -551,12 +480,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                    />
                )}
                {isText && isEditing && (
-                   <CodeEditor
-                     content={editContent}
-                     onChange={(val) => setEditContent(val)}
+                   <CollaborativeCodeEditor
+                     fileId={fileId!}
+                     currentUser={currentUser}
+                     themePreferences={theme_preferences}
+                     initialContent={editContent}
                      filename={filename}
-                     ydoc={ydoc}
-                     provider={provider}
+                     onChange={(val) => setEditContent(val)}
+                     onStatusChange={setCollabStatus}
+                     onUsersChange={setConnectedUsers}
                    />
                )}
              </>

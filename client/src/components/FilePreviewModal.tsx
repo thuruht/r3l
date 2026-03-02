@@ -3,7 +3,7 @@ import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdi
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
-import CollectionsManager from './CollectionsManager';
+import CollectionSelectModal from './CollectionSelectModal';
 import CodeEditor from './CodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
 import * as Y from 'yjs';
@@ -573,7 +573,16 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         />
       </div>
       {showCollectionSelect && (
-          <CollectionsManager mode="select" onClose={() => setShowCollectionSelect(false)} onSelect={(cid) => { addToCollection(cid, fileId); setShowCollectionSelect(false); }} />
+          <CollectionSelectModal
+              onClose={() => setShowCollectionSelect(false)}
+              onSelect={(cid) => {
+                  // fileId is string | null, we need number for addToCollection
+                  if (fileId) {
+                      addToCollection(cid, parseInt(fileId));
+                  }
+                  setShowCollectionSelect(false);
+              }}
+          />
       )}
       {showRemixUpload && (
           <UploadModal

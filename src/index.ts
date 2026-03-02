@@ -7,6 +7,9 @@ import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';
 import JSZip from 'jszip';
+import { ADMIN_USER_ID } from './constants';
+
+import { pwdRedoEmailTemp } from './utils/emailTemplates';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
@@ -39,8 +42,6 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
-<<<<<<< ours
-=======
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
@@ -65,7 +66,6 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
->>>>>>> theirs
 // Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
@@ -238,28 +238,6 @@ function getR2PublicUrl(c: any, r2_key: string): string {
 }
 
 // --- Authentication Middleware ---
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // --- Auth Routes ---
 
@@ -416,7 +394,7 @@ app.post('/api/forgot-password', async (c) => {
                 from: 'Rel F Recovery <recovery@r3l.distorted.work>',
                 to: email,
                 subject: 'Reset your Rel F password',
-                html: `<p>Hi ${user.username},</p><p>Click <a href="https://r3l.distorted.work/reset-password?token=${resetToken}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`
+                html: pwdRedoEmailTemp(user.username as string, resetToken as string)
             });
         } catch (emailError) {
              console.error("Failed to send reset email:", emailError);
@@ -501,41 +479,7 @@ app.get('/api/users/me', async (c) => {
 
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
-<<<<<<< ours
-      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
-=======
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -551,38 +495,6 @@ app.get('/api/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
   }
 });
 
@@ -604,7 +516,6 @@ app.put('/api/users/me/privacy', authMiddleware, async (c) => {
   } catch (e) {
     console.error("Error updating privacy:", e);
     return c.json({ error: 'Failed to update privacy settings' }, 500);
->>>>>>> theirs
   }
 });
 
@@ -788,16 +699,9 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
   // Simple admin check: assume user ID 1 is the admin
-  if (user_id !== 1) {
-=======
   if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
+
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -821,15 +725,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -844,15 +740,7 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
   const targetId = Number(c.req.param('id'));
 
   if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -874,15 +762,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);

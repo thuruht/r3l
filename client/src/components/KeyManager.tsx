@@ -15,7 +15,6 @@ const KeyManager: React.FC = () => {
             const storedPublic = localStorage.getItem('r3l_public_key');
 
             if (!storedPrivate || !storedPublic) {
-                console.log("Generating new RSA Keypair...");
                 try {
                     const keyPair = await generateRSAKeyPair();
                     const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
@@ -30,7 +29,6 @@ const KeyManager: React.FC = () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ public_key: pubKeyBase64 })
                     });
-                    console.log("Public Key uploaded.");
 
                 } catch (e) {
                     console.error("Failed to generate/upload keys:", e);

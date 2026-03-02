@@ -311,8 +311,11 @@ app.post('/api/register', async (c) => {
     } else {
       return c.json({ error: 'Failed to create user' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed: users.username')) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
+    if (errorMessage && errorMessage.includes('UNIQUE constraint failed: users.username')) {
       return c.json({ error: 'Username already taken' }, 409);
     }
     if (e.message && e.message.includes('UNIQUE constraint failed')) {
@@ -374,9 +377,12 @@ app.post('/api/login', async (c) => {
       } 
     });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error(e);
-    return c.json({ error: 'Login failed' }, 500);
+    return c.json({ error: 'Login failed', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1042,9 +1048,12 @@ app.get('/api/notifications', async (c) => {
     ).bind(user_id).all();
 
     return c.json({ notifications: results });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error fetching notifications:", e);
-    return c.json({ error: 'Failed to fetch notifications' }, 500);
+    return c.json({ error: 'Failed to fetch notifications', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1134,8 +1143,11 @@ app.post('/api/relationships/follow', authMiddleware, async (c) => {
     } else {
       return c.json({ error: 'Failed to follow user' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
+    if (errorMessage && errorMessage.includes('UNIQUE constraint failed')) {
       return c.json({ error: 'Already following this user' }, 409);
     }
     console.error("Error following user:", e);
@@ -1210,9 +1222,12 @@ app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
     } else {
       return c.json({ error: 'Failed to send sym request' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error sending sym request:", e);
-    return c.json({ error: 'Failed to send sym request' }, 500);
+    return c.json({ error: 'Failed to send sym request', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1263,9 +1278,12 @@ app.post('/api/relationships/accept-sym-request', authMiddleware, async (c) => {
     
     return c.json({ message: 'Sym request accepted and mutual connection established' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error accepting sym request:", e);
-    return c.json({ error: 'Failed to accept sym request' }, 500);
+    return c.json({ error: 'Failed to accept sym request', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1296,9 +1314,12 @@ app.post('/api/relationships/decline-sym-request', authMiddleware, async (c) => 
     } else {
       return c.json({ error: 'Failed to decline sym request' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error declining sym request:", e);
-    return c.json({ error: 'Failed to decline sym request' }, 500);
+    return c.json({ error: 'Failed to decline sym request', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1360,9 +1381,12 @@ app.delete('/api/relationships/:target_user_id', authMiddleware, async (c) => {
 
     return c.json({ error: 'Relationship not found or not removable by current user' }, 404);
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error removing relationship:", e);
-    return c.json({ error: 'Failed to remove relationship' }, 500);
+    return c.json({ error: 'Failed to remove relationship', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1412,9 +1436,12 @@ app.get('/api/relationships', authMiddleware, async (c) => {
       incoming: incoming.results.map(processAvatar),
       mutual: mutual.results.map(processAvatar),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error listing relationships:", e);
-    return c.json({ error: 'Failed to list relationships' }, 500);
+    return c.json({ error: 'Failed to list relationships', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1469,9 +1496,12 @@ app.get('/api/drift', authMiddleware, async (c) => {
             files: driftFiles.results
         });
 
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+      const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+      const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
         console.error("Error fetching drift data:", e);
-        return c.json({ error: 'Failed to fetch drift data' }, 500);
+        return c.json({ error: 'Failed to fetch drift data', details: safeErrorMessage }, 500);
     }
 });
 
@@ -1494,9 +1524,12 @@ app.get('/api/communiques/:user_id', authMiddleware, async (c) => {
     }
 
     return c.json(communique);
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error fetching communique:", e);
-    return c.json({ error: 'Failed to fetch communique' }, 500);
+    return c.json({ error: 'Failed to fetch communique', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1540,9 +1573,12 @@ app.put('/api/communiques', async (c) => {
     } else {
       return c.json({ error: 'Failed to update communique' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error updating communique:", e);
-    return c.json({ error: 'Failed to update communique' }, 500);
+    return c.json({ error: 'Failed to update communique', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1559,9 +1595,12 @@ app.get('/api/files', async (c) => {
     ).bind(user_id).all();
 
     return c.json({ files: results });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error listing files:", e);
-    return c.json({ error: 'Failed to list files' }, 500);
+    return c.json({ error: 'Failed to list files', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1597,9 +1636,12 @@ app.get('/api/users/:target_user_id/files', async (c) => {
     const { results } = await c.env.DB.prepare(query + ' ORDER BY created_at DESC').bind(target_user_id).all();
     return c.json({ files: results });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error listing user files:", e);
-    return c.json({ error: 'Failed to list files' }, 500);
+    return c.json({ error: 'Failed to list files', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1701,9 +1743,12 @@ app.post('/api/files', async (c) => {
       return c.json({ error: 'Failed to record file metadata' }, 500);
     }
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error uploading file:", e);
-    return c.json({ error: 'File upload failed' }, 500);
+    return c.json({ error: 'File upload failed', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1819,9 +1864,12 @@ app.get('/api/files/:id/content', async (c) => {
       headers,
     });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error downloading file:", e);
-    return c.json({ error: 'Failed to download file' }, 500);
+    return c.json({ error: 'Failed to download file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1857,9 +1905,12 @@ app.put('/api/files/:id/content', async (c) => {
     
     return c.json({ message: 'File updated successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error updating file:", e);
-    return c.json({ error: 'Failed to update file' }, 500);
+    return c.json({ error: 'Failed to update file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1897,9 +1948,12 @@ app.post('/api/files/:id/share', async (c) => {
 
     return c.json({ message: 'Artifact shared successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error sharing file:", e);
-    return c.json({ error: 'Failed to share file' }, 500);
+    return c.json({ error: 'Failed to share file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1931,9 +1985,12 @@ app.delete('/api/files/:id', async (c) => {
 
     return c.json({ message: 'File deleted successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error deleting file:", e);
-    return c.json({ error: 'Failed to delete file' }, 500);
+    return c.json({ error: 'Failed to delete file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -1965,9 +2022,12 @@ app.post('/api/files/:id/refresh', async (c) => {
     } else {
       return c.json({ error: 'Failed to refresh file' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error refreshing file:", e);
-    return c.json({ error: 'Failed to refresh file' }, 500);
+    return c.json({ error: 'Failed to refresh file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2000,9 +2060,12 @@ app.post('/api/files/:id/vitality', async (c) => {
     } else {
       return c.json({ error: 'Failed to boost vitality' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error boosting vitality:", e);
-    return c.json({ error: 'Failed to boost vitality' }, 500);
+    return c.json({ error: 'Failed to boost vitality', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2023,9 +2086,12 @@ app.post('/api/files/:id/archive', async (c) => {
     } else {
       return c.json({ error: 'Failed to archive file (or unauthorized)' }, 403);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error archiving file:", e);
-    return c.json({ error: 'Failed to archive file' }, 500);
+    return c.json({ error: 'Failed to archive file', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2056,9 +2122,12 @@ app.get('/api/collections', async (c) => {
     }));
 
     return c.json({ collections });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error listing collections:", e);
-    return c.json({ error: 'Failed to list collections' }, 500);
+    return c.json({ error: 'Failed to list collections', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2082,9 +2151,12 @@ app.post('/api/collections', async (c) => {
     } else {
       return c.json({ error: 'Failed to create collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error creating collection:", e);
-    return c.json({ error: 'Failed to create collection' }, 500);
+    return c.json({ error: 'Failed to create collection', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2125,9 +2197,12 @@ app.get('/api/collections/:id', async (c) => {
     ).bind(collection_id).all();
 
     return c.json({ collection, files });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error fetching collection:", e);
-    return c.json({ error: 'Failed to fetch collection' }, 500);
+    return c.json({ error: 'Failed to fetch collection', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2154,9 +2229,12 @@ app.put('/api/collections/:id', async (c) => {
     } else {
       return c.json({ error: 'Failed to update collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error updating collection:", e);
-    return c.json({ error: 'Failed to update collection' }, 500);
+    return c.json({ error: 'Failed to update collection', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2210,9 +2288,12 @@ app.delete('/api/collections/:id', async (c) => {
     await c.env.DB.prepare('DELETE FROM collection_files WHERE collection_id = ?').bind(collection_id).run();
 
     return c.json({ message: 'Collection deleted successfully' });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error deleting collection:", e);
-    return c.json({ error: 'Failed to delete collection' }, 500);
+    return c.json({ error: 'Failed to delete collection', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2310,8 +2391,11 @@ app.post('/api/collections/:id/files', async (c) => {
     } else {
       return c.json({ error: 'Failed to add file to collection' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
+    if (errorMessage && errorMessage.includes('UNIQUE constraint failed')) {
         return c.json({ error: 'File already in collection' }, 409);
     }
     console.error("Error adding file to collection:", e);
@@ -2341,9 +2425,12 @@ app.delete('/api/collections/:id/files/:file_id', async (c) => {
     } else {
       return c.json({ error: 'Failed to remove file from collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error removing file from collection:", e);
-    return c.json({ error: 'Failed to remove file from collection' }, 500);
+    return c.json({ error: 'Failed to remove file from collection', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2383,9 +2470,12 @@ app.get('/api/messages/conversations', async (c) => {
     }));
 
     return c.json({ conversations });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error fetching conversations:", e);
-    return c.json({ error: 'Failed to fetch conversations' }, 500);
+    return c.json({ error: 'Failed to fetch conversations', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2419,9 +2509,12 @@ app.get('/api/messages/:partner_id', async (c) => {
     }));
 
     return c.json({ messages: decryptedResults });
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error fetching messages:", e);
-    return c.json({ error: 'Failed to fetch messages' }, 500);
+    return c.json({ error: 'Failed to fetch messages', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2488,9 +2581,12 @@ app.post('/api/messages', async (c) => {
     } else {
       return c.json({ error: 'Failed to send message' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error sending message:", e);
-    return c.json({ error: 'Failed to send message' }, 500);
+    return c.json({ error: 'Failed to send message', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2504,8 +2600,11 @@ app.put('/api/messages/:partner_id/read', async (c) => {
       'UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?'
     ).bind(partner_id, user_id).run();
     return c.json({ success: true });
-  } catch (e: any) {
-    return c.json({ error: 'Failed to update read status' }, 500);
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
+    return c.json({ error: 'Failed to update read status', details: safeErrorMessage }, 500);
   }
 });
 
@@ -2548,9 +2647,12 @@ app.post('/api/users/me/avatar', async (c) => {
       return c.json({ error: 'Failed to update avatar URL in database' }, 500);
     }
 
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+    const isSensitive = errorMessage.includes('D1_') || errorMessage.includes('UNIQUE constraint') || errorMessage.includes('SQLITE_');
+    const safeErrorMessage = isSensitive ? 'An internal database error occurred' : errorMessage;
     console.error("Error uploading avatar:", e);
-    return c.json({ error: 'Avatar upload failed' }, 500);
+    return c.json({ error: 'Avatar upload failed', details: safeErrorMessage }, 500);
   }
 });
 

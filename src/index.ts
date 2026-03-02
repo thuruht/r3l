@@ -2175,9 +2175,9 @@ app.put('/api/collections/:id/reorder', async (c) => {
     if (collection.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
 
     // Use batch to update orders
+    const stmt = c.env.DB.prepare('UPDATE collection_files SET file_order = ? WHERE collection_id = ? AND file_id = ?');
     const statements = file_orders.map((item: any) =>
-        c.env.DB.prepare('UPDATE collection_files SET file_order = ? WHERE collection_id = ? AND file_id = ?')
-        .bind(item.order, collection_id, item.file_id)
+        stmt.bind(item.order, collection_id, item.file_id)
     );
 
     await c.env.DB.batch(statements);

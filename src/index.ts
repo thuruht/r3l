@@ -49,7 +49,11 @@ const authMiddleware = async (c: any, next: any) => {
   }
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    if (!c.env.JWT_SECRET) {
+      console.error("Critical: JWT_SECRET is not configured in environment variables.");
+      return c.json({ error: 'Internal Server Error: Authentication misconfigured' }, 500);
+    }
+    const secret = c.env.JWT_SECRET;
     const payload = await verify(token, secret);
 
     if (!payload || !payload.id) {
@@ -245,7 +249,11 @@ const authMiddleware = async (c: any, next: any) => {
   }
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    if (!c.env.JWT_SECRET) {
+      console.error("Critical: JWT_SECRET is not configured in environment variables.");
+      return c.json({ error: 'Internal Server Error: Authentication misconfigured' }, 500);
+    }
+    const secret = c.env.JWT_SECRET;
     const payload = await verify(token, secret);
 
     if (!payload || !payload.id) {
@@ -496,7 +504,11 @@ app.get('/api/users/me', async (c) => {
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    if (!c.env.JWT_SECRET) {
+      console.error("Critical: JWT_SECRET is not configured in environment variables.");
+      return c.json({ error: 'Internal Server Error' }, 500);
+    }
+    const secret = c.env.JWT_SECRET;
     const payload = await verify(token, secret);
 
     // Optional: Fetch fresh data from DB to ensure user still exists

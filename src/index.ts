@@ -295,7 +295,7 @@ app.post('/api/register', async (c) => {
     if (errorMessage && errorMessage.includes('UNIQUE constraint failed: users.username')) {
       return c.json({ error: 'Username already taken' }, 409);
     }
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+    if (errorMessage && errorMessage.includes('UNIQUE constraint failed')) {
       return c.json({ error: 'Username or Email already taken' }, 409);
     }
     return c.json({ error: 'Registration failed' }, 500);

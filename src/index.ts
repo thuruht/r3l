@@ -7,6 +7,7 @@ import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';
 import JSZip from 'jszip';
+import { ADMIN_USER_ID } from './constants';
 
 // Import the Durable Object class (only for type inference, not for instantiation here)
 import { RelfDO } from './do';
@@ -39,8 +40,8 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
-<<<<<<< ours
-=======
+
+// Document Collaboration WebSocket endpoint
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
@@ -65,8 +66,6 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
->>>>>>> theirs
-// Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
   if (!upgradeHeader || upgradeHeader.toLowerCase() !== 'websocket') {
@@ -238,28 +237,6 @@ function getR2PublicUrl(c: any, r2_key: string): string {
 }
 
 // --- Authentication Middleware ---
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // --- Auth Routes ---
 
@@ -311,11 +288,11 @@ app.post('/api/register', async (c) => {
     } else {
       return c.json({ error: 'Failed to create user' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed: users.username')) {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('UNIQUE constraint failed: users.username')) {
       return c.json({ error: 'Username already taken' }, 409);
     }
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+    if (e instanceof Error && e.message.includes('UNIQUE constraint failed')) {
       return c.json({ error: 'Username or Email already taken' }, 409);
     }
     return c.json({ error: 'Registration failed' }, 500);
@@ -374,7 +351,7 @@ app.post('/api/login', async (c) => {
       } 
     });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e);
     return c.json({ error: 'Login failed' }, 500);
   }
@@ -501,41 +478,7 @@ app.get('/api/users/me', async (c) => {
 
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
-<<<<<<< ours
-      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
-=======
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -551,38 +494,6 @@ app.get('/api/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
   }
 });
 
@@ -604,7 +515,6 @@ app.put('/api/users/me/privacy', authMiddleware, async (c) => {
   } catch (e) {
     console.error("Error updating privacy:", e);
     return c.json({ error: 'Failed to update privacy settings' }, 500);
->>>>>>> theirs
   }
 });
 
@@ -788,16 +698,7 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  // Simple admin check: assume user ID 1 is the admin
-  if (user_id !== 1) {
-=======
   if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -821,15 +722,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -844,15 +737,7 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
   const targetId = Number(c.req.param('id'));
 
   if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -874,15 +759,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);
@@ -1002,7 +879,7 @@ async function createNotification(
 
 async function broadcastSignal(
   env: Env,
-  type: 'signal_communique' | 'signal_artifact',
+  type: 'signal_communique' | 'signal_artifact' | 'system_alert',
   userId: number,
   payload: any = {}
 ) {
@@ -1042,7 +919,7 @@ app.get('/api/notifications', async (c) => {
     ).bind(user_id).all();
 
     return c.json({ notifications: results });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error fetching notifications:", e);
     return c.json({ error: 'Failed to fetch notifications' }, 500);
   }
@@ -1134,8 +1011,8 @@ app.post('/api/relationships/follow', authMiddleware, async (c) => {
     } else {
       return c.json({ error: 'Failed to follow user' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('UNIQUE constraint failed')) {
       return c.json({ error: 'Already following this user' }, 409);
     }
     console.error("Error following user:", e);
@@ -1210,7 +1087,7 @@ app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
     } else {
       return c.json({ error: 'Failed to send sym request' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error sending sym request:", e);
     return c.json({ error: 'Failed to send sym request' }, 500);
   }
@@ -1263,7 +1140,7 @@ app.post('/api/relationships/accept-sym-request', authMiddleware, async (c) => {
     
     return c.json({ message: 'Sym request accepted and mutual connection established' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error accepting sym request:", e);
     return c.json({ error: 'Failed to accept sym request' }, 500);
   }
@@ -1296,7 +1173,7 @@ app.post('/api/relationships/decline-sym-request', authMiddleware, async (c) => 
     } else {
       return c.json({ error: 'Failed to decline sym request' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error declining sym request:", e);
     return c.json({ error: 'Failed to decline sym request' }, 500);
   }
@@ -1360,7 +1237,7 @@ app.delete('/api/relationships/:target_user_id', authMiddleware, async (c) => {
 
     return c.json({ error: 'Relationship not found or not removable by current user' }, 404);
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error removing relationship:", e);
     return c.json({ error: 'Failed to remove relationship' }, 500);
   }
@@ -1412,7 +1289,7 @@ app.get('/api/relationships', authMiddleware, async (c) => {
       incoming: incoming.results.map(processAvatar),
       mutual: mutual.results.map(processAvatar),
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error listing relationships:", e);
     return c.json({ error: 'Failed to list relationships' }, 500);
   }
@@ -1469,7 +1346,7 @@ app.get('/api/drift', authMiddleware, async (c) => {
             files: driftFiles.results
         });
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Error fetching drift data:", e);
         return c.json({ error: 'Failed to fetch drift data' }, 500);
     }
@@ -1494,7 +1371,7 @@ app.get('/api/communiques/:user_id', authMiddleware, async (c) => {
     }
 
     return c.json(communique);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error fetching communique:", e);
     return c.json({ error: 'Failed to fetch communique' }, 500);
   }
@@ -1540,7 +1417,7 @@ app.put('/api/communiques', async (c) => {
     } else {
       return c.json({ error: 'Failed to update communique' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error updating communique:", e);
     return c.json({ error: 'Failed to update communique' }, 500);
   }
@@ -1559,7 +1436,7 @@ app.get('/api/files', async (c) => {
     ).bind(user_id).all();
 
     return c.json({ files: results });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error listing files:", e);
     return c.json({ error: 'Failed to list files' }, 500);
   }
@@ -1597,7 +1474,7 @@ app.get('/api/users/:target_user_id/files', async (c) => {
     const { results } = await c.env.DB.prepare(query + ' ORDER BY created_at DESC').bind(target_user_id).all();
     return c.json({ files: results });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error listing user files:", e);
     return c.json({ error: 'Failed to list files' }, 500);
   }
@@ -1701,7 +1578,7 @@ app.post('/api/files', async (c) => {
       return c.json({ error: 'Failed to record file metadata' }, 500);
     }
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error uploading file:", e);
     return c.json({ error: 'File upload failed' }, 500);
   }
@@ -1779,7 +1656,7 @@ app.get('/api/files/:id/content', async (c) => {
     }
 
     // 3. Fetch from R2
-  const object = await c.env.BUCKET.get(file.r2_key, {
+  const object = await c.env.BUCKET.get(file.r2_key as string, {
     range: c.req.header('Range') // Pass Range header for seeking
   });
 
@@ -1802,7 +1679,7 @@ app.get('/api/files/:id/content', async (c) => {
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('Content-Disposition', `attachment; filename="${file.filename.replace(/"/g, '\\"')}"`);
+    headers.set('Content-Disposition', `attachment; filename="${(file.filename as string).replace(/"/g, '\\"')}"`);
 
     // Handle Burn On Read (Ephemeral)
     if (file.burn_on_read) {
@@ -1819,7 +1696,7 @@ app.get('/api/files/:id/content', async (c) => {
       headers,
     });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error downloading file:", e);
     return c.json({ error: 'Failed to download file' }, 500);
   }
@@ -1857,7 +1734,7 @@ app.put('/api/files/:id/content', async (c) => {
     
     return c.json({ message: 'File updated successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error updating file:", e);
     return c.json({ error: 'Failed to update file' }, 500);
   }
@@ -1897,7 +1774,7 @@ app.post('/api/files/:id/share', async (c) => {
 
     return c.json({ message: 'Artifact shared successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error sharing file:", e);
     return c.json({ error: 'Failed to share file' }, 500);
   }
@@ -1931,7 +1808,7 @@ app.delete('/api/files/:id', async (c) => {
 
     return c.json({ message: 'File deleted successfully' });
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error deleting file:", e);
     return c.json({ error: 'Failed to delete file' }, 500);
   }
@@ -1965,7 +1842,7 @@ app.post('/api/files/:id/refresh', async (c) => {
     } else {
       return c.json({ error: 'Failed to refresh file' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error refreshing file:", e);
     return c.json({ error: 'Failed to refresh file' }, 500);
   }
@@ -2000,7 +1877,7 @@ app.post('/api/files/:id/vitality', async (c) => {
     } else {
       return c.json({ error: 'Failed to boost vitality' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error boosting vitality:", e);
     return c.json({ error: 'Failed to boost vitality' }, 500);
   }
@@ -2023,7 +1900,7 @@ app.post('/api/files/:id/archive', async (c) => {
     } else {
       return c.json({ error: 'Failed to archive file (or unauthorized)' }, 403);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error archiving file:", e);
     return c.json({ error: 'Failed to archive file' }, 500);
   }
@@ -2056,7 +1933,7 @@ app.get('/api/collections', async (c) => {
     }));
 
     return c.json({ collections });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error listing collections:", e);
     return c.json({ error: 'Failed to list collections' }, 500);
   }
@@ -2082,7 +1959,7 @@ app.post('/api/collections', async (c) => {
     } else {
       return c.json({ error: 'Failed to create collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error creating collection:", e);
     return c.json({ error: 'Failed to create collection' }, 500);
   }
@@ -2125,7 +2002,7 @@ app.get('/api/collections/:id', async (c) => {
     ).bind(collection_id).all();
 
     return c.json({ collection, files });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error fetching collection:", e);
     return c.json({ error: 'Failed to fetch collection' }, 500);
   }
@@ -2154,7 +2031,7 @@ app.put('/api/collections/:id', async (c) => {
     } else {
       return c.json({ error: 'Failed to update collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error updating collection:", e);
     return c.json({ error: 'Failed to update collection' }, 500);
   }
@@ -2210,7 +2087,7 @@ app.delete('/api/collections/:id', async (c) => {
     await c.env.DB.prepare('DELETE FROM collection_files WHERE collection_id = ?').bind(collection_id).run();
 
     return c.json({ message: 'Collection deleted successfully' });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error deleting collection:", e);
     return c.json({ error: 'Failed to delete collection' }, 500);
   }
@@ -2310,8 +2187,8 @@ app.post('/api/collections/:id/files', async (c) => {
     } else {
       return c.json({ error: 'Failed to add file to collection' }, 500);
     }
-  } catch (e: any) {
-    if (e.message && e.message.includes('UNIQUE constraint failed')) {
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('UNIQUE constraint failed')) {
         return c.json({ error: 'File already in collection' }, 409);
     }
     console.error("Error adding file to collection:", e);
@@ -2341,7 +2218,7 @@ app.delete('/api/collections/:id/files/:file_id', async (c) => {
     } else {
       return c.json({ error: 'Failed to remove file from collection' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error removing file from collection:", e);
     return c.json({ error: 'Failed to remove file from collection' }, 500);
   }
@@ -2383,7 +2260,7 @@ app.get('/api/messages/conversations', async (c) => {
     }));
 
     return c.json({ conversations });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error fetching conversations:", e);
     return c.json({ error: 'Failed to fetch conversations' }, 500);
   }
@@ -2408,7 +2285,7 @@ app.get('/api/messages/:partner_id', async (c) => {
         if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {
             try {
                 const encryptedBuffer = Buffer.from(msg.content, 'base64');
-                const decryptedBuffer = await decryptData(encryptedBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
+                const decryptedBuffer = await decryptData(encryptedBuffer.buffer as ArrayBuffer, msg.iv, c.env.ENCRYPTION_SECRET);
                 const decryptedText = new TextDecoder().decode(decryptedBuffer);
                 return { ...msg, content: decryptedText };
             } catch (e) {
@@ -2419,7 +2296,7 @@ app.get('/api/messages/:partner_id', async (c) => {
     }));
 
     return c.json({ messages: decryptedResults });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error fetching messages:", e);
     return c.json({ error: 'Failed to fetch messages' }, 500);
   }
@@ -2488,7 +2365,7 @@ app.post('/api/messages', async (c) => {
     } else {
       return c.json({ error: 'Failed to send message' }, 500);
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error sending message:", e);
     return c.json({ error: 'Failed to send message' }, 500);
   }
@@ -2504,7 +2381,7 @@ app.put('/api/messages/:partner_id/read', async (c) => {
       'UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?'
     ).bind(partner_id, user_id).run();
     return c.json({ success: true });
-  } catch (e: any) {
+  } catch (e: unknown) {
     return c.json({ error: 'Failed to update read status' }, 500);
   }
 });
@@ -2548,7 +2425,7 @@ app.post('/api/users/me/avatar', async (c) => {
       return c.json({ error: 'Failed to update avatar URL in database' }, 500);
     }
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Error uploading avatar:", e);
     return c.json({ error: 'Avatar upload failed' }, 500);
   }

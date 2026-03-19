@@ -355,7 +355,7 @@ function Main() {
                 </div>
 
                 {currentUser && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
                     
                     <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
                       <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
@@ -422,25 +422,10 @@ function Main() {
                     <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
                         {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
                     </button>
-                </div>
-                )}
-                </div>
-            </div>
-    
-            {/* Dropdown Menu */}
-              {isMenuOpen && (
-                <div className="glass-panel nav-dropdown" style={{
-                  position: 'absolute',
-                  top: '60px',
-                  right: '10px',
-                  padding: '1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  zIndex: 2000,
-                  maxHeight: '80vh',
-                  overflowY: 'auto'
-                }}>
+
+                    {/* Dropdown Menu */}
+                    {isMenuOpen && (
+                        <div className="glass-panel nav-dropdown">
                     <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
                         <SearchBar />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -519,6 +504,10 @@ function Main() {
                     </button>
                 </div>
             )}
+                </div>
+                )}
+                </div>
+            </div>
     
             {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}

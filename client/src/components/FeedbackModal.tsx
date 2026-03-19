@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IconX, IconSend, IconMessage } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 
 interface FeedbackModalProps {
@@ -91,28 +92,28 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
         style={{ width: '500px', maxWidth: '95vw', padding: '0', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
-          <h3 id="feedback-modal-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconMessage size={20} aria-hidden="true" /> Feedback / Contact
+        <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--spacing-xl)' }}>
+          <h3 id="feedback-modal-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+            <IconMessage size={ICON_SIZES.xl} aria-hidden="true" /> Feedback / Contact
           </h3>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none' }} aria-label="Close feedback modal">
             <IconX />
           </button>
         </div>
 
-        <form onSubmit={handleFormSubmit} style={{ padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <form onSubmit={handleFormSubmit} style={{ padding: '0 var(--spacing-xl) var(--spacing-xl) var(--spacing-xl)', display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: 0 }}>
             Found a bug? Have an idea? Want to say hello? Messages are sent directly to the developer.
           </p>
 
           <div>
-            <label htmlFor="feedback-type" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Type</label>
+            <label htmlFor="feedback-type" style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontSize: '0.9rem' }}>Type</label>
             <select
               id="feedback-type"
               ref={firstInputRef}
               value={type}
               onChange={(e) => setType(e.target.value)}
-              style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+              style={{ width: '100%', padding: 'var(--spacing-sm)', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
             >
               <option value="general">General</option>
               <option value="bug">Bug Report</option>
@@ -121,34 +122,34 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
               <div style={{ flex: 1 }}>
-                  <label htmlFor="feedback-name" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Name (Optional)</label>
+                  <label htmlFor="feedback-name" style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontSize: '0.9rem' }}>Name (Optional)</label>
                   <input
                     type="text"
                     id="feedback-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your Name"
-                    style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                    style={{ width: '100%', padding: 'var(--spacing-sm)', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
                   />
               </div>
               <div style={{ flex: 1 }}>
-                  <label htmlFor="feedback-email" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>Email (Optional)</label>
+                  <label htmlFor="feedback-email" style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontSize: '0.9rem' }}>Email (Optional)</label>
                   <input
                     type="email"
                     id="feedback-email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your@email.com"
-                    style={{ width: '100%', padding: '8px', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+                    style={{ width: '100%', padding: 'var(--spacing-sm)', background: 'var(--bg-mist)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
                   />
               </div>
           </div>
 
           <div>
-            <label htmlFor="feedback-message" style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>
-              Message <span style={{ color: 'var(--accent-alert)', marginLeft: '4px' }} aria-label="required">*</span>
+            <label htmlFor="feedback-message" style={{ display: 'block', marginBottom: 'var(--spacing-xs)', fontSize: '0.9rem' }}>
+              Message <span style={{ color: 'var(--accent-alert)', marginLeft: 'var(--spacing-xs)' }} aria-label="required">*</span>
             </label>
             <textarea
               id="feedback-message"
@@ -161,7 +162,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
               required
               aria-describedby="message-hint"
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 'var(--spacing-xs)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                 <span id="message-hint">Press Ctrl+Enter to send</span>
                 <span aria-label={`${message.length} of ${MAX_CHARS} characters used`}>
                     {message.length} / {MAX_CHARS}
@@ -173,9 +174,9 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             <button
               type="submit"
               disabled={sending || !message.trim()}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}
             >
-              <IconSend size={16} aria-hidden="true" /> {sending ? 'Sending...' : 'Send Feedback'}
+              <IconSend size={ICON_SIZES.md} aria-hidden="true" /> {sending ? 'Sending...' : 'Send Feedback'}
             </button>
           </div>
         </form>

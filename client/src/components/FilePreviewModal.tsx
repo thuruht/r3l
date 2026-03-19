@@ -3,6 +3,7 @@ import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdi
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import CollectionsManager from './CollectionsManager';
 import CodeEditor from './CodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
@@ -298,15 +299,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
   const actionButtons = (
       <>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 5px' }}>
-            <IconEye size={18} color="var(--text-secondary)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 var(--spacing-xs)' }}>
+            <IconEye size={ICON_SIZES.lg} color="var(--text-secondary)" />
             <select 
                 value={visibility} 
                 onChange={handleVisibilityChange}
                 aria-label="Visibility"
-                style={{ 
-                    background: 'transparent', border: 'none', color: 'var(--text-primary)', 
-                    fontSize: '0.8rem', padding: '5px', outline: 'none', cursor: 'pointer'
+                style={{
+                    background: 'transparent', border: 'none', color: 'var(--text-primary)',
+                    fontSize: '0.8rem', padding: 'var(--spacing-xs)', outline: 'none', cursor: 'pointer'
                 }}
             >
                 <option value="public">A-Sym (Public)</option>
@@ -314,17 +315,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 <option value="me">3rd Space (Private)</option>
             </select>
         </div>
-        <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-            <IconRefresh size={18} /> {isMobile && 'Keep Alive'}
+        <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+            <IconRefresh size={ICON_SIZES.lg} /> {isMobile && 'Keep Alive'}
         </button>
-        <button onClick={handleBoost} disabled={boosted} aria-label="Boost Signal" style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px', flexShrink: 0, width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-            <IconBolt size={18} /> {vitality} {isMobile && 'Boost'}
+        <button onClick={handleBoost} disabled={boosted} aria-label="Boost Signal" style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', flexShrink: 0, width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+            <IconBolt size={ICON_SIZES.lg} /> {vitality} {isMobile && 'Boost'}
         </button>
-        <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-            <IconFolderPlus size={18} /> {isMobile && 'Add to Collection'}
+        <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+            <IconFolderPlus size={ICON_SIZES.lg} /> {isMobile && 'Add to Collection'}
         </button>
-        <button onClick={onDownload} title="Download" aria-label="Download" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-            <IconDownload size={18} /> {isMobile && 'Download'}
+        <button onClick={onDownload} title="Download" aria-label="Download" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+            <IconDownload size={ICON_SIZES.lg} /> {isMobile && 'Download'}
         </button>
         {(isImage || isVideo) && (
             <button
@@ -340,50 +341,50 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             }}
             title="Set as Background"
             aria-label="Set as Background"
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}
             >
-            <IconWallpaper size={18} /> {isMobile && 'Set Background'}
+            <IconWallpaper size={ICON_SIZES.lg} /> {isMobile && 'Set Background'}
             </button>
         )}
         {isText && !isEditing && (
             <>
-                <button onClick={handleCopy} aria-label="Copy content" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                    <IconCopy size={18} /> {isMobile && 'Copy'}
+                <button onClick={handleCopy} aria-label="Copy content" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconCopy size={ICON_SIZES.lg} /> {isMobile && 'Copy'}
                 </button>
-                <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                    <IconEdit size={18}/> {isMobile && 'Edit'}
+                <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconEdit size={ICON_SIZES.lg}/> {isMobile && 'Edit'}
                 </button>
             </>
         )}
         {isWebCode && !isEditing && (
-            <button onClick={() => setShowPreview(!showPreview)} aria-label="Preview" style={{ background: 'transparent', border: 'none', color: showPreview ? 'var(--accent-sym)' : 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                <IconCode size={18}/> {isMobile && 'Preview'}
+            <button onClick={() => setShowPreview(!showPreview)} aria-label="Preview" style={{ background: 'transparent', border: 'none', color: showPreview ? 'var(--accent-sym)' : 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                <IconCode size={ICON_SIZES.lg}/> {isMobile && 'Preview'}
             </button>
         )}
         {isEditing && (
             <>
-                <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? '8px' : '0' }}>
-                    <IconUsers size={14} /> {collabStatus}
+                <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconUsers size={ICON_SIZES.sm} /> {collabStatus}
                 </div>
                 {/* Check if user is owner to determine if it's Save or Remix Save */}
                 {currentUser?.id === ownerId ? (
-                    <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                        <IconDeviceFloppy size={18}/> {isMobile && 'Save'}
+                    <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                        <IconDeviceFloppy size={ICON_SIZES.lg}/> {isMobile && 'Save'}
                     </button>
                 ) : (
-                    <button onClick={handleRemixSave} aria-label="Save Remix" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                        <IconDeviceFloppy size={18}/> {isMobile && 'Save Copy'}
+                    <button onClick={handleRemixSave} aria-label="Save Remix" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                        <IconDeviceFloppy size={ICON_SIZES.lg}/> {isMobile && 'Save Copy'}
                     </button>
                 )}
             </>
         )}
         {!isEditing && (
             <>
-                <button onClick={() => isText ? setIsEditing(true) : setShowRemixUpload(true)} title="Remix" aria-label="Remix" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                    <IconFolderPlus size={18} style={{ transform: 'rotate(180deg)' }}/> {isMobile && 'Remix'}
+                <button onClick={() => isText ? setIsEditing(true) : setShowRemixUpload(true)} title="Remix" aria-label="Remix" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconFolderPlus size={ICON_SIZES.lg} style={{ transform: 'rotate(180deg)' }}/> {isMobile && 'Remix'}
                 </button>
-                <button onClick={handleArchiveVote} title="Vote to Archive" aria-label="Vote to Archive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '5px', width: isMobile ? '100%' : 'auto', padding: isMobile ? '8px' : '0' }}>
-                    <IconUsers size={18} /> {isMobile && 'Vote'}
+                <button onClick={handleArchiveVote} title="Vote to Archive" aria-label="Vote to Archive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconUsers size={ICON_SIZES.lg} /> {isMobile && 'Vote'}
                 </button>
             </>
         )}
@@ -431,7 +432,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
-            <IconArrowsMove size={16} opacity={0.5} style={{ flexShrink: 0 }} />
+            <IconArrowsMove size={ICON_SIZES.md} opacity={0.5} style={{ flexShrink: 0 }} />
             <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{filename}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -461,7 +462,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                         aria-label="More options"
                         style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)' }}
                      >
-                         <IconDotsVertical size={20} />
+                         <IconDotsVertical size={ICON_SIZES.xl} />
                      </button>
                      {showMenu && (
                          <div style={{
@@ -486,7 +487,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                      )}
                  </div>
              )}
-            <button onClick={onClose} aria-label="Close preview" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={20} /></button>
+            <button onClick={onClose} aria-label="Close preview" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, marginLeft: '5px' }}><IconX size={ICON_SIZES.xl} /></button>
           </div>
         </div>
 

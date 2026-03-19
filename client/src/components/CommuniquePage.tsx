@@ -3,6 +3,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Communique from './Communique';
 import { IconArrowLeft } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 const CommuniquePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -22,7 +23,7 @@ const CommuniquePage: React.FC = () => {
           cursor: 'pointer'
         }}
       >
-        <IconArrowLeft size={20} style={{ marginRight: '5px' }} />
+        <IconArrowLeft size={ICON_SIZES.xl} style={{ marginRight: '5px' }} />
         Back to Web
       </button>
 

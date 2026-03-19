@@ -8,6 +8,7 @@ import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
 import UploadModal from './UploadModal'; // Added
 import { useToast } from '../context/ToastContext';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface ArtifactsProps {
   userId: string;
@@ -230,7 +231,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   return (
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
       <h5 style={{ color: 'var(--text-secondary)', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <IconFile size={16} /> Artifacts {files.length > 0 && `(${files.length})`}
+        <IconFile size={ICON_SIZES.md} /> Artifacts {files.length > 0 && `(${files.length})`}
       </h5>
 
       {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em' }}>{error}</div>}
@@ -282,7 +283,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '2px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
-                 <IconBolt size={14} aria-hidden="true" />
+                 <IconBolt size={ICON_SIZES.sm} aria-hidden="true" />
                  <span style={{ fontSize: '0.8em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
                  <button 
                    onClick={() => handleBoost(file.id)} 
@@ -304,7 +305,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                    title="Boost Signal"
                    aria-label="Boost Signal"
                  >
-                   {boostingIds.has(file.id) ? <IconLoader2 size={12} className="icon-spin" /> : "+"}
+                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : "+"}
                  </button>
               </div>
 
@@ -314,7 +315,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Preview"
                 aria-label="Preview file"
               >
-                <IconEye size={14} aria-hidden="true" />
+                <IconEye size={ICON_SIZES.sm} aria-hidden="true" />
               </button>
 
               <button 
@@ -323,7 +324,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Download"
                 aria-label={`Download ${file.filename}`}
               >
-                <IconDownload size={14} aria-hidden="true" />
+                <IconDownload size={ICON_SIZES.sm} aria-hidden="true" />
               </button>
               
               <button
@@ -332,7 +333,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Remix this artifact"
                 aria-label="Remix this artifact"
               >
-                <IconArrowsShuffle size={14} />
+                <IconArrowsShuffle size={ICON_SIZES.sm} />
               </button>
 
               {isOwner && (
@@ -351,7 +352,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                     title="Share"
                     aria-label="Share file"
                 >
-                    <IconShare size={14} aria-hidden="true" />
+                    <IconShare size={ICON_SIZES.sm} aria-hidden="true" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
@@ -359,7 +360,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                   title="Delete"
                   aria-label="Delete file"
                 >
-                  <IconTrash size={14} aria-hidden="true" />
+                  <IconTrash size={ICON_SIZES.sm} aria-hidden="true" />
                 </button>
                 </>
               )}
@@ -390,12 +391,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
           {remixTarget && (
             <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span>Remixing: <strong>{remixTarget.filename}</strong></span>
-              <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={12} /> Cancel</button>
+              <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={ICON_SIZES.xs} /> Cancel</button>
             </div>
           )}
 
           <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <IconUpload size={16} /> Upload Artifacts
+            <IconUpload size={ICON_SIZES.md} /> Upload Artifacts
           </button>
         </div>
       )}

@@ -5,6 +5,7 @@ import { sanitizeHTML } from '../utils/sanitize';
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface CommuniqueProps {
   userId: number; // Changed to number to match typical usage, though strict string/number handling is good
@@ -336,7 +337,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
                         onClick={() => avatarInputRef.current?.click()} 
                         style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}
                     >
-                        <IconUserPlus size={14} /> Upload Avatar
+                        <IconUserPlus size={ICON_SIZES.sm} /> Upload Avatar
                     </button>
                 </div>
                 {data.updated_at && (
@@ -404,10 +405,10 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
             <button onClick={handleSave} disabled={saveStatus === 'saving'} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <IconDeviceFloppy size={16} /> {saveStatus === 'saving' ? 'Transmitting...' : 'Broadcast'}
+              <IconDeviceFloppy size={ICON_SIZES.md} /> {saveStatus === 'saving' ? 'Transmitting...' : 'Broadcast'}
             </button>
             <button onClick={() => { setIsEditing(false); setEditContent(data.content || ''); }} style={{ background: 'transparent', borderColor: 'transparent', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <IconX size={16} /> Cancel
+              <IconX size={ICON_SIZES.md} /> Cancel
             </button>
           </div>
           {saveStatus === 'error' && <span style={{ color: 'var(--accent-alert)' }}>Transmission failed.</span>}
@@ -416,7 +417,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
 
       {isOwner && !isEditing && (
         <button onClick={() => setIsEditing(true)} style={{ fontSize: '0.8em', padding: '0.4em 0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-          <IconEdit size={14} /> Edit Signal
+          <IconEdit size={ICON_SIZES.sm} /> Edit Signal
         </button>
       )}
       
@@ -425,41 +426,41 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
           {relationshipStatus === 'none' && (
             <>
               <button onClick={handleFollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconUserPlus size={14} /> Follow
+                <IconUserPlus size={ICON_SIZES.sm} /> Follow
               </button>
               <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconLink size={14} /> Request Sym
+                <IconLink size={ICON_SIZES.sm} /> Request Sym
               </button>
             </>
           )}
           {relationshipStatus === 'following' && (
             <>
               <button onClick={handleUnfollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconUserMinus size={14} /> Unfollow
+                <IconUserMinus size={ICON_SIZES.sm} /> Unfollow
               </button>
               <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconLink size={14} /> Request Sym
+                <IconLink size={ICON_SIZES.sm} /> Request Sym
               </button>
             </>
           )}
           {relationshipStatus === 'sym_requested' && (
             <button onClick={handleCancelSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <IconLinkOff size={14} /> Cancel Sym Request
+              <IconLinkOff size={ICON_SIZES.sm} /> Cancel Sym Request
             </button>
           )}
           {relationshipStatus === 'incoming_sym_request' && (
             <div style={{ display: 'flex', gap: '5px' }}>
               <button onClick={handleAcceptSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-sym)' }}>
-                <IconCheck size={14} /> Accept Sym
+                <IconCheck size={ICON_SIZES.sm} /> Accept Sym
               </button>
               <button onClick={handleCancelSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <IconX size={14} /> Decline Sym
+                <IconX size={ICON_SIZES.sm} /> Decline Sym
               </button>
             </div>
           )}
           {relationshipStatus === 'sym_accepted' && (
             <button onClick={handleRemoveSym} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
-              <IconCirclesRelation size={14} /> Remove Sym
+              <IconCirclesRelation size={ICON_SIZES.sm} /> Remove Sym
             </button>
           )}
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { IconMaximize } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
 import { useCustomization } from '../context/CustomizationContext';
 import CustomizationSettings from './CustomizationSettings';
@@ -538,7 +539,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
         }}
         title="Zoom to Fit"
       >
-        <IconMaximize size={20} />
+        <IconMaximize size={ICON_SIZES.xl} />
       </button>
 
       {tooltip.content && (

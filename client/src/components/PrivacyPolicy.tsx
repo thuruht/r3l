@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconArrowLeft } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useNavigate } from 'react-router-dom';
 
 const PrivacyPolicy: React.FC = () => {
@@ -8,7 +9,7 @@ const PrivacyPolicy: React.FC = () => {
   return (
     <div className="page-content-spacer fade-in" style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
       <button onClick={() => navigate(-1)} style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '20px', background: 'transparent', border: 'none', color: 'var(--accent-sym)', padding: 0 }}>
-        <IconArrowLeft size={18} /> Back
+        <IconArrowLeft size={ICON_SIZES.lg} /> Back
       </button>
 
       <div className="glass-panel" style={{ padding: '40px' }}>

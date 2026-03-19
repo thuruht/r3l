@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NetworkNode } from '../hooks/useNetworkData';
 import { IconUser, IconFile, IconUsers, IconBroadcast, IconDice } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useNavigate } from 'react-router-dom';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -93,7 +94,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
               border: node.group === 'sym' ? '2px solid var(--accent-sym)' : 'none',
               boxShadow: node.group === 'sym' ? 'var(--glow-sym)' : 'none'
             }}>
-              {!node.avatar_url && (node.group === 'drift_file' ? <IconFile size={20} color="#888"/> : <IconUser size={20} color="#666"/>)}
+              {!node.avatar_url && (node.group === 'drift_file' ? <IconFile size={ICON_SIZES.xl} color="#888"/> : <IconUser size={ICON_SIZES.xl} color="#666"/>)}
             </div>
             
             <div style={{ flex: 1 }}>
@@ -119,7 +120,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           height: '250px', color: 'var(--text-secondary)', textAlign: 'center'
         }}>
-          <IconBroadcast size={48} stroke={1} style={{ marginBottom: '10px', opacity: 0.7 }} aria-hidden="true" />
+          <IconBroadcast size={ICON_SIZES['2xl']} stroke={1} style={{ marginBottom: '10px', opacity: 0.7 }} aria-hidden="true" />
           <p style={{ margin: 0, fontSize: '1.1em' }}>Sector Silent</p>
           <p style={{ fontSize: '0.9em', opacity: 0.7, marginTop: '5px', maxWidth: '300px' }}>No signals detected in your immediate network.</p>
 
@@ -155,7 +156,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
                 }
             }}
           >
-            <IconDice size={18} className={drifting ? 'icon-spin' : ''} />
+            <IconDice size={ICON_SIZES.lg} className={drifting ? 'icon-spin' : ''} />
             {drifting ? 'Scanning...' : 'Drift to Random Signal'}
           </button>
         </div>

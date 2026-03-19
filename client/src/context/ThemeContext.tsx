@@ -22,8 +22,8 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     document.documentElement.className = ''; // Clear existing
     document.documentElement.classList.add(`theme-${currentTheme}`);
     localStorage.setItem('theme', currentTheme);
-    // Also update color-scheme for browser
-    document.documentElement.style.colorScheme = currentTheme === 'dawn' ? 'light' : 'dark';
+    // Both Mist and Verdant themes are dark
+    document.documentElement.style.colorScheme = 'dark';
   }, []);
 
   useEffect(() => {

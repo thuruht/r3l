@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -370,8 +371,8 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                       opacity: Math.abs(offsetX) / 100
                   }}
               >
-                 {offsetX > 0 && <IconCheck size={20} color="var(--accent-sym)" />}
-                 {offsetX < 0 && <IconTrash size={20} color="var(--accent-alert)" />}
+                 {offsetX > 0 && <IconCheck size={ICON_SIZES.xl} color="var(--accent-sym)" />}
+                 {offsetX < 0 && <IconTrash size={ICON_SIZES.xl} color="var(--accent-alert)" />}
               </div>
               <div 
                 role="button" tabIndex={0}
@@ -396,16 +397,16 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
                     <span>{new Date(n.created_at).toLocaleTimeString()}</span>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ background: 'none', border: 'none', color: '#666' }} aria-label="Delete">
-                        <IconTrash size={12} />
+                        <IconTrash size={ICON_SIZES.xs} />
                     </button>
                 </div>
                 {n.type === 'sym_request' && (
                     <div style={{ marginTop: '5px', display: 'flex', gap: '5px' }}>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'accept'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <IconCheck size={12} /> Accept
+                            <IconCheck size={ICON_SIZES.xs} /> Accept
                         </button>
                         <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'decline'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
-                            <IconX size={12} /> Decline
+                            <IconX size={ICON_SIZES.xs} /> Decline
                         </button>
                     </div>
                 )}
@@ -443,7 +444,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                 >
-                    <IconBell size={16} aria-hidden="true" /> Alerts
+                    <IconBell size={ICON_SIZES.md} aria-hidden="true" /> Alerts
                 </button>
                 <button 
                     id="tab-messages"
@@ -460,7 +461,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                 >
-                    <IconMessage size={16} aria-hidden="true" /> Signals
+                    <IconMessage size={ICON_SIZES.md} aria-hidden="true" /> Signals
                 </button>
                 <button
                     id="tab-requests"
@@ -477,14 +478,14 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                 >
-                    <IconUser size={16} aria-hidden="true" /> Reqs
+                    <IconUser size={ICON_SIZES.md} aria-hidden="true" /> Reqs
                     {requests.length > 0 && <span style={{fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 4px', borderRadius: '4px', color: 'black'}}>{requests.length}</span>}
                 </button>
             </div>
         ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button onClick={() => setActiveConversationId(null)} style={{ background: 'transparent', border: 'none', padding: 0 }} aria-label="Back">
-                    <IconArrowLeft size={18} />
+                    <IconArrowLeft size={ICON_SIZES.lg} />
                 </button>
                 <span style={{ fontWeight: 'bold' }}>
                     {conversations.find(c => c.partner_id === activeConversationId)?.partner_name || 'Chat'}
@@ -494,11 +495,11 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         <div style={{ display: 'flex', gap: '5px' }}>
             {activeTab === 'alerts' && activeConversationId === null && (
                 <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', padding: '4px' }} title="Mark all read" aria-label="Mark all read">
-                    <IconChecklist size={18} aria-hidden="true" />
+                    <IconChecklist size={ICON_SIZES.lg} aria-hidden="true" />
                 </button>
             )}
             <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', padding: '4px' }} title="Close" aria-label="Close">
-                <IconX size={18} aria-hidden="true" />
+                <IconX size={ICON_SIZES.lg} aria-hidden="true" />
             </button>
         </div>
       </div>
@@ -513,7 +514,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 
                 {!loading && notifications.length === 0 && (
                     <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <IconBellOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <IconBellOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
                         <p style={{ margin: 0, fontSize: '1.1em' }}>Silence...</p>
                         <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>No signals detected on this frequency.</p>
                     </div>
@@ -544,15 +545,15 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                                     title="View Profile"
                                     aria-label={`View profile of ${c.username}`}
                                 >
-                                    <IconUser size={14} />
+                                    <IconUser size={ICON_SIZES.sm} />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => { setActiveTab('messages'); setActiveConversationId(c.user_id); }}
                                     style={{ background: 'none', border: 'none', padding: '0', color: 'var(--accent-sym)', cursor: 'pointer' }}
                                     title="Whisper"
                                     aria-label={`Whisper to ${c.username}`}
                                 >
-                                    <IconMessage size={14} />
+                                    <IconMessage size={ICON_SIZES.sm} />
                                 </button>
                             </div>
                         ))}
@@ -568,7 +569,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 {loading && <div style={{ padding: '10px' }}>Loading signals...</div>}
                 {!loading && conversations.length === 0 && (
                     <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <IconMessageOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <IconMessageOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
                         <p style={{ margin: 0, fontSize: '1.1em' }}>No Active Channels</p>
                         <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Initiate a whisper from your Sym Links.</p>
                     </div>
@@ -615,7 +616,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 {loading && <div style={{ padding: '10px' }}>Loading requests...</div>}
                 {!loading && requests.length === 0 && (
                     <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <IconUserOff size={48} stroke={1} style={{ opacity: 0.5 }} />
+                        <IconUserOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
                         <p style={{ margin: 0, fontSize: '1.1em' }}>No Signal Requests</p>
                         <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The void is quiet.</p>
                     </div>
@@ -685,7 +686,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         </Suspense>
                     )}
                     <button onClick={() => setShowEmoji(!showEmoji)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                        <IconMoodSmile size={20} />
+                        <IconMoodSmile size={ICON_SIZES.xl} />
                     </button>
                     <div style={{
                         flex: 1,
@@ -718,7 +719,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         />
                     </div>
                     <button onClick={sendMessage} disabled={!newMessage.trim()} aria-label="Send message" style={{ background: 'transparent', border: 'none', color: newMessage.trim() ? 'var(--accent-sym)' : '#555' }}>
-                        <IconSend size={20} />
+                        <IconSend size={ICON_SIZES.xl} />
                     </button>
                 </div>
             </div>

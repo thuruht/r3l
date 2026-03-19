@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useCustomization } from '../context/CustomizationContext';
 import { IconVolume, IconVolumeOff, IconEye, IconEyeOff, IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface AmbientBackgroundProps {
   videoSrc?: string;
@@ -117,7 +118,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
                 title={visible ? "Hide Ambiance" : "Show Ambiance"}
                 style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
             >
-                {visible ? <IconEye size={16} /> : <IconEyeOff size={16} />}
+                {visible ? <IconEye size={ICON_SIZES.md} /> : <IconEyeOff size={ICON_SIZES.md} />}
             </button>
 
             {visible && (
@@ -127,7 +128,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
                         title={playing ? "Pause" : "Play"}
                         style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
                     >
-                        {playing ? <IconPlayerPause size={16} /> : <IconPlayerPlay size={16} />}
+                        {playing ? <IconPlayerPause size={ICON_SIZES.md} /> : <IconPlayerPlay size={ICON_SIZES.md} />}
                     </button>
                     {audioSrc && (
                         <button
@@ -135,7 +136,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
                             title={muted ? "Unmute" : "Mute"}
                             style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
                         >
-                            {muted ? <IconVolumeOff size={16} /> : <IconVolume size={16} />}
+                            {muted ? <IconVolumeOff size={ICON_SIZES.md} /> : <IconVolume size={ICON_SIZES.md} />}
                         </button>
                     )}
                 </>

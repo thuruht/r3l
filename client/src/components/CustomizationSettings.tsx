@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCustomization } from '../context/CustomizationContext';
 import { IconSettings, IconX, IconRefresh, IconEyeOff, IconKey } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import KeyManager from './KeyManager';
 
 const CustomizationSettings: React.FC = () => {
@@ -118,7 +119,7 @@ const CustomizationSettings: React.FC = () => {
         }}
         aria-label="Customize Appearance"
       >
-        <IconSettings size={20} />
+        <IconSettings size={ICON_SIZES.xl} />
       </button>
     );
   }
@@ -146,7 +147,7 @@ const CustomizationSettings: React.FC = () => {
             style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
             aria-label="Close settings"
         >
-            <IconX size={16} />
+            <IconX size={ICON_SIZES.md} />
         </button>
       </div>
 
@@ -190,7 +191,7 @@ const CustomizationSettings: React.FC = () => {
           disabled={!theme_preferences.backgroundUrl}
           style={{ width: '100%', fontSize: '0.75rem', padding: '6px' }}
         >
-          <IconRefresh size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+          <IconRefresh size={ICON_SIZES.sm} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
           Reset Background
         </button>
       </div>
@@ -247,7 +248,7 @@ const CustomizationSettings: React.FC = () => {
           onClick={resetColors}
           style={{ width: '100%', fontSize: '0.75rem', padding: '6px' }}
         >
-          <IconRefresh size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+          <IconRefresh size={ICON_SIZES.sm} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
           Reset Colors
         </button>
       </div>
@@ -258,7 +259,7 @@ const CustomizationSettings: React.FC = () => {
           </label>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
               <label htmlFor="lurking-toggle" style={{ fontSize: '11px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <IconEyeOff size={14} /> Lurker Mode
+                  <IconEyeOff size={ICON_SIZES.sm} /> Lurker Mode
               </label>
               <input
                   id="lurking-toggle"
@@ -269,7 +270,7 @@ const CustomizationSettings: React.FC = () => {
               />
           </div>
           <button onClick={() => setShowKeyManager(true)} style={{ width: '100%', fontSize: '0.75rem', padding: '6px', background: '#ffffff11' }}>
-             <IconKey size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Manage Keys
+             <IconKey size={ICON_SIZES.sm} style={{ verticalAlign: 'middle', marginRight: '4px' }} /> Manage Keys
           </button>
           {showKeyManager && (
             <div style={{ marginTop: '10px', padding: '10px', background: '#000', borderRadius: '4px', border: '1px solid var(--border-color)' }}>

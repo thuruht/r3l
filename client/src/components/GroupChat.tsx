@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCrown, IconFile, IconShare, IconEdit, IconMoodSmile } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -303,24 +304,24 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
         {activeGroupId ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button onClick={() => setActiveGroupId(null)} style={{ background: 'transparent', border: 'none', padding: 0 }} aria-label="Back">
-              <IconArrowLeft size={18} />
+              <IconArrowLeft size={ICON_SIZES.lg} />
             </button>
             <span style={{ fontWeight: 'bold' }}>{activeGroup?.name || 'Group'}</span>
           </div>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconUsers size={18} />
+            <IconUsers size={ICON_SIZES.lg} />
             <span style={{ fontWeight: 'bold' }}>Groups</span>
           </div>
         )}
         <div style={{ display: 'flex', gap: '5px' }}>
           {!activeGroupId && (
             <button onClick={() => setShowCreateModal(true)} style={{ background: 'none', border: 'none', padding: '4px' }} title="Create Group" aria-label="Create Group">
-              <IconPlus size={18} />
+              <IconPlus size={ICON_SIZES.lg} />
             </button>
           )}
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', padding: '4px' }} title="Close" aria-label="Close">
-            <IconX size={18} />
+            <IconX size={ICON_SIZES.lg} />
           </button>
         </div>
       </div>
@@ -353,7 +354,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
                 }}
               >
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent-sym)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <IconUsers size={18} color="#000" />
+                  <IconUsers size={ICON_SIZES.lg} color="#000" />
                 </div>
                 <div style={{ flex: 1, overflow: 'hidden' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -429,10 +430,10 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
                   <div key={m.user_id} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px 8px', background: '#ffffff0d', borderRadius: '12px', fontSize: '0.85em' }}>
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: m.avatar_url ? `url(${m.avatar_url}) center/cover` : '#333333ff' }}></div>
                     <span>{m.username}</span>
-                    {m.role === 'admin' && <IconCrown size={12} color="#10b981ff" />}
+                    {m.role === 'admin' && <IconCrown size={ICON_SIZES.xs} color="#10b981ff" />}
                     {isAdmin && m.user_id !== currentUserId && (
                       <button onClick={() => removeMember(m.user_id)} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }} aria-label="Remove member">
-                        <IconTrash size={12} />
+                        <IconTrash size={ICON_SIZES.xs} />
                       </button>
                     )}
                   </div>
@@ -446,19 +447,19 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
                   <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>Shared Files ({groupFiles.length})</span>
                   {isAdmin && (
                     <button onClick={() => { fetchUserFiles(); setShowFileShare(true); }} style={{ background: 'none', border: 'none', padding: 0, color: '#10b981ff', cursor: 'pointer' }} aria-label="Share file">
-                      <IconShare size={14} />
+                      <IconShare size={ICON_SIZES.sm} />
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '100px', overflowY: 'auto' }}>
                   {groupFiles.map(f => (
                     <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px', background: '#ffffff05', borderRadius: '4px', fontSize: '0.8em' }}>
-                      <IconFile size={12} />
+                      <IconFile size={ICON_SIZES.xs} />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.filename}</span>
-                      {f.can_edit && <IconEdit size={12} color="#10b981ff" />}
+                      {f.can_edit && <IconEdit size={ICON_SIZES.xs} color="#10b981ff" />}
                       {isAdmin && (
                         <button onClick={() => removeGroupFile(f.id)} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }}>
-                          <IconTrash size={10} />
+                          <IconTrash size={ICON_SIZES.xs} />
                         </button>
                       )}
                     </div>
@@ -505,7 +506,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
                 </Suspense>
               )}
               <button onClick={() => setShowEmoji(!showEmoji)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                <IconMoodSmile size={20} />
+                <IconMoodSmile size={ICON_SIZES.xl} />
               </button>
               <input
                 type="text"
@@ -520,7 +521,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
                 }}
               />
               <button onClick={sendMessage} disabled={!newMessage.trim()} aria-label="Send message" style={{ background: 'transparent', border: 'none', color: newMessage.trim() ? 'var(--accent-sym)' : '#555' }}>
-                <IconSend size={20} />
+                <IconSend size={ICON_SIZES.xl} />
               </button>
             </div>
           </div>
@@ -532,13 +533,13 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h4 style={{ margin: 0 }}>Share File</h4>
             <button onClick={() => setShowFileShare(false)} style={{ background: 'none', border: 'none', padding: 0 }} aria-label="Close">
-              <IconX size={18} />
+              <IconX size={ICON_SIZES.lg} />
             </button>
           </div>
           <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {userFiles.map(f => (
               <div key={f.id} onClick={() => shareFile(f.id)} style={{ padding: '10px', background: '#ffffff05', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <IconFile size={16} />
+                <IconFile size={ICON_SIZES.md} />
                 <span style={{ flex: 1 }}>{f.filename}</span>
               </div>
             ))}

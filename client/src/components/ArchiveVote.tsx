@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IconArchive, IconX } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 import Skeleton from './Skeleton';
 
@@ -36,9 +37,9 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
           <h2 style={{ margin: 0, color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconArchive size={24} /> Community Archive
+            <IconArchive size={ICON_SIZES['2xl']} /> Community Archive
           </h2>
-          <button onClick={onClose} className="icon-btn" aria-label="Close"><IconX size={24} /></button>
+          <button onClick={onClose} className="icon-btn" aria-label="Close"><IconX size={ICON_SIZES['2xl']} /></button>
         </div>
 
         {loading && (
@@ -51,7 +52,7 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
         
         {!loading && files.length === 0 && (
           <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' }}>
-            <IconArchive size={64} stroke={1} style={{ opacity: 0.3 }} aria-hidden="true" />
+            <IconArchive size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.3 }} aria-hidden="true" />
             <div>
               <p style={{ margin: 0, fontSize: '1.2em', fontWeight: 'bold', color: 'var(--text-primary)' }}>No Artifacts Preserved</p>
               <p style={{ margin: '5px 0 0 0', fontSize: '0.95em', opacity: 0.7 }}>The community archives are silent.</p>

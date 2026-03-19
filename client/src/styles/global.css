@@ -1,3 +1,7 @@
+@import './design-tokens.css';
+@import './components.css';
+@import './animations.css';
+
 :root {
   --bg-color: #0a0b10ff;
   --bg-mist: #111318ff;

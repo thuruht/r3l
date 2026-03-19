@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconSearch, IconDice, IconX, IconLoader, IconBroadcast } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import Skeleton from './Skeleton';
 
 interface DiscoveryProps {
@@ -65,7 +66,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
             boxShadow: isFocused ? 'var(--glow-sym)' : 'none',
             transition: 'all 0.2s'
         }}>
-          <IconSearch size={16} color={isFocused ? 'var(--accent-sym)' : 'var(--text-secondary)'} />
+          <IconSearch size={ICON_SIZES.md} color={isFocused ? 'var(--accent-sym)' : 'var(--text-secondary)'} />
           <input
             type="text"
             placeholder="Search..."
@@ -84,14 +85,14 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
               fontSize: '0.9rem'
             }}
           />
-          {loading && <div className="icon-spin" style={{ marginRight: '5px' }}><IconLoader size={14} color="var(--text-secondary)" /></div>}
+          {loading && <div className="icon-spin" style={{ marginRight: '5px' }}><IconLoader size={ICON_SIZES.sm} color="var(--text-secondary)" /></div>}
           {query && !loading && (
              <button
                 onClick={closeSearch}
                 aria-label="Clear search"
                 style={{background: 'none', border:'none', padding: 0, color: 'var(--text-secondary)', cursor: 'pointer'}}
              >
-                <IconX size={14}/>
+                <IconX size={ICON_SIZES.sm}/>
              </button>
           )}
         </div>
@@ -109,7 +110,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
           }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Search Results</h3>
-                <button onClick={closeSearch} aria-label="Close search results" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}><IconX size={20} /></button>
+                <button onClick={closeSearch} aria-label="Close search results" style={{ background: 'none', border: 'none', color: 'var(--text-secondary)' }}><IconX size={ICON_SIZES.xl} /></button>
             </div>
             
             {loading && (
@@ -122,7 +123,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
 
             {!loading && results.length === 0 && (
                 <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                    <IconBroadcast size={48} stroke={1} style={{ opacity: 0.7 }} />
+                    <IconBroadcast size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.7 }} />
                     <p style={{ margin: 0, fontSize: '1.1em' }}>No frequencies found</p>
                     <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Signal "{query}" returned no echoes.</p>
                 </div>
@@ -202,7 +203,7 @@ export const RandomUserButton: React.FC<DiscoveryProps> = ({ onNavigate }) => {
           e.currentTarget.style.color = 'var(--accent-asym)';
       }}
     >
-      <IconDice size={18} />
+      <IconDice size={ICON_SIZES.lg} />
     </button>
   );
 };

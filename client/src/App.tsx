@@ -2,6 +2,7 @@ import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
   IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers
 } from '@tabler/icons-react';
+import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
@@ -269,17 +270,8 @@ function Main() {
 
   if (loadingUser) {
     return (
-        <div style={{
-            height: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--bg-color)',
-            color: 'var(--text-primary)',
-            flexDirection: 'column',
-            gap: '20px'
-        }}>
-            <div className="radar-scan" style={{ width: '50px', height: '50px', border: '2px solid var(--accent-sym)', borderRadius: '50%' }}></div>
+        <div className="loading-container">
+            <div className="radar-scan"></div>
             <div>Establishing Uplink...</div>
         </div>
     );
@@ -294,13 +286,13 @@ function Main() {
 
             <div className="login-grid">
                <div className="info-card">
-                  <IconRadar2 size={32} color="var(--accent-sym)" />
+                  <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
                   <h3>THE DRIFT</h3>
                   <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
                </div>
 
                 <div className="info-card">
-                  <IconChartCircles size={32} color="var(--accent-alert)" />
+                  <IconChartCircles size={ICON_SIZES['2xl']} color="var(--accent-alert)" />
                   <h3>VITALITY</h3>
                   <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
                </div>
@@ -332,7 +324,7 @@ function Main() {
                          required
                        />
                        <button type="submit" className="primary-btn">
-                           {isRegistering ? 'REGISTER' : 'LOGIN'} <IconMenu2 size={16} style={{transform: 'rotate(90deg)'}}/>
+                           {isRegistering ? 'REGISTER' : 'LOGIN'} <IconMenu2 size={ICON_SIZES.md} style={{transform: 'rotate(90deg)'}}/>
                        </button>
                    </form>
                    <button className="text-btn" onClick={() => setIsRegistering(!isRegistering)}>
@@ -345,82 +337,59 @@ function Main() {
         <>
             {/* Header / Nav */}
             <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.2rem', letterSpacing: '2px', cursor: 'pointer' }} onClick={() => navigate('/')}>REL F <span style={{ fontSize: '0.6rem', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', padding: '1px 3px', borderRadius: '3px', verticalAlign: 'middle' }}>BETA</span></h2>
-                    <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
+                <div className="header-content">
+                <div className="header-left">
+                    <h2 className="header-logo" onClick={() => navigate('/')}>REL F <span className="header-logo-beta">BETA</span></h2>
+                    <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                          <SearchBar />
                          <RandomUserButton />
                     </div>
                 </div>
 
                 {currentUser && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    
-                    <div className="desktop-only" style={{ display: 'flex', gap: '10px' }}>
-                      <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', padding: '2px', border: '1px solid var(--border-color)' }}>
-                        <button 
+                <div className="header-controls">
+
+                    <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
+                      <div className="view-toggle">
+                        <button
                           onClick={() => { setViewMode('graph'); navigate('/'); }}
+                          className={viewMode === 'graph' ? 'active' : ''}
                           title="Graph View"
-                          style={{ 
-                            padding: '6px 10px', 
-                            background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
-                            color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer'
-                          }}
                         >
-                          <IconChartCircles size={18} aria-hidden="true" />
+                          <IconChartCircles size={ICON_SIZES.lg} aria-hidden="true" />
                         </button>
-                        <button 
+                        <button
                           onClick={() => { setViewMode('list'); navigate('/'); }}
+                          className={viewMode === 'list' ? 'active' : ''}
                           title="List View"
-                          style={{ 
-                            padding: '6px 10px', 
-                            background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
-                            color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer'
-                          }}
                         >
-                          <IconList size={18} aria-hidden="true" />
+                          <IconList size={ICON_SIZES.lg} aria-hidden="true" />
                         </button>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', background: isDrifting ? 'rgba(50, 255, 100, 0.1)' : 'transparent', borderRadius: '4px' }}>
-                          <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode" className={isDrifting ? 'active' : ''} style={{ padding: '8px', borderRight: '1px solid rgba(255,255,255,0.1)' }}>
-                            <IconRadar2 size={20} aria-hidden="true" />
+                      <div className={`drift-controls ${isDrifting ? 'active' : ''}`}>
+                          <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode">
+                            <IconRadar2 size={ICON_SIZES.xl} aria-hidden="true" />
                           </button>
-                          <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} style={{ padding: '8px 6px', fontSize: '0.7rem', minWidth: '40px', color: isDrifting ? 'var(--accent-sym)' : 'var(--text-secondary)' }}>
+                          <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} className="drift-filter-btn">
                               {driftType ? driftType.toUpperCase() : 'ALL'}
                           </button>
                       </div>
                     </div>
-                    
-                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Inbox, ${unreadCount} unread`}>
+
+                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
                     Inbox
                     {unreadCount > 0 && (
-                        <span style={{
-                        position: 'absolute',
-                        top: '4px',
-                        right: '4px',
-                        background: 'var(--accent-alert)',
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: '8px',
-                        height: '8px',
-                        }} aria-hidden="true"></span>
+                        <span className="unread-badge" aria-hidden="true"></span>
                     )}
                     </button>
 
-                    <button onClick={() => { setIsGroupChatOpen(!isGroupChatOpen); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Groups`}>
+                    <button onClick={() => { setIsGroupChatOpen(!isGroupChatOpen); }} className="nav-button" aria-label={`Groups`}>
                         Groups
                     </button>
-    
-                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
-                        {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
+
+                    <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu">
+                        {isMenuOpen ? <IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
                     </button>
                 </div>
                 )}
@@ -429,93 +398,70 @@ function Main() {
     
             {/* Dropdown Menu */}
               {isMenuOpen && (
-                <div className="glass-panel nav-dropdown" style={{
-                  position: 'absolute',
-                  top: '60px',
-                  right: '10px',
-                  padding: '1rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1rem',
-                  zIndex: 2000,
-                  maxHeight: '80vh',
-                  overflowY: 'auto'
-                }}>
-                    <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                <div className="glass-panel nav-dropdown">
+                    <div className="menu-mobile-section">
                         <SearchBar />
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>View Mode:</span>
-                             <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '2px' }}>
-                                <button 
+                            <span className="menu-label">View Mode:</span>
+                             <div className="view-toggle">
+                                <button
                                   onClick={() => { setViewMode('graph'); setIsMenuOpen(false); navigate('/'); }}
-                                  style={{ 
-                                    padding: '6px 10px', 
-                                    background: viewMode === 'graph' ? 'var(--accent-sym)' : 'transparent', 
-                                    color: viewMode === 'graph' ? '#000' : 'var(--text-secondary)',
-                                    border: 'none',
-                                    borderRadius: '3px'
-                                  }}
+                                  className={viewMode === 'graph' ? 'active' : ''}
                                 >
-                                  <IconChartCircles size={16} />
+                                  <IconChartCircles size={ICON_SIZES.md} />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => { setViewMode('list'); setIsMenuOpen(false); navigate('/'); }}
-                                  style={{ 
-                                    padding: '6px 10px', 
-                                    background: viewMode === 'list' ? 'var(--accent-sym)' : 'transparent', 
-                                    color: viewMode === 'list' ? '#000' : 'var(--text-secondary)',
-                                    border: 'none',
-                                    borderRadius: '3px'
-                                  }}
+                                  className={viewMode === 'list' ? 'active' : ''}
                                 >
-                                  <IconList size={16} />
+                                  <IconList size={ICON_SIZES.md} />
                                 </button>
                             </div>
                         </div>
                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Drift:</span>
-                            <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: '6px' }}>
-                                <IconRadar2 size={18} />
+                            <span className="menu-label">Drift:</span>
+                            <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: 'var(--spacing-xs)' }} title="Toggle Drift">
+                                <IconRadar2 size={ICON_SIZES.lg} />
                             </button>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Discover:</span>
+                             <span className="menu-label">Discover:</span>
                              <RandomUserButton />
                         </div>
                     </div>
 
-                    <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconFolder size={18} /> Collections
+                    <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                        <IconFolder size={ICON_SIZES.lg} /> Collections
                     </button>
 
-                     <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconUsers size={18} /> Groups
+                     <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                        <IconUsers size={ICON_SIZES.lg} /> Groups
                     </button>
 
-                    <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                    <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
+                        <IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
 
-                    <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconHelp size={18} /> Help
+                    <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                        <IconHelp size={ICON_SIZES.lg} /> Help
                     </button>
-                    <button onClick={() => { setIsFeedbackOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconMessage size={18} /> Feedback
+                    <button onClick={() => { setIsFeedbackOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                        <IconMessage size={ICON_SIZES.lg} /> Feedback
                     </button>
-                    <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconInfoCircle size={18} /> About
+                    <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                        <IconInfoCircle size={ICON_SIZES.lg} /> About
                     </button>
-                    
+
                     {isAdmin && (
-                      <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', color: 'var(--accent-alert)', padding: '5px' }}>
-                          <IconDashboard size={18} /> Admin
+                      <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} className="menu-item admin">
+                          <IconDashboard size={ICON_SIZES.lg} /> Admin
                       </button>
                     )}
-                    
-                    <div style={{ height: '1px', background: 'var(--border-color)', margin: '5px 0' }}></div>
-                    
-                    <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
-                        <IconLogout size={18} /> Logout
+
+                    <div className="menu-divider"></div>
+
+                    <button onClick={handleLogout} className="menu-item">
+                        <IconLogout size={ICON_SIZES.lg} /> Logout
                     </button>
                 </div>
             )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { IconShieldLock, IconDownload, IconRefresh } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { generateRelfKeypair, storeIdentity } from '../utils/crypto';
 import { useToast } from '../context/ToastContext';
 
@@ -57,10 +58,10 @@ const KeyManagement: React.FC<{ userId: number }> = ({ userId }) => {
       
       <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
         <button onClick={handleBackup} className="secondary-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          <IconDownload size={18} /> Backup
+          <IconDownload size={ICON_SIZES.lg} /> Backup
         </button>
         <button onClick={handleSyncKeys} disabled={loading} className="primary-btn" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-          <IconRefresh size={18} /> {loading ? 'Syncing...' : 'Regenerate'}
+          <IconRefresh size={ICON_SIZES.lg} /> {loading ? 'Syncing...' : 'Regenerate'}
         </button>
       </div>
     </div>

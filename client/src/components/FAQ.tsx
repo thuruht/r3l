@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconX, IconRadar2, IconRefresh, IconBolt, IconLink } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface FAQProps {
   onClose: () => void;
@@ -11,7 +12,7 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>Signal Calibration</h2>
-          <button onClick={onClose} className="icon-btn"><IconX size={24} /></button>
+          <button onClick={onClose} className="icon-btn"><IconX size={ICON_SIZES['2xl']} /></button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>

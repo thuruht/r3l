@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolderOpen, IconEye, IconCheck, IconArrowLeft, IconGripVertical, IconPencil, IconFile, IconDownload, IconDeviceFloppy, IconChevronUp, IconChevronDown } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
 import FilePreviewModal from './FilePreviewModal';
@@ -244,7 +245,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                     {loadingColls && <p>Loading...</p>}
                     {!loadingColls && collections.length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                            <IconFolderOff size={48} stroke={1} />
+                            <IconFolderOff size={ICON_SIZES['2xl']} stroke={1} />
                             <p style={{ margin: 0, fontSize: '1.1em' }}>No Collections Manifested</p>
                             <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Gather your artifacts into new structures.</p>
                         </div>
@@ -295,7 +296,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flex: 1 }}>
-                                <IconFolder size={24} color="var(--accent-sym)" />
+                                <IconFolder size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
                                 {isEditingThis ? (
                                     <div style={{ display: 'flex', gap: '5px', flex: 1 }}>
                                         <input
@@ -329,8 +330,8 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                     {isEditingThis ? (
                                         <>
-                                            <button onClick={saveEdit} aria-label="Save changes" style={{ color: 'var(--accent-sym)', background: 'transparent', border: 'none' }}><IconDeviceFloppy size={18} /></button>
-                                            <button onClick={cancelEdit} aria-label="Cancel editing" style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none' }}><IconX size={18} /></button>
+                                            <button onClick={saveEdit} aria-label="Save changes" style={{ color: 'var(--accent-sym)', background: 'transparent', border: 'none' }}><IconDeviceFloppy size={ICON_SIZES.lg} /></button>
+                                            <button onClick={cancelEdit} aria-label="Cancel editing" style={{ color: 'var(--text-secondary)', background: 'transparent', border: 'none' }}><IconX size={ICON_SIZES.lg} /></button>
                                         </>
                                     ) : (
                                         <>
@@ -340,7 +341,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                                 title="Edit"
                                                 aria-label="Edit Collection"
                                             >
-                                                <IconPencil size={18} />
+                                                <IconPencil size={ICON_SIZES.lg} />
                                             </button>
                                             <button
                                                 onClick={(e) => handleDelete(c.id, e)}
@@ -348,13 +349,13 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                                 title="Delete Collection"
                                                 aria-label="Delete Collection"
                                             >
-                                                <IconTrash size={18} />
+                                                <IconTrash size={ICON_SIZES.lg} />
                                             </button>
                                         </>
                                     )}
                                 </div>
                             )}
-                            {mode === 'select' && <IconCheck size={18} style={{ opacity: 0.5 }} />}
+                            {mode === 'select' && <IconCheck size={ICON_SIZES.lg} style={{ opacity: 0.5 }} />}
                         </div>
                     )})}
                 </>
@@ -366,7 +367,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                     {loadingFiles && <p>Loading files...</p>}
                     {!loadingFiles && collectionFiles.length === 0 && (
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                            <IconFolderOpen size={48} stroke={1} />
+                            <IconFolderOpen size={ICON_SIZES['2xl']} stroke={1} />
                             <p style={{ margin: 0, fontSize: '1.1em' }}>Empty Archive</p>
                             <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>This vessel waits for your discoveries.</p>
                         </div>
@@ -384,29 +385,29 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                                     aria-label="Move file up"
                                     title="Move Up"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === 0 ? 0.2 : 0.7, cursor: index === 0 ? 'default' : 'pointer' }}
-                                ><IconChevronUp size={16} /></button>
+                                ><IconChevronUp size={ICON_SIZES.md} /></button>
                                 <button
                                     disabled={index === collectionFiles.length - 1}
                                     onClick={() => moveFile(index, 'down')}
                                     aria-label="Move file down"
                                     title="Move Down"
                                     style={{ background: 'none', border: 'none', padding: 0, opacity: index === collectionFiles.length - 1 ? 0.2 : 0.7, cursor: index === collectionFiles.length - 1 ? 'default' : 'pointer' }}
-                                ><IconChevronDown size={16} /></button>
+                                ><IconChevronDown size={ICON_SIZES.md} /></button>
                             </div>
 
-                            <IconFile size={20} style={{ opacity: 0.7 }} />
+                            <IconFile size={ICON_SIZES.xl} style={{ opacity: 0.7 }} />
 
                             <div style={{ flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                                 {f.filename}
                             </div>
 
                             <button onClick={() => setPreviewFile(f)} style={{ background: 'none', border: 'none', color: 'var(--text-primary)' }} title="View" aria-label="View file">
-                                <IconEye size={18} />
+                                <IconEye size={ICON_SIZES.lg} />
                             </button>
 
                             {/* Edit/Remove Actions */}
                             <button onClick={() => removeFile(f.id)} style={{ background: 'none', border: 'none', color: 'var(--accent-alert)' }} title="Remove" aria-label="Remove file">
-                                <IconX size={18} />
+                                <IconX size={ICON_SIZES.lg} />
                             </button>
                         </div>
                     ))}
@@ -422,7 +423,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         onClick={() => setIsCreating(true)}
                         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}
                     >
-                        <IconFolderPlus size={18} /> Create New Collection
+                        <IconFolderPlus size={ICON_SIZES.lg} /> Create New Collection
                     </button>
                 ) : (
                     <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

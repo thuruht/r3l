@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -59,7 +60,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
         style={{
           width: '400px', maxWidth: '90%',
           background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
-          padding: '25px', position: 'relative', boxShadow: '0 0 30px #000'
+          padding: 'var(--spacing-2xl)', position: 'relative', boxShadow: '0 0 30px #000'
         }}
         onClick={e => e.stopPropagation()}
       >
@@ -68,27 +69,27 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           onClick={onClose}
           aria-label="Close modal"
           style={{
-            position: 'absolute', top: '15px', right: '15px',
-            background: 'transparent', border: 'none', padding: '5px'
+            position: 'absolute', top: 'var(--spacing-lg)', right: 'var(--spacing-lg)',
+            background: 'transparent', border: 'none', padding: 'var(--spacing-xs)'
           }}
         >
-          <IconX size={18} />
+          <IconX size={ICON_SIZES.lg} />
         </button>
 
         <h4
           id="confirm-modal-title"
-          style={{ margin: '0 0 15px 0', color: 'var(--accent-alert)', display: 'flex', alignItems: 'center', gap: '10px' }}
+          style={{ margin: '0 0 var(--spacing-lg) 0', color: 'var(--accent-alert)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}
         >
-          <IconAlertTriangle size={24} /> {title}
+          <IconAlertTriangle size={ICON_SIZES['2xl']} /> {title}
         </h4>
         <p
           id="confirm-modal-desc"
-          style={{ color: 'var(--text-primary)', marginBottom: '25px' }}
+          style={{ color: 'var(--text-primary)', marginBottom: 'var(--spacing-2xl)' }}
         >
           {message}
         </p>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-md)' }}>
           <button
             ref={cancelButtonRef}
             onClick={onClose}

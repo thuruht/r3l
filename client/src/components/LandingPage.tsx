@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { IconArrowRight, IconRadar2, IconActivity, IconCirclesRelation } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface LandingPageProps {
   onLogin: (e: React.FormEvent, data: any) => void;
@@ -39,17 +40,17 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
         <div className="landing-grid">
           <div className="feature-card">
-            <IconRadar2 size={32} color="var(--accent-sym)" />
+            <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
             <h3>The Drift</h3>
             <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
           </div>
           <div className="feature-card">
-            <IconActivity size={32} color="var(--accent-alert)" />
+            <IconActivity size={ICON_SIZES['2xl']} color="var(--accent-alert)" />
             <h3>Vitality</h3>
             <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
           </div>
           <div className="feature-card">
-            <IconCirclesRelation size={32} color="var(--accent-me)" />
+            <IconCirclesRelation size={ICON_SIZES['2xl']} color="var(--accent-me)" />
             <h3>Symmetry</h3>
             <p>Forge connections. Asym links are observations; Sym links are mutual channels for direct exchange.</p>
           </div>
@@ -92,7 +93,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
             {authError && <div className="error-message fade-in">{authError}</div>}
             
             <button type="submit" className="submit-btn">
-              {isRegistering ? 'Register' : 'Login'} <IconArrowRight size={18} />
+              {isRegistering ? 'Register' : 'Login'} <IconArrowRight size={ICON_SIZES.lg} />
             </button>
           </form>
 

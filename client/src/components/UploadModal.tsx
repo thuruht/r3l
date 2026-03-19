@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock } from '@tabler/icons-react';
+import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 import { generateKey, encryptFile, exportKey } from '../utils/crypto';
 
@@ -182,7 +183,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
         >
-            <IconUpload size={48} color="var(--text-secondary)" />
+            <IconUpload size={ICON_SIZES['2xl']} color="var(--text-secondary)" />
             <p style={{ color: 'var(--text-secondary)' }}>Drag & Drop files here or click to select</p>
         </div>
         <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
@@ -197,7 +198,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
                 aria-describedby="encrypt-desc"
               />
               <label htmlFor="encrypt-check" style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', cursor: 'pointer', color: isEncrypted ? 'var(--accent-sym)' : 'inherit' }}>
-                  <IconLock size={16} /> Client-Side Encryption
+                  <IconLock size={ICON_SIZES.md} /> Client-Side Encryption
               </label>
             </div>
             <p id="encrypt-desc" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '24px' }}>
@@ -212,15 +213,15 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         }}>
             {files.map(f => (
                 <li key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(255,255,255,0.05)', padding: '8px', borderRadius: '4px', color: 'var(--text-primary)' }}>
-                    <IconFile size={20} color="var(--text-primary)" />
+                    <IconFile size={ICON_SIZES.xl} color="var(--text-primary)" />
                     <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ fontSize: '0.9em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.file.name}</div>
                         <div style={{ height: '4px', background: '#333', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
                             <div style={{ width: `${f.progress}%`, height: '100%', background: f.status === 'error' ? 'var(--accent-alert)' : 'var(--accent-sym)', transition: 'width 0.2s' }}></div>
                         </div>
                     </div>
-                    {f.status === 'success' && <IconCheck size={16} color="var(--accent-sym)" />}
-                    {f.status === 'error' && <IconAlertCircle size={16} color="var(--accent-alert)" title={f.error} role="img" aria-label={f.error} />}
+                    {f.status === 'success' && <IconCheck size={ICON_SIZES.md} color="var(--accent-sym)" />}
+                    {f.status === 'error' && <IconAlertCircle size={ICON_SIZES.md} color="var(--accent-alert)" title={f.error} role="img" aria-label={f.error} />}
                     {f.status !== 'uploading' && (
                         <button
                             onClick={(e) => { e.stopPropagation(); removeFile(f.id); }}
@@ -228,7 +229,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
                             title="Remove file"
                             style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', marginLeft: 'auto' }}
                         >
-                            <IconX size={16} />
+                            <IconX size={ICON_SIZES.md} />
                         </button>
                     )}
                 </li>

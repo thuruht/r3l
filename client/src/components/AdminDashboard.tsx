@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { IconX, IconServer, IconUsers, IconFiles, IconArchive, IconBroadcast, IconTrash } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+import { ICON_SIZES } from '@/constants/iconSizes';
 
 interface AdminDashboardProps {
   onClose: () => void;
@@ -105,7 +106,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       flex: '1 1 200px'
     }}>
       <div style={{ padding: '10px', borderRadius: '50%', background: `${color}22`, color: color }}>
-        <Icon size={24} />
+        <Icon size={ICON_SIZES['2xl']} />
       </div>
       <div>
         <div style={{ fontSize: '2em', fontWeight: 'bold', lineHeight: 1 }}>{value ?? '-'}</div>
@@ -196,7 +197,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                 <td style={{ padding: '10px' }}>
                                     {u.id !== 1 && (
                                         <button onClick={() => handleDeleteUser(u.id)} style={{ padding: '4px', color: 'var(--accent-alert)', border: 'none', background: 'transparent' }} title="Delete">
-                                            <IconTrash size={16} />
+                                            <IconTrash size={ICON_SIZES.md} />
                                         </button>
                                     )}
                                 </td>
@@ -209,7 +210,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
         {tab === 'broadcast' && (
             <div style={{ padding: '20px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                <h3 style={{ marginTop: 0 }}><IconBroadcast size={20} style={{ verticalAlign: 'middle' }} /> Global System Alert</h3>
+                <h3 style={{ marginTop: 0 }}><IconBroadcast size={ICON_SIZES.xl} style={{ verticalAlign: 'middle' }} /> Global System Alert</h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Send a notification to all currently connected users.</p>
                 <textarea
                     value={broadcastMsg}

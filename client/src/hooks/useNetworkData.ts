@@ -22,12 +22,31 @@ export interface NetworkCollection {
     file_ids: number[];
 }
 
+export interface DriftUser {
+  id: number;
+  username: string;
+  avatar_url?: string;
+}
+
+export interface DriftFile {
+  id: number;
+  filename: string;
+  mime_type: string;
+  user_id: number;
+  owner_username: string;
+}
+
+export interface DriftData {
+  users: DriftUser[];
+  files: DriftFile[];
+}
+
 interface UseNetworkDataProps {
   currentUserId: number | null;
   meUsername: string | undefined; 
   meAvatarUrl: string | undefined; 
   isDrifting: boolean;
-  driftData: { users: any[], files: any[] };
+  driftData: DriftData;
   onlineUserIds: Set<number>;
 }
 
@@ -127,7 +146,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
 
       // Drift Logic
       if (isDrifting && driftData) {
-        driftData.users?.forEach((u: any) => {
+        driftData.users?.forEach((u: DriftUser) => {
           const uid = u.id.toString();
           if (!nodeMap.has(uid)) {
             nodeMap.set(uid, {
@@ -140,7 +159,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
           }
         });
 
-        driftData.files?.forEach((f: any) => {
+        driftData.files?.forEach((f: DriftFile) => {
             const fileNodeId = `file-${f.id}`;
             const ownerId = f.user_id.toString();
 

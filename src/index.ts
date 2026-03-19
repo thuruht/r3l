@@ -41,27 +41,21 @@ const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
 const ADMIN_USER_ID = 1;
 
-// --- Authentication Middleware ---
+// --- Security Fix: No Hardcoded Fallback ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
+  const secret = c.env.JWT_SECRET;
+  
+  if (!token || !secret) {
+    return c.json({ error: 'Unauthorized: Missing session or secret' }, 401);
   }
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
     const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
     c.set('user_id', payload.id as number);
     await next();
   } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+    return c.json({ error: 'Unauthorized: Invalid session' }, 401);
   }
 };
 
@@ -307,7 +301,7 @@ app.post('/api/login', async (c) => {
   try {
     // 1. Fetch user (including secret salt and E2EE keys)
     const user = await c.env.DB.prepare(
-      'SELECT id, username, password, salt, avatar_url, public_key, encrypted_private_key FROM users WHERE username = ?'
+      'SELECT id, username, password, salt, avatar_url, public_key, encrypted_private_key, is_verified FROM users WHERE username = ?'
     ).bind(username).first();
 
     if (!user) return c.json({ error: 'Invalid credentials' }, 401);
@@ -320,7 +314,12 @@ app.post('/api/login', async (c) => {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
-    // 4. Generate JWT
+    // 4. Check if user is verified
+    if (!user.is_verified) {
+      return c.json({ error: 'Identity not verified. Check your inbox.', needs_verification: true }, 403);
+    }
+
+    // 5. Generate JWT
     if (!c.env.JWT_SECRET) {
       throw new Error('JWT_SECRET is not set');
     }
@@ -330,7 +329,7 @@ app.post('/api/login', async (c) => {
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 days
     }, c.env.JWT_SECRET);
 
-    // 5. Set HttpOnly Cookie
+    // 6. Set HttpOnly Cookie
     setCookie(c, 'auth_token', token, {
       httpOnly: true,
       secure: true, // Requires HTTPS (or localhost)
@@ -495,6 +494,13 @@ app.get('/api/users/me', async (c) => {
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
   }
+});
+
+app.put('/api/users/me/public-key', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { public_key } = await c.req.json();
+  await c.env.DB.prepare('UPDATE users SET public_key = ? WHERE id = ?').bind(public_key, user_id).run();
+  return c.json({ success: true });
 });
 
 // PUT /api/users/me/privacy: Update privacy settings (Lurker Mode)

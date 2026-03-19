@@ -1,72 +1,58 @@
 import React from 'react';
-import { IconX, IconBrandGithub } from '@tabler/icons-react';
 
 interface AboutProps {
   onClose: () => void;
 }
 
+const IconX = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6l-12 12"></path><path d="M6 6l12 12"></path></svg>;
+const IconCloud = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6.62 17.015c.656 -1.826 2.328 -3.015 4.38 -3.015c2.115 0 3.843 1.258 4.436 3.015m.564 -3.015c2.21 0 4 1.79 4 4s-1.79 4 -4 4h-10c-2.21 0 -4 -1.79 -4 -4s1.79 -4 4 -4"></path></svg>;
+const IconShieldLock = () => <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a12 12 0 0 0 8.5 3.5a12 12 0 0 1 -8.5 8.5a12 12 0 0 1 -8.5 -8.5a12 12 0 0 0 8.5 -3.5"></path><path d="M12 11m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"></path><path d="M12 12v2"></path></svg>;
+
 const About: React.FC<AboutProps> = ({ onClose }) => {
   return (
-    <div className="modal-overlay fade-in">
-      <div style={{
-        width: '600px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
-        background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
-        padding: '30px', position: 'relative', boxShadow: '0 0 30px #000'
+    <div className="modal-overlay fade-in" onClick={onClose} style={{ 
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 
+    }}>
+      <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ 
+          maxWidth: '650px', background: 'var(--drawer-bg)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border-color)'
       }}>
-        <button onClick={onClose} style={{
-          position: 'absolute', top: '15px', right: '15px',
-          background: 'transparent', border: 'none', padding: '5px', cursor: 'pointer', color: 'var(--text-secondary)'
-        }}>
-          <IconX />
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>About Rel F</h2>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <IconX />
+          </button>
+        </div>
 
-        <h2 style={{ color: 'var(--accent-sym)', marginTop: 0, borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-            Rel F: Philosophy
-        </h2>
+        <div style={{ color: 'var(--text-secondary)', lineHeight: '1.6', fontSize: '0.95rem' }}>
+          <p>
+            <strong>Rel F</strong> (Relational Relativity & Random Ephemerality File-net) is a digital experiment designed to reclaim the serendipity of the early web.
+          </p>
 
-        <div style={{ color: 'var(--text-primary)', lineHeight: '1.6' }}>
-            <p>
-                <strong>Rel F</strong> (Relational Ephemeral Filenet) is an experiment in digital impermanence and connection.
-            </p>
+          <p>
+            In an era of permanent digital footprints and invasive algorithms, Rel F offers a space for <strong>ephemeral interaction</strong>. By enforcing data expiration and prioritizing consensual relationships, we return agency to the individual.
+          </p>
 
-            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>The Void & The Drift</h4>
-            <p style={{ marginTop: 0 }}>
-                The modern web remembers everything. Rel F forgets.
-                The <strong>Drift</strong> is the noise between signals. By tuning your radar, you can discover
-                artifacts and users floating in this digital ether.
-            </p>
-
-            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Vitality</h4>
-            <p style={{ marginTop: 0 }}>
-                Data requires energy to exist. Artifacts (files) uploaded to the network have <strong>Vitality</strong>.
-                Without attention (boosts), they decay and are eventually reclaimed by the void (deleted).
-                Only those that resonate with the network survive.
-            </p>
-
-            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Symmetry</h4>
-            <p style={{ marginTop: 0 }}>
-                Connections are defined by their geometry.
-                <strong>Asym</strong> (Asymmetrical) links are one-way observations.
-                <strong>Sym</strong> (Symmetrical) links are mutual agreements, opening channels for direct sharing.
-            </p>
-
-            <h4 style={{ color: 'var(--accent-asym)', marginTop: '20px', marginBottom: '10px' }}>Data & Privacy</h4>
-            <p style={{ marginTop: 0 }}>
-                We respect the void. We do not track you. We do not sell your data.
-                <br/>
-                <a href="/privacy" onClick={(e) => { e.preventDefault(); window.location.href='/privacy'; }} style={{ color: 'var(--accent-sym)', textDecoration: 'none', borderBottom: '1px dotted var(--accent-sym)' }}>
-                    Read our strict Privacy & Data Policy
-                </a>
-            </p>
-
-            <div style={{ marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px', fontSize: '0.9em', color: 'var(--text-secondary)' }}>
-                <p>
-                    <em>"Signals emerge from the static."</em>
-                </p>
-                <a href="https://github.com/thuruht/r3l" target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: 'var(--text-primary)', textDecoration: 'none' }}>
-                    <IconBrandGithub size={16} /> Source Code
-                </a>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', margin: '30px 0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <IconCloud />
+              <h5 style={{ margin: '10px 0 5px 0', color: 'var(--text-primary)' }}>Cloud Native</h5>
+              <p style={{ fontSize: '0.8rem', margin: 0 }}>Built on the Cloudflare edge for low-latency global signals.</p>
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+              <IconShieldLock />
+              <h5 style={{ margin: '10px 0 5px 0', color: 'var(--text-primary)' }}>Zero Knowledge</h5>
+              <p style={{ fontSize: '0.8rem', margin: 0 }}>Privacy-first architecture with end-to-end encryption for whispers.</p>
+            </div>
+          </div>
+
+          <p>
+            The project is currently in <strong>Open Beta</strong>. We encourage users to drift, share, and help us define the future of ephemeral networking.
+          </p>
+
+          <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '20px', paddingTop: '20px', fontSize: '0.8rem', opacity: 0.6 }}>
+            Version: 1.0.0-GOLD (Mist Architecture) <br />
+            © 2025 Rel F Lab. Established in the void.
+          </div>
         </div>
       </div>
     </div>

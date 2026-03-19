@@ -39,8 +39,8 @@ interface Env {
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
-<<<<<<< ours
-=======
+const ADMIN_USER_ID = 1;
+
 // --- Authentication Middleware ---
 const authMiddleware = async (c: any, next: any) => {
   const token = getCookie(c, 'auth_token');
@@ -65,7 +65,6 @@ const authMiddleware = async (c: any, next: any) => {
   }
 };
 
->>>>>>> theirs
 // Document Collaboration WebSocket endpoint
 app.get('/api/collab/:fileId', authMiddleware, async (c) => {
   const upgradeHeader = c.req.header('Upgrade');
@@ -236,30 +235,6 @@ function getR2PublicUrl(c: any, r2_key: string): string {
     // Note: Public access must be enabled on the bucket for this to work.
     return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
 }
-
-// --- Authentication Middleware ---
-const authMiddleware = async (c: any, next: any) => {
-  const token = getCookie(c, 'auth_token');
-  if (!token) {
-    return c.json({ error: 'Unauthorized: No token provided' }, 401);
-  }
-
-  try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
-    const payload = await verify(token, secret);
-
-    if (!payload || !payload.id) {
-      return c.json({ error: 'Unauthorized: Invalid token payload' }, 401);
-    }
-
-    // Attach user ID to context variables for downstream routes
-    c.set('user_id', payload.id as number);
-    await next();
-  } catch (e) {
-    console.error("JWT verification failed:", e);
-    return c.json({ error: 'Unauthorized: Invalid or expired token' }, 401);
-  }
-};
 
 // --- Auth Routes ---
 
@@ -501,41 +476,7 @@ app.get('/api/users/me', async (c) => {
 
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(
-<<<<<<< ours
-      'SELECT id, username, avatar_url, public_key, encrypted_private_key FROM users WHERE id = ?'
-=======
       'SELECT id, username, avatar_url, public_key, encrypted_private_key, role, is_lurking FROM users WHERE id = ?'
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
     ).bind(payload.id).first();
 
     if (!user) return c.json({ error: 'User not found' }, 404);
@@ -546,43 +487,13 @@ app.get('/api/users/me', async (c) => {
         username: user.username, 
         avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c, user.avatar_url as string) : user.avatar_url,
         public_key: user.public_key,
-        encrypted_private_key: user.encrypted_private_key
+        encrypted_private_key: user.encrypted_private_key,
+        role: user.role,
+        is_lurking: user.is_lurking
       } 
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
   }
 });
 
@@ -604,9 +515,9 @@ app.put('/api/users/me/privacy', authMiddleware, async (c) => {
   } catch (e) {
     console.error("Error updating privacy:", e);
     return c.json({ error: 'Failed to update privacy settings' }, 500);
->>>>>>> theirs
   }
 });
+
 
 app.get('/api/customization', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -756,7 +667,171 @@ app.use('/api/collections', authMiddleware);
 app.use('/api/collections/*', authMiddleware);
 app.use('/api/messages', authMiddleware); // Ensure root /api/messages is protected
 app.use('/api/messages/*', authMiddleware); // Added messages middleware
+app.use('/api/groups/*', authMiddleware);
 app.use('/api/users/*', authMiddleware); // Ensure user routes are authenticated
+
+
+// --- Group Chat Routes ---
+
+// POST /api/groups: Create a new group
+app.post('/api/groups', async (c) => {
+    const user_id = c.get('user_id');
+    const { name, members } = await c.req.json(); // members is an array of user IDs
+
+    if (!name || !Array.isArray(members) || members.length === 0) {
+        return c.json({ error: 'Group name and at least one member are required' }, 400);
+    }
+
+    try {
+        // Create the group
+        const { meta } = await c.env.DB.prepare(
+            'INSERT INTO groups (name, created_by) VALUES (?, ?)'
+        ).bind(name, user_id).run();
+        const groupId = meta.last_row_id;
+
+        // Add creator as admin
+        const allMemberIds = [user_id, ...members];
+        const uniqueMemberIds = [...new Set(allMemberIds)];
+
+        // Batch insert members
+        const stmts = uniqueMemberIds.map(memberId =>
+            c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)')
+                .bind(groupId, memberId, memberId === user_id ? 'admin' : 'member')
+        );
+        await c.env.DB.batch(stmts);
+
+        return c.json({ message: 'Group created', group_id: groupId });
+    } catch (e) {
+        console.error("Error creating group:", e);
+        return c.json({ error: 'Failed to create group' }, 500);
+    }
+});
+
+// GET /api/groups: List user's groups
+app.get('/api/groups', async (c) => {
+    const user_id = c.get('user_id');
+    try {
+        const { results } = await c.env.DB.prepare(
+            `SELECT g.id, g.name, gm.role 
+             FROM groups g 
+             JOIN group_members gm ON g.id = gm.group_id 
+             WHERE gm.user_id = ?`
+        ).bind(user_id).all();
+        return c.json({ groups: results });
+    } catch (e) {
+        return c.json({ error: 'Failed to fetch groups' }, 500);
+    }
+});
+
+// GET /api/groups/:id/messages: Get messages for a specific group
+app.get('/api/groups/:id/messages', async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+
+    // TODO: Check if user is a member of the group
+
+    try {
+        const { results } = await c.env.DB.prepare(
+            `SELECT gm.id, gm.content, gm.sender_id, u.username as sender_username, gm.created_at 
+             FROM group_messages gm
+             JOIN users u ON gm.sender_id = u.id
+             WHERE gm.group_id = ? 
+             ORDER BY gm.created_at ASC`
+        ).bind(group_id).all();
+        return c.json({ messages: results });
+    } catch (e) {
+        return c.json({ error: 'Failed to fetch messages' }, 500);
+    }
+});
+
+// POST /api/groups/:id/messages: Send a message to a group
+app.post('/api/groups/:id/messages', async (c) => {
+    const sender_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const { content } = await c.req.json();
+
+    // TODO: Check if user is a member of the group
+
+    try {
+        await c.env.DB.prepare(
+            'INSERT INTO group_messages (group_id, sender_id, content) VALUES (?, ?, ?)'
+        ).bind(group_id, sender_id, content).run();
+        
+        // In a real app, you'd broadcast this message via WebSocket to other group members
+        
+        return c.json({ message: 'Message sent' });
+    } catch (e) {
+        return c.json({ error: 'Failed to send message' }, 500);
+    }
+});
+
+// GET /api/groups/:id/members: List members of a group
+app.get('/api/groups/:id/members', async (c) => {
+    const group_id = Number(c.req.param('id'));
+    try {
+        const { results } = await c.env.DB.prepare(
+            `SELECT u.id, u.username, gm.role 
+             FROM users u 
+             JOIN group_members gm ON u.id = gm.user_id 
+             WHERE gm.group_id = ?`
+        ).bind(group_id).all();
+        return c.json({ members: results });
+    } catch (e) {
+        return c.json({ error: 'Failed to fetch members' }, 500);
+    }
+});
+
+// POST /api/groups/:id/members: Add a member to a group (admin only)
+app.post('/api/groups/:id/members', async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const { new_member_id } = await c.req.json();
+
+    try {
+        // Check if current user is an admin of the group
+        const adminCheck = await c.env.DB.prepare(
+            'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+        ).bind(group_id, user_id).first();
+
+        if (!adminCheck || adminCheck.role !== 'admin') {
+            return c.json({ error: 'Unauthorized: Only admins can add members' }, 403);
+        }
+
+        await c.env.DB.prepare(
+            'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
+        ).bind(group_id, new_member_id, 'member').run();
+
+        return c.json({ message: 'Member added' });
+    } catch (e) {
+        return c.json({ error: 'Failed to add member' }, 500);
+    }
+});
+
+// DELETE /api/groups/:id/members/:userId: Remove a member from a group (admin only)
+app.delete('/api/groups/:id/members/:userId', async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const member_to_remove_id = Number(c.req.param('userId'));
+
+    try {
+        // Check if current user is an admin
+        const adminCheck = await c.env.DB.prepare(
+            'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
+        ).bind(group_id, user_id).first();
+
+        if (!adminCheck || adminCheck.role !== 'admin') {
+            return c.json({ error: 'Unauthorized: Only admins can remove members' }, 403);
+        }
+
+        await c.env.DB.prepare(
+            'DELETE FROM group_members WHERE group_id = ? AND user_id = ?'
+        ).bind(group_id, member_to_remove_id).run();
+
+        return c.json({ message: 'Member removed' });
+    } catch (e) {
+        return c.json({ error: 'Failed to remove member' }, 500);
+    }
+});
 
 
 // Durable Object WebSocket endpoint
@@ -788,16 +863,7 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  // Simple admin check: assume user ID 1 is the admin
-  if (user_id !== 1) {
-=======
   if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) {
->>>>>>> theirs
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -821,15 +887,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -844,15 +902,7 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
   const targetId = Number(c.req.param('id'));
 
   if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -874,15 +924,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-<<<<<<< ours
-<<<<<<< ours
-  if (user_id !== 1) return c.json({ error: 'Unauthorized' }, 403);
-=======
   if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
-=======
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
->>>>>>> theirs
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);

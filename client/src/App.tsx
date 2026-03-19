@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers
 } from '@tabler/icons-react';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
+import GroupChat from './components/GroupChat';
 import CommuniquePage from './components/CommuniquePage';
 import About from './components/About';
 import FAQ from './components/FAQ';
@@ -34,6 +33,7 @@ interface User {
 
 function Main() {
   const [isInboxOpen, setIsInboxOpen] = useState(false);
+  const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -414,6 +414,10 @@ function Main() {
                         }} aria-hidden="true"></span>
                     )}
                     </button>
+
+                    <button onClick={() => { setIsGroupChatOpen(!isGroupChatOpen); }} style={{ padding: '8px', position: 'relative' }} aria-label={`Groups`}>
+                        Groups
+                    </button>
     
                     <button onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ padding: '8px' }} title="Menu" aria-label="Open menu">
                         {isMenuOpen ? <IconX size={20} aria-hidden="true" /> : <IconMenu2 size={20} aria-hidden="true" />}
@@ -484,6 +488,10 @@ function Main() {
                         <IconFolder size={18} /> Collections
                     </button>
 
+                     <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
+                        <IconUsers size={18} /> Groups
+                    </button>
+
                     <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'flex-start', border: 'none', background: 'transparent', padding: '5px' }}>
                         <IconPalette size={18} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
                     </button>
@@ -516,6 +524,7 @@ function Main() {
             {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
             {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
             {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
+            {isGroupChatOpen && <GroupChat onClose={() => setIsGroupChatOpen(false)} />}
             {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
             {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
             {previewFile && (

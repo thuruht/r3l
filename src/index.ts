@@ -2822,12 +2822,23 @@ export default {
 
       console.log(`Found ${results.length} expired files to delete.`);
 
-      for (const file of results) {
-        if (file.r2_key) {
-            await env.BUCKET.delete(file.r2_key as string);
-        }
-        await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
-        console.log(`Deleted expired file ID: ${file.id}`);
+      if (results && results.length > 0) {
+        const bucketDeletions = results
+          .filter((file: any) => file.r2_key)
+          .map((file: any) => env.BUCKET.delete(file.r2_key as string));
+
+        const dbStatements = results.map((file: any) =>
+          env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id)
+        );
+
+        await Promise.all([
+          ...bucketDeletions,
+          env.DB.batch(dbStatements)
+        ]);
+
+        results.forEach((file: any) => {
+          console.log(`Deleted expired file ID: ${file.id}`);
+        });
       }
 
       // 2. Purge Old Messages (Inbox/Outgoing unarchived > 30 days)

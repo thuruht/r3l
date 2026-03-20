@@ -38,6 +38,8 @@ interface Message {
   receiver_id: number;
   content: string;
   created_at: string;
+  is_encrypted?: number;
+  decryption_failed?: boolean;
 }
 
 const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
@@ -179,7 +181,9 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 try {
                   const content = await decryptMessageWithKey(msg.content, msg.encrypted_key, privateKey);
                   return { ...msg, content };
-                } catch { return msg; }
+                } catch {
+                  return { ...msg, content: '[Encrypted — key unavailable]', decryption_failed: true };
+                }
               }
               return msg;
             }));
@@ -661,17 +665,27 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                     {messages.map(m => {
                         const isMe = m.sender_id !== activeConversationId;
                         return (
-                            <div key={m.id} style={{ 
+                            <div key={m.id} style={{
                                 alignSelf: isMe ? 'flex-end' : 'flex-start',
                                 maxWidth: '80%',
-                                background: isMe ? 'var(--accent-sym)' : '#ffffff22',
-                                color: isMe ? 'black' : 'var(--text-primary)',
-                                padding: '8px 12px',
-                                borderRadius: '12px',
-                                fontSize: '0.9em',
-                                wordBreak: 'break-word'
                             }}>
-                                {m.content}
+                                <div style={{
+                                    background: isMe ? 'var(--accent-sym)' : '#ffffff22',
+                                    color: isMe ? 'black' : 'var(--text-primary)',
+                                    padding: '8px 12px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.9em',
+                                    wordBreak: 'break-word',
+                                    opacity: m.decryption_failed ? 0.6 : 1,
+                                    fontStyle: m.decryption_failed ? 'italic' : 'normal',
+                                }}>
+                                    {m.content}
+                                </div>
+                                {m.is_encrypted === 1 && (
+                                    <div style={{ fontSize: '0.65em', color: m.decryption_failed ? 'var(--accent-alert)' : '#888', textAlign: isMe ? 'right' : 'left', marginTop: '2px' }}>
+                                        {m.decryption_failed ? '⚠ decryption failed' : '🔒 encrypted'}
+                                    </div>
+                                )}
                             </div>
                         );
                     })}

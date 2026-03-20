@@ -1,136 +1,52 @@
-# Session Summary - Group Chat & Documentation Update
-
-## Date
-2025-01-XX
+# Session Summary — Reconnect, Real-time & Hardening Pass
 
 ## Objectives Completed
 
-### 1. Group Chat Frontend Implementation ✅
-- Created complete GroupChat.tsx component
-- Integrated into App.tsx with menu access
-- Features:
-  - Group list with unread counts
-  - Create group with member selection from Sym connections
-  - Real-time group messaging
-  - Member management (admin can add/remove)
-  - Role indicators (admin crown icon)
-  - Responsive UI matching Inbox patterns
+### 1. WebSocket Reconnect Debounce ✅
+- `connectWebSocket` converted to `useCallback` and defined before the `useEffect` that calls it
+- Added `wsRef` guard: if a socket is already `CONNECTING` or `OPEN`, returns immediately — prevents stacking
+- Added `reconnectTimerRef` guard: clears any pending timer before scheduling a new one on close
+- Added `socket.onerror` handler that calls `socket.close()` to trigger the single reconnect path
+- Added cleanup in `useEffect` return: clears timer and closes socket on unmount
+- `ws` state restored and passed to `GroupChat` as prop for real-time message delivery
 
-### 2. Encryption Enhancement ✅
-- Added text encryption utilities to crypto.ts
-  - encryptText() for message content
-  - decryptText() for message decryption
-  - AES-GCM 256-bit with random IVs
-- Existing features already complete:
-  - RSA-OAEP 2048-bit key pairs
-  - Key export/import in Settings
-  - Lock icon indicators for encrypted files
-  - Client-side file encryption
+### 2. Message Encryption UX ✅
+- `Message` interface extended with `is_encrypted` and `decryption_failed` fields
+- Failed decryption now returns `{ ...msg, content: '[Encrypted — key unavailable]', decryption_failed: true }` instead of silently returning the raw ciphertext
+- Chat bubble renders with reduced opacity + italic style when `decryption_failed`
+- Lock indicator shown below each encrypted message: `🔒 encrypted` or `⚠ decryption failed` in appropriate colors
 
-### 3. Comprehensive Documentation Update ✅
+### 3. Group WebSocket Broadcast ✅
+- `POST /api/groups/:id/messages` now fetches all group members after insert
+- Broadcasts `{ type: 'new_group_message', ...message }` to each member (except sender) via DO `/notify`
+- Uses `c.executionCtx.waitUntil()` so broadcast is non-blocking and won't fail the response
+- `GroupChat.tsx` accepts optional `ws` prop and registers a `message` event listener
+- Listener appends incoming `new_group_message` events to state when `msg.group_id === activeGroupId`
 
-#### Memory Bank Updates
-- **product.md**: Added group chat, message requests, enhanced encryption details
-- **structure.md**: Updated components list, database schema with groups tables
-- **guidelines.md**: Added message request and group chat code patterns
+### 4. Vitality Boost Deduplication ✅
+- Added migration `0023_vitality_votes.sql` with `vitality_votes(file_id, user_id)` UNIQUE constraint
+- Vitality endpoint now checks for existing vote before proceeding; returns 409 if already voted
+- Uses `DB.batch()` to atomically insert the vote record and update the file's vitality + expiry
+- UNIQUE constraint on DB also catches any race condition the application check misses
 
-#### User Documentation
-- **README.md**: Updated features with group chat, message requests, encryption management
-- **FAQ.tsx**: Added group chat section, updated messaging and privacy sections
-- **About.tsx**: Updated connection types (A-Sym can send requests), encryption details
-- **PrivacyPolicy.tsx**: Complete rewrite with honest, comprehensive information:
-  - Detailed data collection practices
-  - Encryption and security measures
-  - Messaging policies (Whispers, Groups, Requests)
-  - Visibility controls (Private/Sym/Public, Lurker Mode)
-  - Data deletion procedures
-  - Third-party processors (Cloudflare, Resend only)
-  - Beta disclaimer
+### 5. CSRF Hardening ✅
+- Auth cookie changed from `SameSite=Lax` to `SameSite=Strict`
+- Prevents cross-site requests from carrying the session cookie entirely
+- Note: `SameSite=Strict` means the cookie won't be sent on top-level navigations from external sites (e.g. clicking a link to r3l.distorted.work from another site will require re-login). Acceptable for this app's UX model.
 
-## Technical Implementation
+## Files Modified
+- `client/src/App.tsx` — full rewrite: proper imports, `useCallback` for `connectWebSocket`, `ws` state, reconnect guard, cleanup
+- `client/src/components/GroupChat.tsx` — added `ws` prop, real-time message listener
+- `client/src/components/Inbox.tsx` — encryption UX: failed decryption indicator, lock badge
+- `src/index.ts` — group WS broadcast, vitality deduplication, `SameSite=Strict`
 
-### Backend (Already Complete)
-- Migration 0018: Message requests (is_request column)
-- Migration 0019: Group chat (groups, group_members, group_messages tables)
-- API routes for all group operations
-- Relaxed messaging restrictions (A-Sym and Drift can send requests)
-
-### Frontend (New)
-- GroupChat component with full CRUD operations
-- Text encryption utilities ready for message encryption
-- All documentation updated to reflect current state
-
-## Key Insights
-
-### Messaging Philosophy
-- **Sym connections**: Direct messages, no restrictions
-- **A-Sym followers**: Can send message requests (Instagram-style)
-- **Drift users**: Can send message requests
-- **Groups**: Sym connections only, admin role management
-
-### Encryption Stack
-```
-Client-Side:
-- RSA-OAEP 2048-bit (asymmetric, key exchange)
-- AES-GCM 256-bit (symmetric, content encryption)
-- Keys in localStorage, export/import available
-
-Server-Side:
-- AES-GCM 256-bit (optional server encryption)
-- Keys from ENCRYPTION_SECRET env var
-```
-
-### Privacy Stance
-- No tracking, no analytics, no ad networks
-- Minimal data collection (auth, content, relationships)
-- Ephemeral by default (7-day expiration)
-- User-controlled visibility and deletion
-- Honest about beta status and limitations
-
-## Files Created/Modified
-
-### New Files
-1. `/client/src/components/GroupChat.tsx`
-2. `/docs/IMPLEMENTATION_SUMMARY.md`
-
-### Modified Files
-1. `/client/src/App.tsx`
-2. `/client/src/utils/crypto.ts`
-3. `/client/src/components/FAQ.tsx`
-4. `/client/src/components/About.tsx`
-5. `/client/src/components/PrivacyPolicy.tsx`
-6. `/README.md`
-7. `/.amazonq/rules/memory-bank/product.md`
-8. `/.amazonq/rules/memory-bank/structure.md`
-9. `/.amazonq/rules/memory-bank/guidelines.md`
-
-## Status
-
-**All objectives complete.** The platform now has:
-- ✅ Full group chat functionality
-- ✅ Message request system for non-mutual connections
-- ✅ Enhanced encryption utilities
-- ✅ Comprehensive, honest documentation
-- ✅ Updated privacy policy reflecting actual practices
+## Files Created
+- `migrations/0023_vitality_votes.sql`
 
 ## Next Session Recommendations
 
-1. **Message Encryption Implementation**
-   - Auto-encrypt Whispers between Sym connections
-   - Use recipient's public key for key wrapping
-   - Store wrapped keys with messages
-
-2. **Group Chat Enhancements**
-   - Leave group functionality
-   - Transfer admin role
-   - Group avatars/descriptions
-
-3. **UX Improvements**
-   - Message request badge in Inbox
-   - Encryption toggle in message input
-   - Key backup reminders
-
-4. **Testing**
-   - End-to-end group chat testing
-   - Message request flow testing
-   - Encryption key export/import testing
+1. **Password strength validation** — registration accepts any password length; add minimum length (≥8) and complexity check on both frontend and backend
+2. **File size limit enforcement** — no max file size check on `POST /api/files`; large uploads will silently consume R2 quota; add a configurable limit (e.g. 50MB) with a clear 413 error
+3. **Expired file cleanup race** — the cron deletes expired files but `GET /api/files/:id/content` doesn't check `expires_at`; a file can be downloaded between expiry and the next cron run
+4. **Avatar old file cleanup** — `POST /api/users/me/avatar` uploads a new R2 object but never deletes the previous one; old avatars accumulate in R2 indefinitely
+5. **`GET /api/users/me/preferences` deprecated route** — still returns data without the `role`/`is_lurking` fields that the main `/api/customization` returns; either remove it or align the response

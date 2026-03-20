@@ -10,6 +10,5 @@ export const RATE_LIMITS = {
   reset: { limit: 3, window: 3600 },
   drift: { limit: 20, window: 600 },
   feedback: { limit: 3, window: 3600 },
-  vitality: { limit: 10, window: 60 }
+  vitality: { limit: 10, window: 60 },
 };
-export const ADMIN_USER_ID = parseInt(process.env.ADMIN_USER_ID || '1');

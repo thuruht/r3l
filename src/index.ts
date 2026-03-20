@@ -332,8 +332,8 @@ app.post('/api/login', async (c) => {
     // 6. Set HttpOnly Cookie
     setCookie(c, 'auth_token', token, {
       httpOnly: true,
-      secure: true, // Requires HTTPS (or localhost)
-      sameSite: 'Lax',
+      secure: true,
+      sameSite: 'Strict',
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
@@ -470,7 +470,8 @@ app.get('/api/users/me', async (c) => {
   if (!token) return c.json({ error: 'Unauthorized' }, 401);
 
   try {
-    const secret = c.env.JWT_SECRET || 'fallback_dev_secret_do_not_use_in_prod';
+    const secret = c.env.JWT_SECRET;
+    if (!secret) return c.json({ error: 'Unauthorized' }, 401);
     const payload = await verify(token, secret);
 
     // Optional: Fetch fresh data from DB to ensure user still exists
@@ -679,48 +680,53 @@ app.use('/api/users/*', authMiddleware); // Ensure user routes are authenticated
 
 // --- Group Chat Routes ---
 
-// POST /api/groups: Create a new group
-app.post('/api/groups', async (c) => {
-    const user_id = c.get('user_id');
-    const { name, members } = await c.req.json(); // members is an array of user IDs
+// Helper: verify group membership
+async function checkGroupMember(db: D1Database, group_id: number, user_id: number): Promise<{ role: string } | null> {
+  return db.prepare('SELECT role FROM group_members WHERE group_id = ? AND user_id = ?')
+    .bind(group_id, user_id).first() as Promise<{ role: string } | null>;
+}
 
-    if (!name || !Array.isArray(members) || members.length === 0) {
+// POST /api/groups: Create a new group
+app.post('/api/groups', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const { name, member_ids } = await c.req.json();
+
+    if (!name || !Array.isArray(member_ids) || member_ids.length === 0) {
         return c.json({ error: 'Group name and at least one member are required' }, 400);
     }
 
     try {
-        // Create the group
         const { meta } = await c.env.DB.prepare(
-            'INSERT INTO groups (name, created_by) VALUES (?, ?)'
+            'INSERT INTO groups (name, creator_id) VALUES (?, ?)'
         ).bind(name, user_id).run();
         const groupId = meta.last_row_id;
 
-        // Add creator as admin
-        const allMemberIds = [user_id, ...members];
-        const uniqueMemberIds = [...new Set(allMemberIds)];
-
-        // Batch insert members
-        const stmts = uniqueMemberIds.map(memberId =>
+        const uniqueMemberIds = [...new Set([user_id, ...member_ids])] as number[];
+        const stmts = uniqueMemberIds.map((memberId: number) =>
             c.env.DB.prepare('INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)')
                 .bind(groupId, memberId, memberId === user_id ? 'admin' : 'member')
         );
         await c.env.DB.batch(stmts);
 
-        return c.json({ message: 'Group created', group_id: groupId });
+        return c.json({ message: 'Group created', group: { id: groupId, name } });
     } catch (e) {
         console.error("Error creating group:", e);
         return c.json({ error: 'Failed to create group' }, 500);
     }
 });
 
-// GET /api/groups: List user's groups
-app.get('/api/groups', async (c) => {
+// GET /api/groups: List user's groups with member count and last message
+app.get('/api/groups', authMiddleware, async (c) => {
     const user_id = c.get('user_id');
     try {
         const { results } = await c.env.DB.prepare(
-            `SELECT g.id, g.name, gm.role 
-             FROM groups g 
-             JOIN group_members gm ON g.id = gm.group_id 
+            `SELECT g.id, g.name, gm.role,
+               (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
+               (SELECT content FROM group_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_message_snippet,
+               (SELECT created_at FROM group_messages WHERE group_id = g.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
+               0 as unread_count
+             FROM groups g
+             JOIN group_members gm ON g.id = gm.group_id
              WHERE gm.user_id = ?`
         ).bind(user_id).all();
         return c.json({ groups: results });
@@ -730,19 +736,21 @@ app.get('/api/groups', async (c) => {
 });
 
 // GET /api/groups/:id/messages: Get messages for a specific group
-app.get('/api/groups/:id/messages', async (c) => {
+app.get('/api/groups/:id/messages', authMiddleware, async (c) => {
     const user_id = c.get('user_id');
     const group_id = Number(c.req.param('id'));
 
-    // TODO: Check if user is a member of the group
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership) return c.json({ error: 'Unauthorized' }, 403);
 
     try {
         const { results } = await c.env.DB.prepare(
-            `SELECT gm.id, gm.content, gm.sender_id, u.username as sender_username, gm.created_at 
+            `SELECT gm.id, gm.content, gm.sender_id, u.username as sender_name, u.avatar_url as sender_avatar, gm.created_at
              FROM group_messages gm
              JOIN users u ON gm.sender_id = u.id
-             WHERE gm.group_id = ? 
-             ORDER BY gm.created_at ASC`
+             WHERE gm.group_id = ?
+             ORDER BY gm.created_at ASC
+             LIMIT 200`
         ).bind(group_id).all();
         return c.json({ messages: results });
     } catch (e) {
@@ -751,34 +759,74 @@ app.get('/api/groups/:id/messages', async (c) => {
 });
 
 // POST /api/groups/:id/messages: Send a message to a group
-app.post('/api/groups/:id/messages', async (c) => {
+app.post('/api/groups/:id/messages', authMiddleware, async (c) => {
     const sender_id = c.get('user_id');
     const group_id = Number(c.req.param('id'));
     const { content } = await c.req.json();
 
-    // TODO: Check if user is a member of the group
+    if (!content || typeof content !== 'string' || !content.trim()) {
+        return c.json({ error: 'Content is required' }, 400);
+    }
+
+    const membership = await checkGroupMember(c.env.DB, group_id, sender_id);
+    if (!membership) return c.json({ error: 'Unauthorized' }, 403);
 
     try {
-        await c.env.DB.prepare(
+        const { meta } = await c.env.DB.prepare(
             'INSERT INTO group_messages (group_id, sender_id, content) VALUES (?, ?, ?)'
-        ).bind(group_id, sender_id, content).run();
-        
-        // In a real app, you'd broadcast this message via WebSocket to other group members
-        
-        return c.json({ message: 'Message sent' });
+        ).bind(group_id, sender_id, content.trim()).run();
+
+        const sender = await c.env.DB.prepare('SELECT username, avatar_url FROM users WHERE id = ?').bind(sender_id).first() as any;
+        const message = {
+            id: meta.last_row_id,
+            group_id,
+            sender_id,
+            sender_name: sender?.username,
+            sender_avatar: sender?.avatar_url,
+            content: content.trim(),
+            created_at: new Date().toISOString()
+        };
+
+        // Broadcast to all group members via DO
+        const { results: members } = await c.env.DB.prepare(
+            'SELECT user_id FROM group_members WHERE group_id = ?'
+        ).bind(group_id).all();
+
+        const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
+        const doStub = c.env.DO_NAMESPACE.get(doId);
+        for (const member of members) {
+            if ((member as any).user_id === sender_id) continue;
+            c.executionCtx.waitUntil(
+                doStub.fetch('http://do-stub/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: (member as any).user_id,
+                        message: { type: 'new_group_message', ...message }
+                    }),
+                }).catch(e => console.error('Group WS broadcast failed:', e))
+            );
+        }
+
+        return c.json({ message: 'Message sent', data: message });
     } catch (e) {
         return c.json({ error: 'Failed to send message' }, 500);
     }
 });
 
 // GET /api/groups/:id/members: List members of a group
-app.get('/api/groups/:id/members', async (c) => {
+app.get('/api/groups/:id/members', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
     const group_id = Number(c.req.param('id'));
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership) return c.json({ error: 'Unauthorized' }, 403);
+
     try {
         const { results } = await c.env.DB.prepare(
-            `SELECT u.id, u.username, gm.role 
-             FROM users u 
-             JOIN group_members gm ON u.id = gm.user_id 
+            `SELECT u.id as user_id, u.username, u.avatar_url, gm.role
+             FROM users u
+             JOIN group_members gm ON u.id = gm.user_id
              WHERE gm.group_id = ?`
         ).bind(group_id).all();
         return c.json({ members: results });
@@ -788,54 +836,122 @@ app.get('/api/groups/:id/members', async (c) => {
 });
 
 // POST /api/groups/:id/members: Add a member to a group (admin only)
-app.post('/api/groups/:id/members', async (c) => {
+app.post('/api/groups/:id/members', authMiddleware, async (c) => {
     const user_id = c.get('user_id');
     const group_id = Number(c.req.param('id'));
-    const { new_member_id } = await c.req.json();
+    const { user_id: new_member_id } = await c.req.json();
+
+    if (!new_member_id) return c.json({ error: 'user_id required' }, 400);
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership || membership.role !== 'admin') {
+        return c.json({ error: 'Unauthorized: Only admins can add members' }, 403);
+    }
 
     try {
-        // Check if current user is an admin of the group
-        const adminCheck = await c.env.DB.prepare(
-            'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-        ).bind(group_id, user_id).first();
-
-        if (!adminCheck || adminCheck.role !== 'admin') {
-            return c.json({ error: 'Unauthorized: Only admins can add members' }, 403);
-        }
-
         await c.env.DB.prepare(
             'INSERT INTO group_members (group_id, user_id, role) VALUES (?, ?, ?)'
         ).bind(group_id, new_member_id, 'member').run();
-
         return c.json({ message: 'Member added' });
-    } catch (e) {
+    } catch (e: any) {
+        if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'Already a member' }, 409);
         return c.json({ error: 'Failed to add member' }, 500);
     }
 });
 
 // DELETE /api/groups/:id/members/:userId: Remove a member from a group (admin only)
-app.delete('/api/groups/:id/members/:userId', async (c) => {
+app.delete('/api/groups/:id/members/:userId', authMiddleware, async (c) => {
     const user_id = c.get('user_id');
     const group_id = Number(c.req.param('id'));
     const member_to_remove_id = Number(c.req.param('userId'));
 
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership || membership.role !== 'admin') {
+        return c.json({ error: 'Unauthorized: Only admins can remove members' }, 403);
+    }
+
+    if (member_to_remove_id === user_id) {
+        return c.json({ error: 'Cannot remove yourself as admin' }, 400);
+    }
+
     try {
-        // Check if current user is an admin
-        const adminCheck = await c.env.DB.prepare(
-            'SELECT role FROM group_members WHERE group_id = ? AND user_id = ?'
-        ).bind(group_id, user_id).first();
-
-        if (!adminCheck || adminCheck.role !== 'admin') {
-            return c.json({ error: 'Unauthorized: Only admins can remove members' }, 403);
-        }
-
         await c.env.DB.prepare(
             'DELETE FROM group_members WHERE group_id = ? AND user_id = ?'
         ).bind(group_id, member_to_remove_id).run();
-
         return c.json({ message: 'Member removed' });
     } catch (e) {
         return c.json({ error: 'Failed to remove member' }, 500);
+    }
+});
+
+// GET /api/groups/:id/files: List files shared with a group
+app.get('/api/groups/:id/files', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership) return c.json({ error: 'Unauthorized' }, 403);
+
+    try {
+        const { results } = await c.env.DB.prepare(
+            `SELECT f.id, f.filename, f.mime_type, gf.can_edit, gf.shared_at
+             FROM files f
+             JOIN group_files gf ON f.id = gf.file_id
+             WHERE gf.group_id = ?
+             ORDER BY gf.shared_at DESC`
+        ).bind(group_id).all();
+        return c.json({ files: results });
+    } catch (e) {
+        return c.json({ error: 'Failed to fetch group files' }, 500);
+    }
+});
+
+// POST /api/groups/:id/files: Share a file with a group (admin only)
+app.post('/api/groups/:id/files', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const { file_id, can_edit } = await c.req.json();
+
+    if (!file_id) return c.json({ error: 'file_id required' }, 400);
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership || membership.role !== 'admin') {
+        return c.json({ error: 'Unauthorized: Only admins can share files' }, 403);
+    }
+
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
+    if (!file) return c.json({ error: 'File not found' }, 404);
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized: You do not own this file' }, 403);
+
+    try {
+        await c.env.DB.prepare(
+            'INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)'
+        ).bind(group_id, file_id, user_id, can_edit ? 1 : 0).run();
+        return c.json({ message: 'File shared with group' });
+    } catch (e: any) {
+        if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'File already shared' }, 409);
+        return c.json({ error: 'Failed to share file' }, 500);
+    }
+});
+
+// DELETE /api/groups/:id/files/:fileId: Remove a file from a group (admin only)
+app.delete('/api/groups/:id/files/:fileId', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const file_id = Number(c.req.param('fileId'));
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership || membership.role !== 'admin') {
+        return c.json({ error: 'Unauthorized' }, 403);
+    }
+
+    try {
+        await c.env.DB.prepare(
+            'DELETE FROM group_files WHERE group_id = ? AND file_id = ?'
+        ).bind(group_id, file_id).run();
+        return c.json({ message: 'File removed from group' });
+    } catch (e) {
+        return c.json({ error: 'Failed to remove file' }, 500);
     }
 });
 
@@ -1050,7 +1166,7 @@ async function createNotification(
 
 async function broadcastSignal(
   env: Env,
-  type: 'signal_communique' | 'signal_artifact',
+  type: 'signal_communique' | 'signal_artifact' | 'system_alert',
   userId: number,
   payload: any = {}
 ) {
@@ -1597,6 +1713,26 @@ app.put('/api/communiques', async (c) => {
 
 // --- Files Routes ---
 
+// GET /api/files/community-archived: Browse community-archived files
+app.get('/api/files/community-archived', authMiddleware, async (c) => {
+  const type = c.req.query('type');
+  let query = `SELECT f.id, f.filename, f.mime_type, f.archive_votes, u.username as owner_name
+               FROM files f JOIN users u ON f.user_id = u.id
+               WHERE f.is_community_archived = 1`;
+  const params: (string | number)[] = [];
+  if (type) {
+    query += ' AND f.mime_type LIKE ?';
+    params.push(`${type}/%`);
+  }
+  query += ' ORDER BY f.archive_votes DESC LIMIT 100';
+  try {
+    const { results } = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json({ files: results });
+  } catch (e) {
+    return c.json({ error: 'Failed to fetch community archive' }, 500);
+  }
+});
+
 // GET /api/files: List files for the authenticated user (My Files)
 app.get('/api/files', async (c) => {
   const user_id = c.get('user_id');
@@ -1986,7 +2122,7 @@ app.delete('/api/files/:id', async (c) => {
 });
 
 
-// POST /api/files/:id/refresh: Reset expiration timer (Keep Alive)
+// POST /api/files/:id/refresh: Reset expiration timer (Owner only)
 app.post('/api/files/:id/refresh', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
@@ -1994,16 +2130,12 @@ app.post('/api/files/:id/refresh', async (c) => {
   if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
 
   try {
-    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first();
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'File not found' }, 404);
-    
-    // Allow owner or mutuals (if we checked mutuals) to refresh? 
-    // For now, let's allow owner only, or anyone with access if public/sym.
-    // Simplest: Check if user has access.
-    
-    // Update expires_at to 7 days from now
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+
     const new_expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
-    
+
     const { success } = await c.env.DB.prepare(
       'UPDATE files SET expires_at = ? WHERE id = ?'
     ).bind(new_expires_at, file_id).run();
@@ -2019,37 +2151,41 @@ app.post('/api/files/:id/refresh', async (c) => {
   }
 });
 
-// POST /api/files/:id/vitality: Vote on a file (increase vitality)
+// POST /api/files/:id/vitality: Vote on a file (increase vitality, one vote per user)
 app.post('/api/files/:id/vitality', async (c) => {
+  if (!await checkRateLimit(c, 'vitality', 10, 60)) {
+    return c.json({ error: 'Too many vitality boosts. Please wait.' }, 429);
+  }
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
-  const { amount } = await c.req.json().catch(() => ({ amount: 1 })); // Default +1
+  const { amount } = await c.req.json().catch(() => ({ amount: 1 }));
 
   if (isNaN(file_id)) return c.json({ error: 'Invalid file ID' }, 400);
 
   try {
-    // 1. Increment vitality
-    // 2. Extend expiration by 1 hour per vitality point? (Example logic)
-    const { success } = await c.env.DB.prepare(
-      `UPDATE files 
-       SET vitality = vitality + ?, 
-           expires_at = datetime(expires_at, '+' || ? || ' hours')
-       WHERE id = ?`
-    ).bind(amount, amount, file_id).run();
+    // Enforce one vote per user per file
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?'
+    ).bind(file_id, user_id).first();
 
-    if (success) {
-      // Check if threshold reached for auto-archive
-      const file = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first();
-      if (file && (file.vitality as number) >= 10) { // Threshold 10
-         await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
-         return c.json({ message: 'Vitality boosted. File archived due to high vitality!' });
-      }
-      return c.json({ message: 'Vitality boosted', new_vitality: file?.vitality });
-    } else {
-      return c.json({ error: 'Failed to boost vitality' }, 500);
+    if (existing) return c.json({ error: 'Already boosted this artifact' }, 409);
+
+    await c.env.DB.batch([
+      c.env.DB.prepare('INSERT INTO vitality_votes (file_id, user_id) VALUES (?, ?)').bind(file_id, user_id),
+      c.env.DB.prepare(
+        `UPDATE files SET vitality = vitality + ?, expires_at = datetime(expires_at, '+' || ? || ' hours') WHERE id = ?`
+      ).bind(amount, amount, file_id),
+    ]);
+
+    const file = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first() as any;
+    if (file && file.vitality >= 10) {
+      await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
+      return c.json({ message: 'Vitality boosted. File archived due to high vitality!' });
     }
+    return c.json({ message: 'Vitality boosted', new_vitality: file?.vitality });
   } catch (e: any) {
-    console.error("Error boosting vitality:", e);
+    if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'Already boosted this artifact' }, 409);
+    console.error('Error boosting vitality:', e);
     return c.json({ error: 'Failed to boost vitality' }, 500);
   }
 });

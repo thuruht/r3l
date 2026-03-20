@@ -8,6 +8,7 @@ const EmojiPicker = lazy(() => import('emoji-picker-react'));
 interface GroupChatProps {
   onClose: () => void;
   currentUserId: number;
+  ws?: WebSocket | null;
 }
 
 interface Group {
@@ -38,7 +39,7 @@ interface Member {
   role: 'admin' | 'member';
 }
 
-const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
+const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
@@ -56,6 +57,21 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+
+  // Real-time: append incoming group messages from WebSocket
+  useEffect(() => {
+    if (!ws) return;
+    const handler = (event: MessageEvent) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'new_group_message' && msg.group_id === activeGroupId) {
+          setMessages(prev => [...prev, msg]);
+        }
+      } catch {}
+    };
+    ws.addEventListener('message', handler);
+    return () => ws.removeEventListener('message', handler);
+  }, [ws, activeGroupId]);
 
   useEffect(() => {
     fetchGroups();
@@ -236,7 +252,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId }) => {
 
       if (res.ok) {
         const data = await res.json();
-        setMessages(prev => [...prev, data.message]);
+        setMessages(prev => [...prev, data.data]);
         setNewMessage('');
       } else {
         showToast('Failed to send', 'error');

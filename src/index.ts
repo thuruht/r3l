@@ -265,12 +265,14 @@ app.post('/api/register', async (c) => {
       if (c.env.RESEND_API_KEY) {
         try {
           const resend = new Resend(c.env.RESEND_API_KEY);
-          await resend.emails.send({
+          const { data, error } = await resend.emails.send({
             from: 'Rel F <lowlier_serf@r3l.distorted.work>',
             to: email,
             subject: 'Verify your Rel F account',
             html: `<p>Welcome to Rel F!</p><p>Please <a href="https://r3l.distorted.work/verify?token=${verificationToken}">verify your email</a> to continue.</p>`
           });
+          if (error) console.error('Resend verification email error:', JSON.stringify(error));
+          else console.log('Verification email sent, id:', data?.id);
         } catch (emailError) {
           console.error("Failed to send email:", emailError);
         }
@@ -335,7 +337,7 @@ app.post('/api/login', async (c) => {
     setCookie(c, 'auth_token', token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Strict',
+      sameSite: 'Lax',
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });
@@ -388,12 +390,14 @@ app.post('/api/forgot-password', async (c) => {
     if (success && c.env.RESEND_API_KEY) {
         try {
             const resend = new Resend(c.env.RESEND_API_KEY);
-            await resend.emails.send({
+            const { data, error } = await resend.emails.send({
                 from: 'Rel F Recovery <recovery@r3l.distorted.work>',
                 to: email,
                 subject: 'Reset your Rel F password',
                 html: `<p>Hi ${user.username},</p><p>Click <a href="https://r3l.distorted.work/reset-password?token=${resetToken}">here</a> to reset your password.</p><p>This link expires in 1 hour.</p>`
             });
+            if (error) console.error('Resend password reset error:', JSON.stringify(error));
+            else console.log('Password reset email sent, id:', data?.id);
         } catch (emailError) {
              console.error("Failed to send reset email:", emailError);
         }
@@ -439,6 +443,42 @@ app.post('/api/reset-password', async (c) => {
   } catch (e) {
      console.error("Reset password error:", e);
      return c.json({ error: 'Reset failed' }, 500);
+  }
+});
+
+app.post('/api/resend-verification', async (c) => {
+  if (!await checkRateLimit(c, 'resend-verify', 3, 3600)) {
+    return c.json({ error: 'Too many attempts. Please wait.' }, 429);
+  }
+  const { email } = await c.req.json();
+  if (!email) return c.json({ error: 'Email is required' }, 400);
+
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, is_verified, verification_token FROM users WHERE email = ?'
+    ).bind(email).first() as any;
+
+    if (!user) return c.json({ message: 'If this email exists, a verification link has been sent.' });
+    if (user.is_verified) return c.json({ message: 'Account is already verified. You can log in.' });
+
+    const token = user.verification_token || crypto.randomUUID();
+    await c.env.DB.prepare('UPDATE users SET verification_token = ? WHERE id = ?').bind(token, user.id).run();
+
+    if (c.env.RESEND_API_KEY) {
+      const resend = new Resend(c.env.RESEND_API_KEY);
+      const { error } = await resend.emails.send({
+        from: 'Rel F <lowlier_serf@r3l.distorted.work>',
+        to: email,
+        subject: 'Verify your Rel F account',
+        html: `<p>Hi ${user.username},</p><p>Please <a href="https://r3l.distorted.work/verify?token=${token}">verify your email</a> to continue.</p>`
+      });
+      if (error) console.error('Resend verification error:', JSON.stringify(error));
+    }
+
+    return c.json({ message: 'If this email exists, a verification link has been sent.' });
+  } catch (e) {
+    console.error('Resend verification error:', e);
+    return c.json({ error: 'Request failed' }, 500);
   }
 });
 
@@ -1121,6 +1161,20 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   }
 });
 
+
+// POST /api/admin/verify-user: Force-verify a user (Admin only)
+app.post('/api/admin/verify-user', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+  const { target_user_id } = await c.req.json();
+  if (!target_user_id) return c.json({ error: 'target_user_id required' }, 400);
+  try {
+    await c.env.DB.prepare('UPDATE users SET is_verified = 1, verification_token = NULL WHERE id = ?').bind(target_user_id).run();
+    return c.json({ message: 'User verified' });
+  } catch (e) {
+    return c.json({ error: 'Failed to verify user' }, 500);
+  }
+});
 
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {

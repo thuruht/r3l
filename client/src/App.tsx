@@ -60,6 +60,8 @@ function Main() {
   const [showDriftHistory, setShowDriftHistory] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
+  const [isResendVerify, setIsResendVerify] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
 
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
@@ -183,6 +185,21 @@ function Main() {
     }
   };
 
+  const handleResendVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const data = await res.json();
+      showToast(data.message || 'Verification email sent.', 'success');
+      setIsResendVerify(false);
+      setResendEmail('');
+    } catch { showToast('Request failed', 'error'); }
+  };
+
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -263,7 +280,10 @@ function Main() {
       });
       const data = await res.json();
       if (res.ok) { setCurrentUser(data.user); connectWebSocket(); }
-      else showToast(data.error, 'error');
+      else {
+        showToast(data.error, 'error');
+        if (data.needs_verification) setIsResendVerify(true);
+      }
     } catch { showToast('Login failed', 'error'); }
   };
 
@@ -337,6 +357,13 @@ function Main() {
                 <form onSubmit={handleForgotPassword} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <input type="email" placeholder="Your email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
                   <button type="submit" className="primary-btn" style={{ fontSize: '0.85em' }}>Send Reset Link</button>
+                </form>
+              )}
+              {isResendVerify && (
+                <form onSubmit={handleResendVerification} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <p style={{ fontSize: '0.8em', color: 'var(--accent-alert)', margin: 0 }}>Enter your email to resend the verification link:</p>
+                  <input type="email" placeholder="Your email" value={resendEmail} onChange={e => setResendEmail(e.target.value)} required />
+                  <button type="submit" className="primary-btn" style={{ fontSize: '0.85em' }}>Resend Verification</button>
                 </form>
               )}
             </div>

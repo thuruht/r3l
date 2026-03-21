@@ -84,6 +84,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       } catch (e) { showToast('Network error', 'error'); }
   };
 
+  const handleVerifyUser = async (id: number) => {
+      try {
+          const res = await fetch('/api/admin/verify-user', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ target_user_id: id })
+          });
+          if (res.ok) {
+              setUsers(prev => prev.map(u => u.id === id ? { ...u, is_verified: 1 } : u));
+              showToast('User verified.', 'success');
+          } else showToast('Failed to verify.', 'error');
+      } catch (e) { showToast('Network error', 'error'); }
+  };
+
   const handleBroadcast = async () => {
       if (!broadcastMsg) return;
       try {
@@ -171,7 +185,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             <th style={{ padding: '10px' }}>Username</th>
                             <th style={{ padding: '10px' }}>Email</th>
                             <th style={{ padding: '10px' }}>Role</th>
-                            <th style={{ padding: '10px' }}>Joined</th>
+                            <th style={{ padding: '10px' }}>Verified</th>
                             <th style={{ padding: '10px' }}>Action</th>
                         </tr>
                     </thead>
@@ -194,6 +208,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                                     </select>
                                 </td>
                                 <td style={{ padding: '10px' }}>{new Date(u.created_at).toLocaleDateString()}</td>
+                                <td style={{ padding: '10px' }}>
+                                    <span style={{ color: u.is_verified ? 'var(--accent-sym)' : 'var(--accent-alert)', fontSize: '0.8em' }}>
+                                        {u.is_verified ? '✓' : '✗'}
+                                    </span>
+                                    {!u.is_verified && (
+                                        <button onClick={() => handleVerifyUser(u.id)} style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '0.75em', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', background: 'transparent', borderRadius: '3px', cursor: 'pointer' }}>Verify</button>
+                                    )}
+                                </td>
                                 <td style={{ padding: '10px' }}>
                                     {u.id !== 1 && (
                                         <button onClick={() => handleDeleteUser(u.id)} style={{ padding: '4px', color: 'var(--accent-alert)', border: 'none', background: 'transparent' }} title="Delete">

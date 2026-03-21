@@ -117,6 +117,24 @@ async function deriveWrapper(password: string, saltStr: string): Promise<CryptoK
   );
 }
 
+// --- File Encryption (Client-Side, for UploadModal) ---
+
+export async function generateKey(): Promise<CryptoKey> {
+  return window.crypto.subtle.generateKey(AES_PARAMS, true, ['encrypt', 'decrypt']);
+}
+
+export async function encryptFile(file: File, key: CryptoKey): Promise<{ encryptedBlob: Blob; iv: Uint8Array }> {
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const buffer = await file.arrayBuffer();
+  const encrypted = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, buffer);
+  return { encryptedBlob: new Blob([encrypted], { type: 'application/octet-stream' }), iv };
+}
+
+export async function exportKey(key: CryptoKey): Promise<string> {
+  const raw = await window.crypto.subtle.exportKey('raw', key);
+  return bytesToB64(raw);
+}
+
 export async function storeIdentity(privateKey: string, password: string, userId: number) {
   const salt = window.crypto.getRandomValues(new Uint8Array(16));
   const iv = window.crypto.getRandomValues(new Uint8Array(12));

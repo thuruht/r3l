@@ -2948,6 +2948,9 @@ app.get('/api/messages/:partner_id', async (c) => {
 
 // POST /api/messages: Send a message
 app.post('/api/messages', async (c) => {
+  if (!await checkRateLimit(c, 'messages', 60, 600)) {
+    return c.json({ error: 'Sending messages too fast. Please wait.' }, 429);
+  }
   const sender_id = c.get('user_id');
   const { receiver_id, content, encrypt, encrypted_key, iv: client_iv } = await c.req.json();
 

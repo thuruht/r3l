@@ -1450,7 +1450,7 @@ app.post('/api/relationships/follow', authMiddleware, async (c) => {
 // POST /api/relationships/sym-request: Send a sym_request
 app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
   const source_user_id = c.get('user_id');
-  const { target_user_id } = await c.req.json();
+  const { target_user_id, file_id } = await c.req.json();
 
   if (!target_user_id) {
     return c.json({ error: 'Missing target_user_id' }, 400);
@@ -1485,7 +1485,7 @@ app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
             ).bind('sym_request', 'pending', existingDirect.id).run();
             
             if (success) {
-                 await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id);
+                 await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id, file_id ? { file_id } : {});
                  return c.json({ message: 'Sym request sent (upgraded from follow)' });
             } else {
                  return c.json({ error: 'Failed to upgrade to sym request' }, 500);
@@ -1509,7 +1509,7 @@ app.post('/api/relationships/sym-request', authMiddleware, async (c) => {
 
     if (success) {
       // Trigger notification for target
-      await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id);
+      await createNotification(c.env, c.env.DB, target_user_id, 'sym_request', source_user_id, file_id ? { file_id } : {});
       return c.json({ message: 'Sym request sent successfully' });
     } else {
       return c.json({ error: 'Failed to send sym request' }, 500);
@@ -1768,9 +1768,22 @@ app.get('/api/drift', authMiddleware, async (c) => {
               : u.avatar_url
         });
 
+        const driftCollections = await c.env.DB.prepare(
+            `SELECT c.id, c.name, c.user_id, u.username as owner_username,
+               COUNT(cf.file_id) as file_count
+             FROM collections c
+             JOIN users u ON c.user_id = u.id
+             LEFT JOIN collection_files cf ON c.id = cf.collection_id
+             WHERE c.visibility = 'public' AND c.user_id != ?
+             GROUP BY c.id
+             ORDER BY RANDOM()
+             LIMIT 5`
+        ).bind(user_id).all();
+
         return c.json({
             users: driftUsers.results.map(processAvatar),
-            files: driftFiles.results
+            files: driftFiles.results,
+            collections: driftCollections.results
         });
 
     } catch (e: any) {

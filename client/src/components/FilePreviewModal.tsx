@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode, IconCopy } from '@tabler/icons-react';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
@@ -20,6 +20,75 @@ interface FilePreviewModalProps {
   mimeType: string;
   onDownload: () => void;
 }
+
+const AudioWaveform: React.FC<{ src: string; mimeType: string }> = ({ src, mimeType }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const animFrameRef = useRef<number>(0);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const ctxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const analyser = analyserRef.current;
+    if (!canvas || !analyser) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    const render = () => {
+      animFrameRef.current = requestAnimationFrame(render);
+      analyser.getByteFrequencyData(dataArray);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const barWidth = (canvas.width / bufferLength) * 2.5;
+      let x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        const alpha = 0.4 + (dataArray[i] / 255) * 0.6;
+        ctx.fillStyle = `rgba(100, 220, 180, ${alpha})`;
+        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+    };
+    render();
+  }, []);
+
+  const initAudio = useCallback(() => {
+    if (ctxRef.current || !audioRef.current) return;
+    const audioCtx = new AudioContext();
+    ctxRef.current = audioCtx;
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyserRef.current = analyser;
+    const source = audioCtx.createMediaElementSource(audioRef.current);
+    sourceRef.current = source;
+    source.connect(analyser);
+    analyser.connect(audioCtx.destination);
+    draw();
+  }, [draw]);
+
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(animFrameRef.current);
+      ctxRef.current?.close();
+    };
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px 0' }}>
+      <canvas ref={canvasRef} width={600} height={120}
+        style={{ width: '100%', height: '120px', borderRadius: '4px', background: 'rgba(0,0,0,0.3)' }}
+      />
+      <audio ref={audioRef} controls style={{ width: '100%' }}
+        onPlay={initAudio}
+        onPause={() => cancelAnimationFrame(animFrameRef.current)}
+      >
+        <source src={src} type={mimeType} />
+      </audio>
+    </div>
+  );
+};
 
 const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, currentUser, filename, mimeType, onDownload }) => {
   const [content, setContent] = useState<string | null>(null);
@@ -521,14 +590,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           )}
           {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
 
-               {isAudio && (
-                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                   <audio controls style={{ width: '100%' }}>
-                     <source src={`/api/files/${fileId}/content`} type={mimeType} />
-                     Your browser does not support the audio element.
-                   </audio>
-                 </div>
-               )}
+               {isAudio && <AudioWaveform src={`/api/files/${fileId}/content`} mimeType={mimeType} />}
 
                {isVideo && (
                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>

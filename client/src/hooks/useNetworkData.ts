@@ -3,7 +3,7 @@ import { useToast } from '../context/ToastContext';
 
 export interface NetworkNode {
   id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact';
+  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact' | 'collection';
   name: string;
   avatar_url?: string;
   online?: boolean;
@@ -27,7 +27,7 @@ interface UseNetworkDataProps {
   meUsername: string | undefined; 
   meAvatarUrl: string | undefined; 
   isDrifting: boolean;
-  driftData: { users: any[], files: any[] };
+  driftData: { users: any[], files: any[], collections?: any[] };
   onlineUserIds: Set<number>;
 }
 
@@ -157,6 +157,23 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
             if (!nodeMap.has(fileNodeId)) {
                 nodeMap.set(fileNodeId, { id: fileNodeId, group: 'drift_file', name: f.filename, data: f });
                 newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
+            }
+        });
+
+        driftData.collections?.forEach((col: any) => {
+            const colNodeId = `col-${col.id}`;
+            const ownerId = col.user_id.toString();
+            if (!nodeMap.has(ownerId)) {
+                nodeMap.set(ownerId, {
+                    id: ownerId,
+                    group: 'drift_user',
+                    name: col.owner_username || 'Unknown',
+                    online: false
+                });
+            }
+            if (!nodeMap.has(colNodeId)) {
+                nodeMap.set(colNodeId, { id: colNodeId, group: 'collection', name: col.name, data: col });
+                newLinks.push({ source: colNodeId, target: ownerId, type: 'drift' });
             }
         });
       }

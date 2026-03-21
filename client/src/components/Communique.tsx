@@ -34,6 +34,9 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
+  const [symFileId, setSymFileId] = useState<string>('');
+  const [myFiles, setMyFiles] = useState<any[]>([]);
+  const [showSymFilePicker, setShowSymFilePicker] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
@@ -264,9 +267,23 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
     };
   
     const handleSymRequest = async () => {
-      if (await performRelationshipAction('/api/relationships/sym-request', 'POST', { target_user_id: userId })) {
+      const body: any = { target_user_id: userId };
+      if (symFileId) body.file_id = Number(symFileId);
+      if (await performRelationshipAction('/api/relationships/sym-request', 'POST', body)) {
         setRelationshipStatus('sym_requested');
+        setShowSymFilePicker(false);
+        setSymFileId('');
       }
+    };
+  
+    const fetchMyFiles = async () => {
+      try {
+        const res = await fetch('/api/files');
+        if (res.ok) {
+          const data = await res.json();
+          setMyFiles(data.files || []);
+        }
+      } catch (e) { console.error(e); }
     };
   
     const handleCancelSymRequest = async () => {
@@ -428,9 +445,22 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               <button onClick={handleFollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <IconUserPlus size={ICON_SIZES.sm} /> Follow
               </button>
-              <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <button onClick={() => { setShowSymFilePicker(!showSymFilePicker); fetchMyFiles(); }} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <IconLink size={ICON_SIZES.sm} /> Request Sym
               </button>
+              {showSymFilePicker && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach an artifact as introduction (optional):</span>
+                  <select value={symFileId} onChange={e => setSymFileId(e.target.value)}
+                    style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8em' }}>
+                    <option value=''>No attachment</option>
+                    {myFiles.map(f => <option key={f.id} value={f.id}>{f.filename}</option>)}
+                  </select>
+                  <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-sym)', color: 'var(--accent-sym)' }}>
+                    <IconLink size={ICON_SIZES.sm} /> Send Request
+                  </button>
+                </div>
+              )}
             </>
           )}
           {relationshipStatus === 'following' && (
@@ -438,9 +468,22 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               <button onClick={handleUnfollow} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <IconUserMinus size={ICON_SIZES.sm} /> Unfollow
               </button>
-              <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <button onClick={() => { setShowSymFilePicker(!showSymFilePicker); fetchMyFiles(); }} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <IconLink size={ICON_SIZES.sm} /> Request Sym
               </button>
+              {showSymFilePicker && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach an artifact as introduction (optional):</span>
+                  <select value={symFileId} onChange={e => setSymFileId(e.target.value)}
+                    style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8em' }}>
+                    <option value=''>No attachment</option>
+                    {myFiles.map(f => <option key={f.id} value={f.id}>{f.filename}</option>)}
+                  </select>
+                  <button onClick={handleSymRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-sym)', color: 'var(--accent-sym)' }}>
+                    <IconLink size={ICON_SIZES.sm} /> Send Request
+                  </button>
+                </div>
+              )}
             </>
           )}
           {relationshipStatus === 'sym_requested' && (

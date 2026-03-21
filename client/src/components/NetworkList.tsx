@@ -9,10 +9,11 @@ import { useToast } from '../context/ToastContext';
 interface NetworkListProps {
   nodes: NetworkNode[];
   onNodeClick: (nodeId: string) => void;
+  onFilePreview?: (file: any) => void;
   loading?: boolean;
 }
 
-const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }) => {
+const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePreview, loading }) => {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [drifting, setDrifting] = useState(false);
@@ -75,11 +76,21 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
             role="button"
             tabIndex={0}
             aria-label={`View profile of ${node.name}`}
-            onClick={() => onNodeClick(node.id)}
+            onClick={() => {
+              if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
+                onFilePreview(node.data);
+              } else {
+                onNodeClick(node.id);
+              }
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                onNodeClick(node.id);
+                if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
+                  onFilePreview(node.data);
+                } else {
+                  onNodeClick(node.id);
+                }
               }
             }}
             className={`network-item ${node.group.startsWith('drift') ? 'drift' : ''}`}
@@ -102,9 +113,11 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
                 {node.name}
               </div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-                {node.group === 'me' ? 'You' : 
+                {node.group === 'me' ? 'You' :
                  node.group === 'sym' ? 'Sym' :
                  node.group === 'asym' ? 'A-Sym' :
+                 node.group === 'artifact' ? 'Artifact' :
+                 node.group === 'collection' ? 'Collection' :
                  node.group === 'drift_user' ? 'Drift' : 'Drift Artifact'}
               </div>
             </div>

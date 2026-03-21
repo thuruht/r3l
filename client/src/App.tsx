@@ -48,9 +48,10 @@ function Main() {
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
   const [driftType, setDriftType] = useState<string>('');
-  const [driftData, setDriftData] = useState<{ users: any[]; files: any[] }>({ users: [], files: [] });
+  const [driftData, setDriftData] = useState<{ users: any[]; files: any[]; collections: any[] }>({ users: [], files: [], collections: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [previewFile, setPreviewFile] = useState<any>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
@@ -67,8 +68,21 @@ function Main() {
   const [regEmail, setRegEmail] = useState('');
 
   const wsRef = useRef<WebSocket | null>(null);
+
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshNetworkRef = useRef<() => void>(() => {});
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isMenuOpen]);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -210,7 +224,8 @@ function Main() {
     const now = Date.now();
     const newEntries: typeof driftHistory = [
       ...driftData.users.map(u => ({ id: `u-${u.id}`, name: u.username, type: 'user' as const, timestamp: now })),
-      ...driftData.files.map(f => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now }))
+      ...driftData.files.map(f => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now })),
+      ...driftData.collections.map(col => ({ id: `col-${col.id}`, name: col.name, type: 'file' as const, mime_type: 'collection', timestamp: now }))
     ];
     setDriftHistory(prev => {
       const existingIds = new Set(prev.map(e => e.id));
@@ -228,6 +243,9 @@ function Main() {
     if (nodeId.startsWith('file-')) {
       const node = nodes.find(n => n.id === nodeId);
       if (node?.data) setPreviewFile(node.data);
+    } else if (nodeId.startsWith('col-')) {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node?.data) showToast(`Collection: ${node.data.name} (${node.data.file_count ?? 0} files) by ${node.data.owner_username}`, 'info');
     } else if (nodeId === 'me' && currentUser) {
       navigate(`/communique/${currentUser.id}`);
     } else {
@@ -373,7 +391,7 @@ function Main() {
                     <IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                   </button>
-                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu">
+                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu" ref={menuRef as any}>
                     {isMenuOpen ? <IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
                   </button>
                 </div>
@@ -383,7 +401,7 @@ function Main() {
 
           {/* Dropdown Menu */}
           {isMenuOpen && (
-            <div className="glass-panel nav-dropdown">
+            <div ref={menuRef} className="glass-panel nav-dropdown">
               <div className="menu-mobile-section">
                 <SearchBar />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -525,7 +543,7 @@ function Main() {
                   onlineUserIds={onlineUserIds}
                 />
               ) : (
-                <NetworkList nodes={nodes} onNodeClick={onNodeClick} loading={loading} />
+                <NetworkList nodes={nodes} onNodeClick={onNodeClick} onFilePreview={(f) => setPreviewFile(f)} loading={loading} />
               )
             } />
             <Route path="/communique/:userId" element={<CommuniquePage />} />

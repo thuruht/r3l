@@ -312,7 +312,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     ) : <span>{n.actor_name || 'Unknown'} </span>;
 
     switch (n.type) {
-      case 'sym_request': return <>{actorLink} requests a signal connection.</>;
+      case 'sym_request': return <>{actorLink} requests a signal connection.{n.payload?.file_id && <span style={{ marginLeft: '6px', fontSize: '0.8em', color: 'var(--accent-sym)', opacity: 0.8 }}>📎 artifact attached</span>}</>;
       case 'sym_accepted': return <>Connection established with {actorLink}.</>;
       case 'file_shared': {
         const filename = n.payload?.filename || 'an artifact';

@@ -15,6 +15,7 @@ import FAQ from './components/FAQ';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import AdminDashboard from './components/AdminDashboard';
 import VerifyEmail from './components/VerifyEmail';
+import ResetPassword from './components/ResetPassword';
 import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
@@ -338,7 +339,7 @@ function Main() {
 
   return (
     <>
-      {!currentUser && location.pathname !== '/verify' ? (
+      {!currentUser && !['/verify', '/reset-password'].includes(location.pathname) ? (
         <div className="login-container">
           <h1 className="glitch" data-text="REL F">REL F</h1>
           <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
@@ -578,6 +579,7 @@ function Main() {
 
           <Routes>
             <Route path="/verify" element={<VerifyEmail />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/" element={
               viewMode === 'graph' ? (

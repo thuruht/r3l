@@ -2249,7 +2249,13 @@ app.get('/api/files/:id/content', async (c) => {
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
-    headers.set('Content-Disposition', `attachment; filename="${file.filename.replace(/"/g, '\\"')}"`);
+    
+    // For PDFs, use inline disposition to allow viewing in iframe
+    if (file.mime_type === 'application/pdf') {
+        headers.set('Content-Disposition', `inline; filename="${file.filename.replace(/"/g, '\\"')}"`);
+    } else {
+        headers.set('Content-Disposition', `attachment; filename="${file.filename.replace(/"/g, '\\"')}"`);
+    }
 
     // Handle Burn On Read (Ephemeral)
     if (file.burn_on_read) {
@@ -3136,7 +3142,13 @@ app.post('/api/feedback', async (c) => {
 
 // Serve static assets for all other requests
 // This will effectively route all non-/api requests to the ASSETS binding
-app.all('*', (c) => c.env.ASSETS.fetch(c.req.raw));
+app.all('*', (c) => {
+  const url = new URL(c.req.url);
+  if (url.pathname.startsWith('/api/')) {
+    return c.json({ error: 'Not Found' }, 404);
+  }
+  return c.env.ASSETS.fetch(c.req.raw);
+});
 
 export default {
   fetch: app.fetch,

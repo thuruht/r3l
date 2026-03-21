@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode, IconCopy } from '@tabler/icons-react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownl, IconEye, IconCode, IconCopy, IconDownload } from '@tabler/icons-react';
 import { useWavesurfer } from '@wavesurfer/react';
 import Timeline from 'wavesurfer.js/dist/plugins/timeline.esm.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -106,6 +106,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [showPreview, setShowPreview] = useState(false);
   const [showRemixUpload, setShowRemixUpload] = useState(false);
   const [remixParent, setRemixParent] = useState<{ id: number; filename: string; username: string } | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -125,6 +126,25 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     initialW: 800,
     initialH: 600
   });
+
+  const isImage = mimeType.startsWith('image/');
+  const isAudio = mimeType.startsWith('audio/');
+  const isVideo = mimeType.startsWith('video/');
+  const isPDF = mimeType === 'application/pdf';
+  
+  const isSpreadsheet = !!(filename.match(/\.(xlsx|xls|csv)$/i) || mimeType.match(/excel|spreadsheet|csv/));
+  const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
+  const is3D = !!(filename.match(/\.(gltf|glb)$/i) || mimeType.match(/gltf/));
+  const isRichText = !!filename.match(/\.(notes|tiptap)$/i);
+  const isMarkdown = !!filename.match(/\.(md|markdown)$/i);
+  const isEpub = !!filename.match(/\.(epub)$/i) || mimeType === 'application/epub+zip';
+  
+  const isZip = !isEpub && !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
+  const isText = !isRichText && !isMarkdown && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
+                 !!mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
+                 !!filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i));
+  const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
+  const isWebCode = isHTML || !!filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
 
   useEffect(() => {
     if (!fileId) return;
@@ -183,24 +203,28 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     fetchFile();
   }, [fileId, filename]);
 
-  const isImage = mimeType.startsWith('image/');
-  const isAudio = mimeType.startsWith('audio/');
-  const isVideo = mimeType.startsWith('video/');
-  const isPDF = mimeType === 'application/pdf';
-  
-  const isSpreadsheet = !!(filename.match(/\.(xlsx|xls|csv)$/i) || mimeType.match(/excel|spreadsheet|csv/));
-  const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
-  const is3D = !!(filename.match(/\.(gltf|glb)$/i) || mimeType.match(/gltf/));
-  const isRichText = !!filename.match(/\.(notes|tiptap)$/i);
-  const isMarkdown = !!filename.match(/\.(md|markdown)$/i);
-  const isEpub = !!filename.match(/\.(epub)$/i) || mimeType === 'application/epub+zip';
-  
-  const isZip = !isEpub && !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
-  const isText = !isRichText && !isMarkdown && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
-                 !!mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
-                 !!filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i));
-  const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
-  const isWebCode = isHTML || !!filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
+  // Handle PDF separately to ensure auth via fetch
+  useEffect(() => {
+    if (isPDF && fileId) {
+        fetch(`/api/files/${fileId}/content`)
+            .then(res => {
+                if (!res.ok) throw new Error('Auth failed or file not found');
+                return res.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                setPdfUrl(url);
+            })
+            .catch(err => {
+                console.error(err);
+                setError('Could not load PDF content. Ensure you are logged in.');
+            });
+        
+        return () => {
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        };
+    }
+  }, [fileId, isPDF]);
 
   const handleBoost = async () => {
     try {
@@ -245,14 +269,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
       }
   };
 
-  // Remix Logic (Text/Code) - Save as NEW file
   const handleRemixSave = async () => {
       try {
-          // Create new file with content
           const blob = new Blob([editContent], { type: mimeType });
           const formData = new FormData();
           formData.append('file', blob, `remix-${filename}`);
-          formData.append('visibility', 'private'); // Default to private
+          formData.append('visibility', 'private');
           if (fileId) formData.append('parent_id', fileId);
 
           const res = await fetch('/api/files', {
@@ -262,8 +284,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
           if (res.ok) {
               showToast('Remix created!', 'success');
-              setIsEditing(false); // Exit edit mode
-              // Ideally navigate to new file or just close
+              setIsEditing(false);
           } else {
                showToast('Failed to create remix.', 'error');
           }
@@ -321,21 +342,16 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
       }
   };
 
-  // --- Collab Setup ---
   useEffect(() => {
     let currentProvider: WebsocketProvider | null = null;
     let currentDoc: Y.Doc | null = null;
 
     if (isEditing && (isText || isRichText)) {
-       // Initialize Yjs
        setCollabStatus('connecting');
        const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
-
-       // Note: In real production, authentication token should be passed here
        const prov = new WebsocketProvider(`${wsUrl}/api/collab/${fileId}`, '', doc);
 
-       // Set Awareness
        const userColor = theme_preferences.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
        prov.awareness.setLocalStateField('user', {
            name: currentUser?.username || 'Anonymous',
@@ -350,23 +366,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        });
 
        prov.on('status', (event: any) => {
-         setCollabStatus(event.status); // 'connected' or 'disconnected'
+         setCollabStatus(event.status);
        });
 
-       const yText = doc.getText('codemirror'); // Standard Yjs text type name
-
-       // Initial sync: set local content to Yjs doc if empty
-       // Ensure we don't overwrite if data exists (naive check)
+       const yText = doc.getText('codemirror');
        if (editContent && yText.length === 0) {
            yText.insert(0, editContent);
        }
        
-       // Force sync just in case
        if (yText.toString() === '' && editContent !== '') {
            yText.insert(0, editContent);
        }
 
-       // Observe changes from other peers
        yText.observe(event => {
            setEditContent(yText.toString());
        });
@@ -615,15 +626,16 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                  </div>
                )}
 
-               {isPDF && (
+               {isPDF && pdfUrl && (
                  <iframe
-                    src={`/api/files/${fileId}/content`}
+                    src={pdfUrl}
                     width="100%"
                     height="100%"
-                    style={{ border: 'none' }}
+                    style={{ border: 'none', background: 'white' }}
                     title="PDF Viewer"
                  />
                )}
+               {isPDF && !pdfUrl && !error && <Skeleton height="100%" width="100%" />}
 
                {isMarkdown && content && !isEditing && <MarkdownViewer content={content} />}
 

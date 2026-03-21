@@ -2,7 +2,6 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { upgradeWebSocket } from 'hono/cloudflare-workers';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, getCookie, deleteCookie } from 'hono/cookie';
 import { Resend } from 'resend';

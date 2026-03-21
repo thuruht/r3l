@@ -58,6 +58,16 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
   // Real-time: append incoming group messages from WebSocket
   useEffect(() => {
     if (!ws) return;
@@ -346,7 +356,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
   const isAdmin = members.find(m => m.user_id === currentUserId)?.role === 'admin';
 
   return (
-    <div className="inbox-overlay fade-in" style={{
+    <div ref={panelRef} className="inbox-overlay fade-in" style={{
       position: 'fixed', top: '60px', right: '10px', width: 'min(360px, 95vw)',
       background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
       backdropFilter: 'blur(10px)', padding: '0', borderRadius: '8px',

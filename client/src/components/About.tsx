@@ -48,11 +48,6 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
           <p>
             The project is currently in <strong>Open Beta</strong>. We encourage users to drift, share, and help us define the future of ephemeral networking.
           </p>
-
-          <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '20px', paddingTop: '20px', fontSize: '0.8rem', opacity: 0.6 }}>
-            Version: 1.0.0-GOLD (Mist Architecture) <br />
-            © 2025 Rel F Lab. Established in the void.
-          </div>
         </div>
       </div>
     </div>

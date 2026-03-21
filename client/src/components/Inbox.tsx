@@ -61,6 +61,16 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
   useEffect(() => {
     if (activeTab === 'alerts') {
       fetchNotifications();
@@ -422,7 +432,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   // --- Render Logic ---
 
   return (
-    <div className="inbox-overlay fade-in" style={{
+    <div ref={panelRef} className="inbox-overlay fade-in" style={{
       position: 'fixed', top: '60px', right: '10px', width: 'min(360px, 95vw)',
       background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', 
       backdropFilter: 'blur(10px)', padding: '0', borderRadius: '8px',
@@ -430,9 +440,9 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
     }}>
       {/* Header / Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
         {activeConversationId === null ? (
-            <div style={{ display: 'flex', gap: '15px' }} role="tablist" aria-label="Inbox views">
+            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', flex: 1, minWidth: 0 }} role="tablist" aria-label="Inbox views">
                 <button 
                     id="tab-alerts"
                     role="tab"

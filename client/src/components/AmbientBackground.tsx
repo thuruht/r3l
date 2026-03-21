@@ -59,7 +59,25 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
       };
   };
 
-  if (!visible) return null;
+  if (!visible) {
+    return (
+      <div style={{
+        position: 'fixed', bottom: '20px', left: '20px', zIndex: 50,
+        display: 'flex', gap: '8px', opacity: 0.5, transition: 'opacity 0.3s'
+      }}
+      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+      >
+        <button
+          onClick={() => setVisible(true)}
+          title="Show Ambiance"
+          style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
+        >
+          <IconEyeOff size={ICON_SIZES.md} />
+        </button>
+      </div>
+    );
+  }
 
   const customBgUrl = theme_preferences.backgroundUrl;
   const isVideo = theme_preferences.backgroundType === 'video' || customBgUrl?.match(/\.(mp4|webm|mov)$/i);

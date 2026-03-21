@@ -260,3 +260,13 @@ input:focus, textarea:focus {
 .icon-spin {
   animation: spin 1s linear infinite;
 }
+
+@keyframes presence-pulse {
+  0% { r: attr(r); opacity: 0.6; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0.6; }
+}
+/* SVG circle pulse for online nodes — driven by D3 inline style */
+.online-node .pulse-ring {
+  animation: presence-pulse 2s ease-in-out infinite;
+}

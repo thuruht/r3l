@@ -346,17 +346,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
                   onChange={e => setDefaultVisibility(e.target.value as any)}
                   style={{ width: '100%' }}
                 >
-                  <option value="me">Private (Me Only)</option>
-                  <option value="sym">Sym Connections Only</option>
+                  <option value="me">3rd Space (Me Only)</option>
+                  <option value="sym">Sym Only</option>
                   <option value="public">Public (Drift)</option>
                 </select>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
                 <div>
-                  <div style={{ fontWeight: 500 }}>Lurker Mode</div>
+                  <div style={{ fontWeight: 500 }}>Lurker in the Mist</div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                    Hide your presence from The Drift (you won't appear in random discovery)
+                    Hide from The Drift — you won't appear in random discovery
                   </div>
                 </div>
                 <button 

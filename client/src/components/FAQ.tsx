@@ -32,8 +32,8 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
           </section>
 
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}><IconLink /> Relationships</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Sym connections are mutual and encrypted. Asym connections are incidental.</p>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}><IconLink /> Sym & A-Sym</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Sym connections are mutual and explicit — both parties agree. A-Sym connections are one-way observations. The Drift surfaces random strangers with no connection required.</p>
           </section>
         </div>
       </div>

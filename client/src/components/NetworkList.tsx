@@ -19,8 +19,8 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
 
   // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
-    const order = { me: 0, sym: 1, asym: 2, drift_user: 3, drift_file: 4, lurker: 5 };
-    return order[a.group] - order[b.group];
+    const order: Record<string, number> = { me: 0, sym: 1, asym: 2, artifact: 3, collection: 4, drift_user: 5, drift_file: 6, lurker: 7 };
+    return (order[a.group] ?? 99) - (order[b.group] ?? 99);
   });
 
   const handleDrift = async () => {
@@ -103,9 +103,9 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, loading }
               </div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                 {node.group === 'me' ? 'You' : 
-                 node.group === 'sym' ? 'Sym Connection' :
-                 node.group === 'asym' ? 'Asym Connection' :
-                 node.group === 'drift_user' ? 'Drifting User' : 'Drifting Artifact'}
+                 node.group === 'sym' ? 'Sym' :
+                 node.group === 'asym' ? 'A-Sym' :
+                 node.group === 'drift_user' ? 'Drift' : 'Drift Artifact'}
               </div>
             </div>
           </div>

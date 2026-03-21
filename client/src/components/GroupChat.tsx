@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCrown, IconFile, IconShare, IconEdit, IconMoodSmile } from '@tabler/icons-react';
+import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCrown, IconFile, IconShare, IconEdit, IconMoodSmile, IconDoorExit, IconShieldUp } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
@@ -304,6 +304,44 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
     }
   };
 
+  const promoteToAdmin = async (userId: number) => {
+    if (!activeGroupId) return;
+    try {
+      const res = await fetch(`/api/groups/${activeGroupId}/members/${userId}/role`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'admin' })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Member promoted to admin', 'success');
+        fetchGroupMembers(activeGroupId);
+      } else {
+        showToast(data.error || 'Failed to promote', 'error');
+      }
+    } catch {
+      showToast('Error promoting member', 'error');
+    }
+  };
+
+  const leaveGroup = async () => {
+    if (!activeGroupId) return;
+    if (!confirm('Leave this group?')) return;
+    try {
+      const res = await fetch(`/api/groups/${activeGroupId}/members/me`, { method: 'DELETE' });
+      const data = await res.json();
+      if (res.ok) {
+        showToast('Left group', 'success');
+        setActiveGroupId(null);
+        fetchGroups();
+      } else {
+        showToast(data.error || 'Failed to leave group', 'error');
+      }
+    } catch {
+      showToast('Error leaving group', 'error');
+    }
+  };
+
   const activeGroup = groups.find(g => g.id === activeGroupId);
   const isAdmin = members.find(m => m.user_id === currentUserId)?.role === 'admin';
 
@@ -334,6 +372,11 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
           {!activeGroupId && (
             <button onClick={() => setShowCreateModal(true)} style={{ background: 'none', border: 'none', padding: '4px' }} title="Create Group" aria-label="Create Group">
               <IconPlus size={ICON_SIZES.lg} />
+            </button>
+          )}
+          {activeGroupId && (
+            <button onClick={leaveGroup} style={{ background: 'none', border: 'none', padding: '4px', color: 'var(--accent-alert)' }} title="Leave Group" aria-label="Leave Group">
+              <IconDoorExit size={ICON_SIZES.lg} />
             </button>
           )}
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#888', padding: '4px' }} title="Close" aria-label="Close">
@@ -448,9 +491,16 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
                     <span>{m.username}</span>
                     {m.role === 'admin' && <IconCrown size={ICON_SIZES.xs} color="#10b981ff" />}
                     {isAdmin && m.user_id !== currentUserId && (
-                      <button onClick={() => removeMember(m.user_id)} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }} aria-label="Remove member">
-                        <IconTrash size={ICON_SIZES.xs} />
-                      </button>
+                      <>
+                        {m.role === 'member' && (
+                          <button onClick={() => promoteToAdmin(m.user_id)} style={{ background: 'none', border: 'none', padding: 0, color: '#10b981ff', cursor: 'pointer' }} aria-label="Promote to admin" title="Promote to admin">
+                            <IconShieldUp size={ICON_SIZES.xs} />
+                          </button>
+                        )}
+                        <button onClick={() => removeMember(m.user_id)} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }} aria-label="Remove member">
+                          <IconTrash size={ICON_SIZES.xs} />
+                        </button>
+                      </>
                     )}
                   </div>
                 ))}

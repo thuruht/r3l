@@ -23,6 +23,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const [isDragOver, setIsDragOver] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
+  const [isBurnOnRead, setIsBurnOnRead] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -59,18 +60,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const uploadFile = async (upload: FileUploadState) => {
     setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'uploading' } : f));
 
-    try {
-      // Use chunked upload for files > 50MB
-      if (upload.file.size > 50 * 1024 * 1024) {
-        const { uploadFileInChunks } = await import('../utils/chunkedUpload');
-        await uploadFileInChunks(upload.file, (progress) => {
-          setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, progress } : f));
-        });
-        setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'success', progress: 100 } : f));
-        return;
-      }
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (upload.file.size > MAX_SIZE) {
+      setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: 'File exceeds 50 MB limit' } : f));
+      return;
+    }
 
-      // Regular upload for smaller files
+    try {
       const formData = new FormData();
 
       // Client-Side Encryption Logic
@@ -92,6 +88,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       }
 
       formData.append('visibility', 'private');
+      if (isBurnOnRead) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());
 
       const progressInterval = setInterval(() => {
@@ -204,6 +201,18 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             <p id="encrypt-desc" style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)', paddingLeft: '24px' }}>
               Files are encrypted in your browser before upload. You are responsible for managing the encryption key.
             </p>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <input
+            type="checkbox"
+            id="burn-check"
+            checked={isBurnOnRead}
+            onChange={e => setIsBurnOnRead(e.target.checked)}
+          />
+          <label htmlFor="burn-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isBurnOnRead ? 'var(--accent-alert)' : 'inherit' }}>
+            🔥 Burn on Read — self-destructs after first view
+          </label>
         </div>
 
         <ul style={{

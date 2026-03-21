@@ -36,6 +36,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('me');
   const [showPreview, setShowPreview] = useState(false);
   const [showRemixUpload, setShowRemixUpload] = useState(false);
+  const [remixParent, setRemixParent] = useState<{ id: number; filename: string; username: string } | null>(null);
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -71,6 +72,21 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         setVitality(meta.vitality);
         setVisibility(meta.visibility);
         setOwnerId(meta.user_id);
+
+        // Fetch remix parent if applicable
+        if (meta.remix_of) {
+          fetch(`/api/files/${meta.remix_of}/metadata`)
+            .then(r => r.ok ? r.json() : null)
+            .then(async (parentMeta) => {
+              if (!parentMeta) return;
+              const ownerRes = await fetch(`/api/users/${parentMeta.user_id}`);
+              const ownerData = ownerRes.ok ? await ownerRes.json() : null;
+              setRemixParent({ id: meta.remix_of, filename: parentMeta.filename, username: ownerData?.user?.username || 'unknown' });
+            })
+            .catch(() => {});
+        } else {
+          setRemixParent(null);
+        }
 
         // Fetch Content if text-based
         const textTypes = [
@@ -310,9 +326,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                     fontSize: '0.8rem', padding: 'var(--spacing-xs)', outline: 'none', cursor: 'pointer'
                 }}
             >
-                <option value="public">A-Sym (Public)</option>
-                <option value="sym">Sym (Connections)</option>
-                <option value="me">3rd Space (Private)</option>
+                <option value="public">Public (Drift)</option>
+                <option value="sym">Sym Only</option>
+                <option value="me">3rd Space (Me Only)</option>
             </select>
         </div>
         <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
@@ -497,7 +513,13 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (
              <>
-               {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
+        {/* Remix Lineage */}
+          {remixParent && (
+            <div style={{ marginBottom: '12px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', borderLeft: '2px solid var(--accent-sym)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              Remixed from <span style={{ color: 'var(--accent-sym)' }}>{remixParent.filename}</span> by {remixParent.username}
+            </div>
+          )}
+          {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
 
                {isAudio && (
                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>

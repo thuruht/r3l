@@ -310,8 +310,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       nodeSelection.exit().transition().duration(300).attr('opacity', 0).remove();
 
       const nodeEnter = nodeSelection.enter().append('g')
-          // Add class for specific targeting (drift-node)
-          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''}`)
+          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''} ${d.online ? 'online-node' : ''}`)
           .call(drag(simulation) as any)
           .on('click', (event, d) => { event.stopPropagation(); onNodeClick(d.id); })
           .on('mouseover', (event, d) => handleMouseOver(event, d, allLinks, allNodes))
@@ -319,11 +318,11 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
       nodeEnter.append('circle').attr('class', 'bg-circle');
       nodeEnter.append('circle').attr('class', 'ring-circle').attr('fill', 'transparent');
+      nodeEnter.append('circle').attr('class', 'pulse-ring').attr('fill', 'transparent');
       nodeEnter.append('text').attr('dy', 25).attr('text-anchor', 'middle').attr('font-size', '10px').style('pointer-events', 'none');
 
       const allNodes = nodeEnter.merge(nodeSelection)
-          // Ensure class is updated on merge
-          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''}`);
+          .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''} ${d.online ? 'online-node' : ''}`);
 
       // Helper for Vitality Decay
       const getVitalityOpacity = (d: D3Node) => {
@@ -398,6 +397,17 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               return 'var(--text-secondary)';
           })
           .attr('stroke-width', d => d.online || d.group === 'collection' ? 2.0 : 1.5);
+
+      allNodes.select('.pulse-ring')
+          .attr('r', (d) => {
+              if (d.group === 'me' || d.group === 'collection') return node_size * 1.5 + 4;
+              if (d.group === 'drift_file' || d.group === 'artifact') return node_size * 0.5 + 4;
+              return node_size + 4;
+          })
+          .attr('stroke', 'var(--accent-online)')
+          .attr('stroke-width', 1.5)
+          .attr('opacity', d => d.online ? 0.6 : 0)
+          .style('animation', d => d.online ? 'presence-pulse 2s ease-in-out infinite' : 'none');
 
       allNodes.select('text')
           .text(d => d.name)

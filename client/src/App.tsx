@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers, IconSettings
 } from '@tabler/icons-react';
 import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
@@ -18,6 +18,7 @@ import VerifyEmail from './components/VerifyEmail';
 import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
+import SettingsPage from './pages/SettingsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
@@ -42,6 +43,7 @@ function Main() {
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
@@ -53,6 +55,10 @@ function Main() {
   const [previewFile, setPreviewFile] = useState<any>(null);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
+  const [driftHistory, setDriftHistory] = useState<Array<{ id: string; name: string; type: 'user' | 'file'; mime_type?: string; timestamp: number }>>([]);
+  const [showDriftHistory, setShowDriftHistory] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
@@ -117,7 +123,7 @@ function Main() {
             refreshNetworkRef.current();
           }
         } else if (msg.type === 'new_message') {
-          showToast(`New Whisper from user ${msg.sender_id}`, 'info');
+          showToast(`New Whisper from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
           setUnreadCount(prev => prev + 1);
         } else if (msg.type === 'signal_artifact') {
           // Use ref to avoid stale closure over isDrifting
@@ -159,7 +165,23 @@ function Main() {
       navigate('/');
     } else {
       showToast('Drift Mode: Disengaged.', 'info');
+      setShowDriftHistory(false);
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      const data = await res.json();
+      showToast(data.message || 'Reset link sent if email exists.', 'success');
+      setIsForgotPassword(false);
+      setForgotEmail('');
+    } catch { showToast('Request failed', 'error'); }
   };
 
   const cycleDriftType = (e: React.MouseEvent) => {
@@ -182,6 +204,21 @@ function Main() {
 
   useEffect(() => { refreshNetworkRef.current = refreshNetwork; }, [refreshNetwork]);
 
+  // Track drift encounters in session history
+  useEffect(() => {
+    if (!isDrifting) return;
+    const now = Date.now();
+    const newEntries: typeof driftHistory = [
+      ...driftData.users.map(u => ({ id: `u-${u.id}`, name: u.username, type: 'user' as const, timestamp: now })),
+      ...driftData.files.map(f => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now }))
+    ];
+    setDriftHistory(prev => {
+      const existingIds = new Set(prev.map(e => e.id));
+      const fresh = newEntries.filter(e => !existingIds.has(e.id));
+      return [...fresh, ...prev].slice(0, 50); // cap at 50
+    });
+  }, [driftData, isDrifting]);
+
   const handleLogout = async () => {
     await fetch('/api/logout', { method: 'POST' });
     window.location.reload();
@@ -191,6 +228,8 @@ function Main() {
     if (nodeId.startsWith('file-')) {
       const node = nodes.find(n => n.id === nodeId);
       if (node?.data) setPreviewFile(node.data);
+    } else if (nodeId === 'me' && currentUser) {
+      navigate(`/communique/${currentUser.id}`);
     } else {
       navigate(`/communique/${nodeId}`);
     }
@@ -212,6 +251,10 @@ function Main() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loginPassword.length < 8) {
+      showToast('Password must be at least 8 characters', 'error');
+      return;
+    }
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
@@ -243,14 +286,14 @@ function Main() {
           <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
           <div className="login-grid">
             <div className="info-card">
-              <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
-              <h3>THE DRIFT</h3>
-              <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
-            </div>
-            <div className="info-card">
               <IconChartCircles size={ICON_SIZES['2xl']} color="var(--accent-alert)" />
               <h3>VITALITY</h3>
               <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
+            </div>
+            <div className="info-card">
+              <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
+              <h3>THE DRIFT</h3>
+              <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
             </div>
             <div className="login-form-card">
               <h2>{isRegistering ? 'INITIALIZE NODE' : 'RESUME BROADCAST'}</h2>
@@ -267,6 +310,17 @@ function Main() {
               <button className="text-btn" onClick={() => setIsRegistering(!isRegistering)}>
                 {isRegistering ? 'Already have a frequency? Login' : 'Need a frequency? Register'}
               </button>
+              {!isRegistering && (
+                <button className="text-btn" style={{ fontSize: '0.8em', opacity: 0.7, marginTop: '4px' }} onClick={() => setIsForgotPassword(!isForgotPassword)}>
+                  Forgot password?
+                </button>
+              )}
+              {isForgotPassword && (
+                <form onSubmit={handleForgotPassword} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input type="email" placeholder="Your email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+                  <button type="submit" className="primary-btn" style={{ fontSize: '0.85em' }}>Send Reset Link</button>
+                </form>
+              )}
             </div>
           </div>
         </div>
@@ -300,14 +354,24 @@ function Main() {
                       <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} className="drift-filter-btn">
                         {driftType ? driftType.toUpperCase() : 'ALL'}
                       </button>
+                      {isDrifting && driftHistory.length > 0 && (
+                        <button onClick={() => setShowDriftHistory(!showDriftHistory)} className="drift-filter-btn" title="Drift History" aria-label="Drift session history">
+                          {driftHistory.length}
+                        </button>
+                      )}
                     </div>
+                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
+                      Inbox
+                      {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
+                    </button>
+                    <button onClick={() => setIsGroupChatOpen(!isGroupChatOpen)} className="nav-button" aria-label="Groups">
+                      Groups
+                    </button>
                   </div>
-                  <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
-                    Inbox
+                  {/* Mobile: inbox badge button */}
+                  <button className="mobile-only nav-button" onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
+                    <IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
-                  </button>
-                  <button onClick={() => setIsGroupChatOpen(!isGroupChatOpen)} className="nav-button" aria-label="Groups">
-                    Groups
                   </button>
                   <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu">
                     {isMenuOpen ? <IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
@@ -350,8 +414,14 @@ function Main() {
               <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconUsers size={ICON_SIZES.lg} /> Groups
               </button>
+              <button onClick={() => { setIsInboxOpen(true); setUnreadCount(0); setIsMenuOpen(false); }} className="menu-item">
+                <IconMessage size={ICON_SIZES.lg} /> Inbox {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
+              </button>
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
                 <IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+              </button>
+              <button onClick={() => { setIsSettingsOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                <IconSettings size={ICON_SIZES.lg} /> Settings
               </button>
               <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconHelp size={ICON_SIZES.lg} /> Help
@@ -381,6 +451,49 @@ function Main() {
           {isGroupChatOpen && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} />}
           {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
           {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
+          {isSettingsOpen && currentUser && (
+            <SettingsPage
+              onClose={() => setIsSettingsOpen(false)}
+              currentUser={currentUser}
+              onUpdateUser={(u) => setCurrentUser(u)}
+            />
+          )}
+
+          {/* Drift History Panel */}
+          {showDriftHistory && isDrifting && (
+            <div className="glass-panel" style={{
+              position: 'fixed', top: '60px', left: '10px', width: '240px', maxHeight: '60vh',
+              overflowY: 'auto', zIndex: 200, padding: '12px', borderRadius: '8px',
+              border: '1px solid var(--border-color)', background: 'var(--drawer-bg)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Drift Session</span>
+                <button onClick={() => { setDriftHistory([]); setShowDriftHistory(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer' }}>Clear</button>
+              </div>
+              {driftHistory.map(entry => (
+                <div key={entry.id}
+                  role="button" tabIndex={0}
+                  onClick={() => {
+                    if (entry.type === 'user') navigate(`/communique/${entry.id.replace('u-', '')}`);
+                    else {
+                      const fileId = entry.id.replace('f-', '');
+                      setPreviewFile({ id: fileId, filename: entry.name, mime_type: entry.mime_type || '' });
+                    }
+                    setShowDriftHistory(false);
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
+                  style={{
+                    padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', marginBottom: '4px',
+                    background: 'rgba(255,255,255,0.03)', fontSize: '0.82rem',
+                    display: 'flex', alignItems: 'center', gap: '6px'
+                  }}
+                >
+                  <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>{entry.type === 'user' ? '◉' : '◈'}</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
           {previewFile && (
             <FilePreviewModal
               fileId={previewFile.id}

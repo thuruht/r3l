@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconX, IconLoader2 } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconLoader2 } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
@@ -23,6 +23,10 @@ interface FileData {
   created_at: string;
   r2_key: string;
   vitality: number;
+  expires_at?: string;
+  remix_of?: number | null;
+  visibility?: string;
+  burn_on_read?: number;
 }
 
 const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
@@ -36,9 +40,18 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
-  const [remixTarget, setRemixTarget] = useState<FileData | null>(null);
-  const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null); // Added
+  const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null);
   const [boostingIds, setBoostingIds] = useState<Set<number>>(new Set());
+
+  const getExpiryLabel = (expires_at?: string): { label: string; urgent: boolean } | null => {
+    if (!expires_at) return null;
+    const hoursLeft = (new Date(expires_at).getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hoursLeft <= 0) return { label: 'Expired', urgent: true };
+    if (hoursLeft < 1) return { label: '<1h', urgent: true };
+    if (hoursLeft < 24) return { label: `${Math.floor(hoursLeft)}h`, urgent: true };
+    if (hoursLeft < 48) return { label: `${Math.floor(hoursLeft)}h`, urgent: false };
+    return null; // > 48h: don't show
+  };
   
   const listRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast(); // Added
@@ -133,9 +146,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('visibility', 'private'); // 'private' in DB schema
-    if (remixTarget) {
-      formData.append('parent_id', remixTarget.id.toString());
-    }
+
 
     try {
       const res = await fetch('/api/files', {
@@ -157,8 +168,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
     finally {
       setUploading(false);
-      setRemixTarget(null);
-      e.target.value = '';
+      e.target.value = ''
     }
   };
 
@@ -210,6 +220,21 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         next.delete(fileId);
         return next;
       });
+    }
+  };
+
+  const handleRemix = async (file: FileData) => {
+    try {
+      const res = await fetch(`/api/files/${file.id}/remix`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Remix created: ${data.filename}`, 'success');
+        fetchFiles();
+      } else {
+        showToast(data.error || 'Failed to remix', 'error');
+      }
+    } catch {
+      showToast('Error creating remix', 'error');
     }
   };
 
@@ -278,7 +303,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               onClick={(e) => e.stopPropagation()} /* Prevent double firing if clicking directly on text */
               onClickCapture={() => setPreviewFile(file)} /* Handle click explicitly */
             >
-              <div style={{ color: 'var(--text-primary)' }}>{file.filename}</div>
+              <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                {file.remix_of && <span title="Remix" style={{ fontSize: '0.7em', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', borderRadius: '3px', padding: '0 3px' }}>RMX</span>}
+                {file.burn_on_read ? <span title="Burns after first view" style={{ fontSize: '0.7em', color: 'var(--accent-alert)', border: '1px solid var(--accent-alert)', borderRadius: '3px', padding: '0 3px' }}>🔥</span> : null}
+                {file.filename}
+              </div>
+              {(() => { const expiry = getExpiryLabel(file.expires_at); return expiry ? <div style={{ fontSize: '0.7em', color: expiry.urgent ? 'var(--accent-alert)' : 'var(--text-secondary)' }}>⏳ {expiry.label}</div> : null; })()}
               <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -328,7 +358,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               </button>
               
               <button
-                onClick={(e) => { e.stopPropagation(); setRemixTarget(file); }}
+                onClick={(e) => { e.stopPropagation(); handleRemix(file); }}
                 style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
                 title="Remix this artifact"
                 aria-label="Remix this artifact"
@@ -388,14 +418,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       {isOwner && (
         <div style={{ marginTop: '15px' }}>
-          {remixTarget && (
-            <div style={{ marginBottom: '10px', fontSize: '0.85em', color: 'var(--accent-sym)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>Remixing: <strong>{remixTarget.filename}</strong></span>
-              <button onClick={() => setRemixTarget(null)} style={{ padding: '2px 6px', fontSize: '0.8em' }}><IconX size={ICON_SIZES.xs} /> Cancel</button>
-            </div>
-          )}
-
-          <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+      <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
             <IconUpload size={ICON_SIZES.md} /> Upload Artifacts
           </button>
         </div>
@@ -405,7 +428,6 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         <UploadModal 
             onClose={() => setShowUploadModal(false)}
             onUploadComplete={fetchFiles}
-            parentId={remixTarget?.id}
         />
       )}
 

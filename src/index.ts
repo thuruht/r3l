@@ -225,9 +225,10 @@ function getR2PublicUrl(c: any, r2_key: string): string {
       return `https://${c.env.R2_PUBLIC_DOMAIN}/${r2_key}`;
     }
 
-    // Fallback to the standard Cloudflare R2.dev URL format if no custom domain is set.
-    // Note: Public access must be enabled on the bucket for this to work.
-    return `https://pub-${c.env.R2_BUCKET_NAME}.${c.env.R2_ACCOUNT_ID}.r2.dev/${r2_key}`;
+    // Fallback: not a valid public R2.dev URL without a custom domain.
+    // Log a warning and return a best-effort path — operators should set R2_PUBLIC_DOMAIN.
+    console.warn('R2_PUBLIC_DOMAIN not set; R2 public URLs will not resolve correctly.');
+    return `/${r2_key}`;
 }
 
 // --- Auth Routes ---
@@ -238,6 +239,7 @@ app.post('/api/register', async (c) => {
   }
   const { username, password, email, avatar_url, public_key, encrypted_private_key } = await c.req.json();
   if (!username || !password || !email) return c.json({ error: 'Missing fields' }, 400);
+  if (typeof password !== 'string' || password.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400);
 
   try {
     const { hash, salt } = await hashPassword(password);
@@ -412,6 +414,7 @@ app.post('/api/reset-password', async (c) => {
   const { token, newPassword } = await c.req.json();
 
   if (!token || !newPassword) return c.json({ error: 'Missing fields' }, 400);
+  if (typeof newPassword !== 'string' || newPassword.length < 8) return c.json({ error: 'Password must be at least 8 characters' }, 400);
 
   try {
     const user = await c.env.DB.prepare(
@@ -494,6 +497,84 @@ app.get('/api/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Invalid token' }, 401);
+  }
+});
+
+app.put('/api/users/me/username', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { username } = await c.req.json();
+  if (!username || typeof username !== 'string' || !username.trim()) {
+    return c.json({ error: 'Username is required' }, 400);
+  }
+  try {
+    await c.env.DB.prepare('UPDATE users SET username = ? WHERE id = ?').bind(username.trim(), user_id).run();
+    return c.json({ message: 'Username updated' });
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'Username already taken' }, 409);
+    return c.json({ error: 'Failed to update username' }, 500);
+  }
+});
+
+app.put('/api/users/me/password', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  const { currentPassword, newPassword } = await c.req.json();
+  if (!currentPassword || !newPassword) return c.json({ error: 'Missing fields' }, 400);
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return c.json({ error: 'Password must be at least 8 characters' }, 400);
+  }
+  try {
+    const user = await c.env.DB.prepare('SELECT password, salt FROM users WHERE id = ?').bind(user_id).first() as any;
+    if (!user) return c.json({ error: 'User not found' }, 404);
+    const { hash: currentHash } = await hashPassword(currentPassword, user.salt);
+    if (currentHash !== user.password) return c.json({ error: 'Current password is incorrect' }, 403);
+    const newSalt = crypto.randomUUID();
+    const { hash: newHash } = await hashPassword(newPassword, newSalt);
+    await c.env.DB.prepare('UPDATE users SET password = ?, salt = ? WHERE id = ?').bind(newHash, newSalt, user_id).run();
+    return c.json({ message: 'Password updated' });
+  } catch (e) {
+    return c.json({ error: 'Failed to update password' }, 500);
+  }
+});
+
+app.delete('/api/users/me', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  if (user_id === ADMIN_USER_ID) return c.json({ error: 'Cannot delete admin account' }, 400);
+  try {
+    // Fetch all R2 keys before deleting DB records
+    const { results: files } = await c.env.DB.prepare('SELECT r2_key FROM files WHERE user_id = ?').bind(user_id).all();
+    const user = await c.env.DB.prepare('SELECT avatar_url FROM users WHERE id = ?').bind(user_id).first() as any;
+
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(user_id, user_id),
+      c.env.DB.prepare('DELETE FROM communiques WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM group_members WHERE user_id = ?').bind(user_id),
+      // Delete groups where this user was the sole admin (orphan prevention)
+      c.env.DB.prepare(`
+        DELETE FROM groups WHERE id IN (
+          SELECT g.id FROM groups g
+          JOIN group_members gm ON g.id = gm.group_id AND gm.user_id = ? AND gm.role = 'admin'
+          WHERE (SELECT COUNT(*) FROM group_members WHERE group_id = g.id AND role = 'admin') = 1
+        )
+      `).bind(user_id),
+      c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user_id),
+    ]);
+
+    // Clean up R2 objects (non-blocking)
+    const cleanupPromises = files.map(f => c.env.BUCKET.delete(f.r2_key as string).catch(() => {}));
+    if (user?.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) {
+      cleanupPromises.push(c.env.BUCKET.delete(user.avatar_url).catch(() => {}));
+    }
+    c.executionCtx.waitUntil(Promise.all(cleanupPromises));
+
+    deleteCookie(c, 'auth_token');
+    return c.json({ message: 'Account deleted' });
+  } catch (e) {
+    console.error('Account deletion error:', e);
+    return c.json({ error: 'Failed to delete account' }, 500);
   }
 });
 
@@ -609,11 +690,12 @@ app.put('/api/customization', authMiddleware, async (c) => {
 });
 
 
-// Deprecated routes kept for backward compat if needed (redirecting logic internally)
+// Deprecated — aligned with /api/customization response shape
 app.get('/api/users/me/preferences', authMiddleware, async (c) => {
-    // Reuse new logic
     const user_id = c.get('user_id');
-    const preferences = await c.env.DB.prepare('SELECT theme_preferences, node_primary_color, node_secondary_color, node_size FROM users WHERE id = ?').bind(user_id).first();
+    const preferences = await c.env.DB.prepare(
+      'SELECT theme_preferences, node_primary_color, node_secondary_color, node_size, role, is_lurking FROM users WHERE id = ?'
+    ).bind(user_id).first();
     return c.json(preferences);
 });
 
@@ -856,6 +938,64 @@ app.post('/api/groups/:id/members', authMiddleware, async (c) => {
     } catch (e: any) {
         if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'Already a member' }, 409);
         return c.json({ error: 'Failed to add member' }, 500);
+    }
+});
+
+// PUT /api/groups/:id/members/:userId/role: Promote/demote a member (admin only)
+app.put('/api/groups/:id/members/:userId/role', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+    const target_user_id = Number(c.req.param('userId'));
+    const { role } = await c.req.json();
+
+    if (!['admin', 'member'].includes(role)) return c.json({ error: 'Invalid role' }, 400);
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership || membership.role !== 'admin') return c.json({ error: 'Unauthorized' }, 403);
+
+    // Prevent the last admin from being demoted
+    if (role === 'member') {
+        const { results: admins } = await c.env.DB.prepare(
+            'SELECT user_id FROM group_members WHERE group_id = ? AND role = ?'
+        ).bind(group_id, 'admin').all();
+        if (admins.length === 1 && (admins[0] as any).user_id === target_user_id) {
+            return c.json({ error: 'Cannot demote the last admin' }, 400 );
+        }
+    }
+
+    try {
+        await c.env.DB.prepare(
+            'UPDATE group_members SET role = ? WHERE group_id = ? AND user_id = ?'
+        ).bind(role, group_id, target_user_id).run();
+        return c.json({ message: `Role updated to ${role}` });
+    } catch (e) {
+        return c.json({ error: 'Failed to update role' }, 500);
+    }
+});
+
+// DELETE /api/groups/:id/members/me: Leave a group (any member)
+app.delete('/api/groups/:id/members/me', authMiddleware, async (c) => {
+    const user_id = c.get('user_id');
+    const group_id = Number(c.req.param('id'));
+
+    const membership = await checkGroupMember(c.env.DB, group_id, user_id);
+    if (!membership) return c.json({ error: 'Not a member' }, 404);
+
+    // Prevent the last admin from leaving
+    if (membership.role === 'admin') {
+        const { results: admins } = await c.env.DB.prepare(
+            'SELECT user_id FROM group_members WHERE group_id = ? AND role = ?'
+        ).bind(group_id, 'admin').all();
+        if (admins.length === 1) {
+            return c.json({ error: 'Assign another admin before leaving' }, 400);
+        }
+    }
+
+    try {
+        await c.env.DB.prepare('DELETE FROM group_members WHERE group_id = ? AND user_id = ?').bind(group_id, user_id).run();
+        return c.json({ message: 'Left group' });
+    } catch (e) {
+        return c.json({ error: 'Failed to leave group' }, 500);
     }
 });
 
@@ -1598,7 +1738,7 @@ app.get('/api/drift', authMiddleware, async (c) => {
             `SELECT u.id, u.username, u.avatar_url 
              FROM users u
              LEFT JOIN mutual_connections mc ON (u.id = mc.user_a_id AND mc.user_b_id = ?) OR (u.id = mc.user_b_id AND mc.user_a_id = ?)
-             WHERE u.id != ? AND mc.id IS NULL
+             WHERE u.id != ? AND mc.id IS NULL AND u.is_lurking = 0
              ORDER BY RANDOM()
              LIMIT 10`
         ).bind(user_id, user_id, user_id).all();
@@ -1718,7 +1858,7 @@ app.get('/api/files/community-archived', authMiddleware, async (c) => {
   const type = c.req.query('type');
   let query = `SELECT f.id, f.filename, f.mime_type, f.archive_votes, u.username as owner_name
                FROM files f JOIN users u ON f.user_id = u.id
-               WHERE f.is_community_archived = 1`;
+               WHERE f.is_community_archived = 1 AND f.is_archived = 1`;
   const params: (string | number)[] = [];
   if (type) {
     query += ' AND f.mime_type LIKE ?';
@@ -1808,6 +1948,11 @@ app.post('/api/files', async (c) => {
 
     if (!file) {
       return c.json({ error: 'No file uploaded' }, 400);
+    }
+
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({ error: 'File exceeds maximum size of 50 MB' }, 413);
     }
 
     // Encryption logic
@@ -1941,6 +2086,11 @@ app.get('/api/files/:id/content', async (c) => {
     ).bind(file_id).first();
 
     if (!file) return c.json({ error: 'File not found' }, 404);
+
+    // Check expiration
+    if (file.expires_at && new Date(file.expires_at as string) < new Date()) {
+      return c.json({ error: 'File has expired' }, 410);
+    }
 
     // 2. Check permissions
     // Owner can always download
@@ -2177,16 +2327,75 @@ app.post('/api/files/:id/vitality', async (c) => {
       ).bind(amount, amount, file_id),
     ]);
 
-    const file = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare(
+      'SELECT vitality, user_id, filename FROM files WHERE id = ?'
+    ).bind(file_id).first() as any;
     if (file && file.vitality >= 10) {
       await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
       return c.json({ message: 'Vitality boosted. File archived due to high vitality!' });
+    }
+    // Resonance signal: notify file owner anonymously (only if someone else boosted)
+    if (file && file.user_id !== user_id) {
+      c.executionCtx.waitUntil(
+        createNotification(c.env, c.env.DB, file.user_id, 'system_alert', undefined, {
+          message: `Your artifact "${file.filename}" resonated with someone in the drift.`
+        }).catch(() => {})
+      );
     }
     return c.json({ message: 'Vitality boosted', new_vitality: file?.vitality });
   } catch (e: any) {
     if (e.message?.includes('UNIQUE constraint failed')) return c.json({ error: 'Already boosted this artifact' }, 409);
     console.error('Error boosting vitality:', e);
     return c.json({ error: 'Failed to boost vitality' }, 500);
+  }
+});
+
+// POST /api/files/:id/remix: Create a derivative artifact from an existing file
+app.post('/api/files/:id/remix', async (c) => {
+  const user_id = c.get('user_id');
+  const source_id = Number(c.req.param('id'));
+  if (isNaN(source_id)) return c.json({ error: 'Invalid file ID' }, 400);
+
+  try {
+    const source = await c.env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(source_id).first() as any;
+    if (!source) return c.json({ error: 'File not found' }, 404);
+
+    // Permission: must be public, sym+mutual, or own file
+    if (source.user_id !== user_id) {
+      if (source.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);
+      if (source.visibility === 'sym') {
+        const mutual = await c.env.DB.prepare(
+          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(Math.min(user_id, source.user_id), Math.max(user_id, source.user_id), Math.min(user_id, source.user_id), Math.max(user_id, source.user_id)).first();
+        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+      }
+    }
+
+    // Copy R2 object under new key
+    const object = await c.env.BUCKET.get(source.r2_key);
+    if (!object) return c.json({ error: 'Source file content missing' }, 404);
+
+    const remixFilename = `remix-${source.filename}`;
+    const r2_key = `${user_id}/${crypto.randomUUID()}-${remixFilename}`;
+    await c.env.BUCKET.put(r2_key, await object.arrayBuffer(), {
+      httpMetadata: { contentType: source.mime_type },
+      customMetadata: { originalName: remixFilename, userId: String(user_id), remixOf: String(source_id) }
+    });
+
+    const expires_at = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
+    const { meta } = await c.env.DB.prepare(
+      `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, remix_of)
+       VALUES (?, ?, ?, ?, ?, 'me', ?, ?)`
+    ).bind(user_id, r2_key, remixFilename, source.size, source.mime_type, expires_at, source_id).run();
+
+    return c.json({ message: 'Remix created', file_id: meta.last_row_id, filename: remixFilename });
+  } catch (e: any) {
+    // remix_of column may not exist yet — handle gracefully
+    if (e.message?.includes('no column named remix_of')) {
+      return c.json({ error: 'Run migration to add remix_of column' }, 500 );
+    }
+    console.error('Remix error:', e);
+    return c.json({ error: 'Failed to create remix' }, 500);
   }
 });
 
@@ -2427,8 +2636,17 @@ app.get('/api/collections/:id/zip', authMiddleware, async (c) => {
         `SELECT f.* FROM files f
          JOIN collection_files cf ON f.id = cf.file_id
          WHERE cf.collection_id = ?
+         AND (
+           f.user_id = ?
+           OR f.visibility = 'public'
+           OR (f.visibility = 'sym' AND EXISTS (
+             SELECT 1 FROM mutual_connections mc
+             WHERE (mc.user_a_id = ? AND mc.user_b_id = f.user_id)
+                OR (mc.user_b_id = ? AND mc.user_a_id = f.user_id)
+           ))
+         )
          ORDER BY cf.file_order ASC`
-    ).bind(collection_id).all();
+    ).bind(collection_id, user_id, user_id, user_id).all();
 
     if (!files || files.length === 0) return c.json({ error: 'Collection is empty' }, 400);
 
@@ -2623,7 +2841,7 @@ app.post('/api/messages', async (c) => {
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
 
-    if (!mutual) return c.json({ error: 'Must be mutually connected (Sym) to whisper.' }, 403);
+    const is_request = mutual ? 0 : 1;
 
     let finalContent = content;
     let is_encrypted = 0;
@@ -2638,8 +2856,8 @@ app.post('/api/messages', async (c) => {
     }
 
     const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv) VALUES (?, ?, ?, ?, ?)'
-    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv).run();
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, is_request) VALUES (?, ?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv, is_request).run();
 
     if (success) {
       const messageId = meta.last_row_id;
@@ -2654,8 +2872,7 @@ app.post('/api/messages', async (c) => {
       };
 
       // Notify Recipient via WebSocket
-      // We use the existing 'new_notification' type or a dedicated 'new_message' type.
-      // Let's use 'new_message' for cleaner frontend handling.
+      const sender = await c.env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(sender_id).first() as any;
       const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
       const doStub = c.env.DO_NAMESPACE.get(doId);
       
@@ -2664,7 +2881,7 @@ app.post('/api/messages', async (c) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId: receiver_id, 
-          message: { type: 'new_message', ...messagePayload } 
+          message: { type: 'new_message', ...messagePayload, sender_name: sender?.username } 
         }),
       });
 
@@ -2704,6 +2921,12 @@ app.post('/api/users/me/avatar', async (c) => {
 
     if (!avatarFile) {
       return c.json({ error: 'No avatar file uploaded' }, 400);
+    }
+
+    // Delete previous avatar from R2 if it exists
+    const existingUser = await c.env.DB.prepare('SELECT avatar_url FROM users WHERE id = ?').bind(user_id).first() as any;
+    if (existingUser?.avatar_url && typeof existingUser.avatar_url === 'string' && existingUser.avatar_url.startsWith('avatars/')) {
+      await c.env.BUCKET.delete(existingUser.avatar_url).catch(e => console.error('Failed to delete old avatar:', e));
     }
 
     // Generate a unique key for R2 for avatars
@@ -2815,7 +3038,26 @@ export default {
         'UPDATE files SET vitality = MAX(0, vitality - 1) WHERE is_archived = 0 AND vitality > 0'
       ).run();
 
-      // 1. Purge Expired Files
+      // 1. Send "last chance" notifications for files expiring within 24h (once per file)
+      const soon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const { results: expiringFiles } = await env.DB.prepare(
+        `SELECT id, user_id, filename FROM files
+         WHERE is_archived = 0 AND last_chance_notified = 0
+         AND expires_at > ? AND expires_at < ?`
+      ).bind(now, soon).all();
+
+      for (const file of expiringFiles) {
+        try {
+          await createNotification(env, env.DB, file.user_id as number, 'system_alert', undefined, {
+            message: `Your artifact "${file.filename}" expires in less than 24 hours. Refresh it to keep it alive.`
+          });
+          await env.DB.prepare('UPDATE files SET last_chance_notified = 1 WHERE id = ?').bind(file.id).run();
+        } catch (e) {
+          console.error('Last-chance notification failed for file', file.id, e);
+        }
+      }
+
+      // 2. Purge Expired Files
       const { results } = await env.DB.prepare(
         'SELECT id, r2_key FROM files WHERE is_archived = 0 AND expires_at < ?'
       ).bind(now).all();
@@ -2826,7 +3068,10 @@ export default {
         if (file.r2_key) {
             await env.BUCKET.delete(file.r2_key as string);
         }
-        await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM vitality_votes WHERE file_id = ?').bind(file.id),
+          env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id),
+        ]);
         console.log(`Deleted expired file ID: ${file.id}`);
       }
 

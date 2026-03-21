@@ -530,7 +530,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
                 {/* Sym Links Footer */}
                 <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                    <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)', fontSize: '0.85em' }}>Sym Links</h5>
+                    <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)', fontSize: '0.85em' }}>Sym</h5>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                         {connections.map(c => (
                             <div key={c.user_id} 
@@ -575,7 +575,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                     <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                         <IconMessageOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
                         <p style={{ margin: 0, fontSize: '1.1em' }}>No Active Channels</p>
-                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Initiate a whisper from your Sym Links.</p>
+                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Initiate a whisper from your Sym connections.</p>
                     </div>
                 )}
                 {conversations.map(c => (
@@ -644,7 +644,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                                 {c.last_message_snippet}
                             </div>
                             <div style={{ fontSize: '0.7em', color: 'var(--accent-alert)', marginTop: '2px' }}>
-                                Non-Sym Connection
+                                A-Sym (no mutual connection)
                             </div>
                         </div>
                          {c.unread_count > 0 && (

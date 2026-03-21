@@ -51,8 +51,8 @@ const LandingPage: React.FC<LandingPageProps> = ({
           </div>
           <div className="feature-card">
             <IconCirclesRelation size={ICON_SIZES['2xl']} color="var(--accent-me)" />
-            <h3>Symmetry</h3>
-            <p>Forge connections. Asym links are observations; Sym links are mutual channels for direct exchange.</p>
+            <h3>Sym & A-Sym</h3>
+            <p>Forge connections. A-Sym links are one-way observations. Sym links are mutual — explicit, consensual channels for direct exchange.</p>
           </div>
         </div>
 

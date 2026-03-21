@@ -29,7 +29,7 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
           </p>
 
           <p>
-            In an era of permanent digital footprints and invasive algorithms, Rel F offers a space for <strong>ephemeral interaction</strong>. By enforcing data expiration and prioritizing consensual relationships, we return agency to the individual.
+            In an era of permanent digital footprints and invasive algorithms, Rel F offers a space for <strong>ephemeral interaction</strong>. By enforcing data expiration and prioritizing consensual relationships — <strong>Sym</strong> (mutual) and <strong>A-Sym</strong> (one-way) — we return agency to the individual.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', margin: '30px 0' }}>
@@ -41,7 +41,7 @@ const About: React.FC<AboutProps> = ({ onClose }) => {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
               <IconShieldLock />
               <h5 style={{ margin: '10px 0 5px 0', color: 'var(--text-primary)' }}>Zero Knowledge</h5>
-              <p style={{ fontSize: '0.8rem', margin: 0 }}>Privacy-first architecture with end-to-end encryption for whispers.</p>
+              <p style={{ fontSize: '0.8rem', margin: 0 }}>Privacy-first architecture with end-to-end encryption for Sym whispers.</p>
             </div>
           </div>
 

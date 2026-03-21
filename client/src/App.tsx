@@ -86,6 +86,25 @@ function Main() {
     return () => document.removeEventListener('mousedown', handler);
   }, [isMenuOpen]);
 
+  // Global Escape key — close topmost open modal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (previewFile) { setPreviewFile(null); return; }
+      if (isSettingsOpen) { setIsSettingsOpen(false); return; }
+      if (isInboxOpen) { setIsInboxOpen(false); return; }
+      if (isGroupChatOpen) { setIsGroupChatOpen(false); return; }
+      if (isCollectionsOpen) { setIsCollectionsOpen(false); return; }
+      if (isAdminOpen) { setIsAdminOpen(false); return; }
+      if (isFeedbackOpen) { setIsFeedbackOpen(false); return; }
+      if (isFAQOpen) { setIsFAQOpen(false); return; }
+      if (isAboutOpen) { setIsAboutOpen(false); return; }
+      if (isMenuOpen) { setIsMenuOpen(false); return; }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [previewFile, isSettingsOpen, isInboxOpen, isGroupChatOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
+
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const navigate = useNavigate();

@@ -51,7 +51,7 @@ const authMiddleware = async (c: any, next: any) => {
   }
 
   try {
-    const payload = await verify(token, secret);
+    const payload = await verify(token, secret, 'HS256');
     c.set('user_id', payload.id as number);
     await next();
   } catch (e) {
@@ -102,7 +102,7 @@ app.get('/api/chat/:room', async (c) => {
 
   if (token && c.env.JWT_SECRET) {
       try {
-          const payload = await verify(token, c.env.JWT_SECRET);
+          const payload = await verify(token, c.env.JWT_SECRET, 'HS256');
           if (payload.id) {
              userId = payload.id as number;
              username = payload.username as string;
@@ -331,7 +331,7 @@ app.post('/api/login', async (c) => {
       id: user.id,
       username: user.username,
       exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7, // 7 days
-    }, c.env.JWT_SECRET);
+    }, c.env.JWT_SECRET, 'HS256');
 
     // 6. Set HttpOnly Cookie
     setCookie(c, 'auth_token', token, {
@@ -515,7 +515,7 @@ app.get('/api/users/me', async (c) => {
   try {
     const secret = c.env.JWT_SECRET;
     if (!secret) return c.json({ error: 'Unauthorized' }, 401);
-    const payload = await verify(token, secret);
+    const payload = await verify(token, secret, 'HS256');
 
     // Optional: Fetch fresh data from DB to ensure user still exists
     const user = await c.env.DB.prepare(

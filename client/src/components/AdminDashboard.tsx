@@ -134,12 +134,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
       background: '#000000dd', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center',
       backdropFilter: 'blur(5px)'
-    }}>
+    }} onClick={onClose}>
       <div style={{
         width: '800px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto',
         background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
         padding: '20px', position: 'relative', boxShadow: '0 0 30px #000'
-      }}>
+      }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} style={{
           position: 'absolute', top: '15px', right: '15px',
           background: 'transparent', border: 'none', padding: '5px', cursor: 'pointer', color: 'var(--text-secondary)'

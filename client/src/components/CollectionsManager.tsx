@@ -44,17 +44,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
     onConfirm: () => {},
   });
 
-  // Handle Escape key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-          if (activeView === 'detail') setActiveView('list');
-          else onClose();
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, activeView]);
+
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -209,8 +199,8 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 3200, pointerEvents: 'auto' }}>
-      <div className="glass-panel" style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 3200, pointerEvents: 'auto' }} onClick={onClose}>
+      <div className="glass-panel" style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="modal-header-sticky" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 20px 10px 20px', margin: 0 }}>

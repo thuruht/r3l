@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NetworkNode } from '../hooks/useNetworkData';
-import { IconUser, IconFile, IconUsers, IconBroadcast, IconDice } from '@tabler/icons-react';
+import { IconUser, IconFile, IconUsers, IconBroadcast, IconDice, IconFolder } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useNavigate } from 'react-router-dom';
 import Skeleton from './Skeleton';
@@ -18,7 +18,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
   const { showToast } = useToast();
   const [drifting, setDrifting] = useState(false);
 
-  // Sort nodes: Me -> Sym -> Asym -> Drift Users -> Drift Files
+  // Sort nodes: Me -> Sym -> Asym -> Artifacts -> Collections -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
     const order: Record<string, number> = { me: 0, sym: 1, asym: 2, artifact: 3, collection: 4, drift_user: 5, drift_file: 6, lurker: 7 };
     return (order[a.group] ?? 99) - (order[b.group] ?? 99);
@@ -44,6 +44,24 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
     } finally {
         setDrifting(false);
     }
+  };
+
+  const getIcon = (node: NetworkNode) => {
+      if (node.avatar_url) return null;
+      
+      switch (node.group) {
+          case 'artifact':
+          case 'drift_file':
+              return <IconFile size={ICON_SIZES.xl} color="#888"/>;
+          case 'collection':
+              return <IconFolder size={ICON_SIZES.xl} color="var(--accent-sym)"/>;
+          case 'sym':
+          case 'asym':
+          case 'me':
+          case 'drift_user':
+          default:
+              return <IconUser size={ICON_SIZES.xl} color="#666"/>;
+      }
   };
 
   return (
@@ -75,7 +93,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
             key={node.id} 
             role="button"
             tabIndex={0}
-            aria-label={`View profile of ${node.name}`}
+            aria-label={`View ${node.group} ${node.name}`}
             onClick={() => {
               if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
                 onFilePreview(node.data);
@@ -105,7 +123,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
               border: node.group === 'sym' ? '2px solid var(--accent-sym)' : 'none',
               boxShadow: node.group === 'sym' ? 'var(--glow-sym)' : 'none'
             }}>
-              {!node.avatar_url && (node.group === 'drift_file' ? <IconFile size={ICON_SIZES.xl} color="#888"/> : <IconUser size={ICON_SIZES.xl} color="#666"/>)}
+              {getIcon(node)}
             </div>
             
             <div style={{ flex: 1 }}>

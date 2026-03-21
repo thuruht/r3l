@@ -18,6 +18,7 @@ import VerifyEmail from './components/VerifyEmail';
 import CollectionsManager from './components/CollectionsManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
+import { useOutsideClick } from './hooks/useOutsideClick';
 import SettingsPage from './pages/SettingsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';

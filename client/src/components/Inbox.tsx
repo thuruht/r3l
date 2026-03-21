@@ -6,6 +6,8 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
+import { useOutsideClick } from '../hooks/useOutsideClick';
+
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface InboxProps {
@@ -63,13 +65,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  useOutsideClick(panelRef, onClose);
 
   useEffect(() => {
     if (activeTab === 'alerts') {

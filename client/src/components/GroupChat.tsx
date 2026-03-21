@@ -3,6 +3,8 @@ import { IconX, IconPlus, IconSend, IconUsers, IconArrowLeft, IconTrash, IconCro
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
+import { useOutsideClick } from '../hooks/useOutsideClick';
+
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface GroupChatProps {
@@ -60,13 +62,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
 
   const panelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onClose();
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [onClose]);
+  useOutsideClick(panelRef, onClose);
 
   // Real-time: append incoming group messages from WebSocket
   useEffect(() => {

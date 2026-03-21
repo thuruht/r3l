@@ -7,6 +7,10 @@
     "moduleResolution": "bundler",
     "strict": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["client/src/*"]
+    },
     "types": ["@cloudflare/workers-types", "vite/client"]
   },
   "include": ["src", "client/src"]

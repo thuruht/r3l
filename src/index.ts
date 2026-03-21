@@ -35,11 +35,17 @@ interface Env {
   R2_ACCOUNT_ID: string; // R2 Storage Account ID
   R2_BUCKET_NAME: string; // R2 Bucket Name
   R2_PUBLIC_DOMAIN?: string; // Optional: Custom domain for R2
+  ADMIN_USER_ID?: string; // Optional: Override admin ID (default: 1)
 }
 
 const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
-const ADMIN_USER_ID = 1;
+/**
+ * Gets the admin user ID from environment or defaults to 1.
+ */
+const getAdminId = (env: Env): number => {
+    return parseInt(env.ADMIN_USER_ID || '1');
+};
 
 // --- Security Fix: No Hardcoded Fallback ---
 const authMiddleware = async (c: any, next: any) => {
@@ -136,6 +142,35 @@ app.use('/api/*', cors({
 }));
 
 // --- Security Helpers ---
+
+/**
+ * Very basic server-side HTML sanitization.
+ * Strips all tags except a safe allowlist.
+ * Note: This is a defense-in-depth measure; client-side sanitization is still primary.
+ */
+function basicSanitize(html: string): string {
+  if (!html) return '';
+  const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'del', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'img', 'hr', 'span', 'div'];
+  
+  // Strip all tags except allowlisted ones
+  // This regex is basic and might not handle complex nesting perfectly, but provides a baseline.
+  return html.replace(/<(\/?)([a-z0-9]+)([^>]*)>/gi, (match, slash, tag, attrs) => {
+    if (ALLOWED_TAGS.includes(tag.toLowerCase())) {
+      // Allow only safe attributes (href, src, alt, title, class)
+      const safeAttrs = attrs.replace(/ ([a-z]+)=(['"])(.*?)\2/gi, (attrMatch, name, quote, value) => {
+        const lowerName = name.toLowerCase();
+        if (['href', 'src', 'alt', 'title', 'class'].includes(lowerName)) {
+          // Block javascript: and data: URLs
+          if (['href', 'src'].includes(lowerName) && /^(javascript:|data:)/i.test(value.trim())) return '';
+          return attrMatch;
+        }
+        return '';
+      });
+      return `<${slash}${tag}${safeAttrs}>`;
+    }
+    return '';
+  });
+}
 
 /**
  * Generates a random salt and hashes the password using SHA-256.
@@ -578,7 +613,7 @@ app.put('/api/users/me/password', authMiddleware, async (c) => {
 
 app.delete('/api/users/me', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id === ADMIN_USER_ID) return c.json({ error: 'Cannot delete admin account' }, 400);
+  if (user_id === getAdminId(c.env)) return c.json({ error: 'Cannot delete admin account' }, 400);
   try {
     // Fetch all R2 keys before deleting DB records
     const { results: files } = await c.env.DB.prepare('SELECT r2_key FROM files WHERE user_id = ?').bind(user_id).all();
@@ -1165,7 +1200,7 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
 // POST /api/admin/verify-user: Force-verify a user (Admin only)
 app.post('/api/admin/verify-user', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== getAdminId(c.env)) return c.json({ error: 'Unauthorized' }, 403);
   const { target_user_id } = await c.req.json();
   if (!target_user_id) return c.json({ error: 'target_user_id required' }, 400);
   try {
@@ -1179,7 +1214,7 @@ app.post('/api/admin/verify-user', authMiddleware, async (c) => {
 // GET /api/admin/stats: System statistics (Admin only)
 app.get('/api/admin/stats', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) {
+  if (user_id !== getAdminId(c.env)) {
     return c.json({ error: 'Unauthorized' }, 403);
   }
 
@@ -1203,7 +1238,7 @@ app.get('/api/admin/stats', authMiddleware, async (c) => {
 // GET /api/admin/users: List users (Admin only)
 app.get('/api/admin/users', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== getAdminId(c.env)) return c.json({ error: 'Unauthorized' }, 403);
 
   try {
     const { results } = await c.env.DB.prepare(
@@ -1218,7 +1253,7 @@ app.get('/api/admin/users', authMiddleware, async (c) => {
 // DELETE /api/admin/users/:id: Delete user (Admin only)
 app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== getAdminId(c.env)) return c.json({ error: 'Unauthorized' }, 403);
   const targetId = Number(c.req.param('id'));
 
   if (targetId === 1) return c.json({ error: 'Cannot delete admin' }, 400);
@@ -1240,7 +1275,7 @@ app.delete('/api/admin/users/:id', authMiddleware, async (c) => {
 // POST /api/admin/broadcast: System broadcast (Admin only)
 app.post('/api/admin/broadcast', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
-  if (user_id !== ADMIN_USER_ID) return c.json({ error: 'Unauthorized' }, 403);
+  if (user_id !== getAdminId(c.env)) return c.json({ error: 'Unauthorized' }, 403);
 
   const { message } = await c.req.json();
   if (!message) return c.json({ error: 'Message required' }, 400);
@@ -2002,6 +2037,9 @@ app.get('/api/users/:target_user_id/files', async (c) => {
 
 // POST /api/files: Upload a file
 app.post('/api/files', async (c) => {
+  if (!await checkRateLimit(c, 'file_upload', 10, 600)) { // 10 per 10 mins
+    return c.json({ error: 'Too many uploads. Please wait.' }, 429);
+  }
   const user_id = c.get('user_id');
   
   // Parse form data to get file and metadata
@@ -2013,8 +2051,8 @@ app.post('/api/files', async (c) => {
     const parent_id = formData['parent_id'] ? Number(formData['parent_id']) : null;
     const shouldEncrypt = formData['encrypt'] === 'true';
 
-    if (!file) {
-      return c.json({ error: 'No file uploaded' }, 400);
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: 'No file uploaded or invalid format' }, 400);
     }
 
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -2022,7 +2060,27 @@ app.post('/api/files', async (c) => {
       return c.json({ error: 'File exceeds maximum size of 50 MB' }, 413);
     }
 
+    // Basic MIME type validation (allow list)
+    const allowedMimePrefixes = ['image/', 'audio/', 'video/', 'text/', 'application/pdf', 'application/json', 'application/zip'];
+    const isAllowedMime = allowedMimePrefixes.some(prefix => file.type.startsWith(prefix));
+    if (!isAllowedMime && file.type !== '') {
+        // We allow empty mime type for some edge cases, but log it
+        console.warn(`Uploading file with unusual mime type: ${file.type}`);
+    }
+
+    // Sanitize filename: remove path traversal characters and limit length
+    const safeFilename = file.name
+        .replace(/[^a-zA-Z0-9._-]/g, '_') // Replace non-alphanumeric (except . _ -) with _
+        .replace(/^\.+/g, '')             // Remove leading dots
+        .substring(0, 200);               // Cap length
+
+    if (!safeFilename) {
+        return c.json({ error: 'Invalid filename' }, 400);
+    }
+
     // Encryption logic
+    // NOTE: For files up to 50MB, arrayBuffer() is acceptable but close to Worker memory limits (128MB).
+    // AES-GCM encryption currently requires the full buffer to calculate the authentication tag.
     let body: ReadableStream | ArrayBuffer = file.stream();
     let is_encrypted = 0;
     let iv: string | null = null;
@@ -2038,15 +2096,15 @@ app.post('/api/files', async (c) => {
     }
 
     // Generate a unique key for R2
-    const r2_key = `${user_id}/${crypto.randomUUID()}-${file.name}`;
+    const r2_key = `${user_id}/${crypto.randomUUID()}-${safeFilename}`;
     
     // Upload to R2
     await c.env.BUCKET.put(r2_key, body, {
       httpMetadata: {
-        contentType: file.type,
+        contentType: file.type || 'application/octet-stream',
       },
       customMetadata: {
-        originalName: file.name,
+        originalName: safeFilename,
         userId: String(user_id),
         isEncrypted: String(is_encrypted)
       }
@@ -2059,8 +2117,6 @@ app.post('/api/files', async (c) => {
     const burn_on_read = formData['burn_on_read'] === 'true';
 
     // Map allowed visibility values
-    // DB Constraint: visibility IN ('public', 'sym', 'me')
-    // Frontend currently sends 'private', so map it to 'me'.
     let dbVisibility = visibility;
     if (dbVisibility === 'private') {
       dbVisibility = 'me';
@@ -2071,29 +2127,23 @@ app.post('/api/files', async (c) => {
     const { success } = await c.env.DB.prepare(
       `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, file.name, size, file.type, dbVisibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
+    ).bind(user_id, r2_key, safeFilename, size, file.type || 'application/octet-stream', dbVisibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
 
     if (success) {
       // Trigger Pulse Signal if public or sym
-      // IMPORTANT: Non-blocking to prevent upload failure if DO is busy
-      if (visibility === 'public' || visibility === 'sym') {
+      if (dbVisibility === 'public' || dbVisibility === 'sym') {
          c.executionCtx.waitUntil(
              broadcastSignal(c.env, 'signal_artifact', user_id, {
-                 filename: file.name,
-                 mime_type: file.type,
-                 visibility
+                 filename: safeFilename,
+                 mime_type: file.type || 'application/octet-stream',
+                 visibility: dbVisibility
              }).catch(err => console.error("Pulse signal failed:", err))
          );
       }
       return c.json({ message: 'File uploaded successfully', r2_key, expires_at });
     } else {
-      // If DB insert fails, we must delete the orphan file from R2 (Atomicity)
-      try {
-        await c.env.BUCKET.delete(r2_key);
-        console.log(`Atomicity: Deleted orphan file ${r2_key} after DB failure.`);
-      } catch (cleanupErr) {
-        console.error(`Failed to cleanup orphan file ${r2_key}:`, cleanupErr);
-      }
+      // Cleanup orphan file
+      c.executionCtx.waitUntil(c.env.BUCKET.delete(r2_key).catch(() => {}));
       return c.json({ error: 'Failed to record file metadata' }, 500);
     }
 

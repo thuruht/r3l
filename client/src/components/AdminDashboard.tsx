@@ -1,4 +1,4 @@
-// AdminDashboard.tsx
+/* AdminDashboard.tsx*/
 
 import React, { useEffect, useState } from 'react';
 import { IconX, IconServer, IconUsers, IconFiles, IconArchive, IconBroadcast, IconTrash } from '@tabler/icons-react';
@@ -140,11 +140,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         background: 'var(--bg-mist)', border: '1px solid var(--border-color)', borderRadius: '8px',
         padding: '20px', position: 'relative', boxShadow: '0 0 30px #000'
       }} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{
+        <button onClick={onClose} aria-label="Close" title="Close" style={{
           position: 'absolute', top: '15px', right: '15px',
           background: 'transparent', border: 'none', padding: '5px', cursor: 'pointer', color: 'var(--text-secondary)'
         }}>
-          <IconX />
+          <IconX aria-hidden="true" />
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>

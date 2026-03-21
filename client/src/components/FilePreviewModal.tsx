@@ -1,5 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownload, IconEye, IconCode, IconCopy } from '@tabler/icons-react';
+import { useWavesurfer } from '@wavesurfer/react';
+import Timeline from 'wavesurfer.js/dist/plugins/timeline.esm.js';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plyr } from 'plyr-react';
+import 'plyr-react/plyr.css';
 import { useDraggable } from '../hooks/useDraggable';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
@@ -11,6 +16,10 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useCollections } from '../hooks/useCollections';
 import UploadModal from './UploadModal';
+import { SpreadsheetViewer } from './SpreadsheetViewer';
+import { DocxViewer } from './DocxViewer';
+import { ModelViewer } from './ModelViewer';
+import { RichTextEditor } from './RichTextEditor';
 
 interface FilePreviewModalProps {
   fileId: string | null;
@@ -22,70 +31,58 @@ interface FilePreviewModalProps {
 }
 
 const AudioWaveform: React.FC<{ src: string; mimeType: string }> = ({ src, mimeType }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    const analyser = analyserRef.current;
-    if (!canvas || !analyser) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    const render = () => {
-      animFrameRef.current = requestAnimationFrame(render);
-      analyser.getByteFrequencyData(dataArray);
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      const barWidth = (canvas.width / bufferLength) * 2.5;
-      let x = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        const barHeight = (dataArray[i] / 255) * canvas.height;
-        const alpha = 0.4 + (dataArray[i] / 255) * 0.6;
-        ctx.fillStyle = `rgba(100, 220, 180, ${alpha})`;
-        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-        x += barWidth + 1;
-      }
-    };
-    render();
-  }, []);
+  const { wavesurfer, isPlaying, currentTime } = useWavesurfer({
+    container: containerRef,
+    height: 100,
+    waveColor: '#4a6652', // Muted olive from theme-verdant
+    progressColor: '#26de81', // Standard Neon Green
+    url: src,
+    barWidth: 2,
+    barGap: 3,
+    barRadius: 4,
+    plugins: useMemo(() => [Timeline.create({
+        style: {
+            color: '#7f8a96',
+            fontSize: '10px'
+        }
+    })], []),
+  });
 
-  const initAudio = useCallback(() => {
-    if (ctxRef.current || !audioRef.current) return;
-    const audioCtx = new AudioContext();
-    ctxRef.current = audioCtx;
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyserRef.current = analyser;
-    const source = audioCtx.createMediaElementSource(audioRef.current);
-    sourceRef.current = source;
-    source.connect(analyser);
-    analyser.connect(audioCtx.destination);
-    draw();
-  }, [draw]);
+  const onPlayPause = useCallback(() => {
+    wavesurfer && wavesurfer.playPause();
+  }, [wavesurfer]);
 
-  useEffect(() => {
-    return () => {
-      cancelAnimationFrame(animFrameRef.current);
-      ctxRef.current?.close();
-    };
-  }, []);
+  const formatTime = (seconds: number) => 
+    [seconds / 60, seconds % 60].map((v) => `0${Math.floor(v)}`.slice(-2)).join(':');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '20px 0' }}>
-      <canvas ref={canvasRef} width={600} height={120}
-        style={{ width: '100%', height: '120px', borderRadius: '4px', background: 'rgba(0,0,0,0.3)' }}
-      />
-      <audio ref={audioRef} controls style={{ width: '100%' }}
-        onPlay={initAudio}
-        onPause={() => cancelAnimationFrame(animFrameRef.current)}
-      >
-        <source src={src} type={mimeType} />
-      </audio>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px 0' }}>
+      <div ref={containerRef} style={{ minHeight: '120px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }} />
+      
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+         <button onClick={onPlayPause} style={{ 
+            minWidth: '100px', 
+            background: 'var(--bg-mist)', 
+            border: '1px solid var(--accent-sym)', 
+            color: 'var(--text-primary)', 
+            borderRadius: '4px', 
+            padding: '8px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            fontSize: '0.9rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+         }}>
+           {isPlaying ? 'Pause' : 'Play'}
+         </button>
+         <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-family-mono)' }}>
+           {formatTime(currentTime)}
+         </span>
+      </div>
     </div>
   );
 };
@@ -187,12 +184,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const isAudio = mimeType.startsWith('audio/');
   const isVideo = mimeType.startsWith('video/');
   const isPDF = mimeType === 'application/pdf';
-  const isZip = mimeType.match(/zip|compressed|archive/);
-  const isText = mimeType.startsWith('text/') || 
-                 mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
-                 filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i);
+  
+  const isSpreadsheet = !!(filename.match(/\.(xlsx|xls|csv)$/i) || mimeType.match(/excel|spreadsheet|csv/));
+  const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
+  const is3D = !!(filename.match(/\.(gltf|glb)$/i) || mimeType.match(/gltf/));
+  const isRichText = !!filename.match(/\.(notes|tiptap)$/i);
+  
+  const isZip = !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
+  const isText = !isRichText && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
+                 !!mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
+                 !!filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i));
   const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
-  const isWebCode = isHTML || filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
+  const isWebCode = isHTML || !!filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
 
   const handleBoost = async () => {
     try {
@@ -477,30 +480,36 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   );
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
-      <div
-        className="glass-panel"
-        style={{
-          position: 'absolute',
-          left: isMobile ? 0 : `${pos.x}px`,
-          top: isMobile ? 0 : `${pos.y}px`,
-          width: isMobile ? '100%' : `${size.w}px`,
-          height: isMobile ? '100%' : `${size.h}px`,
-          maxWidth: '100%',
-          maxHeight: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          pointerEvents: 'auto',
-          userSelect: isDragging ? 'none' : 'auto',
-          background: 'var(--drawer-bg)',
-          borderRadius: isMobile ? 0 : '8px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          overflow: 'hidden',
-          backdropFilter: 'blur(15px)',
-          border: isMobile ? 'none' : '1px solid var(--border-color)'
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <AnimatePresence>
+      {fileId && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
+          <motion.div
+            className="glass-panel"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            style={{
+              position: 'absolute',
+              left: isMobile ? 0 : `${pos.x}px`,
+              top: isMobile ? 0 : `${pos.y}px`,
+              width: isMobile ? '100%' : `${size.w}px`,
+              height: isMobile ? '100%' : `${size.h}px`,
+              maxWidth: '100%',
+              maxHeight: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              pointerEvents: 'auto',
+              userSelect: isDragging ? 'none' : 'auto',
+              background: 'var(--drawer-bg)',
+              borderRadius: isMobile ? 0 : '8px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+              overflow: 'hidden',
+              backdropFilter: 'blur(15px)',
+              border: isMobile ? 'none' : '1px solid var(--border-color)'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
         {/* Header - Drag Handle */}
         <div
           onMouseDown={handleDragStart}
@@ -593,11 +602,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                {isAudio && <AudioWaveform src={`/api/files/${fileId}/content`} mimeType={mimeType} />}
 
                {isVideo && (
-                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-                   <video controls style={{ maxWidth: '100%', maxHeight: '100%' }}>
-                     <source src={`/api/files/${fileId}/content`} type={mimeType} />
-                     Your browser does not support the video element.
-                   </video>
+                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '100%', maxWidth: '900px' }}>
+                        <Plyr
+                            source={{
+                                type: 'video',
+                                sources: [{ src: `/api/files/${fileId}/content`, type: mimeType }]
+                            }}
+                            options={{
+                                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                            }}
+                        />
+                    </div>
                  </div>
                )}
 
@@ -611,6 +627,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                  />
                )}
 
+               {isSpreadsheet && <SpreadsheetViewer url={`/api/files/${fileId}/content`} />}
+               
+               {isDocx && <DocxViewer url={`/api/files/${fileId}/content`} />}
+               
+               {is3D && <ModelViewer url={`/api/files/${fileId}/content`} />}
+
                {isZip && (
                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📦</div>
@@ -618,12 +640,30 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                  </div>
                )}
 
-               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && (
+               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && !isSpreadsheet && !isDocx && !is3D && !isRichText && (
                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📄</div>
                    <div>Binary file - use download button to save</div>
                    <div style={{ fontSize: '0.8rem', marginTop: '10px' }}>{mimeType}</div>
                  </div>
+               )}
+
+               {isRichText && (
+                   isEditing ? (
+                       (ydoc && provider) ? (
+                           <RichTextEditor 
+                               ydoc={ydoc} 
+                               provider={provider} 
+                               currentUser={currentUser} 
+                               themePreferences={theme_preferences} 
+                           />
+                       ) : <Skeleton height="100%" width="100%" />
+                   ) : (
+                       <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                           <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📝</div>
+                           <div>Rich Text Note - Click Edit to view/collaborate</div>
+                       </div>
+                   )
                )}
 
                {isText && !isEditing && !showPreview && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
@@ -656,7 +696,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             cursor: 'nwse-resize', background: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)'
           }}
         />
-      </div>
+          </motion.div>
       {showCollectionSelect && (
           <CollectionsManager mode="select" onClose={() => setShowCollectionSelect(false)} onSelect={(cid) => { addToCollection(cid, fileId); setShowCollectionSelect(false); }} />
       )}
@@ -667,7 +707,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             parentId={fileId}
           />
       )}
-    </div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 };
 

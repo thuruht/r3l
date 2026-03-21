@@ -1,6 +1,7 @@
 
 // src/do/DocumentRoom.ts
 import { DurableObject } from "cloudflare:workers";
+import * as Y from 'yjs';
 
 interface Env {
   // Add environment bindings here if needed
@@ -8,29 +9,39 @@ interface Env {
 
 /**
  * DocumentRoom Durable Object
- * Handles real-time Yjs synchronization for collaborative editing.
- * Uses the Hibernation API for efficiency and persists document state to storage.
+ * Handles real-time Yjs synchronization for collaborative editing with full state persistence.
+ * Uses the Hibernation API for efficiency.
  */
 export class DocumentRoom extends DurableObject {
   state: DurableObjectState;
+  doc: Y.Doc;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
+    this.doc = new Y.Doc();
+
+    // Load initial state from storage if it exists
+    this.state.blockConcurrencyWhile(async () => {
+      const savedState = await this.state.storage.get<Uint8Array>("content");
+      if (savedState) {
+        Y.applyUpdate(this.doc, savedState);
+      }
+    });
   }
 
   async fetch(request: Request) {
-    // Yjs websocket provider usually connects to root
     if (request.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       const pair = new WebSocketPair();
       const [client, server] = Object.values(pair);
 
-      // Using the Hibernation API
       this.state.acceptWebSocket(server);
 
-      // On initial connection, we could send the full state from storage,
-      // but y-websocket handles this via its own sync protocol.
-      // We just need to make sure we relay the messages correctly.
+      // Send initial sync step 1
+      const syncStep1 = Y.encodeStateVector(this.doc);
+      // y-websocket protocol: messageSync = 0, messageSyncStep1 = 0
+      const reply = this.constructSyncMessage(0, syncStep1);
+      server.send(reply);
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -39,36 +50,57 @@ export class DocumentRoom extends DurableObject {
   }
 
   /**
+   * Helper to construct y-websocket protocol messages
+   */
+  constructSyncMessage(type: number, data: Uint8Array): Uint8Array {
+    const msg = new Uint8Array(data.length + 2);
+    msg[0] = 0; // messageSync
+    msg[1] = type; // syncStep
+    msg.set(data, 2);
+    return msg;
+  }
+
+  /**
    * webSocketMessage handler (Hibernation API)
-   * Triggered when any client sends a message.
    */
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
-    // 1. Broadcast the message to all other connected clients
-    // This is the core relay logic for Yjs
+    const uint8Message = message instanceof ArrayBuffer ? new Uint8Array(message) : new TextEncoder().encode(message);
+    
+    // Simple protocol check for y-websocket
+    // messageSync = 0
+    if (uint8Message[0] === 0) {
+        const syncType = uint8Message[1];
+        const syncData = uint8Message.subarray(2);
+
+        if (syncType === 0) { // SyncStep1: Client sending their state vector
+            // Reply with SyncStep2: Send our updates
+            const update = Y.encodeStateAsUpdate(this.doc, syncData);
+            ws.send(this.constructSyncMessage(1, update));
+        } else if (syncType === 1 || syncType === 2) { // SyncStep2 or Update
+            // Apply update to our server-side doc
+            Y.applyUpdate(this.doc, syncData);
+            
+            // Persist to storage (Debounced in a real app, but direct for reliability here)
+            // Cloudflare DO storage is fast.
+            await this.state.storage.put("content", Y.encodeStateAsUpdate(this.doc));
+        }
+    }
+
+    // Broadcast the message to all other connected clients
     this.state.getWebSockets().forEach((client) => {
       if (client !== ws) {
         try {
           client.send(message);
-        } catch (e) {
-          // If sending fails, the platform will eventually trigger webSocketClose
-        }
+        } catch (e) {}
       }
     });
-
-    // 2. Persist the update to storage (Optional but recommended for reliability)
-    // For Yjs, updates are incremental binary blobs.
-    // In a production app, you might want to merge these occasionally.
-    // For now, we'll store the latest update under a 'content' key or similar.
-    // NOTE: y-websocket protocol handles merging on the client side.
-    // To truly persist, we'd need to parse the Yjs protocol here or store a log of updates.
-    // We'll stick to relaying for now as it matches your current architecture but safely hibernating.
   }
 
   /**
    * webSocketClose handler (Hibernation API)
    */
   async webSocketClose(ws: WebSocket, code: number, reason: string, wasClean: boolean) {
-    // Cleanup is handled automatically by the platform
+    // Cleanup is handled automatically
   }
 
   /**

@@ -442,7 +442,9 @@ Send a message.
 {
   "receiver_id": 1,
   "content": "string",
-  "encrypt": false
+  "encrypt": false,
+  "encrypted_key": "string (optional, for client-side E2EE)",
+  "iv": "string (optional, for client-side E2EE)"
 }
 ```
 

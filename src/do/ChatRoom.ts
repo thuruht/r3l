@@ -42,13 +42,10 @@ export class ChatRoom extends DurableObject {
     const session: ChatSession = { userId, username, typing: false };
     
     // Accept and hibernate
-    this.state.acceptWebSocket(server, [JSON.stringify(session)]);
+    this.state.acceptWebSocket(server);
+    server.serializeAttachment(session);
 
     // Send initial data (history and online users)
-    // Note: Since we just accepted, server is not yet fully functional for send? 
-    // Actually we can send right after accept.
-    
-    // online list
     const online = this.getOnlineUsers();
     server.send(JSON.stringify({ type: "online", users: online }));
 
@@ -78,11 +75,7 @@ export class ChatRoom extends DurableObject {
   }
 
   getSession(ws: WebSocket): ChatSession | null {
-    const tags = this.state.getTags(ws);
-    if (tags.length > 0) {
-        try { return JSON.parse(tags[0]); } catch(e) {}
-    }
-    return null;
+    return ws.deserializeAttachment();
   }
 
   async webSocketMessage(ws: WebSocket, message: string) {
@@ -94,7 +87,7 @@ export class ChatRoom extends DurableObject {
     if (data.type === "typing") {
       session.typing = data.typing;
       // Update attachment
-      this.state.setTags(ws, [JSON.stringify(session)]);
+      ws.serializeAttachment(session);
       this.broadcast({ type: "typing", userId: session.userId, username: session.username, typing: data.typing }, ws);
     } else if (data.type === "message") {
       const timestamp = Math.max(Date.now(), this.lastTimestamp + 1);

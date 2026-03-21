@@ -20,6 +20,9 @@ import { SpreadsheetViewer } from './SpreadsheetViewer';
 import { DocxViewer } from './DocxViewer';
 import { ModelViewer } from './ModelViewer';
 import { RichTextEditor } from './RichTextEditor';
+import { MarkdownViewer } from './MarkdownViewer';
+import { ZipViewer } from './ZipViewer';
+import { EpubViewer } from './EpubViewer';
 
 interface FilePreviewModalProps {
   fileId: string | null;
@@ -189,9 +192,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
   const is3D = !!(filename.match(/\.(gltf|glb)$/i) || mimeType.match(/gltf/));
   const isRichText = !!filename.match(/\.(notes|tiptap)$/i);
+  const isMarkdown = !!filename.match(/\.(md|markdown)$/i);
+  const isEpub = !!filename.match(/\.(epub)$/i) || mimeType === 'application/epub+zip';
   
-  const isZip = !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
-  const isText = !isRichText && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
+  const isZip = !isEpub && !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
+  const isText = !isRichText && !isMarkdown && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
                  !!mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
                  !!filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i));
   const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
@@ -321,7 +326,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     let currentProvider: WebsocketProvider | null = null;
     let currentDoc: Y.Doc | null = null;
 
-    if (isEditing && isText) {
+    if (isEditing && (isText || isRichText)) {
        // Initialize Yjs
        setCollabStatus('connecting');
        const doc = new Y.Doc();
@@ -381,7 +386,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         if (currentProvider) currentProvider.destroy();
         if (currentDoc) currentDoc.destroy();
     };
-  }, [isEditing, isText, fileId]); // Removed editContent from dep array to avoid loops, handled inside
+  }, [isEditing, isText, isRichText, fileId]);
 
   const isMobile = window.innerWidth < 768;
 
@@ -434,7 +439,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             <IconWallpaper size={ICON_SIZES.lg} /> {isMobile && 'Set Background'}
             </button>
         )}
-        {isText && !isEditing && (
+        {(isText || isRichText) && !isEditing && (
             <>
                 <button onClick={handleCopy} aria-label="Copy content" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                     <IconCopy size={ICON_SIZES.lg} /> {isMobile && 'Copy'}
@@ -454,7 +459,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                     <IconUsers size={ICON_SIZES.sm} /> {collabStatus}
                 </div>
-                {/* Check if user is owner to determine if it's Save or Remix Save */}
                 {currentUser?.id === ownerId ? (
                     <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                         <IconDeviceFloppy size={ICON_SIZES.lg}/> {isMobile && 'Save'}
@@ -468,7 +472,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         )}
         {!isEditing && (
             <>
-                <button onClick={() => isText ? setIsEditing(true) : setShowRemixUpload(true)} title="Remix" aria-label="Remix" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                <button onClick={() => (isText || isRichText) ? setIsEditing(true) : setShowRemixUpload(true)} title="Remix" aria-label="Remix" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                     <IconFolderPlus size={ICON_SIZES.lg} style={{ transform: 'rotate(180deg)' }}/> {isMobile && 'Remix'}
                 </button>
                 <button onClick={handleArchiveVote} title="Vote to Archive" aria-label="Vote to Archive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
@@ -510,7 +514,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             }}
             onClick={e => e.stopPropagation()}
           >
-        {/* Header - Drag Handle */}
         <div
           onMouseDown={handleDragStart}
           style={{
@@ -530,7 +533,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             <h3 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{filename}</h3>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             {/* Presence Avatars */}
              <div style={{ display: 'flex', marginRight: '10px' }}>
                 {connectedUsers.map((u: any, i) => (
                     <div key={i} title={u.name} style={{
@@ -541,14 +543,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 ))}
              </div>
 
-             {/* Desktop Controls */}
              {!isMobile && (
                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                      {actionButtons}
                  </div>
              )}
 
-             {/* Mobile Menu Trigger */}
              {isMobile && (
                  <div style={{ position: 'relative' }}>
                      <button
@@ -585,13 +585,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           </div>
         </div>
 
-        {/* Content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(0,0,0,0.2)' }}>
           {loading && <Skeleton height="100%" width="100%" />}
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (
              <>
-        {/* Remix Lineage */}
           {remixParent && (
             <div style={{ marginBottom: '12px', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', borderLeft: '2px solid var(--accent-sym)', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               Remixed from <span style={{ color: 'var(--accent-sym)' }}>{remixParent.filename}</span> by {remixParent.username}
@@ -627,20 +625,19 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                  />
                )}
 
+               {isMarkdown && content && !isEditing && <MarkdownViewer content={content} />}
+
+               {isEpub && <EpubViewer url={`/api/files/${fileId}/content`} />}
+
                {isSpreadsheet && <SpreadsheetViewer url={`/api/files/${fileId}/content`} />}
                
                {isDocx && <DocxViewer url={`/api/files/${fileId}/content`} />}
                
                {is3D && <ModelViewer url={`/api/files/${fileId}/content`} />}
 
-               {isZip && (
-                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                   <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📦</div>
-                   <div>Archive file - use download button to save</div>
-                 </div>
-               )}
+               {isZip && <ZipViewer url={`/api/files/${fileId}/content`} />}
 
-               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && !isSpreadsheet && !isDocx && !is3D && !isRichText && (
+               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && !isSpreadsheet && !isDocx && !is3D && !isRichText && !isMarkdown && !isEpub && (
                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📄</div>
                    <div>Binary file - use download button to save</div>
@@ -688,7 +685,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           )}
         </div>
 
-        {/* Resize Handle */}
         <div
           onMouseDown={handleResizeStart}
           style={{

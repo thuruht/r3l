@@ -51,7 +51,8 @@ export class RelfDO extends DurableObject {
 
         // Store session data in tags/attachment
         const session: UserSession = { userId };
-        this.state.acceptWebSocket(server, [JSON.stringify(session)]);
+        this.state.acceptWebSocket(server);
+        server.serializeAttachment(session);
 
         // 1. Initial presence sync
         const onlineUserIds = this.getOnlineUserIds();
@@ -95,11 +96,7 @@ export class RelfDO extends DurableObject {
   }
 
   getSession(ws: WebSocket): UserSession | null {
-    const tags = this.state.getTags(ws);
-    if (tags.length > 0) {
-      try { return JSON.parse(tags[0]); } catch(e) {}
-    }
-    return null;
+    return ws.deserializeAttachment();
   }
 
   async webSocketMessage(ws: WebSocket, message: string) {

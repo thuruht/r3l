@@ -152,15 +152,11 @@ function basicSanitize(html: string): string {
   if (!html) return '';
   const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'del', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'img', 'hr', 'span', 'div'];
   
-  // Strip all tags except allowlisted ones
-  // This regex is basic and might not handle complex nesting perfectly, but provides a baseline.
   return html.replace(/<(\/?)([a-z0-9]+)([^>]*)>/gi, (match, slash, tag, attrs) => {
     if (ALLOWED_TAGS.includes(tag.toLowerCase())) {
-      // Allow only safe attributes (href, src, alt, title, class)
-      const safeAttrs = attrs.replace(/ ([a-z]+)=(['"])(.*?)\2/gi, (attrMatch, name, quote, value) => {
+      const safeAttrs = attrs.replace(/ ([a-z]+)=(['"])(.*?)\2/gi, (attrMatch: string, name: string, quote: string, value: string) => {
         const lowerName = name.toLowerCase();
         if (['href', 'src', 'alt', 'title', 'class'].includes(lowerName)) {
-          // Block javascript: and data: URLs
           if (['href', 'src'].includes(lowerName) && /^(javascript:|data:)/i.test(value.trim())) return '';
           return attrMatch;
         }
@@ -2947,13 +2943,11 @@ app.get('/api/messages/:partner_id', async (c) => {
 // POST /api/messages: Send a message
 app.post('/api/messages', async (c) => {
   const sender_id = c.get('user_id');
-  const { receiver_id, content, encrypt } = await c.req.json();
+  const { receiver_id, content, encrypt, encrypted_key, iv: client_iv } = await c.req.json();
 
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
 
   try {
-    // Verify mutual connection (Optional: Rel F allows messaging anyone?
-    // Let's restrict to Sym connections for anti-spam/safety, matching the ethos)
     const mutual = await c.env.DB.prepare(
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
@@ -2962,29 +2956,32 @@ app.post('/api/messages', async (c) => {
 
     let finalContent = content;
     let is_encrypted = 0;
-    let iv: string | null = null;
+    let iv: string | null = client_iv || null;
+    let final_encrypted_key: string | null = encrypted_key || null;
 
-    if (encrypt === true && c.env.ENCRYPTION_SECRET) {
+    if (encrypted_key && client_iv) {
+        is_encrypted = 1;
+    } else if (encrypt === true && c.env.ENCRYPTION_SECRET) {
         const encryptedData = await encryptData(content, c.env.ENCRYPTION_SECRET);
-        // Store as base64 string
         finalContent = Buffer.from(encryptedData.encrypted).toString('base64');
         iv = encryptedData.iv;
         is_encrypted = 1;
     }
 
     const { success, meta } = await c.env.DB.prepare(
-      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, is_request) VALUES (?, ?, ?, ?, ?, ?)'
-    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv, is_request).run();
+      'INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, encrypted_key, is_request) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(sender_id, receiver_id, finalContent, is_encrypted, iv, final_encrypted_key, is_request).run();
 
     if (success) {
       const messageId = meta.last_row_id;
-      // Send the ORIGINAL content via WebSocket so the recipient sees it immediately without needing to decrypt
-      // (WSS provides transport security). The DB stores it encrypted.
       const messagePayload = {
         id: messageId,
         sender_id,
         receiver_id,
-        content: content, // Send clear text to active session
+        content: content, 
+        is_encrypted,
+        iv,
+        encrypted_key: final_encrypted_key,
         created_at: new Date().toISOString()
       };
 

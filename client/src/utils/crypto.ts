@@ -14,11 +14,11 @@ const AES_PARAMS = { name: 'AES-GCM', length: 256 };
 
 // --- Helpers ---
 
-function b64ToBytes(b64: string): Uint8Array {
+export function b64ToBytes(b64: string): Uint8Array {
   return new Uint8Array(atob(b64).split('').map(c => c.charCodeAt(0)));
 }
 
-function bytesToB64(buf: ArrayBuffer): string {
+export function bytesToB64(buf: ArrayBuffer): string {
   return btoa(String.fromCharCode(...new Uint8Array(buf)));
 }
 

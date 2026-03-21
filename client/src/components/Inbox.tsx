@@ -215,13 +215,28 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const storedKeys = localStorage.getItem('relf_keys');
       if (storedKeys && partner) {
         try {
-          const { encryptMessageForUser } = await import('../utils/crypto');
+          const { encryptMessageForUser, b64ToBytes, bytesToB64 } = await import('../utils/crypto');
           const partnerKey = await fetch(`/api/users/${activeConversationId}`).then(r => r.json()).then(d => d.user?.public_key);
           if (partnerKey) {
             const { encryptedContent, encryptedKey } = await encryptMessageForUser(newMessage, partnerKey);
-            payload = { receiver_id: activeConversationId, content: encryptedContent, encrypt: true, encrypted_key: encryptedKey };
+            // In our crypto.ts, encryptedContent already contains iv prepended.
+            // But src/index.ts expects 'iv' field separately for DB storage if it wants to be searchable/filterable by IV (rare but possible)
+            // or just for cleaner schema. 
+            // Let's extract IV from the combined base64 to satisfy the new server schema 'iv' column.
+            const combined = b64ToBytes(encryptedContent);
+            const iv = bytesToB64(combined.slice(0, 12).buffer);
+            
+            payload = { 
+                receiver_id: activeConversationId, 
+                content: encryptedContent, 
+                encrypt: true, 
+                encrypted_key: encryptedKey,
+                iv: iv 
+            };
           }
-        } catch {}
+        } catch (e) {
+            console.error("Encryption failed:", e);
+        }
       }
       
       const res = await fetch('/api/messages', {

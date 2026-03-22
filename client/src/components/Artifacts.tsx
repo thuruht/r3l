@@ -146,7 +146,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('visibility', 'private'); // 'private' in DB schema
+    formData.append('visibility', 'me'); 
 
 
     try {

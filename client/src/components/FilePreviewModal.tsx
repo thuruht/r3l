@@ -274,7 +274,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           const blob = new Blob([editContent], { type: mimeType });
           const formData = new FormData();
           formData.append('file', blob, `remix-${filename}`);
-          formData.append('visibility', 'private');
+          formData.append('visibility', 'me');
           if (fileId) formData.append('parent_id', fileId);
 
           const res = await fetch('/api/files', {
@@ -350,8 +350,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        setCollabStatus('connecting');
        const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
-       // Remove trailing slash to avoid issues with some proxies/routers
-       const prov = new WebsocketProvider(`${wsUrl}/api/collab/${fileId}`, '', doc);
+       // Use fileId as roomname so y-websocket connects to /api/collab/fileId without a trailing slash
+       const prov = new WebsocketProvider(`${wsUrl}/api/collab`, fileId.toString(), doc);
 
        const userColor = theme_preferences.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
        prov.awareness.setLocalStateField('user', {
@@ -453,10 +453,10 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         )}
         {(isText || isRichText) && !isEditing && (
             <>
-                <button onClick={handleCopy} aria-label="Copy content" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                <button onClick={handleCopy} aria-label="Copy content" disabled={isText && content === null} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0', opacity: (isText && content === null) ? 0.5 : 1 }}>
                     <IconCopy size={ICON_SIZES.lg} /> {isMobile && 'Copy'}
                 </button>
-                <button onClick={() => setIsEditing(true)} aria-label="Edit" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                <button onClick={() => setIsEditing(true)} aria-label="Edit" disabled={loading || (isText && content === null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0', opacity: (loading || (isText && content === null)) ? 0.5 : 1 }}>
                     <IconEdit size={ICON_SIZES.lg}/> {isMobile && 'Edit'}
                 </button>
             </>

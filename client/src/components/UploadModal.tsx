@@ -88,7 +88,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         formData.append('file', upload.file);
       }
 
-      formData.append('visibility', visibility);
+      // Map 'private' UI state to 'me' for the backend
+      const backendVisibility = visibility === 'private' ? 'me' : visibility;
+      formData.append('visibility', backendVisibility);
       if (isBurnOnRead) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());
 

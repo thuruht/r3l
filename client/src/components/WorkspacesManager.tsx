@@ -165,7 +165,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
     if (!activeWorkspace || !inviteUsername.trim()) return;
     try {
       // Resolve username → user_id
-      const searchRes = await fetch(`/api/users/search?q=${encodeURIComponent(inviteUsername)}`);
+      const searchRes = await fetch(`/api/discovery/users/search?q=${encodeURIComponent(inviteUsername)}`);
       const searchData = await searchRes.json();
       const match = (searchData.users || []).find((u: any) => u.username.toLowerCase() === inviteUsername.toLowerCase());
       if (!match) { showToast('User not found.', 'error'); return; }

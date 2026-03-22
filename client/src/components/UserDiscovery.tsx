@@ -25,7 +25,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
         setLoading(true);
         setHasSearched(true);
         try {
-          const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
+          const res = await fetch(`/api/discovery/users/search?q=${encodeURIComponent(query)}`);
           if (res.ok) {
             const data = await res.json();
             setResults(data.users || []);
@@ -168,7 +168,7 @@ export const RandomUserButton: React.FC<DiscoveryProps> = ({ onNavigate }) => {
   const navigate = useNavigate();
   const handleRandom = async () => {
     try {
-      const res = await fetch('/api/users/random');
+      const res = await fetch('/api/discovery/users/random');
       if (res.ok) {
         const data = await res.json();
         if (data.user) {

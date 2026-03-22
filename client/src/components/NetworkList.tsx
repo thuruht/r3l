@@ -27,7 +27,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
   const handleDrift = async () => {
     setDrifting(true);
     try {
-      const res = await fetch('/api/users/random');
+      const res = await fetch('/api/discovery/users/random');
       if (res.ok) {
         const data = await res.json();
         const user = data.users?.[0];
@@ -40,13 +40,12 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
         showToast('Drift failed.', 'error');
       }
     } catch (e) {
-        console.error(e);
-        showToast('Connection error.', 'error');
+      console.error(e);
+      showToast('Connection error.', 'error');
     } finally {
-        setDrifting(false);
+      setDrifting(false);
     }
   };
-
   const getIcon = (node: NetworkNode) => {
       if (node.avatar_url) return null;
       

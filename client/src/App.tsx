@@ -118,7 +118,7 @@ function Main() {
   const fetchDrift = useCallback(async (type: string = '') => {
     try {
       const query = type ? `?type=${type}` : '';
-      const res = await fetch(`/api/drift${query}`);
+      const res = await fetch(`/api/discovery/drift${query}`);
       if (res.ok) setDriftData(await res.json());
     } catch (e) {
       console.error(e);

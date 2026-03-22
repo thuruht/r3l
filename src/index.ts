@@ -109,7 +109,7 @@ const PUBLIC_PATHS = [
   '/api/login', '/api/register', '/api/logout',
   '/api/verify-email', '/api/forgot-password', '/api/reset-password',
   '/api/resend-verification', '/api/chat/',
-  '/api/users/search', '/api/users/random',
+  '/api/discovery/users/search', '/api/discovery/users/random',
   '/api/communiques/',
 ];
 

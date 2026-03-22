@@ -179,14 +179,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         }
 
         // Fetch Content if text-based
-        const textTypes = [
-          'text/', 'application/json', 'application/xml', 'application/javascript',
-          'application/typescript', 'application/x-sh', 'application/x-python'
-        ];
-        const isTextFile = textTypes.some(t => meta.mime_type.includes(t)) || 
-                          filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i);
-        
-        if (isTextFile) {
+        if (isText || isRichText || isMarkdown) {
             const contentRes = await fetch(`/api/files/${fileId}/content`);
             if (contentRes.ok) {
                 const text = await contentRes.text();
@@ -202,7 +195,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     };
 
     fetchFile();
-  }, [fileId, filename]);
+  }, [fileId, filename, isText, isRichText, isMarkdown]);
 
   // Handle PDF separately to ensure auth via fetch
   useEffect(() => {
@@ -357,6 +350,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        setCollabStatus('connecting');
        const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
+       // Remove trailing slash to avoid issues with some proxies/routers
        const prov = new WebsocketProvider(`${wsUrl}/api/collab/${fileId}`, '', doc);
 
        const userColor = theme_preferences.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);

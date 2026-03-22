@@ -121,7 +121,7 @@ const CustomizationSettings: React.FC = () => {
       <button
         onClick={() => setIsOpen(true)}
         style={{
-          position: 'absolute', bottom: '20px', left: '20px', zIndex: 100,
+          position: 'absolute', bottom: '20px', left: '20px', zIndex: 'var(--z-overlay)',
           padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
           color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
         }}
@@ -142,7 +142,7 @@ const CustomizationSettings: React.FC = () => {
       maxHeight: 'min(80vh, calc(100vh - 130px))',
       overflowY: 'auto',
       borderRadius: '8px', padding: window.innerWidth < 768 ? '12px' : '16px',
-      zIndex: 101, boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+      zIndex: 'var(--z-overlay)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
       display: 'flex', flexDirection: 'column', gap: '16px'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>

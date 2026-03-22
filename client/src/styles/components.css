@@ -89,16 +89,19 @@
 .btn-sm {
   padding: var(--spacing-xs) var(--spacing-sm);
   font-size: var(--text-sm);
+  min-height: 32px;
 }
 
 .btn-md {
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--text-base);
+  min-height: 44px;
 }
 
 .btn-lg {
   padding: var(--spacing-md) var(--spacing-lg);
   font-size: var(--text-lg);
+  min-height: 44px;
 }
 
 /* Icon Button */
@@ -112,6 +115,8 @@
   justify-content: center;
   border-radius: var(--radius-sm);
   transition: background var(--transition-base);
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .btn-icon:hover {

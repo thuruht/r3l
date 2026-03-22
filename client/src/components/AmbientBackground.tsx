@@ -88,7 +88,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
         <div
             className="ambient-background"
             style={{
-                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
                 zIndex: 0, pointerEvents: 'none', overflow: 'hidden',
                 ...(customBgUrl && !isVideo ? {
                     backgroundImage: `url(${customBgUrl})`,

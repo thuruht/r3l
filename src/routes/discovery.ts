@@ -21,7 +21,7 @@ discovery.get('/drift', async (c) => {
         const userOffset = Math.floor(Math.random() * Math.max(0, userCount - 10));
         const fileOffset = Math.floor(Math.random() * Math.max(0, fileCount - 10));
 
-        // When filtering by type, skip users
+        // When filtering by type, skip users and collections
         const driftUsers = type ? { results: [] } : await c.env.DB.prepare(
             'SELECT id, username, avatar_url FROM users WHERE id != ? AND is_lurking = 0 LIMIT 10 OFFSET ?'
         ).bind(user_id, userOffset).all();
@@ -35,6 +35,15 @@ discovery.get('/drift', async (c) => {
 
         const driftFiles = await c.env.DB.prepare(fileQuery).bind(...fileParams).all();
 
+        // Drift collections — only public, not owned by current user
+        const collCount = type ? 0 : await c.env.DB.prepare(
+            'SELECT COUNT(*) as count FROM collections WHERE visibility = "public" AND user_id != ?'
+        ).bind(user_id).first('count') as number;
+        const collOffset = collCount > 0 ? Math.floor(Math.random() * Math.max(0, collCount - 5)) : 0;
+        const driftCollections = type ? { results: [] } : await c.env.DB.prepare(
+            'SELECT c.id, c.name, c.description, c.user_id, u.username as owner_username, COUNT(cf.file_id) as file_count FROM collections c JOIN users u ON c.user_id = u.id LEFT JOIN collection_files cf ON cf.collection_id = c.id WHERE c.visibility = "public" AND c.user_id != ? GROUP BY c.id LIMIT 5 OFFSET ?'
+        ).bind(user_id, collOffset).all();
+
         const processAvatar = (u: any) => ({
             ...u,
             avatar_url: (u.avatar_url && typeof u.avatar_url === 'string' && u.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c.env, u.avatar_url) : u.avatar_url
@@ -42,7 +51,8 @@ discovery.get('/drift', async (c) => {
 
         return c.json({
             users: driftUsers.results.map(processAvatar),
-            files: driftFiles.results
+            files: driftFiles.results,
+            collections: driftCollections.results
         });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

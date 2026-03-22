@@ -97,10 +97,9 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
             onClick={() => {
               if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
                 onFilePreview(node.data);
-              } else if (node.group === 'collection' && node.data && onFilePreview) {
-                // For collections, we can still use onFilePreview if the caller handles it, 
-                // or just showToast for now as in AssociationWeb
-                showToast(`Collection: ${node.data.name} by ${node.data.owner_username}`, 'info');
+              } else if (node.group === 'collection' && node.data) {
+                const ownerId = node.data.user_id;
+                if (ownerId) onNodeClick(`col-${node.data.id}`);
               } else {
                 onNodeClick(node.id);
               }
@@ -111,7 +110,8 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
                 if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
                   onFilePreview(node.data);
                 } else if (node.group === 'collection' && node.data) {
-                  showToast(`Collection: ${node.data.name} by ${node.data.owner_username}`, 'info');
+                  const ownerId = node.data.user_id;
+                  if (ownerId) onNodeClick(`col-${node.data.id}`);
                 } else {
                   onNodeClick(node.id);
                 }

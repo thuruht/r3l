@@ -105,7 +105,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 500, overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-sticky)', overflow: 'hidden' }}>
       <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
         {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (
@@ -190,7 +190,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
         <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', position: 'relative', background: 'var(--bg-color)' }}>
           {showEmoji && (
             <Suspense fallback={<div>Loading...</div>}>
-              <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 1001 }}>
+              <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 'var(--z-dropdown)' }}>
                 <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
               </div>
             </Suspense>

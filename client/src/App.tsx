@@ -291,7 +291,7 @@ function Main() {
       if (node?.data) setPreviewFile(node.data);
     } else if (nodeId.startsWith('col-')) {
       const node = nodes.find(n => n.id === nodeId);
-      if (node?.data) showToast(`Collection: ${node.data.name} (${node.data.file_count ?? 0} files) by ${node.data.owner_username}`, 'info');
+      if (node?.data?.user_id) navigate(`/communique/${node.data.user_id}`);
     } else if (nodeId === 'me' && currentUser) {
       navigate(`/communique/${currentUser.id}`);
     } else {
@@ -517,7 +517,7 @@ function Main() {
           {showDriftHistory && isDrifting && (
             <div className="glass-panel" style={{
               position: 'fixed', top: 'var(--header-height)', left: '10px', width: '240px', maxHeight: '60vh',
-              overflowY: 'auto', zIndex: 200, padding: '12px', borderRadius: '8px',
+              overflowY: 'auto', zIndex: 'var(--z-overlay)', padding: '12px', borderRadius: '8px',
               border: '1px solid var(--border-color)', background: 'var(--drawer-bg)'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>

@@ -23,8 +23,8 @@ const CommuniquePage: React.FC<CommuniquePageProps> = ({ currentUser, onUpdateUs
 
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'var(--bg-color)', zIndex: 1000, overflowY: 'auto',
+      position: 'fixed', top: 0, left: 0, width: '100%', height: '100vh',
+      background: 'var(--bg-color)', zIndex: 'var(--z-header)', overflowY: 'auto',
       display: 'flex', justifyContent: 'center', paddingTop: '20px', paddingBottom: '20px'
     }}>
         <div style={{

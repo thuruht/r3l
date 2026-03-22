@@ -724,7 +724,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', gap: '10px', position: 'relative' }}>
                     {showEmoji && (
                         <Suspense fallback={<div>...</div>}>
-                            <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 1000 }}>
+                            <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 'var(--z-dropdown)' }}>
                                 <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
                             </div>
                         </Suspense>

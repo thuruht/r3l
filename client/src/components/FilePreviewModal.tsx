@@ -588,7 +588,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                              display: 'flex',
                              flexDirection: 'column',
                              gap: '8px',
-                             zIndex: 3005,
+                             zIndex: 'calc(var(--z-modal) + 5)',
                              minWidth: '150px',
                              backdropFilter: 'blur(10px)',
                              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'

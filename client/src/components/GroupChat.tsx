@@ -578,7 +578,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
             <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', gap: '10px', position: 'relative' }}>
               {showEmoji && (
                 <Suspense fallback={<div>...</div>}>
-                  <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 1000 }}>
+                  <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 'var(--z-dropdown)' }}>
                     <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
                   </div>
                 </Suspense>
@@ -607,7 +607,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
       </div>
 
       {showFileShare && activeGroupId && (
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--drawer-bg)', padding: '10px', zIndex: 10 }}>
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--drawer-bg)', padding: '10px', zIndex: 'var(--z-overlay)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
             <h4 style={{ margin: 0 }}>Share File</h4>
             <button onClick={() => setShowFileShare(false)} style={{ background: 'none', border: 'none', padding: 0 }} aria-label="Close">

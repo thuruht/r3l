@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-import * as TablerIcons from '@tabler/icons-react';
+import { IconPlus, IconMinus, IconMaximize } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
 import { useCustomization } from '../context/CustomizationContext';
@@ -516,12 +516,12 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   };
 
   return (
-    <div ref={wrapperRef} className="association-web-container" style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+    <div ref={wrapperRef} className="association-web-container" style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <svg ref={svgRef} role="img" aria-label="Network visualization graph"></svg>
       
       {/* Zoom Controls */}
       <div style={{
-          position: 'absolute', bottom: '20px', right: '20px', zIndex: 100,
+          position: 'absolute', bottom: '20px', right: '20px', zIndex: 'var(--z-overlay)',
           display: 'flex', flexDirection: 'column', gap: '8px'
       }}>
           <button 
@@ -588,7 +588,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
         <div style={{
           position: 'absolute', left: tooltip.x + 10, top: tooltip.y + 10,
           background: 'var(--drawer-bg)', border: '1px solid var(--accent-sym)', padding: '5px 10px',
-          borderRadius: '4px', fontSize: '12px', pointerEvents: 'none', zIndex: 100,
+          borderRadius: '4px', fontSize: '12px', pointerEvents: 'none', zIndex: 'var(--z-overlay)',
           color: 'var(--text-primary)', backdropFilter: 'blur(8px)'
         }}>
           {tooltip.content}

@@ -20,13 +20,6 @@
   --hover-bg: #ffffff11;
   --header-bg-transparent: rgba(16, 18, 23, 0.7); /* More transparent for nebula */
   
-  /* Z-Index Stack */
-  --z-ui-base: 1000;
-  --z-dropdown: 2000;
-  --z-modal: 3000;
-  --z-toast: 4000;
-  --z-tooltip: 5000;
-
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -62,7 +55,7 @@ html, body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   /* overflow: hidden; -- REMOVED to allow scrolling */
-  width: 100vw;
+  width: 100%;
 }
 #root {
   width: 100%;

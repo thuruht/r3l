@@ -127,14 +127,14 @@
 
 /* Header Styles */
 .header {
-    height: 60px;
+    height: var(--header-height);
     border-bottom: 1px solid var(--border-color);
     padding: 0 20px;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
-    z-index: 9999;
+    z-index: var(--z-header);
     box-sizing: border-box;
     /* Ensure visibility if transparency fails or layout shifts */
     background-color: var(--drawer-bg);

@@ -32,7 +32,7 @@ export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         position: 'fixed',
         bottom: '20px',
         right: '20px',
-        zIndex: 9999,
+        zIndex: 'var(--z-toast)',
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',

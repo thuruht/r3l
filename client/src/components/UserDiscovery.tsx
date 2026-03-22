@@ -55,7 +55,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
 
   return (
     <>
-      <div style={{ position: 'relative', marginRight: '10px', zIndex: 2000 }}>
+      <div style={{ position: 'relative', marginRight: '10px', zIndex: 'var(--z-dropdown)' }}>
         <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -100,8 +100,8 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
 
       {(results.length > 0 || (hasSearched && loading) || (hasSearched && results.length === 0 && query.length >= 2)) && (
         <div className="search-modal-overlay fade-in" style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          background: 'rgba(0,0,0,0.7)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center',
+          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+          background: 'rgba(0,0,0,0.7)', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',
           backdropFilter: 'blur(5px)'
         }} onClick={closeSearch}>
           <div className="glass-panel" style={{

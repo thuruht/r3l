@@ -32,7 +32,10 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
-  const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [dimensions, setDimensions] = useState({ 
+    width: window.innerWidth, 
+    height: window.innerHeight - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 60) 
+  });
   
   // Persistence Refs
   const simulationRef = useRef<d3.Simulation<D3Node, D3Link> | null>(null);

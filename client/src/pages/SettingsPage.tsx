@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconX, IconUser, IconShieldLock, IconEye, IconEyeOff, IconKey, IconTrash, IconCheck } from '@tabler/icons-react';
 import { useToast } from '../context/ToastContext';
+import KeyManagement from '../components/KeyManager';
 
 interface SettingsPageProps {
   onClose: () => void;
@@ -267,7 +268,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
   };
 
   return (
-    <div className="modal-overlay fade-in" onClick={onClose} style={{ zIndex: 4000 }}>
+    <div className="modal-overlay fade-in" onClick={onClose} style={{ zIndex: 'var(--z-modal)' }}>
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
           <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>Settings</h2>
@@ -402,49 +403,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
 
           {/* Encryption */}
           <section>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)', marginBottom: '15px' }}>
-              <IconKey size={20} /> Encryption
-            </h3>
-            
-            <div style={{ padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '4px' }}>
-              {hasKeys ? (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-sym)', marginBottom: '10px' }}>
-                    <IconCheck size={20} />
-                    <span style={{ fontWeight: 500 }}>Encryption Keys Active</span>
-                  </div>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', margin: '0 0 15px 0' }}>
-                    Your RSA key pair is configured. Files marked for encryption will be secured end-to-end.
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <button onClick={handleExportKeys} disabled={loading} className="primary-btn" style={{ fontSize: '0.9rem' }}>
-                      Export Keys
-                    </button>
-                    <label style={{ display: 'inline-block' }}>
-                      <input type="file" accept=".json" onChange={handleImportKeys} style={{ display: 'none' }} />
-                      <button type="button" onClick={(e) => e.currentTarget.previousElementSibling?.click()} disabled={loading} style={{ fontSize: '0.9rem' }}>
-                        Import Keys
-                      </button>
-                    </label>
-                    <button onClick={handleGenerateKeys} disabled={loading} style={{ fontSize: '0.9rem', color: 'var(--accent-alert)' }}>
-                      Regenerate Keys
-                    </button>
-                  </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--accent-alert)', marginTop: '10px' }}>
-                    ⚠️ Export your keys regularly. If you lose them, encrypted files cannot be recovered.
-                  </p>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                    Generate encryption keys to enable end-to-end encrypted file sharing with Sym connections.
-                  </p>
-                  <button onClick={handleGenerateKeys} disabled={loading} className="primary-btn">
-                    Generate Encryption Keys
-                  </button>
-                </div>
-              )}
-            </div>
+            <KeyManagement userId={currentUser.id} />
           </section>
 
           {/* Danger Zone */}

@@ -10,7 +10,7 @@ const CommuniquePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="communique-page-container page-content-spacer" style={{ padding: '20px', height: '100vh', boxSizing: 'border-box', overflowY: 'auto', position: 'relative' }}>
+    <div className="communique-page-container" style={{ padding: 'var(--spacing-lg)', paddingTop: 'calc(var(--header-height) + var(--spacing-lg))', minHeight: '100vh', boxSizing: 'border-box', overflowY: 'auto', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <button
             onClick={() => navigate('/')}

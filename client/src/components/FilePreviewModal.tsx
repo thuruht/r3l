@@ -371,12 +371,17 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        });
 
        const yText = doc.getText('codemirror');
-       if (editContent && yText.length === 0) {
-           yText.insert(0, editContent);
-       }
        
-       if (yText.toString() === '' && editContent !== '') {
-           yText.insert(0, editContent);
+       // Ensure content is seeded if the document is empty after sync
+       prov.on('sync', (isSynced: boolean) => {
+           if (isSynced && yText.toString() === '' && content && typeof content === 'string' && content.trim() !== '') {
+               yText.insert(0, content);
+           }
+       });
+
+       // Seed immediately for initial render if content exists
+       if (content && typeof content === 'string' && content.trim() !== '' && yText.length === 0) {
+           yText.insert(0, content);
        }
 
        yText.observe(event => {
@@ -498,7 +503,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   return (
     <AnimatePresence>
       {fileId && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 3000, pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', pointerEvents: 'none' }}>
           <motion.div
             className="glass-panel"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -508,9 +513,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             style={{
               position: 'absolute',
               left: isMobile ? 0 : `${pos.x}px`,
-              top: isMobile ? 0 : `${pos.y}px`,
+              top: isMobile ? 'var(--header-height)' : `${pos.y}px`,
               width: isMobile ? '100%' : `${size.w}px`,
-              height: isMobile ? '100%' : `${size.h}px`,
+              height: isMobile ? 'calc(100% - var(--header-height))' : `${size.h}px`,
               maxWidth: '100%',
               maxHeight: '100%',
               display: 'flex',

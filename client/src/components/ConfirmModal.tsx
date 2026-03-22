@@ -45,8 +45,8 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     <div
       className="confirm-overlay fade-in"
       style={{
-        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-        background: '#000000dd', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center',
+        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+        background: '#000000dd', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',
         backdropFilter: 'blur(10px)'
       }}
       onClick={onClose}

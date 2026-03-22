@@ -20,6 +20,9 @@ import CollectionsManager from './components/CollectionsManager';
 import WorkspacesManager from './components/WorkspacesManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
+import GlobalChat from './components/GlobalChat';
+import LandingPage from './components/LandingPage';
+import ArchiveVote from './components/ArchiveVote';
 import { useOutsideClick } from './hooks/useOutsideClick';
 import SettingsPage from './pages/SettingsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -41,6 +44,8 @@ interface User {
 function Main() {
   const [isInboxOpen, setIsInboxOpen] = useState(false);
   const [isGroupChatOpen, setIsGroupChatOpen] = useState(false);
+  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -48,6 +53,7 @@ function Main() {
   const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [isDrifting, setIsDrifting] = useState(false);
@@ -98,6 +104,8 @@ function Main() {
       if (isSettingsOpen) { setIsSettingsOpen(false); return; }
       if (isInboxOpen) { setIsInboxOpen(false); return; }
       if (isGroupChatOpen) { setIsGroupChatOpen(false); return; }
+      if (isGlobalChatOpen) { setIsGlobalChatOpen(false); return; }
+      if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isCollectionsOpen) { setIsCollectionsOpen(false); return; }
       if (isWorkspacesOpen) { setIsWorkspacesOpen(false); return; }
       if (isAdminOpen) { setIsAdminOpen(false); return; }
@@ -266,7 +274,7 @@ function Main() {
     const newEntries: typeof driftHistory = [
       ...driftData.users.map(u => ({ id: `u-${u.id}`, name: u.username, type: 'user' as const, timestamp: now })),
       ...driftData.files.map(f => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now })),
-      ...driftData.collections.map(col => ({ id: `col-${col.id}`, name: col.name, type: 'file' as const, mime_type: 'collection', timestamp: now }))
+      ...(driftData.collections || []).map(col => ({ id: `col-${col.id}`, name: col.name, type: 'file' as const, mime_type: 'collection', timestamp: now }))
     ];
     setDriftHistory(prev => {
       const existingIds = new Set(prev.map(e => e.id));
@@ -294,39 +302,49 @@ function Main() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e: React.FormEvent, data?: any) => {
+    if (e) e.preventDefault();
+    const username = data?.username || loginUsername;
+    const password = data?.password || loginPassword;
+    setAuthError(null);
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword }),
+        body: JSON.stringify({ username, password }),
       });
-      const data = await res.json();
-      if (res.ok) { setCurrentUser(data.user); connectWebSocket(); }
+      const resData = await res.json();
+      if (res.ok) { setCurrentUser(resData.user); connectWebSocket(); }
       else {
-        showToast(data.error, 'error');
-        if (data.needs_verification) setIsResendVerify(true);
+        showToast(resData.error, 'error');
+        setAuthError(resData.error);
+        if (resData.needs_verification) setIsResendVerify(true);
       }
-    } catch { showToast('Login failed', 'error'); }
+    } catch { showToast('Login failed', 'error'); setAuthError('Login failed'); }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loginPassword.length < 8) {
-      showToast('Password must be at least 8 characters', 'error');
+  const handleRegister = async (e: React.FormEvent, data?: any) => {
+    if (e) e.preventDefault();
+    const username = data?.username || loginUsername;
+    const password = data?.password || loginPassword;
+    const email = data?.email || regEmail;
+    setAuthError(null);
+    if (password.length < 8) {
+      const err = 'Password must be at least 8 characters';
+      showToast(err, 'error');
+      setAuthError(err);
       return;
     }
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUsername, password: loginPassword, email: regEmail }),
+        body: JSON.stringify({ username, password, email }),
       });
-      const data = await res.json();
+      const resData = await res.json();
       if (res.ok) { showToast('Registration successful! Check your email.', 'success'); setIsRegistering(false); }
-      else showToast(data.error, 'error');
-    } catch { showToast('Registration failed', 'error'); }
+      else { showToast(resData.error, 'error'); setAuthError(resData.error); }
+    } catch { showToast('Registration failed', 'error'); setAuthError('Registration failed'); }
   };
 
   const isAdmin = currentUser?.id === 1;
@@ -343,56 +361,13 @@ function Main() {
   return (
     <>
       {!currentUser && !['/verify', '/reset-password'].includes(location.pathname) ? (
-        <div className="login-container">
-          <h1 className="glitch" data-text="REL F">REL F</h1>
-          <p className="subtitle">R E L A T I O N A L &nbsp; E P H E M E R A L &nbsp; F I L E N E T</p>
-          <div className="login-grid">
-            <div className="info-card">
-              <IconChartCircles size={ICON_SIZES['2xl']} color="var(--accent-alert)" />
-              <h3>VITALITY</h3>
-              <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
-            </div>
-            <div className="info-card">
-              <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
-              <h3>THE DRIFT</h3>
-              <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
-            </div>
-            <div className="login-form-card">
-              <h2>{isRegistering ? 'INITIALIZE NODE' : 'RESUME BROADCAST'}</h2>
-              <form onSubmit={isRegistering ? handleRegister : handleLogin}>
-                <input type="text" placeholder="Username" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required />
-                {isRegistering && (
-                  <input type="email" placeholder="Email (for verification)" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
-                )}
-                <input type="password" placeholder="Password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
-                <button type="submit" className="primary-btn">
-                  {isRegistering ? 'REGISTER' : 'LOGIN'} <IconMenu2 size={ICON_SIZES.md} style={{ transform: 'rotate(90deg)' }} />
-                </button>
-              </form>
-              <button className="text-btn" onClick={() => setIsRegistering(!isRegistering)}>
-                {isRegistering ? 'Already have a frequency? Login' : 'Need a frequency? Register'}
-              </button>
-              {!isRegistering && (
-                <button className="text-btn" style={{ fontSize: '0.8em', opacity: 0.7, marginTop: '4px' }} onClick={() => setIsForgotPassword(!isForgotPassword)}>
-                  Forgot password?
-                </button>
-              )}
-              {isForgotPassword && (
-                <form onSubmit={handleForgotPassword} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <input type="email" placeholder="Your email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
-                  <button type="submit" className="primary-btn" style={{ fontSize: '0.85em' }}>Send Reset Link</button>
-                </form>
-              )}
-              {isResendVerify && (
-                <form onSubmit={handleResendVerification} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <p style={{ fontSize: '0.8em', color: 'var(--accent-alert)', margin: 0 }}>Enter your email to resend the verification link:</p>
-                  <input type="email" placeholder="Your email" value={resendEmail} onChange={e => setResendEmail(e.target.value)} required />
-                  <button type="submit" className="primary-btn" style={{ fontSize: '0.85em' }}>Resend Verification</button>
-                </form>
-              )}
-            </div>
-          </div>
-        </div>
+        <LandingPage 
+          onLogin={handleLogin} 
+          onRegister={handleRegister}
+          authError={authError}
+          isRegistering={isRegistering}
+          setIsRegistering={setIsRegistering}
+        />
       ) : (
         <>
           {/* Header / Nav */}
@@ -435,6 +410,9 @@ function Main() {
                     </button>
                     <button onClick={() => setIsWorkspacesOpen(!isWorkspacesOpen)} className="nav-button" aria-label="Workspaces">
                       Workspaces
+                    </button>
+                    <button onClick={() => setIsGlobalChatOpen(!isGlobalChatOpen)} className="nav-button" aria-label="Global Chat">
+                      Global
                     </button>
                     <button onClick={() => setIsGroupChatOpen(!isGroupChatOpen)} className="nav-button" aria-label="Groups">
                       Groups
@@ -480,8 +458,14 @@ function Main() {
                   <RandomUserButton />
                 </div>
               </div>
+              <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                <IconChartCircles size={ICON_SIZES.lg} /> Community Archive
+              </button>
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconFolder size={ICON_SIZES.lg} /> Collections
+              </button>
+              <button onClick={() => { setIsGlobalChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                <IconBroadcast size={ICON_SIZES.lg} /> Global Chat
               </button>
               <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconFolder size={ICON_SIZES.lg} /> Workspaces
@@ -524,6 +508,8 @@ function Main() {
           {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
           {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
           {isGroupChatOpen && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} />}
+          {isGlobalChatOpen && <GlobalChat onClose={() => setIsGlobalChatOpen(false)} />}
+          {isArchiveOpen && <ArchiveVote onClose={() => setIsArchiveOpen(false)} />}
           {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
           {isWorkspacesOpen && <WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} />}
           {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
@@ -538,7 +524,7 @@ function Main() {
           {/* Drift History Panel */}
           {showDriftHistory && isDrifting && (
             <div className="glass-panel" style={{
-              position: 'fixed', top: '60px', left: '10px', width: '240px', maxHeight: '60vh',
+              position: 'fixed', top: 'var(--header-height)', left: '10px', width: '240px', maxHeight: '60vh',
               overflowY: 'auto', zIndex: 200, padding: '12px', borderRadius: '8px',
               border: '1px solid var(--border-color)', background: 'var(--drawer-bg)'
             }}>

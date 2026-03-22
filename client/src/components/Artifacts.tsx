@@ -317,59 +317,61 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
               {(() => { const expiry = getExpiryLabel(file.expires_at); return expiry ? <div style={{ fontSize: '0.7em', color: expiry.urgent ? 'var(--accent-alert)' : 'var(--text-secondary)' }}>⏳ {expiry.label}</div> : null; })()}
               <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '2px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
-                 <IconBolt size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
-                 <span style={{ fontSize: '0.8em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '4px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
+                 <IconBolt size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
+                 <span style={{ fontSize: '0.9em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
                  <button 
                    onClick={() => handleBoost(file.id)} 
                    disabled={boostingIds.has(file.id) || file.is_boosted}
                    style={{ 
-                     padding: '0 4px', 
+                     padding: '6px', 
                      background: 'transparent', 
                      border: file.is_boosted ? '1px solid var(--accent-sym)' : '1px solid #ffeb3b', 
                      color: file.is_boosted ? 'var(--accent-sym)' : '#ffeb3b', 
                      borderRadius: '4px',
-                     fontSize: '0.7em',
+                     fontSize: '0.8em',
                      cursor: (boostingIds.has(file.id) || file.is_boosted) ? 'default' : 'pointer',
                      marginLeft: '4px',
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
-                     minWidth: '20px',
+                     minWidth: '32px',
+                     minHeight: '32px',
                      opacity: file.is_boosted ? 0.6 : 1
                    }}
                    title={file.is_boosted ? "Already boosted" : "Boost Signal"}
                    aria-label={file.is_boosted ? "Already boosted" : "Boost Signal"}
                  >
-                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : file.is_boosted ? <IconCheck size={10} className="chrome-icon" /> : "+"}
-                 </button>              </div>
+                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : file.is_boosted ? <IconCheck size={14} className="chrome-icon" /> : "+"}
+                 </button>
+              </div>
 
               <button 
                 onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
-                style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
+                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
                 title="Preview"
                 aria-label="Preview file"
               >
-                <IconEye size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
+                <IconEye size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
               </button>
 
               <button 
                 onClick={(e) => { e.stopPropagation(); handleDownload(file.id, file.filename); }}
-                style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
+                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
                 title="Download"
                 aria-label={`Download ${file.filename}`}
               >
-                <IconDownload size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
+                <IconDownload size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
               </button>
               
               <button
                 onClick={(e) => { e.stopPropagation(); handleRemix(file); }}
-                style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
+                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
                 title="Remix this artifact"
                 aria-label="Remix this artifact"
               >
-                <IconArrowsShuffle size={ICON_SIZES.sm} className="chrome-icon" />
+                <IconArrowsShuffle size={ICON_SIZES.md} className="chrome-icon" />
               </button>
 
               {isOwner && (
@@ -384,19 +386,19 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                             fetchMutuals();
                         }
                     }}
-                    style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center' }}
+                    style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
                     title="Share"
                     aria-label="Share file"
                 >
-                    <IconShare size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
+                    <IconShare size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
-                  style={{ fontSize: '0.7em', padding: '4px', display: 'flex', alignItems: 'center', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
+                  style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
                   title="Delete"
                   aria-label="Delete file"
                 >
-                  <IconTrash size={ICON_SIZES.sm} aria-hidden="true" />
+                  <IconTrash size={ICON_SIZES.md} aria-hidden="true" />
                 </button>
                 </>
               )}

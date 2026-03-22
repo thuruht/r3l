@@ -8,7 +8,7 @@ interface FAQProps {
 
 const FAQ: React.FC<FAQProps> = ({ onClose }) => {
   return (
-    <div className="modal-overlay fade-in" onClick={onClose} style={{ zIndex: 4000 }}>
+    <div className="modal-overlay fade-in" onClick={onClose} style={{ zIndex: 'var(--z-modal)' }}>
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>Signal Calibration</h2>

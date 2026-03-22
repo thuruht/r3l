@@ -11,7 +11,7 @@ const IconShieldLock = () => <svg width="32" height="32" viewBox="0 0 24 24" fil
 const About: React.FC<AboutProps> = ({ onClose }) => {
   return (
     <div className="modal-overlay fade-in" onClick={onClose} style={{ 
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 'var(--z-modal)' 
     }}>
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ 
           maxWidth: '650px', background: 'var(--drawer-bg)', padding: '30px', borderRadius: '12px', border: '1px solid var(--border-color)'

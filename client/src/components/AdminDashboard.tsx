@@ -131,9 +131,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   return (
     <div className="admin-overlay fade-in" style={{
-      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: '#000000dd', zIndex: 2000, display: 'flex', justifyContent: 'center', alignItems: 'center',
-      backdropFilter: 'blur(5px)'
+      position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+      background: '#000000dd', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+      backdropFilter: 'blur(10px)'
     }} onClick={onClose}>
       <div style={{
         width: '800px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto',

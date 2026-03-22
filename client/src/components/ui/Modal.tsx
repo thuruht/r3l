@@ -35,7 +35,7 @@ const Modal: React.FC<ModalProps> = ({
     <div style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 3000,
+        zIndex: 'var(--z-modal)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

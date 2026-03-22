@@ -126,7 +126,7 @@ app.use('/api/*', async (c, next) => {
 app.route('/api', authRoutes);
 app.route('/api', socialRoutes);
 app.route('/api/files', artifactRoutes);
-app.route('/api', discoveryRoutes);
+app.route('/api/discovery', discoveryRoutes);
 app.route('/api/messages', messageRoutes);
 app.route('/api/admin', adminRoutes);
 app.route('/api/communiques', communiqueRoutes);

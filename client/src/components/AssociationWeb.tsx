@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
-import { IconMaximize } from '@tabler/icons-react';
+import { IconMaximize, IconPlus, IconMinus } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
 import { useCustomization } from '../context/CustomizationContext';
@@ -514,43 +514,70 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
     <div ref={wrapperRef} className="association-web-container" style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <svg ref={svgRef} role="img" aria-label="Network visualization graph"></svg>
       
-      {/* Zoom to Fit Button */}
-      <button 
-        onClick={() => {
-            if (!svgSelectionRef.current || !zoomBehaviorRef.current || !gRef.current) return;
-            const width = dimensions.width;
-            const height = dimensions.height;
-            const nodes = gRef.current.selectAll('.node').data() as D3Node[];
-            if (nodes.length === 0) return;
+      {/* Zoom Controls */}
+      <div style={{
+          position: 'absolute', bottom: '20px', right: '20px', zIndex: 100,
+          display: 'flex', flexDirection: 'column', gap: '8px'
+      }}>
+          <button 
+            onClick={() => {
+                if (!svgSelectionRef.current || !zoomBehaviorRef.current) return;
+                svgSelectionRef.current.transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 1.5);
+            }}
+            className="btn-icon glass-panel"
+            style={{ padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+            title="Zoom In"
+          >
+            <IconPlus size={ICON_SIZES.lg} className="chrome-icon" />
+          </button>
+          
+          <button 
+            onClick={() => {
+                if (!svgSelectionRef.current || !zoomBehaviorRef.current) return;
+                svgSelectionRef.current.transition().duration(300).call(zoomBehaviorRef.current.scaleBy, 0.6);
+            }}
+            className="btn-icon glass-panel"
+            style={{ padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+            title="Zoom Out"
+          >
+            <IconMinus size={ICON_SIZES.lg} className="chrome-icon" />
+          </button>
 
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            nodes.forEach(d => {
-                if (typeof d.x === 'number' && typeof d.y === 'number') {
-                    minX = Math.min(minX, d.x);
-                    minY = Math.min(minY, d.y);
-                    maxX = Math.max(maxX, d.x);
-                    maxY = Math.max(maxY, d.y);
-                }
-            });
-            if (minX === Infinity) return;
-            const padding = 50;
-            const bboxWidth = maxX - minX + padding * 2;
-            const bboxHeight = maxY - minY + padding * 2;
-            const midX = (minX + maxX) / 2;
-            const midY = (minY + maxY) / 2;
-            const scale = Math.min(1.5, Math.min(width / bboxWidth, height / bboxHeight));
+          <button 
+            onClick={() => {
+                if (!svgSelectionRef.current || !zoomBehaviorRef.current || !gRef.current) return;
+                const width = dimensions.width;
+                const height = dimensions.height;
+                const nodes = gRef.current.selectAll('.node').data() as D3Node[];
+                if (nodes.length === 0) return;
 
-            const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-midX, -midY);
-            svgSelectionRef.current.transition().duration(750).call(zoomBehaviorRef.current.transform, transform);
-        }}
-        style={{
-            position: 'absolute', bottom: '20px', right: '20px', zIndex: 100, padding: '8px',
-            background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
-        }}
-        title="Zoom to Fit"
-      >
-        <IconMaximize size={ICON_SIZES.xl} />
-      </button>
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                nodes.forEach(d => {
+                    if (typeof d.x === 'number' && typeof d.y === 'number') {
+                        minX = Math.min(minX, d.x);
+                        minY = Math.min(minY, d.y);
+                        maxX = Math.max(maxX, d.x);
+                        maxY = Math.max(maxY, d.y);
+                    }
+                });
+                if (minX === Infinity) return;
+                const padding = 50;
+                const bboxWidth = maxX - minX + padding * 2;
+                const bboxHeight = maxY - minY + padding * 2;
+                const midX = (minX + maxX) / 2;
+                const midY = (minY + maxY) / 2;
+                const scale = Math.min(1.5, Math.min(width / bboxWidth, height / bboxHeight));
+
+                const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-midX, -midY);
+                svgSelectionRef.current.transition().duration(750).call(zoomBehaviorRef.current.transform, transform);
+            }}
+            className="btn-icon glass-panel"
+            style={{ padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', borderRadius: '4px' }}
+            title="Zoom to Fit"
+          >
+            <IconMaximize size={ICON_SIZES.lg} className="chrome-icon" />
+          </button>
+      </div>
 
       {tooltip.content && (
         <div style={{

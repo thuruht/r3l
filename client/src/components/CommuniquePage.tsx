@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Communique from './Communique';
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconArrowLeft, IconX } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
 const CommuniquePage: React.FC = () => {
@@ -10,28 +10,38 @@ const CommuniquePage: React.FC = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="communique-page-container page-content-spacer" style={{ padding: '20px', height: '100vh', boxSizing: 'border-box', overflowY: 'auto' }}>
-      <button
-        onClick={() => navigate('/')}
-        style={{
-          marginBottom: '12px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '4px',
-          background: 'none',
-          border: 'none',
-          color: 'var(--text-secondary)',
-          cursor: 'pointer',
-          fontSize: '0.8em',
-          opacity: 0.7,
-          padding: '2px 0'
-        }}
-        onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-        onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
-      >
-        <IconArrowLeft size={ICON_SIZES.xl} style={{ marginRight: '5px' }} />
-        Back to Web
-      </button>
+    <div className="communique-page-container page-content-spacer" style={{ padding: '20px', height: '100vh', boxSizing: 'border-box', overflowY: 'auto', position: 'relative' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: '0.8em',
+              opacity: 0.7,
+              padding: '2px 0'
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
+          >
+            <IconArrowLeft size={ICON_SIZES.xl} style={{ marginRight: '5px' }} />
+            Back to Web
+          </button>
+
+          <button
+            onClick={() => navigate('/')}
+            className="btn-icon"
+            aria-label="Close"
+            title="Close"
+          >
+            <IconX size={ICON_SIZES.xl} className="chrome-icon" />
+          </button>
+      </div>
 
       {userId ? (
         <Communique

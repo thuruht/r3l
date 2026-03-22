@@ -429,7 +429,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           updateAudioPositions(newNodes);
 
           // Update Hulls (Simplified)
-          if (collections.length > 0) {
+          if (collections && collections.length > 0) {
               const hullGroup = g.select('.hulls');
               const hullData = collections.map(collection => {
                   const collectionNodes = newNodes.filter(n => {

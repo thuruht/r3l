@@ -326,8 +326,20 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
 
   return (
     <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>
-      {/* Inject Scoped Styles */}
-      <style>{getRenderCSS()}</style>
+      {/* Inject Scoped Styles via sandboxed iframe to prevent page-level CSS injection */}
+      {getRenderCSS() && (
+        <iframe
+          srcDoc={`<style>${getRenderCSS()}</style><div id="communique-user-${userId}" style="margin:0;padding:0">${sanitizeHTML(data.content)}</div>`}
+          sandbox="allow-same-origin"
+          style={{ width: '100%', minHeight: '150px', border: 'none', background: 'transparent' }}
+          title="Communique content"
+          onLoad={(e) => {
+            const iframe = e.currentTarget;
+            const body = iframe.contentDocument?.body;
+            if (body) iframe.style.height = body.scrollHeight + 'px';
+          }}
+        />
+      )}
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>
@@ -367,19 +379,21 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       </div>
 
       {!isEditing ? (
-        <div 
-          ref={contentRef}
-          className="communique-content-wrapper"
-          style={{ 
-            minHeight: '100px',
-            color: 'var(--text-primary)',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.6',
-            opacity: data.content ? 1 : 0.6,
-            marginBottom: '20px'
-          }}
-          dangerouslySetInnerHTML={{ __html: sanitizeHTML(data.content) || (isOwner ? "Your frequency is silent. Broadcast something..." : "This signal is empty.") }}
-        />
+        !getRenderCSS() ? (
+          <div
+            ref={contentRef}
+            className="communique-content-wrapper"
+            style={{
+              minHeight: '100px',
+              color: 'var(--text-primary)',
+              whiteSpace: 'pre-wrap',
+              lineHeight: '1.6',
+              opacity: data.content ? 1 : 0.6,
+              marginBottom: '20px'
+            }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHTML(data.content) || (isOwner ? "Your frequency is silent. Broadcast something..." : "This signal is empty.") }}
+          />
+        ) : null
       ) : (
         <div ref={editorRef} style={{ marginBottom: '20px', overflow: 'hidden' }}>
           <div style={{ marginBottom: '10px', fontSize: '0.8em', color: 'var(--accent-sym)' }}>Content (HTML supported):</div>

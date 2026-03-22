@@ -36,6 +36,20 @@ discovery.get('/drift', async (c) => {
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
+discovery.get('/users/random', async (c) => {
+  const user_id = c.get('user_id') || 0;
+  try {
+    const { results } = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url FROM users WHERE id != ? AND is_lurking = 0 ORDER BY RANDOM() LIMIT 10'
+    ).bind(user_id).all();
+    const processedUsers = results.map((u: any) => ({
+      ...u,
+      avatar_url: (u.avatar_url && typeof u.avatar_url === 'string' && u.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c.env, u.avatar_url) : u.avatar_url
+    }));
+    return c.json({ users: processedUsers });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
 discovery.get('/users/search', async (c) => {
   const query = c.req.query('q');
   if (!query || query.length < 2) return c.json({ users: [] });

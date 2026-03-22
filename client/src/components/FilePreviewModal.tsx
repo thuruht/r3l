@@ -219,9 +219,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 console.error(err);
                 setError('Could not load PDF content. Ensure you are logged in.');
             });
-        
+
         return () => {
-            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+            setPdfUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
         };
     }
   }, [fileId, isPDF]);

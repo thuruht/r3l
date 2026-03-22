@@ -82,7 +82,12 @@ export class ChatRoom extends DurableObject {
     const session = this.getSession(ws);
     if (!session) return;
 
-    const data = JSON.parse(message);
+    let data: any;
+    try {
+      data = JSON.parse(message);
+    } catch {
+      return; // ignore malformed messages
+    }
 
     if (data.type === "typing") {
       session.typing = data.typing;

@@ -83,7 +83,7 @@ messages.post('/', async (c) => {
       await doStub.fetch('http://do-stub/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: receiver_id, message: { type: 'new_message', sender_id, sender_name: sender?.username, content: finalContent, is_encrypted, iv, encrypted_key: final_encrypted_key } }),
+        body: JSON.stringify({ userId: receiver_id, message: { type: 'new_message', sender_id, sender_name: sender?.username, is_encrypted } }),
       });
       return c.json({ message: 'Sent' });
     }

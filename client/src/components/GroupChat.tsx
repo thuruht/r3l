@@ -257,8 +257,15 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setMessages(prev => [...prev, data.data]);
+        const optimistic: GroupMessage = {
+          id: Date.now(),
+          group_id: activeGroupId,
+          sender_id: currentUserId,
+          sender_name: 'You',
+          content: newMessage,
+          created_at: new Date().toISOString(),
+        };
+        setMessages(prev => [...prev, optimistic]);
         setNewMessage('');
       } else {
         showToast('Failed to send', 'error');
@@ -393,7 +400,6 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
 
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px', position: 'relative' }}>
-        {/* Group List */}
         {!activeGroupId && !showCreateModal && (
           <>
             {loading && <div style={{ padding: '10px' }}>Loading groups...</div>}

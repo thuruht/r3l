@@ -77,6 +77,8 @@ artifacts.post('/', async (c) => {
     const formData = await c.req.parseBody();
     const file = formData['file'] as File;
     const visibility = (formData['visibility'] as string) || 'me';
+    const VALID_VISIBILITIES = ['public', 'sym', 'me'];
+    if (!VALID_VISIBILITIES.includes(visibility)) return c.json({ error: 'Invalid visibility' }, 400);
     const parent_id = formData['parent_id'] ? Number(formData['parent_id']) : null;
     const shouldEncrypt = formData['encrypt'] === 'true';
     const burn_on_read = formData['burn_on_read'] === 'true';
@@ -121,6 +123,44 @@ artifacts.post('/', async (c) => {
   }
 });
 
+// PUT /api/files/:id/metadata (visibility update)
+artifacts.put('/:id/metadata', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+  const { visibility } = await c.req.json();
+  const VALID_VISIBILITIES = ['public', 'sym', 'me'];
+  if (!visibility || !VALID_VISIBILITIES.includes(visibility)) return c.json({ error: 'Invalid visibility' }, 400);
+  try {
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
+    if (!file) return c.json({ error: 'Not found' }, 404);
+    if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
+    await c.env.DB.prepare('UPDATE files SET visibility = ? WHERE id = ?').bind(visibility, file_id).run();
+    return c.json({ message: 'Updated' });
+  } catch (e) {
+    return c.json({ error: 'Failed' }, 500);
+  }
+});
+
+// POST /api/files/:id/archive-vote
+artifacts.post('/:id/archive-vote', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+  try {
+    const file = await c.env.DB.prepare('SELECT id, archive_votes, is_archived FROM files WHERE id = ? AND visibility = "public"').bind(file_id).first() as any;
+    if (!file) return c.json({ error: 'Not found' }, 404);
+    if (file.is_archived) return c.json({ error: 'Already archived' }, 409);
+    const newVotes = (file.archive_votes || 0) + 1;
+    const stmts = [c.env.DB.prepare('UPDATE files SET archive_votes = ? WHERE id = ?').bind(newVotes, file_id)];
+    if (newVotes >= 10) {
+      stmts.push(c.env.DB.prepare('UPDATE files SET is_archived = 1, is_community_archived = 1 WHERE id = ?').bind(file_id));
+    }
+    await c.env.DB.batch(stmts);
+    return c.json({ message: 'Vote recorded', archive_votes: newVotes });
+  } catch (e) {
+    return c.json({ error: 'Failed' }, 500);
+  }
+});
+
 // GET /api/files/:id/metadata
 artifacts.get('/:id/metadata', async (c) => {
   const user_id = c.get('user_id');
@@ -128,9 +168,17 @@ artifacts.get('/:id/metadata', async (c) => {
   try {
     const file = await c.env.DB.prepare('SELECT id, filename, size, mime_type, visibility, vitality, expires_at, created_at, user_id FROM files WHERE id = ?').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
-    
-    if (file.user_id !== user_id && file.visibility === 'private') return c.json({ error: 'Unauthorized' }, 403);
-    
+
+    if (file.user_id !== user_id) {
+      if (file.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);
+      if (file.visibility === 'sym') {
+        const mutual = await c.env.DB.prepare(
+          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
+        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+      }
+    }
+
     return c.json(file);
   } catch (e) {
     return c.json({ error: 'Failed' }, 500);
@@ -145,6 +193,17 @@ artifacts.get('/:id/content', async (c) => {
     const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
     if (file.expires_at && new Date(file.expires_at) < new Date()) return c.json({ error: 'Expired' }, 410);
+
+    // Visibility enforcement
+    if (file.user_id !== user_id) {
+      if (file.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);
+      if (file.visibility === 'sym') {
+        const mutual = await c.env.DB.prepare(
+          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
+        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+      }
+    }
 
     const object = await c.env.BUCKET.get(file.r2_key, { range: c.req.header('Range') });
     if (!object) return c.json({ error: 'Missing' }, 404);

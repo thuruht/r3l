@@ -267,6 +267,23 @@ auth.get('/verify-email', async (c) => {
   }
 });
 
+auth.get('/users/:id', async (c) => {
+  const user_id = Number(c.req.param('id'));
+  if (isNaN(user_id)) return c.json({ error: 'Invalid ID' }, 400);
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url, public_key FROM users WHERE id = ?'
+    ).bind(user_id).first() as any;
+    if (!user) return c.json({ error: 'Not found' }, 404);
+    return c.json({ user: {
+      ...user,
+      avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c.env, user.avatar_url) : user.avatar_url
+    }});
+  } catch (e) {
+    return c.json({ error: 'Failed' }, 500);
+  }
+});
+
 auth.get('/users/me', async (c) => {
   const user_id = c.get('user_id');
   if (!user_id) return c.json({ error: 'Unauthorized' }, 401);
@@ -397,7 +414,7 @@ auth.get('/customization', async (c) => {
   }
 });
 
-const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{8}$/.test(color);
+const isValidHexColor = (color: string) => /^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$/.test(color);
 
 auth.put('/customization', async (c) => {
   const user_id = c.get('user_id');
@@ -410,19 +427,29 @@ auth.put('/customization', async (c) => {
       const current = await c.env.DB.prepare('SELECT theme_preferences FROM users WHERE id = ?').bind(user_id).first() as any;
       let currentPrefs = {};
       try { if (current?.theme_preferences) currentPrefs = JSON.parse(current.theme_preferences); } catch(e) {}
-      const inputPrefs = typeof theme_preferences === 'string' ? JSON.parse(theme_preferences) : theme_preferences;
+      let inputPrefs = {};
+      try {
+        inputPrefs = typeof theme_preferences === 'string' ? JSON.parse(theme_preferences) : theme_preferences;
+        if (typeof inputPrefs !== 'object' || Array.isArray(inputPrefs)) throw new Error();
+      } catch { return c.json({ error: 'Invalid theme_preferences' }, 400); }
       updateFields.push('theme_preferences = ?');
       updateValues.push(JSON.stringify({ ...currentPrefs, ...inputPrefs }));
   }
   if (node_primary_color && isValidHexColor(node_primary_color)) { updateFields.push('node_primary_color = ?'); updateValues.push(node_primary_color); }
   if (node_secondary_color && isValidHexColor(node_secondary_color)) { updateFields.push('node_secondary_color = ?'); updateValues.push(node_secondary_color); }
-  if (node_size !== undefined) { updateFields.push('node_size = ?'); updateValues.push(node_size); }
+  if (node_size !== undefined) {
+    const size = Number(node_size);
+    if (isNaN(size) || size < 4 || size > 30) return c.json({ error: 'node_size must be between 4 and 30' }, 400);
+    updateFields.push('node_size = ?');
+    updateValues.push(size);
+  }
 
   if (updateFields.length === 0) return c.json({ message: 'No updates' }, 400);
   try {
     await c.env.DB.prepare(`UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`).bind(...updateValues, user_id).run();
     return c.json({ message: 'Customization updated' });
-  } catch (e) {
+  } catch (e: any) {
+    console.error("Customization update error:", e);
     return c.json({ error: 'Failed to update' }, 500);
   }
 });

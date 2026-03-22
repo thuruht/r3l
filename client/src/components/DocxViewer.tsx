@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import mammoth from 'mammoth';
+import { sanitizeHTML } from '../utils/sanitize';
 
 export const DocxViewer: React.FC<{ url: string }> = ({ url }) => {
     const [html, setHtml] = useState<string>('');
@@ -12,7 +13,7 @@ export const DocxViewer: React.FC<{ url: string }> = ({ url }) => {
             .then(ab => {
                 mammoth.convertToHtml({ arrayBuffer: ab })
                     .then(result => {
-                        setHtml(result.value);
+                        setHtml(sanitizeHTML(result.value));
                         setLoading(false);
                     })
                     .catch(err => {

@@ -242,6 +242,8 @@ social.post('/groups/:id/files', async (c) => {
     const membership = await checkGroupMember(c.env.DB, group_id, user_id);
     if (!membership || membership.role !== 'admin') return c.json({ error: 'Unauthorized' }, 403);
     try {
+        const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
+        if (!file || file.user_id !== user_id) return c.json({ error: 'Unauthorized to share this file' }, 403);
         await c.env.DB.prepare('INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)').bind(group_id, file_id, user_id, can_edit ? 1 : 0).run();
         return c.json({ message: 'Shared' });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }

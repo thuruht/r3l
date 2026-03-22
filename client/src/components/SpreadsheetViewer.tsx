@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { sanitizeHTML } from '../utils/sanitize';
 
 export const SpreadsheetViewer: React.FC<{ url: string }> = ({ url }) => {
     const [html, setHtml] = useState<string>('');
@@ -14,7 +15,7 @@ export const SpreadsheetViewer: React.FC<{ url: string }> = ({ url }) => {
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_html(ws);
-                setHtml(data);
+                setHtml(sanitizeHTML(data));
                 setLoading(false);
             })
             .catch(err => {

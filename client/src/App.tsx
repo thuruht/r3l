@@ -17,6 +17,7 @@ import AdminDashboard from './components/AdminDashboard';
 import VerifyEmail from './components/VerifyEmail';
 import ResetPassword from './components/ResetPassword';
 import CollectionsManager from './components/CollectionsManager';
+import WorkspacesManager from './components/WorkspacesManager';
 import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
 import { useOutsideClick } from './hooks/useOutsideClick';
@@ -44,6 +45,7 @@ function Main() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isCollectionsOpen, setIsCollectionsOpen] = useState(false);
+  const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -97,6 +99,7 @@ function Main() {
       if (isInboxOpen) { setIsInboxOpen(false); return; }
       if (isGroupChatOpen) { setIsGroupChatOpen(false); return; }
       if (isCollectionsOpen) { setIsCollectionsOpen(false); return; }
+      if (isWorkspacesOpen) { setIsWorkspacesOpen(false); return; }
       if (isAdminOpen) { setIsAdminOpen(false); return; }
       if (isFeedbackOpen) { setIsFeedbackOpen(false); return; }
       if (isFAQOpen) { setIsFAQOpen(false); return; }
@@ -105,7 +108,7 @@ function Main() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [previewFile, isSettingsOpen, isInboxOpen, isGroupChatOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
+  }, [previewFile, isSettingsOpen, isInboxOpen, isGroupChatOpen, isCollectionsOpen, isWorkspacesOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -430,6 +433,9 @@ function Main() {
                       Inbox
                       {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                     </button>
+                    <button onClick={() => setIsWorkspacesOpen(!isWorkspacesOpen)} className="nav-button" aria-label="Workspaces">
+                      Workspaces
+                    </button>
                     <button onClick={() => setIsGroupChatOpen(!isGroupChatOpen)} className="nav-button" aria-label="Groups">
                       Groups
                     </button>
@@ -477,6 +483,9 @@ function Main() {
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
+              <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                <IconFolder size={ICON_SIZES.lg} /> Workspaces
+              </button>
               <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <IconUsers size={ICON_SIZES.lg} /> Groups
               </button>
@@ -516,6 +525,7 @@ function Main() {
           {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
           {isGroupChatOpen && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} />}
           {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
+          {isWorkspacesOpen && <WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} />}
           {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
           {isSettingsOpen && currentUser && (
             <SettingsPage

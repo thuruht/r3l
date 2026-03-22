@@ -11,6 +11,7 @@ export function basicSanitize(html: string): string {
     if (ALLOWED_TAGS.includes(tag.toLowerCase())) {
       const safeAttrs = attrs.replace(/ ([a-z]+)=(['"])(.*?)\2/gi, (attrMatch: string, name: string, quote: string, value: string) => {
         const lowerName = name.toLowerCase();
+        if (lowerName.startsWith('on')) return ''; // strip all event handlers
         if (['href', 'src', 'alt', 'title', 'class'].includes(lowerName)) {
           if (['href', 'src'].includes(lowerName) && /^(javascript:|data:)/i.test(value.trim())) return '';
           return attrMatch;

@@ -245,8 +245,16 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        const data = await res.json();
-        setMessages(prev => [...prev, { ...data.data, content: newMessage }]);
+        const optimistic: Message = {
+          id: Date.now(),
+          sender_id: activeConversationId, // will be corrected on next fetch
+          receiver_id: activeConversationId,
+          content: newMessage,
+          created_at: new Date().toISOString(),
+          is_encrypted: payload.encrypted_key ? 1 : 0,
+        };
+        // sender_id for "me" messages — we don't have currentUser here, use a sentinel
+        setMessages(prev => [...prev, { ...optimistic, sender_id: -1 }]);
         setNewMessage('');
       } else {
         showToast('Failed to send', 'error');

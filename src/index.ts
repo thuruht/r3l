@@ -117,18 +117,18 @@ app.route('/api/collections', collectionRoutes);
 app.route('/api', miscRoutes);
 
 // Apply protection to specific paths
-app.use('/api/users/me/*', authMiddleware);
-app.use('/api/customization/*', authMiddleware);
-app.use('/api/drift/*', authMiddleware);
-app.use('/api/relationships/*', authMiddleware);
-app.use('/api/files/*', authMiddleware);
-app.use('/api/notifications/*', authMiddleware);
-app.use('/api/messages/*', authMiddleware);
-app.use('/api/groups/*', authMiddleware);
-app.use('/api/communiques/*', authMiddleware);
-app.use('/api/collections/*', authMiddleware);
-app.use('/api/workspaces/*', authMiddleware);
-app.use('/api/admin/*', authMiddleware);
+app.use('/api/users/me*', authMiddleware);
+app.use('/api/customization*', authMiddleware);
+app.use('/api/drift*', authMiddleware);
+app.use('/api/relationships*', authMiddleware);
+app.use('/api/files*', authMiddleware);
+app.use('/api/notifications*', authMiddleware);
+app.use('/api/messages*', authMiddleware);
+app.use('/api/groups*', authMiddleware);
+app.use('/api/communiques*', authMiddleware);
+app.use('/api/collections*', authMiddleware);
+app.use('/api/workspaces*', authMiddleware);
+app.use('/api/admin*', authMiddleware);
 
 // Static Assets
 app.all('*', (c) => {

@@ -30,10 +30,11 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
       const res = await fetch('/api/users/random');
       if (res.ok) {
         const data = await res.json();
-        if (data.user) {
-          navigate(`/communique/${data.user.id}`);
+        const user = data.users?.[0];
+        if (user) {
+          navigate(`/communique/${user.id}`);
         } else {
-            showToast('No one else is here.', 'info');
+          showToast('No one else is here.', 'info');
         }
       } else {
         showToast('Drift failed.', 'error');

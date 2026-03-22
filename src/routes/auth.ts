@@ -267,23 +267,6 @@ auth.get('/verify-email', async (c) => {
   }
 });
 
-auth.get('/users/:id', async (c) => {
-  const user_id = Number(c.req.param('id'));
-  if (isNaN(user_id)) return c.json({ error: 'Invalid ID' }, 400);
-  try {
-    const user = await c.env.DB.prepare(
-      'SELECT id, username, avatar_url, public_key FROM users WHERE id = ?'
-    ).bind(user_id).first() as any;
-    if (!user) return c.json({ error: 'Not found' }, 404);
-    return c.json({ user: {
-      ...user,
-      avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c.env, user.avatar_url) : user.avatar_url
-    }});
-  } catch (e) {
-    return c.json({ error: 'Failed' }, 500);
-  }
-});
-
 auth.get('/users/me', async (c) => {
   const user_id = c.get('user_id');
   if (!user_id) return c.json({ error: 'Unauthorized' }, 401);
@@ -308,6 +291,23 @@ auth.get('/users/me', async (c) => {
     });
   } catch (e) {
     return c.json({ error: 'Failed to fetch user' }, 500);
+  }
+});
+
+auth.get('/users/:id', async (c) => {
+  const user_id = Number(c.req.param('id'));
+  if (isNaN(user_id)) return c.json({ error: 'Invalid ID' }, 400);
+  try {
+    const user = await c.env.DB.prepare(
+      'SELECT id, username, avatar_url, public_key FROM users WHERE id = ?'
+    ).bind(user_id).first() as any;
+    if (!user) return c.json({ error: 'Not found' }, 404);
+    return c.json({ user: {
+      ...user,
+      avatar_url: (user.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) ? getR2PublicUrl(c.env, user.avatar_url) : user.avatar_url
+    }});
+  } catch (e) {
+    return c.json({ error: 'Failed' }, 500);
   }
 });
 

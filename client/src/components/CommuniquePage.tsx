@@ -14,14 +14,20 @@ const CommuniquePage: React.FC = () => {
       <button
         onClick={() => navigate('/')}
         style={{
-          marginBottom: '20px',
-          display: 'flex',
+          marginBottom: '12px',
+          display: 'inline-flex',
           alignItems: 'center',
+          gap: '4px',
           background: 'none',
           border: 'none',
-          color: 'var(--accent-sym)',
-          cursor: 'pointer'
+          color: 'var(--text-secondary)',
+          cursor: 'pointer',
+          fontSize: '0.8em',
+          opacity: 0.7,
+          padding: '2px 0'
         }}
+        onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+        onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
       >
         <IconArrowLeft size={ICON_SIZES.xl} style={{ marginRight: '5px' }} />
         Back to Web

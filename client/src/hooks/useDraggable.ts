@@ -32,7 +32,7 @@ export const useDraggable = ({ initialX, initialY, initialW, initialH }: Draggab
       // Constrain to viewport (simplified)
       const newX = e.clientX - dragOffset.x;
       const newY = e.clientY - dragOffset.y;
-      setPos({ x: newX, y: Math.max(0, newY) }); // Prevent going above top
+      setPos({ x: newX, y: Math.max(65, newY) }); // Prevent going above nav
     } else if (isResizing) {
       setSize(prev => ({
         w: Math.max(300, e.clientX - pos.x),

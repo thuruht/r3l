@@ -90,7 +90,16 @@ social.get('/relationships', async (c) => {
     const outgoing = await c.env.DB.prepare('SELECT r.target_user_id as user_id, r.type, r.status, u.username, u.avatar_url FROM relationships r JOIN users u ON r.target_user_id = u.id WHERE r.source_user_id = ?').bind(user_id).all();
     const incoming = await c.env.DB.prepare('SELECT r.source_user_id as user_id, r.type, r.status, u.username, u.avatar_url FROM relationships r JOIN users u ON r.source_user_id = u.id WHERE r.target_user_id = ?').bind(user_id).all();
     const mutual = await c.env.DB.prepare('SELECT CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END as user_id, u.username, u.avatar_url FROM mutual_connections mc JOIN users u ON (u.id = CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END) WHERE mc.user_a_id = ? OR mc.user_b_id = ?').bind(user_id, user_id, user_id, user_id).all();
-    return c.json({ outgoing: outgoing.results, incoming: incoming.results, mutual: mutual.results });
+    const toPublicUrl = (u: any) => ({
+      ...u,
+      avatar_url: (u.avatar_url && typeof u.avatar_url === 'string' && u.avatar_url.startsWith('avatars/'))
+        ? `https://${c.env.R2_PUBLIC_DOMAIN}/${u.avatar_url}` : u.avatar_url
+    });
+    return c.json({
+      outgoing: outgoing.results.map(toPublicUrl),
+      incoming: incoming.results.map(toPublicUrl),
+      mutual: mutual.results.map(toPublicUrl)
+    });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 

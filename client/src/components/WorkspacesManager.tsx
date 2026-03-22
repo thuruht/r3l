@@ -188,7 +188,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
   };
 
   return (
-    <Modal onClose={onClose} title="Collaborative Workspaces">
+    <Modal isOpen={true} onClose={onClose} title="Collaborative Workspaces">
       <div style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
         {!activeWorkspace ? (
           <>

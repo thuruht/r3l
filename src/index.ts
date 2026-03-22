@@ -104,6 +104,24 @@ app.get('/api/do-websocket', authMiddleware, async (c) => {
   return doStub.fetch(newRequest);
 });
 
+// Public API paths that don't require auth
+const PUBLIC_PATHS = [
+  '/api/login', '/api/register', '/api/logout',
+  '/api/verify-email', '/api/forgot-password', '/api/reset-password',
+  '/api/resend-verification', '/api/chat/',
+  '/api/users/search', '/api/users/random',
+  '/api/communiques/',
+];
+
+// Single auth middleware covering all /api/* routes, skipping public paths
+app.use('/api/*', async (c, next) => {
+  const path = new URL(c.req.url).pathname;
+  if (PUBLIC_PATHS.some(p => path.startsWith(p))) return next();
+  // GET /api/users/:id (numeric) is public
+  if (/^\/api\/users\/\d+$/.test(path) && c.req.method === 'GET') return next();
+  return authMiddleware(c, next);
+});
+
 // Routes
 app.route('/api', authRoutes);
 app.route('/api', socialRoutes);
@@ -115,20 +133,6 @@ app.route('/api/communiques', communiqueRoutes);
 app.route('/api/workspaces', workspaceRoutes);
 app.route('/api/collections', collectionRoutes);
 app.route('/api', miscRoutes);
-
-// Apply protection to specific paths
-app.use('/api/users/me*', authMiddleware);
-app.use('/api/customization*', authMiddleware);
-app.use('/api/drift*', authMiddleware);
-app.use('/api/relationships*', authMiddleware);
-app.use('/api/files*', authMiddleware);
-app.use('/api/notifications*', authMiddleware);
-app.use('/api/messages*', authMiddleware);
-app.use('/api/groups*', authMiddleware);
-app.use('/api/communiques*', authMiddleware);
-app.use('/api/collections*', authMiddleware);
-app.use('/api/workspaces*', authMiddleware);
-app.use('/api/admin*', authMiddleware);
 
 // Static Assets
 app.all('*', (c) => {

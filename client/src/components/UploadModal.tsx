@@ -24,6 +24,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [isBurnOnRead, setIsBurnOnRead] = useState(false);
+  const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('public');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -87,7 +88,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         formData.append('file', upload.file);
       }
 
-      formData.append('visibility', 'private');
+      formData.append('visibility', visibility);
       if (isBurnOnRead) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());
 
@@ -133,7 +134,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   return (
     <div className="preview-overlay fade-in" style={{
       position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-      background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', justifyContent: 'center', alignItems: 'center',
+      background: 'rgba(0,0,0,0.8)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center',
       backdropFilter: 'blur(5px)'
     }} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
       <div className="glass-panel" style={{
@@ -184,6 +185,19 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             <p style={{ color: 'var(--text-secondary)' }}>Drag & Drop files here or click to select</p>
         </div>
         <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={e => handleFiles(e.target.files)} />
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Visibility:</label>
+          <select
+            value={visibility}
+            onChange={e => setVisibility(e.target.value as 'public' | 'sym' | 'me')}
+            style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.9rem', flex: 1 }}
+          >
+            <option value="public">Public (Drift)</option>
+            <option value="sym">Sym Only</option>
+            <option value="me">3rd Space (Me Only)</option>
+          </select>
+        </div>
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

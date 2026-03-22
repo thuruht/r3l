@@ -74,7 +74,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     try {
       let url = '/api/files';
       if (!isOwner && userId) {
-          url = `/api/users/${userId}/files`;
+          url = `/api/files/users/${userId}`;
       }
       
       const res = await fetch(url);

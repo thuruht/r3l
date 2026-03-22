@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconLoader2 } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconLoader2, IconCheck } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
@@ -27,6 +27,7 @@ interface FileData {
   remix_of?: number | null;
   visibility?: string;
   burn_on_read?: number;
+  is_boosted?: boolean;
 }
 
 const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
@@ -205,15 +206,20 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         const data = await res.json();
         setFiles(prev => prev.map(f => {
             if (f.id === fileId) {
-                return { ...f, vitality: data.new_vitality || (f.vitality + 1) };
+                return { ...f, vitality: data.vitality || (f.vitality + 1), is_boosted: true };
             }
             return f;
         }));
+        showToast('Signal boosted!', 'success');
+      } else if (res.status === 409) {
+        setFiles(prev => prev.map(f => f.id === fileId ? { ...f, is_boosted: true } : f));
+        showToast('Already boosted this signal.', 'info');
       } else {
-        console.error("Failed to boost");
+        showToast('Failed to boost signal.', 'error');
       }
     } catch (e) {
       console.error("Error boosting", e);
+      showToast('Error boosting signal.', 'error');
     } finally {
       setBoostingIds(prev => {
         const next = new Set(prev);
@@ -256,7 +262,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   return (
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
       <h5 style={{ color: 'var(--text-secondary)', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <IconFile size={ICON_SIZES.md} /> Artifacts {files.length > 0 && `(${files.length})`}
+        <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {files.length > 0 && `(${files.length})`}
       </h5>
 
       {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em' }}>{error}</div>}
@@ -313,31 +319,31 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '2px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
-                 <IconBolt size={ICON_SIZES.sm} aria-hidden="true" />
+                 <IconBolt size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
                  <span style={{ fontSize: '0.8em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
                  <button 
                    onClick={() => handleBoost(file.id)} 
-                   disabled={boostingIds.has(file.id)}
+                   disabled={boostingIds.has(file.id) || file.is_boosted}
                    style={{ 
                      padding: '0 4px', 
                      background: 'transparent', 
-                     border: '1px solid #ffeb3b', 
-                     color: '#ffeb3b', 
+                     border: file.is_boosted ? '1px solid var(--accent-sym)' : '1px solid #ffeb3b', 
+                     color: file.is_boosted ? 'var(--accent-sym)' : '#ffeb3b', 
                      borderRadius: '4px',
                      fontSize: '0.7em',
-                     cursor: boostingIds.has(file.id) ? 'wait' : 'pointer',
+                     cursor: (boostingIds.has(file.id) || file.is_boosted) ? 'default' : 'pointer',
                      marginLeft: '4px',
                      display: 'flex',
                      alignItems: 'center',
                      justifyContent: 'center',
-                     minWidth: '20px'
+                     minWidth: '20px',
+                     opacity: file.is_boosted ? 0.6 : 1
                    }}
-                   title="Boost Signal"
-                   aria-label="Boost Signal"
+                   title={file.is_boosted ? "Already boosted" : "Boost Signal"}
+                   aria-label={file.is_boosted ? "Already boosted" : "Boost Signal"}
                  >
-                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : "+"}
-                 </button>
-              </div>
+                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : file.is_boosted ? <IconCheck size={10} className="chrome-icon" /> : "+"}
+                 </button>              </div>
 
               <button 
                 onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
@@ -345,7 +351,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Preview"
                 aria-label="Preview file"
               >
-                <IconEye size={ICON_SIZES.sm} aria-hidden="true" />
+                <IconEye size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
               </button>
 
               <button 
@@ -354,7 +360,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Download"
                 aria-label={`Download ${file.filename}`}
               >
-                <IconDownload size={ICON_SIZES.sm} aria-hidden="true" />
+                <IconDownload size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
               </button>
               
               <button
@@ -363,7 +369,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 title="Remix this artifact"
                 aria-label="Remix this artifact"
               >
-                <IconArrowsShuffle size={ICON_SIZES.sm} />
+                <IconArrowsShuffle size={ICON_SIZES.sm} className="chrome-icon" />
               </button>
 
               {isOwner && (
@@ -382,7 +388,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                     title="Share"
                     aria-label="Share file"
                 >
-                    <IconShare size={ICON_SIZES.sm} aria-hidden="true" />
+                    <IconShare size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
                 </button>
                 <button 
                   onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
@@ -419,7 +425,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       {isOwner && (
         <div style={{ marginTop: '15px' }}>
       <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <IconUpload size={ICON_SIZES.md} /> Upload Artifacts
+            <IconUpload size={ICON_SIZES.md} className="chrome-icon" /> Upload Artifacts
           </button>
         </div>
       )}

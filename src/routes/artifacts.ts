@@ -32,8 +32,9 @@ artifacts.get('/', async (c) => {
   const user_id = c.get('user_id');
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 ORDER BY created_at DESC'
-    ).bind(user_id).all();
+      `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
+       FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC`
+    ).bind(user_id, user_id).all();
     return c.json({ files: results });
   } catch (e) {
     return c.json({ error: 'Failed to list files' }, 500);
@@ -48,7 +49,10 @@ artifacts.get('/users/:target_user_id', async (c) => {
 
   try {
     if (user_id === target_user_id) {
-        const { results } = await c.env.DB.prepare('SELECT * FROM files WHERE user_id = ? AND is_archived = 0 ORDER BY created_at DESC').bind(user_id).all();
+        const { results } = await c.env.DB.prepare(
+          `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
+           FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC`
+        ).bind(user_id, user_id).all();
         return c.json({ files: results });
     }
 
@@ -56,12 +60,14 @@ artifacts.get('/users/:target_user_id', async (c) => {
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(user_id, target_user_id), Math.max(user_id, target_user_id), Math.min(user_id, target_user_id), Math.max(user_id, target_user_id)).first();
 
-    let query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND visibility = "public"';
+    let query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
+                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.visibility = "public"`;
     if (mutual) {
-        query = 'SELECT * FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public" OR visibility = "sym")';
+        query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
+                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND (f.visibility = "public" OR f.visibility = "sym")`;
     }
 
-    const { results } = await c.env.DB.prepare(query + ' ORDER BY created_at DESC').bind(target_user_id).all();
+    const { results } = await c.env.DB.prepare(query + ' ORDER BY f.created_at DESC').bind(user_id, target_user_id).all();
     return c.json({ files: results });
   } catch (e) {
     return c.json({ error: 'Failed to list user files' }, 500);
@@ -168,6 +174,9 @@ artifacts.get('/:id/metadata', async (c) => {
   try {
     const file = await c.env.DB.prepare('SELECT id, filename, size, mime_type, visibility, vitality, expires_at, created_at, user_id FROM files WHERE id = ?').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
+
+    const boosted = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
+    file.is_boosted = !!boosted;
 
     if (file.user_id !== user_id) {
       if (file.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);

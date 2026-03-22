@@ -26,7 +26,7 @@ interface UseCollectionsReturn {
   fetchCollections: () => Promise<void>;
   createCollection: (name: string, description?: string, visibility?: 'private' | 'public' | 'sym') => Promise<boolean>;
   deleteCollection: (id: number) => Promise<boolean>;
-  addToCollection: (collectionId: number, fileId: number) => Promise<boolean>;
+  addToCollection: (collectionId: number, fileId: number) => Promise<{ success: boolean; error?: string; status?: number }>;
   getCollectionDetails: (id: number) => Promise<{ collection: Collection, files: CollectionFile[] } | null>;
   removeFromCollection: (collectionId: number, fileId: number) => Promise<boolean>;
 }
@@ -94,17 +94,19 @@ export const useCollections = (): UseCollectionsReturn => {
     }
   };
 
-  const addToCollection = async (collectionId: number, fileId: number) => {
+  const addToCollection = async (collectionId: number, fileId: number): Promise<{ success: boolean; error?: string; status?: number }> => {
     try {
       const response = await fetch(`/api/collections/${collectionId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_id: fileId }),
       });
-      return response.ok;
+      if (response.ok) return { success: true };
+      const data = await response.json();
+      return { success: false, error: data.error, status: response.status };
     } catch (e) {
       console.error(e);
-      return false;
+      return { success: false, error: 'Network error' };
     }
   };
 

@@ -104,7 +104,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
         showToast('Workspace established.', 'success');
         setNewName('');
         setNewDesc('');
-        setIsRegistering(false);
+        setIsCreating(false);
         fetchWorkspaces();
       }
     } catch (e) {

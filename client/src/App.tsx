@@ -619,6 +619,19 @@ function App() {
       <CustomizationProvider>
         <ToastProvider>
           <AmbientBackground />
+          <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
+            <defs>
+              <linearGradient id="chrome-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#a29bf6" /> {/* Lavender */}
+                <stop offset="50%" stopColor="#ffffff" /> {/* Highlight */}
+                <stop offset="100%" stopColor="#26de81" /> {/* Neon Green */}
+              </linearGradient>
+              <filter id="chrome-glow">
+                <feGaussianBlur stdDeviation="1.5" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+          </svg>
           <Main />
         </ToastProvider>
       </CustomizationProvider>

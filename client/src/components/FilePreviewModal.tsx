@@ -161,6 +161,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         setVitality(meta.vitality);
         setVisibility(meta.visibility);
         setOwnerId(meta.user_id);
+        if (meta.is_boosted) setBoosted(true);
 
         // Fetch remix parent if applicable
         if (meta.remix_of) {
@@ -234,9 +235,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             body: JSON.stringify({ amount: 1 })
         });
         if (res.ok) {
+            const data = await res.json();
             setBoosted(true);
-            setVitality(prev => prev + 1);
+            setVitality(data.vitality || (vitality + 1));
             showToast('Signal boosted!', 'success');
+        } else if (res.status === 409) {
+            setBoosted(true);
+            showToast('Already boosted this signal.', 'info');
+        } else {
+            showToast('Failed to boost signal.', 'error');
         }
     } catch(e) {
         showToast('Error boosting signal', 'error');
@@ -420,16 +427,16 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             </select>
         </div>
         <button onClick={handleRefresh} title="Keep Alive" aria-label="Keep Alive" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
-            <IconRefresh size={ICON_SIZES.lg} /> {isMobile && 'Keep Alive'}
+            <IconRefresh size={ICON_SIZES.lg} className="chrome-icon" /> {isMobile && 'Keep Alive'}
         </button>
         <button onClick={handleBoost} disabled={boosted} aria-label="Boost Signal" style={{ background: 'transparent', border: 'none', color: boosted ? 'var(--accent-sym)' : 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', flexShrink: 0, width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
-            <IconBolt size={ICON_SIZES.lg} /> {vitality} {isMobile && 'Boost'}
+            <IconBolt size={ICON_SIZES.lg} className="chrome-icon" /> {vitality} {isMobile && 'Boost'}
         </button>
         <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
-            <IconFolderPlus size={ICON_SIZES.lg} /> {isMobile && 'Add to Collection'}
+            <IconFolderPlus size={ICON_SIZES.lg} className="chrome-icon" /> {isMobile && 'Add to Collection'}
         </button>
         <button onClick={onDownload} title="Download" aria-label="Download" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
-            <IconDownload size={ICON_SIZES.lg} /> {isMobile && 'Download'}
+            <IconDownload size={ICON_SIZES.lg} className="chrome-icon" /> {isMobile && 'Download'}
         </button>
         {(isImage || isVideo) && (
             <button
@@ -706,14 +713,26 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         />
           </motion.div>
       {showCollectionSelect && (
-          <CollectionsManager mode="select" onClose={() => setShowCollectionSelect(false)} onSelect={(cid) => { addToCollection(cid, fileId); setShowCollectionSelect(false); }} />
+          <CollectionsManager mode="select" onClose={() => setShowCollectionSelect(false)} onSelect={async (cid) => { 
+              const res = await addToCollection(cid, Number(fileId)); 
+              if (res.success) {
+                  showToast('Added to collection.', 'success');
+              } else if (res.status === 409) {
+                  showToast('Already in this collection.', 'info');
+              } else {
+                  showToast(res.error || 'Failed to add to collection.', 'error');
+              }
+              setShowCollectionSelect(false); 
+          }} />
       )}
       {showRemixUpload && (
-          <UploadModal
-            onClose={() => setShowRemixUpload(false)}
-            onUploadComplete={() => { showToast('Remix uploaded', 'success'); setShowRemixUpload(false); }}
-            parentId={fileId}
-          />
+          <div style={{ pointerEvents: 'auto' }} onMouseDown={e => e.stopPropagation()} onClick={e => e.stopPropagation()}>
+            <UploadModal
+                onClose={() => setShowRemixUpload(false)}
+                onUploadComplete={() => { showToast('Remix uploaded', 'success'); setShowRemixUpload(false); }}
+                parentId={fileId}
+            />
+          </div>
       )}
         </div>
       )}

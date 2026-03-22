@@ -267,6 +267,18 @@ input:focus, textarea:focus {
   100% { opacity: 0.6; }
 }
 /* SVG circle pulse for online nodes — driven by D3 inline style */
+/* Chrome Icon Effect */
+.chrome-icon {
+  stroke: url(#chrome-gradient) !important;
+  filter: drop-shadow(0 0 2px rgba(162, 155, 254, 0.5)) drop-shadow(0 0 5px rgba(38, 222, 129, 0.3));
+  transition: filter 0.3s ease, transform 0.3s ease;
+}
+
+.chrome-icon:hover {
+  filter: drop-shadow(0 0 4px rgba(162, 155, 254, 0.8)) drop-shadow(0 0 8px rgba(38, 222, 129, 0.5));
+  transform: scale(1.1);
+}
+
 .online-node .pulse-ring {
   animation: presence-pulse 2s ease-in-out infinite;
 }

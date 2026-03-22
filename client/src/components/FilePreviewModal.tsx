@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconDownl, IconEye, IconCode, IconCopy, IconDownload } from '@tabler/icons-react';
+import { IconX, IconArrowsMove, IconBolt, IconRefresh, IconDeviceFloppy, IconEdit, IconFolderPlus, IconWallpaper, IconUsers, IconDotsVertical, IconEye, IconCode, IconCopy, IconDownload } from '@tabler/icons-react';
 import { useWavesurfer } from '@wavesurfer/react';
 import Timeline from 'wavesurfer.js/dist/plugins/timeline.esm.js';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -130,7 +130,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const isImage = mimeType.startsWith('image/');
   const isAudio = mimeType.startsWith('audio/');
   const isVideo = mimeType.startsWith('video/');
-  const isPDF = mimeType === 'application/pdf';
+  const isPDF = mimeType === 'application/pdf' || !!filename.match(/\.pdf$/i);
   
   const isSpreadsheet = !!(filename.match(/\.(xlsx|xls|csv)$/i) || mimeType.match(/excel|spreadsheet|csv/));
   const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
@@ -596,7 +596,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', background: 'rgba(0,0,0,0.2)' }}>
+        <div style={{ flex: 1, overflow: isPDF ? 'hidden' : 'auto', padding: isPDF ? 0 : '20px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}>
           {loading && <Skeleton height="100%" width="100%" />}
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (
@@ -631,7 +631,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                     src={pdfUrl}
                     width="100%"
                     height="100%"
-                    style={{ border: 'none', background: 'white' }}
+                    style={{ border: 'none', background: 'white', flex: 1 }}
                     title="PDF Viewer"
                  />
                )}

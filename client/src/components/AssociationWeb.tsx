@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-import { IconMaximize, IconPlus, IconMinus } from '@tabler/icons-react';
+import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
 import { useCustomization } from '../context/CustomizationContext';
@@ -32,10 +32,16 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
   const [tooltip, setTooltip] = useState<{ x: number, y: number, content: string | null }>({ x: 0, y: 0, content: null });
-  const [dimensions, setDimensions] = useState({ 
-    width: window.innerWidth, 
-    height: window.innerHeight - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 60) 
-  });
+  
+  const [winSize, setWinSize] = useState({ w: window.innerWidth, h: window.innerHeight });
+  
+  const dimensions = useMemo(() => {
+    const headerHeight = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--header-height')) || 60;
+    return { 
+      width: Math.max(100, winSize.w), 
+      height: Math.max(100, winSize.h - headerHeight) 
+    };
+  }, [winSize]);
   
   // Persistence Refs
   const simulationRef = useRef<d3.Simulation<D3Node, D3Link> | null>(null);
@@ -53,6 +59,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
     // Find the link element
     const linkElement = gRef.current.select('.links').selectAll('line')
       .filter((d: any) => {
+          if (!d || !d.source || !d.target) return false;
           const s = d.source.id || d.source;
           const t = d.target.id || d.target;
           return (s === sourceId && t === targetId) || (s === targetId && t === sourceId);
@@ -60,16 +67,13 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
     if (!linkElement.empty()) {
         const node = linkElement.node() as SVGLineElement;
+        if (!node) return;
 
         // Animate stroke-dasharray/offset to simulate a pulse
-        // Note: Lines don't have a path length easily accessible for dashoffset animation without getTotalLength() which is for paths.
-        // So we fake it with a temporary overlay path or just flash it.
-        // Let's create a temporary clone path on top to animate.
-
-        const x1 = parseFloat(linkElement.getAttribute('x1') || '0');
-        const y1 = parseFloat(linkElement.getAttribute('y1') || '0');
-        const x2 = parseFloat(linkElement.getAttribute('x2') || '0');
-        const y2 = parseFloat(linkElement.getAttribute('y2') || '0');
+        const x1 = parseFloat(linkElement.attr('x1') || '0');
+        const y1 = parseFloat(linkElement.attr('y1') || '0');
+        const x2 = parseFloat(linkElement.attr('x2') || '0');
+        const y2 = parseFloat(linkElement.attr('y2') || '0');
 
         const pulsePath = gRef.current.select('.links').append('line')
             .attr('x1', x1)
@@ -148,9 +152,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   // Resize Handler
   useEffect(() => {
     const handleResize = () => {
-      if (wrapperRef.current) {
-        setDimensions({ width: wrapperRef.current.clientWidth, height: wrapperRef.current.clientHeight });
-      }
+      setWinSize({ w: window.innerWidth, h: window.innerHeight });
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);

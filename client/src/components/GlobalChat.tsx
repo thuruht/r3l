@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconSend, IconUsers, IconDoorExit, IconHash, IconMoodSmile, IconBroadcast } from '@tabler/icons-react';
+import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 
@@ -19,7 +19,11 @@ interface Message {
   timestamp: number;
 }
 
-const GlobalChat: React.FC = () => {
+interface GlobalChatProps {
+  onClose: () => void;
+}
+
+const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   const [room, setRoom] = useState('global');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -101,7 +105,7 @@ const GlobalChat: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-modal)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 500, overflow: 'hidden' }}>
       <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
         {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (
@@ -130,25 +134,35 @@ const GlobalChat: React.FC = () => {
                if (room !== r.name) e.currentTarget.style.background = 'var(--bg-secondary)';
             }}
           >
-            <IconHash size={ICON_SIZES.md} style={{ marginRight: '5px' }} />
+            <TablerIcons.IconHash size={ICON_SIZES.md} style={{ marginRight: '5px' }} />
             {r.label}
           </button>
         ))}
+        {window.innerWidth < 768 && (
+            <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--accent-alert)' }}>
+                <TablerIcons.IconX />
+            </button>
+        )}
       </div>
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ color: 'var(--text-primary)' }}>#{room}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
-            <IconUsers size={ICON_SIZES.xl} />
-            {online.length}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
+                <TablerIcons.IconUsers size={ICON_SIZES.xl} />
+                {online.length}
+            </div>
+            <button onClick={onClose} className="btn-icon" title="Close Chat" aria-label="Close Chat">
+                <TablerIcons.IconX size={ICON_SIZES.xl} />
+            </button>
           </div>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column' }}>
           {messages.length === 0 && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.7 }}>
-               <IconBroadcast size={ICON_SIZES['2xl']} stroke={1} />
+               <TablerIcons.IconBroadcast size={ICON_SIZES['2xl']} stroke={1} />
                <p style={{ marginTop: '10px', fontStyle: 'italic' }}>Frequency Silent</p>
                <p style={{ fontSize: '0.8em' }}>Be the first to broadcast.</p>
             </div>
@@ -187,7 +201,7 @@ const GlobalChat: React.FC = () => {
             title="Add Emoji"
             style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
           >
-            <IconMoodSmile size={ICON_SIZES.xl} color="var(--text-primary)" />
+            <TablerIcons.IconMoodSmile size={ICON_SIZES.xl} color="var(--text-primary)" />
           </button>
           <input
             type="text"
@@ -216,7 +230,7 @@ const GlobalChat: React.FC = () => {
             title="Send"
             style={{ padding: '10px 20px', cursor: input.trim() ? 'pointer' : 'not-allowed', opacity: input.trim() ? 1 : 0.5 }}
           >
-            <IconSend size={ICON_SIZES.xl} />
+            <TablerIcons.IconSend size={ICON_SIZES.xl} />
           </button>
         </div>
       </div>

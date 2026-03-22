@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import {
-  IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers, IconSettings, IconBroadcast
-} from '@tabler/icons-react';
+import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
@@ -385,15 +382,15 @@ function Main() {
                   <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                     <div className="view-toggle">
                       <button onClick={() => { setViewMode('graph'); navigate('/'); }} className={viewMode === 'graph' ? 'active' : ''} title="Graph View">
-                        <IconChartCircles size={ICON_SIZES.lg} aria-hidden="true" />
+                        <TablerIcons.IconChartCircles size={ICON_SIZES.lg} aria-hidden="true" />
                       </button>
                       <button onClick={() => { setViewMode('list'); navigate('/'); }} className={viewMode === 'list' ? 'active' : ''} title="List View">
-                        <IconList size={ICON_SIZES.lg} aria-hidden="true" />
+                        <TablerIcons.IconList size={ICON_SIZES.lg} aria-hidden="true" />
                       </button>
                     </div>
                     <div className={`drift-controls ${isDrifting ? 'active' : ''}`}>
                       <button onClick={toggleDrift} title="Toggle Drift" aria-label="Toggle Drift Mode">
-                        <IconRadar2 size={ICON_SIZES.xl} aria-hidden="true" />
+                        <TablerIcons.IconRadar2 size={ICON_SIZES.xl} aria-hidden="true" />
                       </button>
                       <button onClick={cycleDriftType} title={`Filter: ${driftType || 'All'}`} className="drift-filter-btn">
                         {driftType ? driftType.toUpperCase() : 'ALL'}
@@ -420,11 +417,11 @@ function Main() {
                   </div>
                   {/* Mobile: inbox badge button */}
                   <button className="mobile-only nav-button" onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
-                    <IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
+                    <TablerIcons.IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                   </button>
                   <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu" ref={menuRef as any}>
-                    {isMenuOpen ? <IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
+                    {isMenuOpen ? <TablerIcons.IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <TablerIcons.IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
                   </button>
                 </div>
               )}
@@ -439,61 +436,61 @@ function Main() {
                   <span className="menu-label">View Mode:</span>
                   <div className="view-toggle">
                     <button onClick={() => { setViewMode('graph'); setIsMenuOpen(false); navigate('/'); }} className={viewMode === 'graph' ? 'active' : ''}>
-                      <IconChartCircles size={ICON_SIZES.md} />
+                      <TablerIcons.IconChartCircles size={ICON_SIZES.md} />
                     </button>
                     <button onClick={() => { setViewMode('list'); setIsMenuOpen(false); navigate('/'); }} className={viewMode === 'list' ? 'active' : ''}>
-                      <IconList size={ICON_SIZES.md} />
+                      <TablerIcons.IconList size={ICON_SIZES.md} />
                     </button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="menu-label">Drift:</span>
                   <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: 'var(--spacing-xs)' }}>
-                    <IconRadar2 size={ICON_SIZES.lg} />
+                    <TablerIcons.IconRadar2 size={ICON_SIZES.lg} />
                   </button>
                 </div>
               </div>
               <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconChartCircles size={ICON_SIZES.lg} /> Community Archive
+                <TablerIcons.IconChartCircles size={ICON_SIZES.lg} /> Community Archive
               </button>
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconFolder size={ICON_SIZES.lg} /> Collections
+                <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
               <button onClick={() => { setIsGlobalChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconBroadcast size={ICON_SIZES.lg} /> Global Chat
+                <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> Global Chat
               </button>
               <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconFolder size={ICON_SIZES.lg} /> Workspaces
+                <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Workspaces
               </button>
               <button onClick={() => { setIsGroupChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconUsers size={ICON_SIZES.lg} /> Groups
+                <TablerIcons.IconUsers size={ICON_SIZES.lg} /> Groups
               </button>
               <button onClick={() => { setIsInboxOpen(true); setUnreadCount(0); setIsMenuOpen(false); }} className="menu-item">
-                <IconMessage size={ICON_SIZES.lg} /> Inbox {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
+                <TablerIcons.IconMessage size={ICON_SIZES.lg} /> Inbox {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
               </button>
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
-                <IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                <TablerIcons.IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
               </button>
               <button onClick={() => { setIsSettingsOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconSettings size={ICON_SIZES.lg} /> Settings
+                <TablerIcons.IconSettings size={ICON_SIZES.lg} /> Settings
               </button>
               <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconHelp size={ICON_SIZES.lg} /> Help
+                <TablerIcons.IconHelp size={ICON_SIZES.lg} /> Help
               </button>
               <button onClick={() => { setIsFeedbackOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconMessage size={ICON_SIZES.lg} /> Feedback
+                <TablerIcons.IconMessage size={ICON_SIZES.lg} /> Feedback
               </button>
               <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <IconInfoCircle size={ICON_SIZES.lg} /> About
+                <TablerIcons.IconInfoCircle size={ICON_SIZES.lg} /> About
               </button>
               {isAdmin && (
                 <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} className="menu-item admin">
-                  <IconDashboard size={ICON_SIZES.lg} /> Admin
+                  <TablerIcons.IconDashboard size={ICON_SIZES.lg} /> Admin
                 </button>
               )}
               <div className="menu-divider"></div>
               <button onClick={handleLogout} className="menu-item">
-                <IconLogout size={ICON_SIZES.lg} /> Logout
+                <TablerIcons.IconLogout size={ICON_SIZES.lg} /> Logout
               </button>
             </div>
           )}

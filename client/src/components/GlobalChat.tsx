@@ -101,7 +101,7 @@ const GlobalChat: React.FC = () => {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-base)', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-modal)', overflow: 'hidden' }}>
       <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
         {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (

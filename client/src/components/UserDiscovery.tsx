@@ -104,6 +104,7 @@ export const SearchBar: React.FC<DiscoveryProps> = ({ onNavigate }) => {
           background: 'rgba(0,0,0,0.7)', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',
           backdropFilter: 'blur(5px)'
         }} onClick={closeSearch}>
+
           <div className="glass-panel" style={{
             width: '400px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
             padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px'
@@ -171,8 +172,10 @@ export const RandomUserButton: React.FC<DiscoveryProps> = ({ onNavigate }) => {
       const res = await fetch('/api/discovery/users/random');
       if (res.ok) {
         const data = await res.json();
-        if (data.user) {
-          navigate(`/communique/${data.user.id}`);
+        if (data.users && data.users.length > 0) {
+          const randomIdx = Math.floor(Math.random() * data.users.length);
+          const user = data.users[randomIdx];
+          navigate(`/communique/${user.id}`);
           if (onNavigate) onNavigate();
         }
       }

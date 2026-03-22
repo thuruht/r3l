@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   IconRadar2, IconLogout, IconMessage, IconInfoCircle, IconHelp, IconMenu2, IconX,
-  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers, IconSettings
+  IconChartCircles, IconList, IconFolder, IconPalette, IconDashboard, IconUsers, IconSettings, IconBroadcast
 } from '@tabler/icons-react';
 import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
@@ -435,7 +435,6 @@ function Main() {
           {isMenuOpen && (
             <div ref={menuRef} className="glass-panel nav-dropdown">
               <div className="menu-mobile-section">
-                <SearchBar />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="menu-label">View Mode:</span>
                   <div className="view-toggle">
@@ -452,10 +451,6 @@ function Main() {
                   <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: 'var(--spacing-xs)' }}>
                     <IconRadar2 size={ICON_SIZES.lg} />
                   </button>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="menu-label">Discover:</span>
-                  <RandomUserButton />
                 </div>
               </div>
               <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">

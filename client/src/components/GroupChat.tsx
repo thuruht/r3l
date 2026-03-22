@@ -360,10 +360,10 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
 
   return (
     <div ref={panelRef} className="inbox-overlay fade-in" style={{
-      position: 'fixed', top: '60px', right: '10px', width: 'min(360px, 95vw)',
+      position: 'fixed', top: 'var(--header-height)', right: '10px', width: 'min(360px, 95vw)',
       background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
       backdropFilter: 'blur(10px)', padding: '0', borderRadius: '8px',
-      zIndex: 'var(--z-dropdown)', height: '70vh', maxHeight: '600px', display: 'flex', flexDirection: 'column',
+      zIndex: 'var(--z-modal)', height: 'calc(100vh - var(--header-height) - 20px)', maxHeight: '800px', display: 'flex', flexDirection: 'column',
       boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
     }}>
       {/* Header */}

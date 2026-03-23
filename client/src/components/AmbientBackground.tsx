@@ -1,83 +1,49 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useTheme } from '../context/ThemeContext';
-import { useCustomization } from '../context/CustomizationContext';
+// AmbientBackground.tsx
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { IconVolume, IconVolumeOff, IconEye, IconEyeOff, IconPlayerPlay, IconPlayerPause } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
+import { useCustomization } from '../context/CustomizationContext';
 
 interface AmbientBackgroundProps {
   videoSrc?: string;
   audioSrc?: string;
 }
 
-const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSrc }) => {
-  const { theme } = useTheme();
-  const { theme_preferences } = useCustomization();
+const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ 
+  videoSrc = 'https://assets.mixkit.co/videos/preview/mixkit-abstract-connection-of-dots-and-lines-on-a-dark-background-34480-large.mp4', 
+  audioSrc = '/assets/ping.mp3' // Placeholder
+}) => {
+  const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [visible, setVisible] = useState(true);
-  const [playing, setPlaying] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const { theme_preferences } = useCustomization();
 
-  // Auto-play management
   useEffect(() => {
     if (videoRef.current) {
-      if (playing) videoRef.current.play().catch(() => {}); // Ignore autoplay blocks
+      if (playing) videoRef.current.play().catch(() => setPlaying(false));
       else videoRef.current.pause();
     }
+  }, [playing]);
+
+  useEffect(() => {
     if (audioRef.current) {
-        if (playing && !muted) audioRef.current.play().catch(() => {});
-        else audioRef.current.pause();
+      audioRef.current.muted = muted;
+      if (!muted) audioRef.current.play().catch(() => setMuted(true));
     }
-  }, [playing, muted, videoSrc, audioSrc]);
+  }, [muted]);
 
-  // CSS Nebula Generator (Fallback if no video)
   const getNebulaStyle = () => {
-      const isVerdant = theme === 'verdant';
-
-      // Mist: Deep Space (Violet, Magenta, Cyan, Black)
-      // Verdant: Lush Forest (Emerald, Lime, Teal, Dark Green)
-      const baseColor = isVerdant ? '#0a2a1a' : '#05070a'; // Lighter base for Verdant, Darker for Mist
-
-      const layers = isVerdant ? [
-          'radial-gradient(circle at 50% 50%, rgba(46, 204, 113, 0.3) 0%, transparent 60%)', // Emerald
-          'radial-gradient(circle at 85% 15%, rgba(26, 188, 156, 0.4) 0%, transparent 50%)', // Teal
-          'radial-gradient(circle at 15% 85%, rgba(155, 233, 168, 0.25) 0%, transparent 50%)', // Lime-ish
-          'radial-gradient(circle at 50% 0%, rgba(0, 255, 128, 0.2) 0%, transparent 60%)', // Bright Green Top
-      ] : [
-          'radial-gradient(circle at 50% 50%, rgba(76, 29, 149, 0.3) 0%, transparent 60%)', // Deep Violet
-          'radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.25) 0%, transparent 50%)', // Magenta
-          'radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.25) 0%, transparent 50%)', // Cyan
-          'radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.2) 0%, transparent 60%)', // Purple Top
-      ];
-
-      return {
-          backgroundColor: baseColor,
-          backgroundImage: layers.join(','),
-          filter: 'blur(60px) contrast(1.4) brightness(1.2)', // Increased blur and contrast for "cloud" effect
-          transition: 'all 2s ease-in-out',
-          backgroundBlendMode: 'screen'
-      };
+    const primary = theme_preferences.node_primary_color || '#a29bf6';
+    const secondary = theme_preferences.node_secondary_color || '#26de81';
+    return {
+      background: `radial-gradient(circle at 20% 30%, ${primary}22 0%, transparent 40%),
+                   radial-gradient(circle at 80% 70%, ${secondary}22 0%, transparent 40%),
+                   var(--bg-color)`
+    };
   };
-
-  if (!visible) {
-    return (
-      <div style={{
-        position: 'fixed', bottom: '20px', left: '20px', zIndex: 50,
-        display: 'flex', gap: '8px', opacity: 0.5, transition: 'opacity 0.3s'
-      }}
-      onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-      onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
-      >
-        <button
-          onClick={() => setVisible(true)}
-          title="Show Ambiance"
-          style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
-        >
-          <IconEyeOff size={ICON_SIZES.md} />
-        </button>
-      </div>
-    );
-  }
 
   const customBgUrl = theme_preferences.backgroundUrl;
   const isVideo = theme_preferences.backgroundType === 'video' || customBgUrl?.match(/\.(mp4|webm|mov)$/i);
@@ -109,7 +75,8 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
                     playsInline
                     style={{
                         position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                        minWidth: '100%', minHeight: '100%', objectFit: 'cover', opacity: 0.6, mixBlendMode: 'screen'
+                        minWidth: '100%', minHeight: '100%', objectFit: 'cover', opacity: 0.6, mixBlendMode: 'screen',
+                        display: visible ? 'block' : 'none'
                     }}
                 />
             )}
@@ -119,45 +86,51 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ videoSrc, audioSr
             <div className="stars" style={{
                 position: 'absolute', inset: 0,
                 backgroundImage: 'radial-gradient(white 2px, transparent 2px)',
-                backgroundSize: '70px 70px', opacity: 0.3
+                backgroundSize: '70px 70px', opacity: visible ? 0.3 : 0,
+                transition: 'opacity 0.5s'
             }}></div>
         </div>
 
-        {/* Subtle Controls */}
+        {/* Global Ambient Controls - Top Center to avoid collisions */}
         <div style={{
-            position: 'fixed', bottom: '20px', left: '20px', zIndex: 50,
-            display: 'flex', gap: '8px', opacity: 0.5, transition: 'opacity 0.3s'
+            position: 'fixed', 
+            top: '12px', 
+            left: '50%', 
+            transform: 'translateX(-50%)', 
+            zIndex: 'var(--z-header)',
+            display: 'flex', 
+            gap: '8px', 
+            opacity: 0.4, 
+            transition: 'opacity 0.3s',
+            pointerEvents: 'auto'
         }}
         onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.5'}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = '0.4'}
         >
             <button
                 onClick={() => setVisible(!visible)}
                 title={visible ? "Hide Ambiance" : "Show Ambiance"}
-                style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
+                style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
             >
                 {visible ? <IconEye size={ICON_SIZES.md} /> : <IconEyeOff size={ICON_SIZES.md} />}
             </button>
 
-            {visible && (
-                <>
-                    <button
-                        onClick={() => setPlaying(!playing)}
-                        title={playing ? "Pause" : "Play"}
-                        style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
-                    >
-                        {playing ? <IconPlayerPause size={ICON_SIZES.md} /> : <IconPlayerPlay size={ICON_SIZES.md} />}
-                    </button>
-                    {audioSrc && (
-                        <button
-                            onClick={() => setMuted(!muted)}
-                            title={muted ? "Unmute" : "Mute"}
-                            style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '50%' }}
-                        >
-                            {muted ? <IconVolumeOff size={ICON_SIZES.md} /> : <IconVolume size={ICON_SIZES.md} />}
-                        </button>
-                    )}
-                </>
+            <button
+                onClick={() => setPlaying(!playing)}
+                title={playing ? "Pause" : "Play"}
+                style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
+            >
+                {playing ? <IconPlayerPause size={ICON_SIZES.md} /> : <IconPlayerPlay size={ICON_SIZES.md} />}
+            </button>
+
+            {audioSrc && (
+                <button
+                    onClick={() => setMuted(!muted)}
+                    title={muted ? "Unmute" : "Mute"}
+                    style={{ padding: '6px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px', cursor: 'pointer', color: 'white' }}
+                >
+                    {muted ? <IconVolumeOff size={ICON_SIZES.md} /> : <IconVolume size={ICON_SIZES.md} />}
+                </button>
             )}
         </div>
     </>

@@ -61,9 +61,13 @@
   --z-background: -1;
   --z-overlay: 10;
   --z-sticky: 500;
-  --z-header: 1000;
+  --z-header: 1100; /* Elevated to stay above CommuniquePage */
   --z-dropdown: 2000;
   --z-modal: 3000;
   --z-toast: 4000;
   --z-tooltip: 5000;
+
+  /* Mobile Protection */
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-top: env(safe-area-inset-top, 0px);
 }

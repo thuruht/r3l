@@ -332,9 +332,12 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       )}
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>
-            Communique: {targetUser?.username || 'Signal'}
-        </h4>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>RCC — Cache Communique</div>
+          <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>
+              {targetUser?.username || 'Signal'}
+          </h4>
+        </div>
         {isOwner && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>

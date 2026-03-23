@@ -1,11 +1,12 @@
 // client/src/components/WorkspacesManager.tsx
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { IconFolderPlus, IconTrash, IconUserPlus, IconFilePlus, IconArrowLeft, IconChevronRight, IconUsers, IconFile } from '@tabler/icons-react';
+import { IconFolderPlus, IconTrash, IconUserPlus, IconFilePlus, IconArrowLeft, IconChevronRight, IconUsers, IconFile, IconX, IconEye, IconDownload } from '@tabler/icons-react';
 import Modal from './ui/Modal';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '../constants/iconSizes';
 import Skeleton from './Skeleton';
+import FilePreviewModal from './FilePreviewModal';
 
 interface Workspace {
   id: number;
@@ -50,6 +51,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
   const [isInviting, setIsInviting] = useState(false);
   const [userFiles, setUserFiles] = useState<UserFile[]>([]);
   const [inviteUsername, setInviteUsername] = useState('');
+  const [previewFile, setPreviewFile] = useState<WorkspaceFile | null>(null);
 
   const { showToast } = useToast();
 
@@ -160,6 +162,19 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
     } catch { showToast('Error adding artifact', 'error'); }
   };
 
+  const handleRemoveFile = async (file_id: number) => {
+    if (!activeWorkspace) return;
+    try {
+      const res = await fetch(`/api/workspaces/${activeWorkspace.id}/files/${file_id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast('Artifact removed from workspace.', 'success');
+        fetchWorkspaceDetails(activeWorkspace.id);
+      }
+    } catch { showToast('Error removing artifact', 'error'); }
+  };
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeWorkspace || !inviteUsername.trim()) return;
@@ -187,9 +202,28 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
     } catch { showToast('Error inviting collaborator', 'error'); }
   };
 
+  const handleRemoveMember = async (target_user_id: number) => {
+    if (!activeWorkspace) return;
+    if (!confirm('Remove this collaborator from the workspace?')) return;
+    try {
+      const res = await fetch(`/api/workspaces/${activeWorkspace.id}/members/${target_user_id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast('Collaborator removed.', 'success');
+        fetchWorkspaceDetails(activeWorkspace.id);
+      }
+    } catch { showToast('Error removing member', 'error'); }
+  };
+
   return (
     <Modal isOpen={true} onClose={onClose} title="Collaborative Workspaces">
-      <div style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ 
+          minHeight: '400px', 
+          display: 'flex', 
+          flexDirection: 'column',
+          paddingBottom: 'var(--safe-area-bottom)'
+      }}>
         {!activeWorkspace ? (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
@@ -274,9 +308,39 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
               {activeTab === 'files' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {workspaceFiles.map(file => (
-                    <div key={file.id} className="glass-panel" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9em' }}>
-                      <IconFile size={ICON_SIZES.sm} color="var(--accent-sym)" />
-                      <span>{file.filename}</span>
+                    <div key={file.id} className="glass-panel" 
+                      style={{ padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9em', cursor: 'pointer' }}
+                      onClick={() => setPreviewFile(file)}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <IconFile size={ICON_SIZES.sm} color="var(--accent-sym)" />
+                        <span>{file.filename}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }} title="Preview">
+                          <IconEye size={ICON_SIZES.sm} />
+                        </button>
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            const link = document.createElement('a');
+                            link.href = `/api/files/${file.id}/content`;
+                            link.download = file.filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }} 
+                          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                          title="Download"
+                        >
+                          <IconDownload size={ICON_SIZES.sm} />
+                        </button>
+                        {activeWorkspace.role === 'admin' && (
+                          <button onClick={(e) => { e.stopPropagation(); handleRemoveFile(file.id); }} style={{ background: 'none', border: 'none', color: 'var(--accent-alert)', cursor: 'pointer' }} title="Remove">
+                            <IconX size={ICON_SIZES.sm} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {isAddingFile ? (
@@ -340,6 +404,22 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
           </div>
         )}
       </div>
+      {previewFile && (
+        <FilePreviewModal
+          fileId={previewFile.id.toString()}
+          filename={previewFile.filename}
+          mimeType={previewFile.mime_type}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => {
+            const link = document.createElement('a');
+            link.href = `/api/files/${previewFile.id}/content`;
+            link.download = previewFile.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }}
+        />
+      )}
     </Modal>
   );
 };

@@ -158,6 +158,35 @@ export default {
         if (file.r2_key) await env.BUCKET.delete(file.r2_key as string);
         await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
       }
+
+      // Organic Resonance: Find users who boosted the same files recently
+      const { results: resonances } = await env.DB.prepare(`
+        SELECT v1.user_id as user_a, v2.user_id as user_b, f.filename
+        FROM vitality_votes v1
+        JOIN vitality_votes v2 ON v1.file_id = v2.file_id AND v1.user_id < v2.user_id
+        JOIN files f ON v1.file_id = f.id
+        WHERE v1.created_at > datetime('now', '-24 hours')
+          AND NOT EXISTS (
+            SELECT 1 FROM mutual_connections 
+            WHERE (user_a_id = v1.user_id AND user_b_id = v2.user_id)
+               OR (user_a_id = v2.user_id AND user_b_id = v1.user_id)
+          )
+        LIMIT 10
+      `).all();
+
+      for (const res of resonances) {
+          const userA = res.user_a as number;
+          const userB = res.user_b as number;
+          const filename = res.filename as string;
+          
+          await createNotification(env, env.DB, userA, 'system_alert', undefined, { 
+              message: `You shared a resonance with someone over "${filename}". Seek connection?` 
+          });
+          await createNotification(env, env.DB, userB, 'system_alert', undefined, { 
+              message: `A resonance was detected with another over "${filename}". Seek connection?` 
+          });
+      }
+
     } catch (e) { console.error("Cron error:", e); }
   }
 };

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
-import { generateKey, encryptFile, exportKey } from '../utils/crypto';
 
 interface UploadModalProps {
   onClose: () => void;

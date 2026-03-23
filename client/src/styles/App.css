@@ -97,16 +97,25 @@
     color: #000;
     font-weight: bold;
     border: none;
-    padding: 12px;
+    padding: 12px 20px;
+    min-height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-base);
 }
 
 .primary-btn:hover {
     background: #fff;
     box-shadow: 0 0 15px var(--accent-sym);
+}
+
+.primary-btn:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
 }
 
 .text-btn {
@@ -116,13 +125,22 @@
     font-size: 0.9rem;
     text-decoration: underline;
     opacity: 0.7;
+    min-height: 44px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .text-btn:hover {
     opacity: 1;
     color: var(--accent-sym);
-    box-shadow: none;
-    background: none;
+}
+
+.text-btn:focus-visible {
+    outline: 1px solid var(--accent-sym);
+    border-radius: 4px;
 }
 
 /* Header Styles */
@@ -294,13 +312,18 @@
 }
 
 .view-toggle button {
-    padding: 6px 10px;
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 40px;
     border: none;
     border-radius: 3px;
     cursor: pointer;
     transition: all var(--transition-base);
     background: transparent;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .view-toggle button.active {
@@ -320,11 +343,16 @@
 }
 
 .drift-controls button {
-    padding: 8px;
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     cursor: pointer;
     background: transparent;
     transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .drift-controls button:first-child {
@@ -332,14 +360,18 @@
 }
 
 .drift-filter-btn {
-    padding: 8px 6px;
+    padding: 8px 12px;
     font-size: 0.7rem;
-    min-width: 40px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: transparent;
     cursor: pointer;
     color: var(--text-secondary);
     transition: color var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .drift-controls.active .drift-filter-btn {
@@ -347,17 +379,27 @@
 }
 
 .nav-button {
-    padding: 8px;
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 44px;
     border: none;
     background: transparent;
     cursor: pointer;
     position: relative;
     transition: all var(--transition-base);
     color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .nav-button:hover {
     color: var(--accent-sym);
+}
+
+.nav-button:focus-visible {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
 }
 
 .unread-badge {
@@ -406,15 +448,23 @@
     justify-content: flex-start;
     border: none;
     background: transparent;
-    padding: var(--spacing-xs);
+    padding: 12px var(--spacing-md);
+    min-height: 44px;
     cursor: pointer;
     color: var(--text-primary);
-    transition: color var(--transition-base);
+    transition: all var(--transition-base);
     font-size: var(--text-base);
+    width: 100%;
 }
 
 .menu-item:hover {
+    background: rgba(255,255,255,0.05);
     color: var(--accent-sym);
+}
+
+.menu-item:focus-visible {
+    background: rgba(255,255,255,0.1);
+    outline: none;
 }
 
 .menu-item.danger {
@@ -449,4 +499,17 @@
     height: 50px;
     border: 2px solid var(--accent-sym);
     border-radius: 50%;
+}
+
+/* ========== MOBILE SAFE AREAS ========== */
+.inbox-overlay {
+    padding-bottom: var(--safe-area-bottom) !important;
+}
+
+.modal-content {
+    margin-bottom: var(--safe-area-bottom) !important;
+}
+
+.global-chat-container {
+    padding-bottom: var(--safe-area-bottom) !important;
 }

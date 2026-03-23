@@ -14,6 +14,7 @@ export interface NetworkLink {
   source: string;
   target: string;
   type: 'sym' | 'asym' | 'drift' | 'collection';
+  strength?: number;
 }
 
 export interface NetworkCollection {
@@ -36,15 +37,21 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
   const [links, setLinks] = useState<NetworkLink[]>([]);
   const [collections, setCollections] = useState<NetworkCollection[]>([]);
   const [loading, setLoading] = useState(false);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [fileOffset, setFileOffset] = useState(0);
   const { showToast } = useToast();
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isLoadMore = false) => {
     if (!currentUserId) return;
-    setLoading(true);
+    if (!isLoadMore) setLoading(true);
+    
     try {
+      const limit = 50;
+      const offset = isLoadMore ? fileOffset + limit : 0;
+
       const [relRes, fileRes, collRes] = await Promise.all([
           fetch('/api/relationships'),
-          fetch('/api/files'),
+          fetch(`/api/files?limit=${limit}&offset=${offset}`),
           fetch('/api/collections')
       ]);
       
@@ -52,30 +59,37 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       const fileData = await fileRes.json();
       const collData = collRes.ok ? await collRes.json() : { collections: [] };
 
-      // Process Collections
-      const loadedCollections: NetworkCollection[] = [];
-      if (collData.collections) {
-          collData.collections.forEach((c: any) => {
-              loadedCollections.push({
-                  id: c.id,
-                  name: c.name,
-                  file_ids: c.file_ids || []
-              });
-          });
-      }
-      setCollections(loadedCollections);
-
       const nodeMap = new Map<string, NetworkNode>();
       const newLinks: NetworkLink[] = [];
 
-      // Add "Me" hub
-      nodeMap.set(currentUserId.toString(), {
-        id: currentUserId.toString(),
-        group: 'me',
-        name: meUsername || 'Me',
-        avatar_url: meAvatarUrl,
-        online: true
-      });
+      if (isLoadMore) {
+          nodes.forEach(n => nodeMap.set(n.id, n));
+          links.forEach(l => newLinks.push(l));
+      }
+
+      if (!isLoadMore) {
+          // Process Collections
+          const loadedCollections: NetworkCollection[] = [];
+          if (collData.collections) {
+              collData.collections.forEach((c: any) => {
+                  loadedCollections.push({
+                      id: c.id,
+                      name: c.name,
+                      file_ids: c.file_ids || []
+                  });
+              });
+          }
+          setCollections(loadedCollections);
+
+          // Add "Me" hub
+          nodeMap.set(currentUserId.toString(), {
+            id: currentUserId.toString(),
+            group: 'me',
+            name: meUsername || 'Me',
+            avatar_url: meAvatarUrl,
+            online: true
+          });
+      }
 
       // Add personal artifacts as nodes linked to "Me"
       if (fileData.files) {
@@ -87,108 +101,130 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
               name: f.filename,
               data: f
             });
-            newLinks.push({ source: fileId, target: currentUserId.toString(), type: 'drift' }); // Using 'drift' type for dotted line look, or create new type 'artifact'
+            if (!newLinks.find(l => l.source === fileId && l.target === currentUserId.toString())) {
+                newLinks.push({ source: fileId, target: currentUserId.toString(), type: 'drift' });
+            }
           });
       }
 
-      // Add Social Nodes
-      const processNode = (r: any, group: NetworkNode['group']) => {
-        if (!nodeMap.has(r.user_id.toString())) {
-          nodeMap.set(r.user_id.toString(), {
-            id: r.user_id.toString(),
-            group,
-            name: r.username,
-            avatar_url: r.avatar_url,
-            online: onlineUserIds.has(r.user_id)
+      if (!isLoadMore) {
+          // Add Social Nodes
+          const processNode = (r: any, group: NetworkNode['group']) => {
+            if (!nodeMap.has(r.user_id.toString())) {
+              nodeMap.set(r.user_id.toString(), {
+                id: r.user_id.toString(),
+                group,
+                name: r.username,
+                avatar_url: r.avatar_url,
+                online: onlineUserIds.has(r.user_id)
+              });
+            }
+          };
+
+          // Outgoing
+          relData.outgoing?.forEach((r: any) => {
+            if (r.type === 'asym_follow' && r.status === 'accepted') {
+              processNode(r, 'asym');
+              newLinks.push({ source: currentUserId.toString(), target: r.user_id.toString(), type: 'asym' });
+            }
           });
-        }
-      };
 
-      // Outgoing
-      relData.outgoing?.forEach((r: any) => {
-        if (r.type === 'asym_follow' && r.status === 'accepted') {
-          processNode(r, 'asym');
-          newLinks.push({ source: currentUserId.toString(), target: r.user_id.toString(), type: 'asym' });
-        }
-      });
+          // Incoming
+          relData.incoming?.forEach((r: any) => {
+            if (r.type === 'asym_follow' && r.status === 'accepted') {
+              processNode(r, 'asym');
+              newLinks.push({ source: r.user_id.toString(), target: currentUserId.toString(), type: 'asym' });
+            }
+          });
 
-      // Incoming
-      relData.incoming?.forEach((r: any) => {
-        if (r.type === 'asym_follow' && r.status === 'accepted') {
-          processNode(r, 'asym');
-          newLinks.push({ source: r.user_id.toString(), target: currentUserId.toString(), type: 'asym' });
-        }
-      });
+          relData.mutual?.forEach((r: any) => {
+            processNode(r, 'sym');
+            newLinks.push({ 
+                source: currentUserId.toString(), 
+                target: r.user_id.toString(), 
+                type: 'sym',
+                strength: r.strength 
+            });
+          });
 
-      relData.mutual?.forEach((r: any) => {
-        processNode(r, 'sym');
-        newLinks.push({ source: currentUserId.toString(), target: r.user_id.toString(), type: 'sym' });
-      });
+          // Drift Logic
+          if (isDrifting && driftData) {
+            driftData.users?.forEach((u: any) => {
+              const uid = u.id.toString();
+              if (!nodeMap.has(uid)) {
+                nodeMap.set(uid, {
+                  id: uid,
+                  group: 'drift_user',
+                  name: u.username,
+                  avatar_url: u.avatar_url,
+                  online: onlineUserIds.has(u.id)
+                });
+              }
+            });
 
-      // Drift Logic
-      if (isDrifting && driftData) {
-        driftData.users?.forEach((u: any) => {
-          const uid = u.id.toString();
-          if (!nodeMap.has(uid)) {
-            nodeMap.set(uid, {
-              id: uid,
-              group: 'drift_user',
-              name: u.username,
-              avatar_url: u.avatar_url,
-              online: onlineUserIds.has(u.id)
+            driftData.files?.forEach((f: any) => {
+                const fileNodeId = `file-${f.id}`;
+                const ownerId = f.user_id.toString();
+
+                if (!nodeMap.has(ownerId)) {
+                    nodeMap.set(ownerId, {
+                        id: ownerId,
+                        group: 'drift_user',
+                        name: f.owner_username || 'Unknown Signal',
+                        online: onlineUserIds.has(f.user_id)
+                    });
+                }
+
+                if (!nodeMap.has(fileNodeId)) {
+                    nodeMap.set(fileNodeId, { id: fileNodeId, group: 'drift_file', name: f.filename, data: f });
+                    newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
+                }
+            });
+
+            driftData.collections?.forEach((col: any) => {
+                const colNodeId = `col-${col.id}`;
+                const ownerId = col.user_id.toString();
+                if (!nodeMap.has(ownerId)) {
+                    nodeMap.set(ownerId, {
+                        id: ownerId,
+                        group: 'drift_user',
+                        name: col.owner_username || 'Unknown',
+                        online: false
+                    });
+                }
+                if (!nodeMap.has(colNodeId)) {
+                    nodeMap.set(colNodeId, { id: colNodeId, group: 'collection', name: col.name, data: col });
+                    newLinks.push({ source: colNodeId, target: ownerId, type: 'drift' });
+                }
             });
           }
-        });
-
-        driftData.files?.forEach((f: any) => {
-            const fileNodeId = `file-${f.id}`;
-            const ownerId = f.user_id.toString();
-
-            // Ensure owner node exists (stub if necessary)
-            if (!nodeMap.has(ownerId)) {
-                nodeMap.set(ownerId, {
-                    id: ownerId,
-                    group: 'drift_user',
-                    name: f.owner_username || 'Unknown Signal',
-                    online: onlineUserIds.has(f.user_id)
-                });
-            }
-
-            if (!nodeMap.has(fileNodeId)) {
-                nodeMap.set(fileNodeId, { id: fileNodeId, group: 'drift_file', name: f.filename, data: f });
-                newLinks.push({ source: fileNodeId, target: ownerId, type: 'drift' });
-            }
-        });
-
-        driftData.collections?.forEach((col: any) => {
-            const colNodeId = `col-${col.id}`;
-            const ownerId = col.user_id.toString();
-            if (!nodeMap.has(ownerId)) {
-                nodeMap.set(ownerId, {
-                    id: ownerId,
-                    group: 'drift_user',
-                    name: col.owner_username || 'Unknown',
-                    online: false
-                });
-            }
-            if (!nodeMap.has(colNodeId)) {
-                nodeMap.set(colNodeId, { id: colNodeId, group: 'collection', name: col.name, data: col });
-                newLinks.push({ source: colNodeId, target: ownerId, type: 'drift' });
-            }
-        });
       }
 
       setNodes(Array.from(nodeMap.values()));
       setLinks(newLinks);
+      if (fileData.total !== undefined) setTotalFiles(fileData.total);
+      if (isLoadMore) setFileOffset(offset);
     } catch (e) {
       console.error(e);
       showToast('Failed to sync filenet', 'error');
     } finally {
       setLoading(false);
     }
-  }, [currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds, showToast]);
+  }, [currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds, showToast, fileOffset, nodes, links]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchData(); }, []);
+
+  return { 
+    nodes, 
+    links, 
+    collections, 
+    loading, 
+    totalFiles,
+    hasMoreFiles: nodes.filter(n => n.group === 'artifact').length < totalFiles,
+    loadMore: () => fetchData(true),
+    refresh: () => { setFileOffset(0); fetchData(false); } 
+  };
+};
 
   return { nodes, links, collections, loading, refresh: fetchData };
 };

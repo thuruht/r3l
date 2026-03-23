@@ -3,6 +3,7 @@ import { useCustomization } from '../context/CustomizationContext';
 import { IconSettings, IconX, IconRefresh, IconWallpaper, IconTrash, IconChevronRight } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 const CustomizationSettings: React.FC = () => {
   const {
@@ -24,6 +25,7 @@ const CustomizationSettings: React.FC = () => {
     mistDensity: theme_preferences.mistDensity || 0.5,
     navOpacity: theme_preferences.navOpacity || 0.8
   });
+  const { isMobile } = useWindowSize();
 
   const DEFAULT_PRIMARY = '#10b981';
   const DEFAULT_SECONDARY = '#8b5cf6';
@@ -115,33 +117,37 @@ const CustomizationSettings: React.FC = () => {
       });
       showToast('Background cleared.', 'info');
   };
-
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        style={{
-          position: 'absolute', bottom: '20px', left: '20px', zIndex: 'var(--z-overlay)',
-          padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
-          color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
-        }}
-        aria-label="Customize Appearance"
-      >
-        <IconSettings size={ICON_SIZES.xl} className="chrome-icon" />
-      </button>
-    );
-  }
-
+if (!isOpen) {
   return (
-    <div className="glass-panel" style={{
-      position: 'absolute',
-      bottom: '60px',
-      left: window.innerWidth < 768 ? '10px' : '20px',
-      right: window.innerWidth < 768 ? '10px' : 'auto',
-      width: window.innerWidth < 768 ? 'auto' : 'min(300px, calc(100vw - 40px))',
+    <button
+      onClick={() => setIsOpen(true)}
+      style={{
+        position: 'absolute', 
+        bottom: 'calc(20px + var(--safe-area-bottom))', 
+        left: '20px', 
+        zIndex: 'var(--z-overlay)',
+        padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
+        color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
+      }}
+      aria-label="Customize Appearance"
+    >
+      <IconSettings size={ICON_SIZES.xl} className="chrome-icon" />
+    </button>
+  );
+}
+
+return (
+  <div className="glass-panel" style={{
+    position: 'absolute',
+    bottom: 'calc(60px + var(--safe-area-bottom))',
+    left: isMobile ? '10px' : '20px',
+...
+
+      right: isMobile ? '10px' : 'auto',
+      width: isMobile ? 'auto' : 'min(300px, calc(100vw - 40px))',
       maxHeight: 'min(80vh, calc(100vh - 130px))',
       overflowY: 'auto',
-      borderRadius: '8px', padding: window.innerWidth < 768 ? '12px' : '16px',
+      borderRadius: '8px', padding: isMobile ? '12px' : '16px',
       zIndex: 'var(--z-overlay)', boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
       display: 'flex', flexDirection: 'column', gap: '16px'
     }}>

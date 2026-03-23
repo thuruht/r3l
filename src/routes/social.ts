@@ -89,7 +89,7 @@ social.get('/relationships', async (c) => {
   try {
     const outgoing = await c.env.DB.prepare('SELECT r.target_user_id as user_id, r.type, r.status, u.username, u.avatar_url FROM relationships r JOIN users u ON r.target_user_id = u.id WHERE r.source_user_id = ?').bind(user_id).all();
     const incoming = await c.env.DB.prepare('SELECT r.source_user_id as user_id, r.type, r.status, u.username, u.avatar_url FROM relationships r JOIN users u ON r.source_user_id = u.id WHERE r.target_user_id = ?').bind(user_id).all();
-    const mutual = await c.env.DB.prepare('SELECT CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END as user_id, u.username, u.avatar_url FROM mutual_connections mc JOIN users u ON (u.id = CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END) WHERE mc.user_a_id = ? OR mc.user_b_id = ?').bind(user_id, user_id, user_id, user_id).all();
+    const mutual = await c.env.DB.prepare('SELECT CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END as user_id, u.username, u.avatar_url, mc.strength FROM mutual_connections mc JOIN users u ON (u.id = CASE WHEN mc.user_a_id = ? THEN mc.user_b_id ELSE mc.user_a_id END) WHERE mc.user_a_id = ? OR mc.user_b_id = ?').bind(user_id, user_id, user_id, user_id).all();
     const toPublicUrl = (u: any) => ({
       ...u,
       avatar_url: (u.avatar_url && typeof u.avatar_url === 'string' && u.avatar_url.startsWith('avatars/'))
@@ -253,7 +253,22 @@ social.post('/groups/:id/files', async (c) => {
     try {
         const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
         if (!file || file.user_id !== user_id) return c.json({ error: 'Unauthorized to share this file' }, 403);
-        await c.env.DB.prepare('INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)').bind(group_id, file_id, user_id, can_edit ? 1 : 0).run();
+        
+        const stmts = [
+            c.env.DB.prepare('INSERT INTO group_files (group_id, file_id, shared_by, can_edit) VALUES (?, ?, ?, ?)').bind(group_id, file_id, user_id, can_edit ? 1 : 0)
+        ];
+
+        // Increment strength with all other group members
+        const members = await c.env.DB.prepare('SELECT user_id FROM group_members WHERE group_id = ? AND user_id != ?').bind(group_id, user_id).all();
+        if (members.results) {
+            members.results.forEach((m: any) => {
+                const userA = Math.min(user_id, m.user_id);
+                const userB = Math.max(user_id, m.user_id);
+                stmts.push(c.env.DB.prepare('UPDATE mutual_connections SET strength = strength + 1 WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB));
+            });
+        }
+
+        await c.env.DB.batch(stmts);
         return c.json({ message: 'Shared' });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

@@ -1,7 +1,7 @@
 // Inbox.tsx
 
-import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
+import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff, IconFile, IconBolt, IconPlugConnected } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
@@ -45,10 +45,7 @@ interface Message {
 }
 
 const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
-  const [activeTab, setActiveTab] = useState<'alerts' | 'messages' | 'requests'>('alerts');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [requests, setRequests] = useState<Conversation[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -59,7 +56,6 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const [loading, setLoading] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   
-  const listRef = useRef<HTMLDivElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
@@ -67,108 +63,63 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
   useOutsideClick(panelRef, onClose);
 
-  useEffect(() => {
-    if (activeTab === 'alerts') {
-      fetchNotifications();
-      fetchConnections();
-    } else {
-      fetchConversations();
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [notifRes, msgRes, relRes] = await Promise.all([
+        fetch('/api/notifications'),
+        fetch('/api/messages/conversations'),
+        fetch('/api/relationships')
+      ]);
+
+      const notifData = await notifRes.json();
+      const msgData = await msgRes.json();
+      const relData = await relRes.json();
+
+      const mutualIds = new Set((relData.mutual || []).map((c: any) => c.user_id));
+      setConnections(relData.mutual || []);
+
+      const notifications = (notifData.notifications || []).map((n: any) => ({
+        ...n,
+        feedType: 'notification',
+        timestamp: new Date(n.created_at).getTime(),
+        payload: typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload
+      }));
+
+      const conversations = (msgData.conversations || []).map((c: any) => ({
+        ...c,
+        feedType: mutualIds.has(c.partner_id) ? 'whisper' : 'request',
+        timestamp: new Date(c.last_message_at).getTime(),
+      }));
+
+      // Merge and sort
+      const merged = [...notifications, ...conversations].sort((a, b) => b.timestamp - a.timestamp);
+      setItems(merged);
+    } catch (err) {
+      console.error(notifRes, msgRes, relRes);
+    } finally {
+      setLoading(false);
     }
-  }, [activeTab]);
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
   useEffect(() => {
     if (activeConversationId) {
       fetchMessages(activeConversationId);
       // Mark as read
       fetch(`/api/messages/${activeConversationId}/read`, { method: 'PUT' })
-        .then(() => fetchConversations()); // Refresh unread counts
+        .then(() => fetchAll()); 
     }
-  }, [activeConversationId]);
+  }, [activeConversationId, fetchAll]);
 
   useEffect(() => {
     if (chatBottomRef.current) {
       chatBottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/notifications');
-      if (res.ok) {
-        const data = await res.json();
-        const parsed = (data.notifications || []).map((n: any) => ({
-          ...n,
-          payload: typeof n.payload === 'string' ? JSON.parse(n.payload) : n.payload
-        }));
-        setNotifications(parsed);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchConnections = async () => {
-      try {
-          const res = await fetch('/api/relationships');
-          if (res.ok) {
-              const data = await res.json();
-              setConnections(data.mutual || []);
-          }
-      } catch (e) { console.error(e); }
-  };
-
-  const fetchConversations = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/messages/conversations');
-      if (res.ok) {
-        const data = await res.json();
-        const allConvos = data.conversations || [];
-
-        // Filter out requests (assuming we had a way to distinguish,
-        // e.g. via connection status or explicit is_request flag in conversation projection.
-        // For now, let's assume we filter by connection status if available,
-        // or check if we have a mutual connection.
-        // Since `api/messages/conversations` doesn't explicitly return `is_request`,
-        // we might need to rely on the filtering client side if we fetch connections.
-
-        // Better approach: Let's assume the conversations endpoint returns minimal info.
-        // We'll separate based on whether they are in `connections` (mutuals).
-
-        // Fetch connections first if empty
-        let currentConnections = connections;
-        if (currentConnections.length === 0) {
-             const relRes = await fetch('/api/relationships');
-             const relData = await relRes.json();
-             currentConnections = relData.mutual || [];
-             setConnections(currentConnections);
-        }
-
-        const mutualIds = new Set(currentConnections.map(c => c.user_id));
-
-        const regConvos: Conversation[] = [];
-        const reqConvos: Conversation[] = [];
-
-        allConvos.forEach((c: Conversation) => {
-            if (mutualIds.has(c.partner_id)) {
-                regConvos.push(c);
-            } else {
-                reqConvos.push(c);
-            }
-        });
-
-        setConversations(regConvos);
-        setRequests(reqConvos);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchMessages = async (partnerId: number) => {
     setChatLoading(true);
@@ -209,20 +160,15 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const sendMessage = async () => {
     if (!newMessage.trim() || !activeConversationId) return;
     try {
-      const partner = conversations.find(c => c.partner_id === activeConversationId);
       let payload: any = { receiver_id: activeConversationId, content: newMessage };
       
       const storedKeys = localStorage.getItem('relf_keys');
-      if (storedKeys && partner) {
+      if (storedKeys) {
         try {
           const { encryptMessageForUser, b64ToBytes, bytesToB64 } = await import('../utils/crypto');
           const partnerKey = await fetch(`/api/users/${activeConversationId}`).then(r => r.json()).then(d => d.user?.public_key);
           if (partnerKey) {
             const { encryptedContent, encryptedKey } = await encryptMessageForUser(newMessage, partnerKey);
-            // In our crypto.ts, encryptedContent already contains iv prepended.
-            // But src/index.ts expects 'iv' field separately for DB storage if it wants to be searchable/filterable by IV (rare but possible)
-            // or just for cleaner schema. 
-            // Let's extract IV from the combined base64 to satisfy the new server schema 'iv' column.
             const combined = b64ToBytes(encryptedContent);
             const iv = bytesToB64(combined.slice(0, 12).buffer);
             
@@ -247,14 +193,13 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       if (res.ok) {
         const optimistic: Message = {
           id: Date.now(),
-          sender_id: activeConversationId, // will be corrected on next fetch
+          sender_id: -1, // sentinel
           receiver_id: activeConversationId,
           content: newMessage,
           created_at: new Date().toISOString(),
           is_encrypted: payload.encrypted_key ? 1 : 0,
         };
-        // sender_id for "me" messages — we don't have currentUser here, use a sentinel
-        setMessages(prev => [...prev, { ...optimistic, sender_id: -1 }]);
+        setMessages(prev => [...prev, optimistic]);
         setNewMessage('');
       } else {
         showToast('Failed to send', 'error');
@@ -267,7 +212,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const markAsRead = async (id: number) => {
     try {
       await fetch(`/api/notifications/${id}/read`, { method: 'PUT' });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: 1 } : n));
+      fetchAll();
     } catch (err) {
       console.error(err);
     }
@@ -277,7 +222,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     try {
       const res = await fetch('/api/notifications/read-all', { method: 'PUT' });
       if (res.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
+        fetchAll();
         showToast('All alerts marked as read.', 'success');
       }
     } catch (err) {
@@ -300,7 +245,6 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         if (res.ok) {
            showToast(action === 'accept' ? 'Connection established.' : 'Request declined.', 'success');
            markAsRead(notif.id);
-           fetchConnections();
         } else {
            const err = await res.json();
            showToast(err.error || `Failed to ${action}`, 'error');
@@ -315,10 +259,20 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       try {
           const res = await fetch(`/api/notifications/${id}`, { method: 'DELETE' });
           if (res.ok) {
-              setNotifications(prev => prev.filter(n => n.id !== id));
+              fetchAll();
           }
       } catch (e) {
           showToast('Error removing notification.', 'error');
+      }
+  };
+
+  const renderNotifIcon = (type: string) => {
+      switch(type) {
+          case 'sym_request': return <IconPlugConnected size={18} color="var(--accent-sym)" />;
+          case 'sym_accepted': return <IconCheck size={18} color="var(--accent-sym)" />;
+          case 'file_shared': return <IconFile size={18} color="var(--accent-sym)" />;
+          case 'system_alert': return <IconBolt size={18} color="var(--accent-alert)" />;
+          default: return <IconBell size={18} color="var(--text-secondary)" />;
       }
   };
 
@@ -366,13 +320,12 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
           if (!isSwiping) return;
           const currentX = e.touches[0].clientX;
           const diff = currentX - startX;
-          // Clamp
           if (diff > 100) setOffsetX(100);
           else if (diff < -100) setOffsetX(-100);
           else setOffsetX(diff);
       };
 
-              const handleTouchEnd = () => {
+      const handleTouchEnd = () => {
           setIsSwiping(false);
           const threshold = Math.min(80, window.innerWidth * 0.2);
           if (offsetX > threshold) {
@@ -400,7 +353,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                       position: 'absolute', inset: 0,
                       background: bg,
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0 20px', borderRadius: '0 4px 4px 0',
+                      padding: '0 20px', borderRadius: '4px',
                       opacity: Math.abs(offsetX) / 100
                   }}
               >
@@ -410,45 +363,30 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
               <div 
                 role="button" tabIndex={0}
                 style={{ 
-                    padding: '10px', 
+                    padding: '12px', 
                     background: n.is_read ? 'transparent' : 'rgba(255,255,255,0.03)',
                     borderLeft: n.is_read ? '2px solid transparent' : '2px solid var(--accent-sym)',
-                    fontSize: '0.9em', borderRadius: '0 4px 4px 0',
+                    fontSize: '0.9em', borderRadius: '4px',
                     transform: `translateX(${offsetX}px)`,
                     transition: isSwiping ? 'none' : 'transform 0.3s ease',
-                    position: 'relative'
+                    position: 'relative',
+                    display: 'flex', gap: '12px', alignItems: 'center'
                 }} 
                 onClick={() => !n.is_read && markAsRead(n.id)}
-                onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && !n.is_read) {
-                        e.preventDefault();
-                        markAsRead(n.id);
-                    }
-                }}
             >
-                <div style={{ marginBottom: '5px' }}>{renderMessage(n)}</div>
-                <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>{new Date(n.created_at).toLocaleTimeString()}</span>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }} style={{ background: 'none', border: 'none', color: '#666' }} aria-label="Delete">
-                        <IconTrash size={ICON_SIZES.xs} />
-                    </button>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {renderNotifIcon(n.type)}
                 </div>
-                {n.type === 'sym_request' && (
-                    <div style={{ marginTop: '5px', display: 'flex', gap: '5px' }}>
-                        <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'accept'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <IconCheck size={ICON_SIZES.xs} /> Accept
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); handleAction(n, 'decline'); }} style={{ fontSize: '0.7em', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
-                            <IconX size={ICON_SIZES.xs} /> Decline
-                        </button>
+                <div style={{ flex: 1 }}>
+                    <div style={{ marginBottom: '5px' }}>{renderMessage(n)}</div>
+                    <div style={{ fontSize: '0.7em', color: '#666', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{new Date(n.created_at).toLocaleTimeString()}</span>
                     </div>
-                )}
+                </div>
             </div>
           </div>
       );
   };
-
-  // --- Render Logic ---
 
   return (
     <div ref={panelRef} className="inbox-overlay fade-in" style={{
@@ -459,75 +397,24 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
     }}>
 
-      {/* Header / Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between' }}>
         {activeConversationId === null ? (
-            <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', flex: 1, minWidth: 0 }} role="tablist" aria-label="Inbox views">
-                <button 
-                    id="tab-alerts"
-                    role="tab"
-                    aria-selected={activeTab === 'alerts'}
-                    aria-controls="panel-alerts"
-                    onClick={() => setActiveTab('alerts')}
-                    style={{ 
-                        background: 'transparent', border: 'none', 
-                        color: activeTab === 'alerts' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: activeTab === 'alerts' ? 'bold' : 'normal',
-                        borderBottom: activeTab === 'alerts' ? '2px solid var(--accent-sym)' : '2px solid transparent',
-                        paddingBottom: '5px',
-                        display: 'flex', alignItems: 'center', gap: '5px'
-                    }}
-                >
-                    <IconBell size={ICON_SIZES.md} aria-hidden="true" /> Alerts
-                </button>
-                <button 
-                    id="tab-messages"
-                    role="tab"
-                    aria-selected={activeTab === 'messages'}
-                    aria-controls="panel-messages"
-                    onClick={() => setActiveTab('messages')}
-                    style={{ 
-                        background: 'transparent', border: 'none', 
-                        color: activeTab === 'messages' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: activeTab === 'messages' ? 'bold' : 'normal',
-                        borderBottom: activeTab === 'messages' ? '2px solid var(--accent-sym)' : '2px solid transparent',
-                        paddingBottom: '5px',
-                        display: 'flex', alignItems: 'center', gap: '5px'
-                    }}
-                >
-                    <IconMessage size={ICON_SIZES.md} aria-hidden="true" /> Signals
-                </button>
-                <button
-                    id="tab-requests"
-                    role="tab"
-                    aria-selected={activeTab === 'requests'}
-                    aria-controls="panel-requests"
-                    onClick={() => setActiveTab('requests')}
-                    style={{
-                        background: 'transparent', border: 'none',
-                        color: activeTab === 'requests' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: activeTab === 'requests' ? 'bold' : 'normal',
-                        borderBottom: activeTab === 'requests' ? '2px solid var(--accent-sym)' : '2px solid transparent',
-                        paddingBottom: '5px',
-                        display: 'flex', alignItems: 'center', gap: '5px'
-                    }}
-                >
-                    <IconUser size={ICON_SIZES.md} aria-hidden="true" /> Reqs
-                    {requests.length > 0 && <span style={{fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 4px', borderRadius: '4px', color: 'black'}}>{requests.length}</span>}
-                </button>
-            </div>
+            <span style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconMessage size={20} /> {"< mail >"}
+            </span>
         ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button onClick={() => setActiveConversationId(null)} style={{ background: 'transparent', border: 'none', padding: 0 }} aria-label="Back">
                     <IconArrowLeft size={ICON_SIZES.lg} />
                 </button>
                 <span style={{ fontWeight: 'bold' }}>
-                    {conversations.find(c => c.partner_id === activeConversationId)?.partner_name || 'Chat'}
+                    {items.find(i => i.partner_id === activeConversationId)?.partner_name || 'Chat'}
                 </span>
             </div>
         )}
         <div style={{ display: 'flex', gap: '5px' }}>
-            {activeTab === 'alerts' && activeConversationId === null && (
+            {activeConversationId === null && (
                 <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', padding: '4px' }} title="Mark all read" aria-label="Mark all read">
                     <IconChecklist size={ICON_SIZES.lg} aria-hidden="true" />
                 </button>
@@ -538,157 +425,59 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         </div>
       </div>
 
-      {/* Content Area */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '10px', position: 'relative' }}>
         
-        {/* === ALERTS TAB === */}
-        {activeTab === 'alerts' && (
-            <div id="panel-alerts" role="tabpanel" aria-labelledby="tab-alerts">
+        {activeConversationId === null ? (
+            <div role="feed" aria-label="Mail Stream">
                 {loading && <div style={{ padding: '10px' }}><Skeleton height="20px" width="100%" marginBottom="10px" /></div>}
                 
-                {!loading && notifications.length === 0 && (
+                {!loading && items.length === 0 && (
                     <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                         <IconBellOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
                         <p style={{ margin: 0, fontSize: '1.1em' }}>Silence...</p>
-                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>No signals detected on this frequency.</p>
+                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The mail stream is empty.</p>
                     </div>
                 )}
 
-                {notifications.map(n => (
-                    <SwipeableNotificationItem key={n.id} n={n} />
-                ))}
-
-                {/* Sym Links Footer */}
-                <div style={{ marginTop: '20px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                    <h5 style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)', fontSize: '0.85em' }}>Sym</h5>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                        {connections.map(c => (
-                            <div key={c.user_id} 
+                {items.map(item => {
+                    if (item.feedType === 'notification') {
+                        return <SwipeableNotificationItem key={`n-${item.id}`} n={item} />;
+                    } else {
+                        const isReq = item.feedType === 'request';
+                        return (
+                            <div key={`c-${item.partner_id}`}
+                                role="button" tabIndex={0}
+                                onClick={() => setActiveConversationId(item.partner_id)}
                                 style={{
-                                    padding: '4px 8px', borderRadius: '4px',
-                                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)',
-                                    fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '8px'
+                                    padding: '12px', borderBottom: '1px solid #ffffff11', cursor: 'pointer',
+                                    background: item.unread_count > 0 ? 'rgba(var(--accent-sym-rgb), 0.1)' : 'transparent',
+                                    display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', borderRadius: '4px'
                                 }}
                             >
-                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: c.avatar_url ? `url(${c.avatar_url}) center/cover` : '#333' }}></div>
-                                <span style={{ fontWeight: 'bold' }}>{c.username}</span>
-                                <div style={{ height: '15px', width: '1px', background: 'var(--border-color)', margin: '0 2px' }}></div>
-                                <button
-                                    onClick={() => onOpenCommunique(c.user_id.toString())}
-                                    style={{ background: 'none', border: 'none', padding: '0', color: 'var(--text-secondary)', cursor: 'pointer' }}
-                                    title="View Profile"
-                                    aria-label={`View profile of ${c.username}`}
-                                >
-                                    <IconUser size={ICON_SIZES.sm} />
-                                </button>
-                                <button
-                                    onClick={() => { setActiveTab('messages'); setActiveConversationId(c.user_id); }}
-                                    style={{ background: 'none', border: 'none', padding: '0', color: 'var(--accent-sym)', cursor: 'pointer' }}
-                                    title="Whisper"
-                                    aria-label={`Whisper to ${c.username}`}
-                                >
-                                    <IconMessage size={ICON_SIZES.sm} />
-                                </button>
+                                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                    {isReq ? <IconUser size={18} color="var(--accent-alert)" /> : <IconMessage size={18} color="var(--accent-sym)" />}
+                                </div>
+                                <div style={{ flex: 1, overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ fontWeight: 'bold', fontSize: '0.95em' }}>{item.partner_name}</span>
+                                        <span style={{ fontSize: '0.75em', color: '#666' }}>{new Date(item.timestamp).toLocaleDateString()}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.85em', color: item.unread_count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {item.last_message_snippet}
+                                    </div>
+                                    {isReq && <div style={{ fontSize: '0.7rem', color: 'var(--accent-alert)' }}>A-Sym Signal</div>}
+                                </div>
+                                {item.unread_count > 0 && (
+                                    <div style={{ background: isReq ? 'var(--accent-alert)' : 'var(--accent-sym)', color: 'black', fontSize: '0.7em', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
+                                        {item.unread_count}
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                        {connections.length === 0 && <span style={{ color: '#555', fontSize: '0.8em' }}>No connections yet.</span>}
-                    </div>
-                </div>
+                        );
+                    }
+                })}
             </div>
-        )}
-
-        {/* === MESSAGES TAB (List) === */}
-        {activeTab === 'messages' && activeConversationId === null && (
-            <div id="panel-messages" role="tabpanel" aria-labelledby="tab-messages">
-                {loading && <div style={{ padding: '10px' }}>Loading signals...</div>}
-                {!loading && conversations.length === 0 && (
-                    <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <IconMessageOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
-                        <p style={{ margin: 0, fontSize: '1.1em' }}>No Active Channels</p>
-                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Initiate a whisper from your Sym connections.</p>
-                    </div>
-                )}
-                {conversations.map(c => (
-                    <div key={c.partner_id}
-                        role="button" tabIndex={0}
-                        onClick={() => setActiveConversationId(c.partner_id)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                setActiveConversationId(c.partner_id);
-                            }
-                        }}
-                        style={{
-                            padding: '12px', borderBottom: '1px solid #ffffff11', cursor: 'pointer',
-                            background: c.unread_count > 0 ? 'rgba(var(--accent-sym-rgb), 0.1)' : 'transparent',
-                            display: 'flex', alignItems: 'center', gap: '10px'
-                        }}
-                    >
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.partner_avatar ? `url(${c.partner_avatar}) center/cover` : '#333', flexShrink: 0 }}></div>
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.95em' }}>{c.partner_name}</span>
-                                <span style={{ fontSize: '0.75em', color: '#666' }}>{new Date(c.last_message_at).toLocaleDateString()}</span>
-                            </div>
-                            <div style={{ fontSize: '0.85em', color: c.unread_count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {c.last_message_snippet}
-                            </div>
-                        </div>
-                        {c.unread_count > 0 && (
-                            <div style={{ background: 'var(--accent-sym)', color: 'black', fontSize: '0.7em', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
-                                {c.unread_count}
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-        )}
-
-        {/* === REQUESTS TAB (List) === */}
-        {activeTab === 'requests' && activeConversationId === null && (
-            <div id="panel-requests" role="tabpanel" aria-labelledby="tab-requests">
-                {loading && <div style={{ padding: '10px' }}>Loading requests...</div>}
-                {!loading && requests.length === 0 && (
-                    <div role="status" style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                        <IconUserOff size={ICON_SIZES['2xl']} stroke={1} style={{ opacity: 0.5 }} />
-                        <p style={{ margin: 0, fontSize: '1.1em' }}>No Signal Requests</p>
-                        <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>The void is quiet.</p>
-                    </div>
-                )}
-                {requests.map(c => (
-                    <div key={c.partner_id}
-                        role="button" tabIndex={0}
-                        onClick={() => setActiveConversationId(c.partner_id)}
-                        style={{
-                            padding: '12px', borderBottom: '1px solid #ffffff11', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '10px'
-                        }}
-                    >
-                         <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: c.partner_avatar ? `url(${c.partner_avatar}) center/cover` : '#333', flexShrink: 0 }}></div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '0.95em' }}>{c.partner_name}</span>
-                                <span style={{ fontSize: '0.75em', color: '#666' }}>{new Date(c.last_message_at).toLocaleDateString()}</span>
-                            </div>
-                             <div style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>
-                                {c.last_message_snippet}
-                            </div>
-                            <div style={{ fontSize: '0.7em', color: 'var(--accent-alert)', marginTop: '2px' }}>
-                                A-Sym (no mutual connection)
-                            </div>
-                        </div>
-                         {c.unread_count > 0 && (
-                            <div style={{ background: 'var(--accent-alert)', color: 'black', fontSize: '0.7em', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
-                                {c.unread_count}
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-        )}
-
-        {/* === CHAT THREAD === */}
-        {(activeTab === 'messages' || activeTab === 'requests') && activeConversationId !== null && (
+        ) : (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingBottom: '10px' }}>
                     {chatLoading && <div>Loading history...</div>}

@@ -23,6 +23,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
 import { ZipViewer } from './ZipViewer';
 import { EpubViewer } from './EpubViewer';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 interface FilePreviewModalProps {
   fileId: string | null;
@@ -95,6 +96,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vitality, setVitality] = useState(0);
+  const [archiveVotes, setArchiveVotes] = useState(0);
   const [ownerId, setOwnerId] = useState<number | null>(null);
   const [boosted, setBoosted] = useState(false);
   const { showToast } = useToast();
@@ -107,6 +109,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [showRemixUpload, setShowRemixUpload] = useState(false);
   const [remixParent, setRemixParent] = useState<{ id: number; filename: string; username: string } | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const { isMobile, w: windowWidth, h: windowHeight } = useWindowSize();
 
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
@@ -121,8 +124,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
   // Window Management
   const { pos, size, handleDragStart, handleResizeStart, isDragging } = useDraggable({
-    initialX: window.innerWidth / 2 - 400,
-    initialY: Math.max(65, window.innerHeight / 2 - 300),
+    initialX: windowWidth / 2 - 400,
+    initialY: Math.max(65, windowHeight / 2 - 300),
     initialW: 800,
     initialH: 600
   });
@@ -411,8 +414,6 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     };
   }, [isEditing, isText, isRichText, fileId, content]);
 
-  const isMobile = window.innerWidth < 768;
-
   const actionButtons = (
       <>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0 var(--spacing-xs)' }}>
@@ -521,7 +522,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
               left: isMobile ? 0 : `${pos.x}px`,
               top: isMobile ? 'var(--header-height)' : `${pos.y}px`,
               width: isMobile ? '100%' : `${size.w}px`,
-              height: isMobile ? 'calc(100% - var(--header-height))' : `${size.h}px`,
+              height: isMobile ? 'calc(100% - var(--header-height) - var(--safe-area-bottom))' : `${size.h}px`,
               maxWidth: '100%',
               maxHeight: '100%',
               display: 'flex',
@@ -608,7 +609,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           </div>
         </div>
 
-        <div style={{ flex: 1, overflow: isPDF ? 'hidden' : 'auto', padding: isPDF ? 0 : '20px', background: 'rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ 
+            flex: 1, 
+            overflow: isPDF ? 'hidden' : 'auto', 
+            padding: isPDF ? 0 : '20px', 
+            paddingBottom: isMobile ? 'calc(20px + var(--safe-area-bottom))' : '20px',
+            background: 'rgba(0,0,0,0.2)', 
+            display: 'flex', 
+            flexDirection: 'column' 
+        }}>
           {loading && <Skeleton height="100%" width="100%" />}
           {error && <div style={{ color: 'var(--accent-alert)', textAlign: 'center' }}>{error}</div>}
           {!loading && !error && (
@@ -712,8 +721,9 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         <div
           onMouseDown={handleResizeStart}
           style={{
-            position: 'absolute', bottom: 0, right: 0, width: '16px', height: '16px',
-            cursor: 'nwse-resize', background: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)'
+            position: 'absolute', bottom: 'var(--safe-area-bottom)', right: 0, width: '16px', height: '16px',
+            cursor: 'nwse-resize', background: 'linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.1) 50%)',
+            display: isMobile ? 'none' : 'block'
           }}
         />
           </motion.div>

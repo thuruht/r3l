@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
+import { useWindowSize } from '../hooks/useWindowSize';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -35,6 +36,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
+  const { isMobile, w: windowWidth } = useWindowSize();
 
   useEffect(() => {
     connectRoom(room);
@@ -105,19 +107,19 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: window.innerWidth < 768 ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-sticky)', overflow: 'hidden' }}>
-      <div style={{ width: window.innerWidth < 768 ? '100%' : '200px', borderRight: window.innerWidth < 768 ? 'none' : '1px solid var(--border-color)', borderBottom: window.innerWidth < 768 ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: window.innerWidth < 768 ? 'auto' : 'visible', display: 'flex', flexDirection: window.innerWidth < 768 ? 'row' : 'column', gap: '10px' }}>
-        {window.innerWidth >= 768 && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
+    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: isMobile ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-sticky)', overflow: 'hidden' }}>
+      <div style={{ width: isMobile ? '100%' : '200px', borderRight: isMobile ? 'none' : '1px solid var(--border-color)', borderBottom: isMobile ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: isMobile ? 'auto' : 'visible', display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '10px' }}>
+        {!isMobile && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
         {ROOMS.map(r => (
           <button
             key={r.name}
             onClick={() => setRoom(r.name)}
             aria-pressed={room === r.name}
             style={{
-              width: window.innerWidth < 768 ? 'auto' : '100%',
+              width: isMobile ? 'auto' : '100%',
               textAlign: 'left',
               padding: '10px',
-              marginBottom: window.innerWidth < 768 ? '0' : '5px',
+              marginBottom: isMobile ? '0' : '5px',
               background: room === r.name ? 'var(--accent-sym)' : 'var(--bg-secondary)',
               border: room === r.name ? '1px solid var(--accent-sym)' : '1px solid transparent',
               borderRadius: '4px',
@@ -138,7 +140,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
             {r.label}
           </button>
         ))}
-        {window.innerWidth < 768 && (
+        {isMobile && (
             <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--accent-alert)' }}>
                 <TablerIcons.IconX />
             </button>
@@ -187,7 +189,15 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '10px', position: 'relative', background: 'var(--bg-color)' }}>
+        <div style={{ 
+            padding: '20px', 
+            paddingBottom: 'calc(20px + var(--safe-area-bottom))',
+            borderTop: '1px solid var(--border-color)', 
+            display: 'flex', 
+            gap: '10px', 
+            position: 'relative', 
+            background: 'var(--bg-color)' 
+        }}>
           {showEmoji && (
             <Suspense fallback={<div>Loading...</div>}>
               <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 'var(--z-dropdown)' }}>
@@ -235,7 +245,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
         </div>
       </div>
 
-      {window.innerWidth >= 1024 && (
+      {windowWidth >= 1024 && (
         <div style={{ width: '200px', borderLeft: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto' }}>
           <h3 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>Online ({online.length})</h3>
           {online.map(u => (

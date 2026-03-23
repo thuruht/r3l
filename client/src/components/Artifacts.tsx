@@ -33,6 +33,10 @@ interface FileData {
 const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [files, setFiles] = useState<FileData[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const LIMIT = 20;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -58,7 +62,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const { showToast } = useToast(); // Added
 
   useEffect(() => {
-    fetchFiles();
+    fetchFiles(true);
   }, [userId]);
 
   useEffect(() => {
@@ -70,25 +74,39 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     }
   }, [files]);
 
-  const fetchFiles = async () => {
-    setLoading(true);
+  const fetchFiles = async (reset = false) => {
+    if (reset) {
+        setLoading(true);
+        setOffset(0);
+    } else {
+        setLoadingMore(true);
+    }
+
     try {
-      let url = '/api/files';
+      const currentOffset = reset ? 0 : offset + LIMIT;
+      let url = `/api/files?limit=${LIMIT}&offset=${currentOffset}`;
       if (!isOwner && userId) {
-          url = `/api/files/users/${userId}`;
+          url = `/api/files/users/${userId}?limit=${LIMIT}&offset=${currentOffset}`;
       }
       
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setFiles(data.files || []);
+        if (reset) {
+            setFiles(data.files || []);
+        } else {
+            setFiles(prev => [...prev, ...(data.files || [])]);
+            setOffset(currentOffset);
+        }
+        setTotal(data.total || 0);
       } else {
-        setFiles([]);
+        if (reset) setFiles([]);
       }
     } catch (err) {
       console.error("Failed to load artifacts", err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -261,9 +279,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
   return (
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
-      <h5 style={{ color: 'var(--text-secondary)', borderBottom: '1px solid #333', paddingBottom: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {files.length > 0 && `(${files.length})`}
-      </h5>
+      <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', marginBottom: '10px' }}>
+        {isOwner && <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>RPC — Private Cache</div>}
+        <h5 style={{ color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {files.length > 0 && `(${files.length})`}
+        </h5>
+      </div>
 
       {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em' }}>{error}</div>}
 

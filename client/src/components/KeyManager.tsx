@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { IconShieldLock, IconDownload, IconRefresh } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
-import { generateRelfKeypair, storeIdentity } from '../utils/crypto';
 import { useToast } from '../context/ToastContext';
 
 const KeyManagement: React.FC<{ userId: number }> = ({ userId }) => {
@@ -14,6 +13,7 @@ const KeyManagement: React.FC<{ userId: number }> = ({ userId }) => {
 
     setLoading(true);
     try {
+      const { generateRelfKeypair, storeIdentity } = await import('../utils/crypto');
       const { publicKey, privateKey } = await generateRelfKeypair();
       
       const res = await fetch('/api/users/me/public-key', {

@@ -56,7 +56,9 @@ messages.post('/', async (c) => {
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
 
   try {
-    const mutual = await c.env.DB.prepare('SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)').bind(Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id), Math.min(sender_id, receiver_id), Math.max(sender_id, receiver_id)).first();
+    const userA = Math.min(sender_id, receiver_id);
+    const userB = Math.max(sender_id, receiver_id);
+    const mutual = await c.env.DB.prepare('SELECT id FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB).first();
     const is_request = mutual ? 0 : 1;
 
     let finalContent = content;
@@ -73,7 +75,15 @@ messages.post('/', async (c) => {
         is_encrypted = 1;
     }
 
-    const { success, meta } = await c.env.DB.prepare('INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, encrypted_key, is_request) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(sender_id, receiver_id, finalContent, is_encrypted, iv, final_encrypted_key, is_request).run();
+    const stmts = [
+        c.env.DB.prepare('INSERT INTO messages (sender_id, receiver_id, content, is_encrypted, iv, encrypted_key, is_request) VALUES (?, ?, ?, ?, ?, ?, ?)').bind(sender_id, receiver_id, finalContent, is_encrypted, iv, final_encrypted_key, is_request)
+    ];
+
+    if (mutual) {
+        stmts.push(c.env.DB.prepare('UPDATE mutual_connections SET strength = strength + 1 WHERE id = ?').bind(mutual.id));
+    }
+
+    const { success } = (await c.env.DB.batch(stmts))[0];
 
     if (success) {
       // Notify Recipient via WebSocket

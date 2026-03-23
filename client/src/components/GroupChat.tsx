@@ -523,20 +523,22 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
               <div style={{ marginBottom: '10px', paddingBottom: '10px', borderBottom: '1px solid var(--border-color)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                   <span style={{ fontSize: '0.85em', color: 'var(--text-secondary)' }}>Shared Files ({groupFiles.length})</span>
-                  {isAdmin && (
-                    <button onClick={() => { fetchUserFiles(); setShowFileShare(true); }} style={{ background: 'none', border: 'none', padding: 0, color: '#10b981ff', cursor: 'pointer' }} aria-label="Share file">
-                      <IconShare size={ICON_SIZES.sm} />
-                    </button>
-                  )}
+                  <button onClick={() => { fetchUserFiles(); setShowFileShare(true); }} style={{ background: 'none', border: 'none', padding: 0, color: '#10b981ff', cursor: 'pointer' }} aria-label="Share file">
+                    <IconShare size={ICON_SIZES.sm} />
+                  </button>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '100px', overflowY: 'auto' }}>
                   {groupFiles.map(f => (
-                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '4px', background: '#ffffff05', borderRadius: '4px', fontSize: '0.8em' }}>
+                    <div key={f.id} className="glass-panel" 
+                      style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: '4px', fontSize: '0.8em', cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
+                      onClick={() => setPreviewFile({ id: f.id, filename: f.filename, mime_type: f.mime_type })}
+                    >
                       <IconFile size={ICON_SIZES.xs} />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.filename}</span>
+                      <IconEye size={ICON_SIZES.xs} color="var(--text-secondary)" />
                       {f.can_edit && <IconEdit size={ICON_SIZES.xs} color="#10b981ff" />}
                       {isAdmin && (
-                        <button onClick={() => removeGroupFile(f.id)} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }}>
+                        <button onClick={(e) => { e.stopPropagation(); removeGroupFile(f.id); }} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }}>
                           <IconTrash size={ICON_SIZES.xs} />
                         </button>
                       )}

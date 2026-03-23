@@ -30,12 +30,20 @@ artifacts.get('/community-archived', async (c) => {
 // GET /api/files: My Files
 artifacts.get('/', async (c) => {
   const user_id = c.get('user_id');
+  const limit = Math.min(Number(c.req.query('limit') || 50), 100);
+  const offset = Number(c.req.query('offset') || 0);
+
   try {
     const { results } = await c.env.DB.prepare(
       `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-       FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC`
-    ).bind(user_id, user_id).all();
-    return c.json({ files: results });
+       FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(user_id, user_id, limit, offset).all();
+
+    const total = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0'
+    ).bind(user_id).first('count');
+
+    return c.json({ files: results, total, limit, offset });
   } catch (e) {
     return c.json({ error: 'Failed to list files' }, 500);
   }
@@ -47,13 +55,21 @@ artifacts.get('/users/:target_user_id', async (c) => {
   const target_user_id = Number(c.req.param('target_user_id'));
   if (isNaN(target_user_id)) return c.json({ error: 'Invalid ID' }, 400);
 
+  const limit = Math.min(Number(c.req.query('limit') || 50), 100);
+  const offset = Number(c.req.query('offset') || 0);
+
   try {
     if (user_id === target_user_id) {
         const { results } = await c.env.DB.prepare(
           `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-           FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC`
-        ).bind(user_id, user_id).all();
-        return c.json({ files: results });
+           FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
+        ).bind(user_id, user_id, limit, offset).all();
+
+        const total = await c.env.DB.prepare(
+          'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0'
+        ).bind(user_id).first('count');
+
+        return c.json({ files: results, total, limit, offset });
     }
 
     const mutual = await c.env.DB.prepare(
@@ -62,13 +78,18 @@ artifacts.get('/users/:target_user_id', async (c) => {
 
     let query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
                  FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.visibility = "public"`;
+    let countQuery = 'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND visibility = "public"';
+    
     if (mutual) {
         query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
                  FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND (f.visibility = "public" OR f.visibility = "sym")`;
+        countQuery = 'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public" OR visibility = "sym")';
     }
 
-    const { results } = await c.env.DB.prepare(query + ' ORDER BY f.created_at DESC').bind(user_id, target_user_id).all();
-    return c.json({ files: results });
+    const { results } = await c.env.DB.prepare(query + ' ORDER BY f.created_at DESC LIMIT ? OFFSET ?').bind(user_id, target_user_id, limit, offset).all();
+    const total = await c.env.DB.prepare(countQuery).bind(target_user_id).first('count');
+
+    return c.json({ files: results, total, limit, offset });
   } catch (e) {
     return c.json({ error: 'Failed to list user files' }, 500);
   }
@@ -221,7 +242,7 @@ artifacts.get('/:id/content', async (c) => {
         body = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
     }
 
-    if (file.burn_on_read) {
+    if (file.burn_on_read && file.user_id !== user_id) {
         c.executionCtx.waitUntil((async () => {
             await c.env.BUCKET.delete(file.r2_key);
             await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
@@ -272,13 +293,29 @@ artifacts.post('/:id/vitality', async (c) => {
   try {
     const existing = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
     if (existing) return c.json({ error: 'Already boosted' }, 409);
-    await c.env.DB.batch([
+    
+    const file = await c.env.DB.prepare('SELECT vitality, user_id, filename FROM files WHERE id = ?').bind(file_id).first() as any;
+    if (!file) return c.json({ error: 'File not found' }, 404);
+
+    const stmts = [
       c.env.DB.prepare('INSERT INTO vitality_votes (file_id, user_id) VALUES (?, ?)').bind(file_id, user_id),
       c.env.DB.prepare("UPDATE files SET vitality = vitality + ?, expires_at = datetime(expires_at, '+' || ? || ' hours') WHERE id = ?").bind(amount, amount, file_id)
-    ]);
-    const file = await c.env.DB.prepare('SELECT vitality, user_id, filename FROM files WHERE id = ?').bind(file_id).first() as any;
-    if (file?.vitality >= 10) await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
-    return c.json({ message: 'Boosted', vitality: file?.vitality });
+    ];
+
+    // If it's a mutual connection boosting, increase relationship strength
+    const userA = Math.min(user_id, file.user_id);
+    const userB = Math.max(user_id, file.user_id);
+    const mutual = await c.env.DB.prepare('SELECT id FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB).first();
+    if (mutual) {
+        stmts.push(c.env.DB.prepare('UPDATE mutual_connections SET strength = strength + 1 WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB));
+    }
+
+    await c.env.DB.batch(stmts);
+    
+    const updatedFile = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first() as any;
+    if (updatedFile?.vitality >= 10) await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
+    
+    return c.json({ message: 'Boosted', vitality: updatedFile?.vitality });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 

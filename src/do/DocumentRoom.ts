@@ -64,10 +64,20 @@ export class DocumentRoom extends DurableObject {
    * webSocketMessage handler (Hibernation API)
    */
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer) {
-    const uint8Message = message instanceof ArrayBuffer ? new Uint8Array(message) : new TextEncoder().encode(message);
+    let uint8Message: Uint8Array;
+    
+    if (message instanceof ArrayBuffer) {
+        uint8Message = new Uint8Array(message);
+    } else if (typeof message === 'string') {
+        uint8Message = new TextEncoder().encode(message);
+    } else {
+        // Handle Blob or other types
+        const buffer = await (message as any).arrayBuffer();
+        uint8Message = new Uint8Array(buffer);
+    }
     
     // Simple protocol check for y-websocket
-    // messageSync = 0
+    // messageSync = 0, messageAwareness = 1
     if (uint8Message[0] === 0) {
         const syncType = uint8Message[1];
         const syncData = uint8Message.subarray(2);
@@ -78,11 +88,13 @@ export class DocumentRoom extends DurableObject {
             ws.send(this.constructSyncMessage(1, update));
         } else if (syncType === 1 || syncType === 2) { // SyncStep2 or Update
             // Apply update to our server-side doc
-            Y.applyUpdate(this.doc, syncData);
-            
-            // Persist to storage (Debounced in a real app, but direct for reliability here)
-            // Cloudflare DO storage is fast.
-            await this.state.storage.put("content", Y.encodeStateAsUpdate(this.doc));
+            try {
+                Y.applyUpdate(this.doc, syncData);
+                // Persist to storage
+                await this.state.storage.put("content", Y.encodeStateAsUpdate(this.doc));
+            } catch (e) {
+                console.error("Yjs update failed:", e);
+            }
         }
     }
 

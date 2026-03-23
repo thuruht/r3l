@@ -18,6 +18,8 @@ interface AssociationWebProps {
   onlineUserIds: Set<number>;
   signal?: any; // New prop for incoming signals
   isLurking?: boolean; // New prop for visual feedback
+  hasMoreFiles?: boolean;
+  onLoadMore?: () => void;
 }
 
 interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
@@ -27,7 +29,7 @@ interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   type: 'sym' | 'asym' | 'drift' | 'collection';
 }
 
-const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal, isLurking }) => {
+const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal, isLurking, hasMoreFiles, onLoadMore }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const { node_primary_color, node_secondary_color, node_size, theme_preferences } = useCustomization();
@@ -299,7 +301,12 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       const linkEnter = linkSelection.enter().append('line');
       const allLinks = linkEnter.merge(linkSelection)
           .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
-          .attr('stroke-width', (d) => d.type === 'sym' ? 2.5 : 1)
+          .attr('stroke-width', (d) => {
+              if (d.type !== 'sym') return 1;
+              const strength = d.strength || 1;
+              // 2.5px base, + log(strength) up to a reasonable cap
+              return Math.min(2.5 + Math.log(strength), 6);
+          })
           .attr('opacity', (d) => d.type === 'sym' ? 0.9 : 0.3) // Sym solid, Asym faint
           .attr('stroke-dasharray', (d) => d.type === 'sym' ? 'none' : '3,5') // Asym dashed
           .attr('marker-end', (d) => d.type === 'asym' ? 'url(#end-asym)' : null)
@@ -477,7 +484,14 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
   // Helpers for Interaction
   const handleMouseOver = (event: any, d: D3Node, allLinks: any, allNodes: any) => {
-      setTooltip({ x: event.clientX, y: event.clientY, content: d.name });
+      let content = d.name;
+      if (d.group === 'artifact' && d.data?.expires_at) {
+          const hoursLeft = (new Date(d.data.expires_at).getTime() - Date.now()) / (1000 * 60 * 60);
+          if (hoursLeft < 48) {
+              content += ` — ⏳ ${hoursLeft < 1 ? '<1h' : Math.floor(hoursLeft) + 'h'} left`;
+          }
+      }
+      setTooltip({ x: event.clientX, y: event.clientY, content });
       const neighbors = new Set<string>();
       allLinks.each((l: D3Link) => {
           if ((l.source as D3Node).id === d.id) neighbors.add((l.target as D3Node).id);
@@ -524,9 +538,39 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
     <div ref={wrapperRef} className="association-web-container" style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <svg ref={svgRef} role="img" aria-label="Network visualization graph"></svg>
       
+      {/* RRC Label */}
+      <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 'var(--z-overlay)', pointerEvents: 'none' }}>
+        <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.8, letterSpacing: '0.1em' }}>RRC</h2>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', opacity: 0.6 }}>Relational Construct</div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ position: 'absolute', bottom: 'calc(20px + var(--safe-area-bottom))', left: '20px', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, pointerEvents: 'none', display: 'flex', gap: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ color: 'var(--accent-sym)' }}>●</span> FRESH</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ opacity: 0.5 }}>●</span> EXPIRING</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ opacity: 0.2, filter: 'blur(1px)' }}>●</span> CRITICAL</div>
+      </div>
+
+      {/* Load More Indicator */}
+      {hasMoreFiles && (
+          <button 
+            onClick={onLoadMore}
+            className="glass-panel"
+            style={{ 
+                position: 'absolute', top: '80px', left: '50%', transform: 'translateX(-50%)',
+                padding: '8px 16px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
+                color: 'var(--accent-sym)', borderRadius: '20px', fontSize: '0.75rem', cursor: 'pointer',
+                zIndex: 'var(--z-overlay)', display: 'flex', alignItems: 'center', gap: '8px',
+                textTransform: 'uppercase', letterSpacing: '0.05em'
+            }}
+          >
+            <IconPlus size={14} /> Scan Deeper (Load More Nodes)
+          </button>
+      )}
+
       {/* Zoom Controls */}
       <div style={{
-          position: 'absolute', bottom: '20px', right: '20px', zIndex: 'var(--z-overlay)',
+          position: 'absolute', bottom: 'calc(20px + var(--safe-area-bottom))', right: '20px', zIndex: 'var(--z-overlay)',
           display: 'flex', flexDirection: 'column', gap: '8px'
       }}>
           <button 

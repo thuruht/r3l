@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { IconArchive, IconX } from '@tabler/icons-react';
+import { IconArchive, IconX, IconEye, IconDownload } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 import Skeleton from './Skeleton';
+import FilePreviewModal from './FilePreviewModal';
 
 interface ArchiveVoteProps {
   onClose: () => void;
@@ -11,6 +12,7 @@ interface ArchiveVoteProps {
 const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
   const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<any>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -62,7 +64,7 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
 
         <div style={{ display: 'grid', gap: '10px' }}>
           {files.map(f => (
-            <div key={f.id} style={{ padding: '15px', background: '#ffffff0a', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+            <div key={f.id} className="glass-panel" style={{ padding: '15px', borderRadius: '8px', border: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                 <div style={{ flex: 1 }}>
                   <h4 style={{ margin: '0 0 5px 0', color: 'var(--text-primary)' }}>{f.filename}</h4>
@@ -74,13 +76,42 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
                   ARCHIVED
                 </div>
               </div>
-              <a href={`/api/files/${f.id}/content`} download style={{ color: 'var(--accent-sym)', fontSize: '0.9em' }}>
-                Download
-              </a>
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <button 
+                  onClick={() => setPreviewFile(f)}
+                  className="text-btn"
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem' }}
+                >
+                  <IconEye size={16} /> Preview
+                </button>
+                <a 
+                  href={`/api/files/${f.id}/content`} 
+                  download 
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-sym)', fontSize: '0.9rem', textDecoration: 'none' }}
+                >
+                  <IconDownload size={16} /> Download
+                </a>
+              </div>
             </div>
           ))}
         </div>
       </div>
+      {previewFile && (
+        <FilePreviewModal
+          fileId={previewFile.id.toString()}
+          filename={previewFile.filename}
+          mimeType={previewFile.mime_type}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => {
+            const link = document.createElement('a');
+            link.href = `/api/files/${previewFile.id}/content`;
+            link.download = previewFile.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }}
+        />
+      )}
     </div>
   );
 };

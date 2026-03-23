@@ -271,7 +271,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
     <div className="modal-overlay fade-in" onClick={onClose} style={{ zIndex: 'var(--z-modal)' }}>
       <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', maxHeight: '85vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-          <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>Settings</h2>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>R3C — Your Cache</div>
+            <h2 style={{ margin: 0, color: 'var(--accent-sym)' }}>Settings</h2>
+          </div>
           <button onClick={onClose} className="icon-btn"><IconX size={24} /></button>
         </div>
 

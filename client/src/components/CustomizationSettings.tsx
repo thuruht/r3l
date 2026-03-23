@@ -141,8 +141,6 @@ return (
     position: 'absolute',
     bottom: 'calc(60px + var(--safe-area-bottom))',
     left: isMobile ? '10px' : '20px',
-...
-
       right: isMobile ? '10px' : 'auto',
       width: isMobile ? 'auto' : 'min(300px, calc(100vw - 40px))',
       maxHeight: 'min(80vh, calc(100vh - 130px))',

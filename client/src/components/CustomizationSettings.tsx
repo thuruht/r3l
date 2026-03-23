@@ -117,32 +117,31 @@ const CustomizationSettings: React.FC = () => {
       });
       showToast('Background cleared.', 'info');
   };
-if (!isOpen) {
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        style={{
+          position: 'absolute', 
+          bottom: 'calc(20px + var(--safe-area-bottom))', 
+          left: '20px', 
+          zIndex: 'var(--z-overlay)',
+          padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
+          color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
+        }}
+        aria-label="Customize Appearance"
+      >
+        <IconSettings size={ICON_SIZES.xl} className="chrome-icon" />
+      </button>
+    );
+  }
+
   return (
-    <button
-      onClick={() => setIsOpen(true)}
-      style={{
-        position: 'absolute', 
-        bottom: 'calc(20px + var(--safe-area-bottom))', 
-        left: '20px', 
-        zIndex: 'var(--z-overlay)',
-        padding: '8px', background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
-        color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer'
-      }}
-      aria-label="Customize Appearance"
-    >
-      <IconSettings size={ICON_SIZES.xl} className="chrome-icon" />
-    </button>
-  );
-}
-
-return (
-  <div className="glass-panel" style={{
-    position: 'absolute',
-    bottom: 'calc(60px + var(--safe-area-bottom))',
-    left: isMobile ? '10px' : '20px',
-...
-
+    <div className="glass-panel" style={{
+      position: 'absolute',
+      bottom: 'calc(60px + var(--safe-area-bottom))',
+      left: isMobile ? '10px' : '20px',
       right: isMobile ? '10px' : 'auto',
       width: isMobile ? 'auto' : 'min(300px, calc(100vw - 40px))',
       maxHeight: 'min(80vh, calc(100vh - 130px))',

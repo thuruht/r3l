@@ -225,6 +225,3 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     refresh: () => { setFileOffset(0); fetchData(false); } 
   };
 };
-
-  return { nodes, links, collections, loading, refresh: fetchData };
-};

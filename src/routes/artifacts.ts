@@ -92,8 +92,21 @@ artifacts.post('/', async (c) => {
     if (!file || !(file instanceof File)) return c.json({ error: 'Invalid format' }, 400);
 
     const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 200);
-    // Explicitly prevent any path traversal by ignoring user directory structure
     const r2_key = `${user_id}/${crypto.randomUUID()}-${safeFilename.replace(/\//g, '_')}`;
+    
+    let body = await file.arrayBuffer();
+    let size = body.byteLength;
+    let is_encrypted = 0;
+    let iv: string | null = null;
+
+    if (shouldEncrypt && c.env.ENCRYPTION_SECRET) {
+      const ivBytes = crypto.getRandomValues(new Uint8Array(12));
+      iv = Array.from(ivBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+      body = await encryptData(body, iv, c.env.ENCRYPTION_SECRET);
+      size = body.byteLength;
+      is_encrypted = 1;
+    }
+
     await c.env.BUCKET.put(r2_key, body, {
       httpMetadata: { contentType: file.type || 'application/octet-stream' },
       customMetadata: { originalName: safeFilename, userId: String(user_id), isEncrypted: String(is_encrypted) }

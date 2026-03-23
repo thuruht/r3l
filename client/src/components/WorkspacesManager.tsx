@@ -217,7 +217,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Collaborative Workspaces">
+    <div className="workspaces-container" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ 
           minHeight: '400px', 
           display: 'flex', 
@@ -420,7 +420,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
           }}
         />
       )}
-    </Modal>
+    </div>
   );
 };
 

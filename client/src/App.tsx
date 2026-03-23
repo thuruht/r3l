@@ -60,6 +60,20 @@ function Main() {
   const [driftData, setDriftData] = useState<{ users: any[]; files: any[]; collections: any[] }>({ users: [], files: [], collections: [] });
   const [viewMode, setViewMode] = useState<'graph' | 'list'>('graph');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const closeAllDrawers = () => {
+    setIsInboxOpen(false);
+    setIsPlanetsOpen(false);
+    setIsGlobalChatOpen(false);
+    setIsArchiveOpen(false);
+    setIsFAQOpen(false);
+    setIsAboutOpen(false);
+    setIsAdminOpen(false);
+    setIsCollectionsOpen(false);
+    setIsFeedbackOpen(false);
+    setIsSettingsOpen(false);
+    setIsMenuOpen(false);
+  };
   const menuRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [groupUnreadCount, setGroupUnreadCount] = useState(0);
@@ -396,7 +410,7 @@ function Main() {
           <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
             <div className="header-content">
               <div className="header-left">
-                <h2 className="header-logo" onClick={() => navigate('/')}>REL F <span className="header-logo-beta">BETA</span></h2>
+                <h2 className="header-logo" onClick={() => { closeAllDrawers(); navigate('/'); }}>REL F <span className="header-logo-beta">BETA</span></h2>
                 <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                   <SearchBar />
                   <RandomUserButton />
@@ -426,20 +440,20 @@ function Main() {
                         </button>
                       )}
                     </div>
-                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
+                    <button onClick={() => { const wasOpen = isInboxOpen; closeAllDrawers(); setIsInboxOpen(!wasOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
                       {"< mail >"}
                       {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                     </button>
-                    <button onClick={() => setIsPlanetsOpen(!isPlanetsOpen)} className="nav-button" aria-label="Planets">
+                    <button onClick={() => { const wasOpen = isPlanetsOpen; closeAllDrawers(); setIsPlanetsOpen(!wasOpen); }} className="nav-button" aria-label="Planets">
                       {"< planets >"}
                       {groupUnreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                     </button>
-                    <button onClick={() => setIsGlobalChatOpen(!isGlobalChatOpen)} className="nav-button" aria-label="Global Chat">
+                    <button onClick={() => { const wasOpen = isGlobalChatOpen; closeAllDrawers(); setIsGlobalChatOpen(!wasOpen); }} className="nav-button" aria-label="Global Chat">
                       {"< galaxy >"}
                     </button>
                   </div>
                   {/* Mobile: inbox badge button */}
-                  <button className="mobile-only nav-button" onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
+                  <button className="mobile-only nav-button" onClick={() => { const wasOpen = isInboxOpen; closeAllDrawers(); setIsInboxOpen(!wasOpen); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
                     <TablerIcons.IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                   </button>
@@ -476,19 +490,19 @@ function Main() {
               <button onClick={() => { navigate(`/communique/${currentUser?.id}`); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconUser size={ICON_SIZES.lg} /> My Cache (R3C)
               </button>
-              <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { closeAllDrawers(); setIsArchiveOpen(true); }} className="menu-item">
                 <TablerIcons.IconChartCircles size={ICON_SIZES.lg} /> Community Archive
               </button>
-              <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { closeAllDrawers(); setIsCollectionsOpen(true); }} className="menu-item">
                 <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
-              <button onClick={() => { setIsInboxOpen(true); setUnreadCount(0); setIsPlanetsOpen(false); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { closeAllDrawers(); setIsInboxOpen(true); setUnreadCount(0); }} className="menu-item">
                 <TablerIcons.IconMessage size={ICON_SIZES.lg} /> {"< mail >"} {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
               </button>
-              <button onClick={() => { setIsPlanetsOpen(true); setIsInboxOpen(false); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { closeAllDrawers(); setIsPlanetsOpen(true); }} className="menu-item">
                 <TablerIcons.IconPlanet size={ICON_SIZES.lg} /> {"< planets >"} {groupUnreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{groupUnreadCount}</span>}
               </button>
-              <button onClick={() => { setIsGlobalChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { closeAllDrawers(); setIsGlobalChatOpen(true); }} className="menu-item">
                 <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> {"< galaxy >"}
               </button>
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">

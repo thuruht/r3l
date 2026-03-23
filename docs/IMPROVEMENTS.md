@@ -607,3 +607,90 @@ This is a meaningful privacy feature — it protects against accidental or coerc
 ---
 
 *These recommendations are drawn directly from `rel_old_beta_slash_wiki_slash_proposal.html`. They represent the founding intent of the project and should be treated as first-class features, not nice-to-haves.*
+
+
+---
+
+# APPENDIX: Implementation Progress
+
+*Started: Current Session*
+*Goal: Complete highest-impact technical improvements + spirit realignment items*
+
+## Session Log
+
+### Phase 1: Code Splitting (Item #1)
+**Status**: ✅ COMPLETE
+
+#### Step 1.1: Convert heavy components to React.lazy()
+- [x] CollectionsManager
+- [x] WorkspacesManager  
+- [x] AdminDashboard
+- [x] GroupChat
+- [x] GlobalChat
+- [x] ArchiveVote
+- [x] FeedbackModal
+- [x] FAQ
+- [x] About
+- [x] PrivacyPolicy
+
+#### Step 1.2: Add Suspense wrappers
+- [x] Wrap all lazy components in App.tsx
+
+#### Step 1.3: Configure Vite manual chunks
+- [x] Add manualChunks to vite.config.ts
+- [x] Test build output
+
+**Results**:
+- Main bundle: 5,019 KB → 3,976 KB (1,043 KB reduction, ~21%)
+- Vendor chunks created: d3 (63KB), gsap (71KB), yjs (103KB), plyr (114KB), react-vendor (179KB), codemirror (403KB)
+- Total chunks: 24 (up from 3)
+- Initial load now only downloads main + react-vendor + necessary chunks
+- Lazy-loaded modals (GroupChat, GlobalChat, Collections, etc.) only download when opened
+
+**Deployed**: Version 30d6bec9-7898-4905-9809-99027d0461e9
+
+---
+
+### Phase 2: Fix crypto.ts Import Conflict (Item #2)
+**Status**: NOT STARTED
+
+---
+
+### BUGFIX: File Edit Blank Content + D3 Hull Error
+**Status**: ✅ COMPLETE
+
+**Issue**: When clicking "Edit" on a text file, CodeMirror showed a single blank line and threw "Unexpected end of array" error from D3's polygonHull.
+
+**Root Cause**: 
+1. Yjs collaborative editing setup was starting before file content finished loading (race condition)
+2. D3 polygonHull had insufficient error handling for edge cases (collinear points, empty arrays)
+
+**Fix**:
+1. Added guard in `FilePreviewModal.tsx` to defer Yjs setup until `content !== null`
+2. Added `content` to useEffect dependencies so collab retries when content loads
+3. Wrapped `d3.polygonHull()` in try-catch with hull length validation in `AssociationWeb.tsx`
+
+**Files Modified**:
+- `client/src/components/FilePreviewModal.tsx`
+- `client/src/components/AssociationWeb.tsx`
+
+**Deployed**: Version 30d6bec9-7898-4905-9809-99027d0461e9
+
+---
+
+### Phase 3: Spirit Realignment - Brand Voice (Item R9)
+**Status**: NOT STARTED
+
+---
+
+### Phase 4: Connection Strength Tracking (Item R2)
+**Status**: NOT STARTED
+
+---
+
+### Phase 5: Organic Connection Prompts (Item R3)
+**Status**: NOT STARTED
+
+---
+
+*Progress will be updated as each phase completes.*

@@ -5,21 +5,23 @@ import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
-import GroupChat from './components/GroupChat';
 import CommuniquePage from './components/CommuniquePage';
-import About from './components/About';
-import FAQ from './components/FAQ';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import AdminDashboard from './components/AdminDashboard';
 import VerifyEmail from './components/VerifyEmail';
 import ResetPassword from './components/ResetPassword';
-import CollectionsManager from './components/CollectionsManager';
-import WorkspacesManager from './components/WorkspacesManager';
-import FeedbackModal from './components/FeedbackModal';
 import FilePreviewModal from './components/FilePreviewModal';
-import GlobalChat from './components/GlobalChat';
 import LandingPage from './components/LandingPage';
-import ArchiveVote from './components/ArchiveVote';
+
+// Lazy-loaded heavy components
+const GroupChat = React.lazy(() => import('./components/GroupChat'));
+const About = React.lazy(() => import('./components/About'));
+const FAQ = React.lazy(() => import('./components/FAQ'));
+const PrivacyPolicy = React.lazy(() => import('./components/PrivacyPolicy'));
+const AdminDashboard = React.lazy(() => import('./components/AdminDashboard'));
+const CollectionsManager = React.lazy(() => import('./components/CollectionsManager'));
+const WorkspacesManager = React.lazy(() => import('./components/WorkspacesManager'));
+const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
+const GlobalChat = React.lazy(() => import('./components/GlobalChat'));
+const ArchiveVote = React.lazy(() => import('./components/ArchiveVote'));
 import { useOutsideClick } from './hooks/useOutsideClick';
 import SettingsPage from './pages/SettingsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -495,16 +497,16 @@ function Main() {
             </div>
           )}
 
-          {isFAQOpen && <FAQ onClose={() => setIsFAQOpen(false)} />}
-          {isAboutOpen && <About onClose={() => setIsAboutOpen(false)} />}
-          {isAdmin && isAdminOpen && <AdminDashboard onClose={() => setIsAdminOpen(false)} />}
+          {isFAQOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense>}
+          {isAboutOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense>}
+          {isAdmin && isAdminOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense>}
           {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-          {isGroupChatOpen && <GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} />}
-          {isGlobalChatOpen && <GlobalChat onClose={() => setIsGlobalChatOpen(false)} />}
-          {isArchiveOpen && <ArchiveVote onClose={() => setIsArchiveOpen(false)} />}
-          {isCollectionsOpen && <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />}
-          {isWorkspacesOpen && <WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} />}
-          {isFeedbackOpen && <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />}
+          {isGroupChatOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><GroupChat onClose={() => setIsGroupChatOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} /></React.Suspense>}
+          {isGlobalChatOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><GlobalChat onClose={() => setIsGlobalChatOpen(false)} /></React.Suspense>}
+          {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
+          {isCollectionsOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}
+          {isWorkspacesOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} /></React.Suspense>}
+          {isFeedbackOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense>}
           {isSettingsOpen && currentUser && (
             <SettingsPage
               onClose={() => setIsSettingsOpen(false)}

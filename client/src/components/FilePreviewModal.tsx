@@ -347,6 +347,12 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
     let currentDoc: Y.Doc | null = null;
 
     if (isEditing && (isText || isRichText)) {
+       // Guard: don't start collab until content is loaded
+       if (content === null) {
+           console.warn('Content not loaded yet, deferring collab setup');
+           return;
+       }
+       
        setCollabStatus('connecting');
        const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
@@ -403,7 +409,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         if (currentProvider) currentProvider.destroy();
         if (currentDoc) currentDoc.destroy();
     };
-  }, [isEditing, isText, isRichText, fileId]);
+  }, [isEditing, isText, isRichText, fileId, content]);
 
   const isMobile = window.innerWidth < 768;
 

@@ -457,8 +457,13 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
                   .merge(hulls as any)
                   .attr('d', (d: any) => {
                       if (!d.points || d.points.length < 3) return null;
-                      const hull = d3.polygonHull(d.points);
-                      return hull ? `M${hull.join('L')}Z` : null;
+                      try {
+                          const hull = d3.polygonHull(d.points);
+                          return hull && hull.length >= 3 ? `M${hull.join('L')}Z` : null;
+                      } catch (e) {
+                          console.warn('Hull generation failed:', e);
+                          return null;
+                      }
                   })
                   .attr('fill', node_primary_color)
                   .attr('fill-opacity', 0.1)

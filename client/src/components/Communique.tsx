@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation } from '@tabler/icons-react'; // Added icons
-import { sanitizeHTML } from '../utils/sanitize';
+import { sanitizeHTML, sanitizeCSS } from '../utils/sanitize';
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
@@ -308,7 +308,13 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
     const getRenderCSS = () => {
       try {
           const prefs = JSON.parse(data.theme_prefs || '{}');
-          return prefs.custom_css || '';
+          const css = prefs.custom_css || '';
+          // Strip dangerous patterns: javascript:, expression(), @import, url() with non-data schemes
+          return css
+            .replace(/javascript\s*:/gi, '')
+            .replace(/expression\s*\(/gi, '')
+            .replace(/@import\b/gi, '')
+            .replace(/url\s*\(\s*(?!["']?data:)[^)]*\)/gi, 'url()');
       } catch (e) { return ''; }
   };
 
@@ -328,7 +334,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
     <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>
       {/* Inject Scoped Styles via sandboxed iframe to prevent page-level CSS injection */}
       {getRenderCSS() && (
-        <style>{getRenderCSS()}</style>
+        <style>{sanitizeCSS(getRenderCSS())}</style>
       )}
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>

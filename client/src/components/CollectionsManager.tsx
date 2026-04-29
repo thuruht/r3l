@@ -130,9 +130,10 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
           if (res.ok) {
               const blob = await res.blob();
               const url = window.URL.createObjectURL(blob);
+              const safeName = String(selectedCollection.name).replace(/[^\w.\-_ ]/g, '_');
               const a = document.createElement('a');
               a.href = url;
-              a.download = `${selectedCollection.name}.zip`;
+              a.download = `${safeName}.zip`;
               document.body.appendChild(a);
               a.click();
               window.URL.revokeObjectURL(url);

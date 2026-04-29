@@ -103,9 +103,11 @@ const ArchiveVote: React.FC<ArchiveVoteProps> = ({ onClose }) => {
           mimeType={previewFile.mime_type}
           onClose={() => setPreviewFile(null)}
           onDownload={() => {
+            const safeId = encodeURIComponent(String(previewFile.id));
+            const safeFilename = String(previewFile.filename).replace(/[^\w.\-_ ]/g, '_');
             const link = document.createElement('a');
-            link.href = `/api/files/${previewFile.id}/content`;
-            link.download = previewFile.filename;
+            link.href = `/api/files/${safeId}/content`;
+            link.download = safeFilename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

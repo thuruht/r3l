@@ -19,6 +19,22 @@ const ALLOWED_ATTRS: Record<string, Set<string>> = {
 const SAFE_URL = /^(https?:|mailto:|\/|#)/i;
 const URL_ATTRS = new Set(['href', 'src']);
 
+/**
+ * Sanitizes user-provided CSS to prevent XSS via expression(), javascript: urls,
+ * data: urls, and other dangerous constructs.
+ */
+export const sanitizeCSS = (css: string): string => {
+  if (!css) return '';
+  return css
+    .replace(/expression\s*\(/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/vbscript\s*:/gi, '')
+    .replace(/@import\b/gi, '')
+    .replace(/behavior\s*:/gi, '')
+    .replace(/-moz-binding\s*:/gi, '')
+    .replace(/url\s*\(\s*["']?\s*(?:javascript|data|vbscript):/gi, 'url(');
+};
+
 export const sanitizeHTML = (html: string): string => {
   if (!html) return '';
 

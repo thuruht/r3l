@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { checkRateLimit, getR2PublicUrl } from '../utils/helpers';
 
-const discovery = new Hono<{ Bindings: Env, Variables: Variables }>();
+const discovery = new Hono<any>();
 
 discovery.get('/drift', async (c) => {
     if (!await checkRateLimit(c, 'drift', 20, 600)) return c.json({ error: 'Too fast' }, 429);

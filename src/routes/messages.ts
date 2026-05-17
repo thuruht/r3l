@@ -22,8 +22,11 @@ messages.get('/conversations', async (c) => {
       WHERE m.sender_id = ? OR m.receiver_id = ?
       GROUP BY partner_id
       ORDER BY last_message_at DESC
+      LIMIT ? OFFSET ?
     `;
-    const { results } = await c.env.DB.prepare(query).bind(user_id, user_id, user_id, user_id, user_id).all();
+    const limit = Math.min(Number(c.req.query('limit') || 50), 100);
+    const offset = Number(c.req.query('offset') || 0);
+    const { results } = await c.env.DB.prepare(query).bind(user_id, user_id, user_id, user_id, user_id, limit, offset).all();
     return c.json({ conversations: results.map((conv: any) => ({ ...conv, partner_avatar: (conv.partner_avatar?.startsWith('avatars/')) ? getR2PublicUrl(c.env, conv.partner_avatar) : conv.partner_avatar })) });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
@@ -31,8 +34,11 @@ messages.get('/conversations', async (c) => {
 messages.get('/:partner_id', async (c) => {
   const user_id = c.get('user_id');
   const partner_id = Number(c.req.param('partner_id'));
+  const limit = Math.min(Number(c.req.query('limit') || 100), 100);
+  const offset = Number(c.req.query('offset') || 0);
   try {
-    const { results } = await c.env.DB.prepare('SELECT * FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at ASC LIMIT 100').bind(user_id, partner_id, partner_id, user_id).all();
+    const { results } = await c.env.DB.prepare('SELECT * FROM messages WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?) ORDER BY created_at DESC LIMIT ? OFFSET ?').bind(user_id, partner_id, partner_id, user_id, limit, offset).all();
+    results.reverse(); // Return in ascending order for UI
     
     const decryptedResults = await Promise.all(results.map(async (msg: any) => {
         if (msg.is_encrypted && msg.iv && c.env.ENCRYPTION_SECRET) {

@@ -105,8 +105,10 @@ social.get('/relationships', async (c) => {
 
 social.get('/notifications', async (c) => {
   const user_id = c.get('user_id');
+  const limit = Math.min(Number(c.req.query('limit') || 50), 100);
+  const offset = Number(c.req.query('offset') || 0);
   try {
-    const { results } = await c.env.DB.prepare('SELECT n.*, u.username as actor_name, u.avatar_url as actor_avatar FROM notifications n LEFT JOIN users u ON n.actor_id = u.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 50').bind(user_id).all();
+    const { results } = await c.env.DB.prepare('SELECT n.*, u.username as actor_name, u.avatar_url as actor_avatar FROM notifications n LEFT JOIN users u ON n.actor_id = u.id WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT ? OFFSET ?').bind(user_id, limit, offset).all();
     return c.json({ notifications: results });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

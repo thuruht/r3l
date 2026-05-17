@@ -19,7 +19,7 @@ const CommuniquePage: React.FC<CommuniquePageProps> = ({ currentUser, onUpdateUs
   }
 
   // Determine if the viewed communique belongs to the current user
-  const isOwner = currentUser?.id?.toString() === userId;
+  const isOwner = currentUser?.id === Number(userId);
 
   return (
     <div style={{
@@ -44,8 +44,8 @@ const CommuniquePage: React.FC<CommuniquePageProps> = ({ currentUser, onUpdateUs
 
             <div style={{ marginTop: '50px' }}> {/* Offset for back button */}
                 <Communique
-                    userId={userId}
-                    isOwner={isOwner}
+                    userId={Number(userId)}
+
                     currentUser={currentUser}
                     onUpdateUser={onUpdateUser}
                 />

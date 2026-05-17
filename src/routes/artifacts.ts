@@ -5,11 +5,14 @@ import { checkRateLimit, getR2PublicUrl } from '../utils/helpers';
 import { encryptData, decryptData } from '../utils/security';
 import { broadcastSignal, createNotification } from '../utils/notifications';
 
-const artifacts = new Hono<{ Bindings: Env, Variables: Variables }>();
+const artifacts = new Hono<any>();
 
 // GET /api/files/community-archived
 artifacts.get('/community-archived', async (c) => {
   const type = c.req.query('type');
+  const limit = Math.min(Number(c.req.query('limit') || 100), 100);
+  const offset = Number(c.req.query('offset') || 0);
+
   let query = `SELECT f.id, f.filename, f.mime_type, f.archive_votes, u.username as owner_name
                FROM files f JOIN users u ON f.user_id = u.id
                WHERE f.is_community_archived = 1 AND f.is_archived = 1`;
@@ -18,7 +21,8 @@ artifacts.get('/community-archived', async (c) => {
     query += ' AND f.mime_type LIKE ?';
     params.push(`${type}/%`);
   }
-  query += ' ORDER BY f.archive_votes DESC LIMIT 100';
+  query += ' ORDER BY f.archive_votes DESC LIMIT ? OFFSET ?';
+  params.push(limit, offset);
   try {
     const { results } = await c.env.DB.prepare(query).bind(...params).all();
     return c.json({ files: results });
@@ -123,7 +127,8 @@ artifacts.post('/', async (c) => {
     if (shouldEncrypt && c.env.ENCRYPTION_SECRET) {
       const ivBytes = crypto.getRandomValues(new Uint8Array(12));
       iv = Array.from(ivBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-      body = await encryptData(body, iv, c.env.ENCRYPTION_SECRET);
+      const { encrypted } = await encryptData(body, c.env.ENCRYPTION_SECRET);
+      body = encrypted;
       size = body.byteLength;
       is_encrypted = 1;
     }
@@ -317,6 +322,29 @@ artifacts.post('/:id/vitality', async (c) => {
     
     return c.json({ message: 'Boosted', vitality: updatedFile?.vitality });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+
+// POST /api/files/:id/share
+artifacts.post('/:id/share', async (c) => {
+  const user_id = c.get('user_id');
+  const file_id = Number(c.req.param('id'));
+  const { target_user_id } = await c.req.json();
+
+  if (!target_user_id) return c.json({ error: 'Missing target_user_id' }, 400);
+
+  try {
+    // Verify file exists and user has access
+    const file = await c.env.DB.prepare('SELECT id, filename FROM files WHERE id = ? AND (user_id = ? OR visibility = "public" OR visibility = "sym")').bind(file_id, user_id).first() as any;
+    if (!file) return c.json({ error: 'File not found or access denied' }, 404);
+
+    // Create notification for target user
+    await createNotification(c.env, c.env.DB, target_user_id, 'file_shared', user_id, { file_id, filename: file.filename });
+
+    return c.json({ message: 'File shared successfully' });
+  } catch (e) {
+    return c.json({ error: 'Failed to share file' }, 500);
+  }
 });
 
 // POST /api/files/:id/remix

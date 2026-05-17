@@ -34,8 +34,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         })
         .then(data => setStats(data))
         .catch(err => {
-            console.error(String(err.message).replace(/[
-	]/g, ' '));
+            console.error(String(err.message).replace(/[\n\r\t]/g, ' '));
             setErrorMsg(err.message);
         })
         .finally(() => setLoading(false));
@@ -50,8 +49,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         })
         .then(data => setUsers(data.users || []))
         .catch(err => {
-            console.error(String(err.message).replace(/[
-	]/g, ' '));
+            console.error(String(err.message).replace(/[\n\r\t]/g, ' '));
             showToast(err.message, 'error');
         });
     }

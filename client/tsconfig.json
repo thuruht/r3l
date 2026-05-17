@@ -11,9 +11,8 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["client/src/*"]
-    },
-    "types": ["@cloudflare/workers-types/2023-07-01", "node"]
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src", "client/src"]
+  "include": ["src"]
 }

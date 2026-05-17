@@ -104,7 +104,7 @@ const Modal: React.FC<ModalProps> = ({
 /**
  * Modal Footer Component for consistent footer styling
  */
-Modal.Footer = ({ children }: { children: ReactNode }) => (
+(Modal as any).Footer = ({ children }: { children: ReactNode }) => (
   <div className="modal-footer">
     {children}
   </div>

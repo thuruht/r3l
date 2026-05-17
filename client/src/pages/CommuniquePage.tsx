@@ -46,8 +46,8 @@ const CommuniquePage: React.FC<CommuniquePageProps> = ({ currentUser, onUpdateUs
                 <Communique
                     userId={Number(userId)}
 
-                    currentUser={currentUser}
-                    onUpdateUser={onUpdateUser}
+
+
                 />
             </div>
         </div>

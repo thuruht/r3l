@@ -4,7 +4,7 @@ import { Env, Variables } from '../types';
 import { getR2PublicUrl } from '../utils/helpers';
 import { decryptData, encryptData } from '../utils/security';
 
-const messages = new Hono<{ Bindings: Env, Variables: Variables }>();
+const messages = new Hono<any>();
 
 messages.get('/conversations', async (c) => {
   const user_id = c.get('user_id');

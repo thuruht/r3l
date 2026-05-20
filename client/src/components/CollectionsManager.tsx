@@ -13,7 +13,7 @@ interface CollectionsManagerProps {
 }
 
 const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode = 'manage', onSelect }) => {
-  const { collections, createCollection, deleteCollection, updateCollection, loading: loadingColls } = useCollections();
+  const { collections, createCollection, deleteCollection, /*updateCollection,*/ loading: loadingColls } = useCollections();
   const { showToast } = useToast();
   
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');

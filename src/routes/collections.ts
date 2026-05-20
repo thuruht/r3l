@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 import { Env, Variables } from '../types';
 import { decryptData } from '../utils/security';
 
-const collections = new Hono<{ Bindings: Env, Variables: Variables }>();
+const collections = new Hono<any>();
 
 // GET /api/collections: List user's collections
 collections.get('/', async (c) => {

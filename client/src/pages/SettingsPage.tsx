@@ -36,7 +36,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
     try {
       const res = await fetch('/api/customization');
       if (res.ok) {
-        const data = await res.json();
+        const data: any = await res.json();
         const prefs = typeof data.theme_preferences === 'string' 
           ? JSON.parse(data.theme_preferences) 
           : data.theme_preferences || {};
@@ -64,7 +64,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
         body: JSON.stringify({ username: newUsername })
       });
       
-      const data = await res.json();
+      const data: any = await res.json();
       if (res.ok) {
         showToast('Username updated successfully', 'success');
         onUpdateUser({ ...currentUser, username: newUsername });
@@ -100,7 +100,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
         body: JSON.stringify({ currentPassword, newPassword })
       });
       
-      const data = await res.json();
+      const data: any = await res.json();
       if (res.ok) {
         showToast('Password updated successfully', 'success');
         setCurrentPassword('');

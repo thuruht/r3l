@@ -531,11 +531,11 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
                   {groupFiles.map(f => (
                     <div key={f.id} className="glass-panel" 
                       style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: '5px', borderRadius: '4px', fontSize: '0.8em', cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
-                      onClick={() => setPreviewFile({ id: f.id, filename: f.filename, mime_type: f.mime_type })}
+                      onClick={() => (setPreviewFile as any)({ id: f.id, filename: f.filename, mime_type: f.mime_type })}
                     >
                       <IconFile size={ICON_SIZES.xs} />
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.filename}</span>
-                      <IconEye size={ICON_SIZES.xs} color="var(--text-secondary)" />
+
                       {f.can_edit && <IconEdit size={ICON_SIZES.xs} color="#10b981ff" />}
                       {isAdmin && (
                         <button onClick={(e) => { e.stopPropagation(); removeGroupFile(f.id); }} style={{ background: 'none', border: 'none', padding: 0, color: '#ef4444ff', cursor: 'pointer' }}>

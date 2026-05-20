@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { createNotification } from '../utils/notifications';
 
-const social = new Hono<{ Bindings: Env, Variables: Variables }>();
+const social = new Hono<any>();
 
 // Helper: verify group membership
 async function checkGroupMember(db: D1Database, group_id: number, user_id: number): Promise<{ role: string } | null> {

@@ -25,9 +25,9 @@ export function bytesToB64(buf: ArrayBuffer): string {
 // --- Key Generation ---
 
 export async function generateRelfKeypair() {
-  const keys = await (window.crypto.subtle.generateKey as any)(RSA_PARAMS, true, ['encrypt', 'decrypt']);
-  const pub = await (window.crypto.subtle.exportKey as any)('spki', keys.publicKey);
-  const priv = await (window.crypto.subtle.exportKey as any)('pkcs8', keys.privateKey);
+  const keys = await (window.crypto.subtle as any).generateKey(RSA_PARAMS, true, ['encrypt', 'decrypt']);
+  const pub = await (window.crypto.subtle as any).exportKey('spki', keys.publicKey);
+  const priv = await (window.crypto.subtle as any).exportKey('pkcs8', keys.privateKey);
   return {
     publicKey: bytesToB64(pub),
     privateKey: bytesToB64(priv),
@@ -37,11 +37,11 @@ export async function generateRelfKeypair() {
 // --- Key Import ---
 
 export async function importPublicKey(b64: string): Promise<CryptoKey> {
-  return (window.crypto.subtle.importKey as any)('spki', b64ToBytes(b64), RSA_PARAMS, false, ['encrypt']);
+  return (window.crypto.subtle as any).importKey('spki', b64ToBytes(b64), RSA_PARAMS, false, ['encrypt']);
 }
 
 export async function importPrivateKey(b64: string): Promise<CryptoKey> {
-  return (window.crypto.subtle.importKey as any)('pkcs8', b64ToBytes(b64), RSA_PARAMS, false, ['decrypt']);
+  return (window.crypto.subtle as any).importKey('pkcs8', b64ToBytes(b64), RSA_PARAMS, false, ['decrypt']);
 }
 
 // --- Message Encryption (E2EE) ---
@@ -58,16 +58,16 @@ export async function encryptMessageForUser(
   const recipientKey = await importPublicKey(recipientPublicKeyB64);
 
   // Generate ephemeral AES key
-  const aesKey = await (window.crypto.subtle.generateKey as any)(AES_PARAMS, true, ['encrypt', 'decrypt']);
+  const aesKey = await (window.crypto.subtle as any).generateKey(AES_PARAMS, true, ['encrypt', 'decrypt']);
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
 
   // Encrypt content
   const encoded = new TextEncoder().encode(plaintext);
-  const ciphertext = await (window.crypto.subtle.encrypt as any)({ name: 'AES-GCM', iv }, aesKey, encoded);
+  const ciphertext = await (window.crypto.subtle as any).encrypt({ name: 'AES-GCM', iv }, aesKey, encoded);
 
   // Export and wrap AES key with recipient's RSA public key
-  const rawAesKey = await (window.crypto.subtle.exportKey as any)('raw', aesKey);
-  const wrappedKey = await (window.crypto.subtle.encrypt as any)({ name: 'RSA-OAEP' }, recipientKey, rawAesKey);
+  const rawAesKey = await (window.crypto.subtle as any).exportKey('raw', aesKey);
+  const wrappedKey = await (window.crypto.subtle as any).encrypt({ name: 'RSA-OAEP' }, recipientKey, rawAesKey);
 
   // Pack iv + ciphertext together: first 12 bytes = iv
   const combined = new Uint8Array(12 + ciphertext.byteLength);
@@ -90,15 +90,15 @@ export async function decryptMessageWithKey(
 ): Promise<string> {
   // Unwrap AES key
   const wrappedKey = b64ToBytes(encryptedKeyB64);
-  const rawAesKey = await (window.crypto.subtle.decrypt as any)({ name: 'RSA-OAEP' }, privateKey, wrappedKey);
-  const aesKey = await (window.crypto.subtle.importKey as any)('raw', rawAesKey, AES_PARAMS, false, ['decrypt']);
+  const rawAesKey = await (window.crypto.subtle as any).decrypt({ name: 'RSA-OAEP' }, privateKey, wrappedKey);
+  const aesKey = await (window.crypto.subtle as any).importKey('raw', rawAesKey, AES_PARAMS, false, ['decrypt']);
 
   // Unpack iv + ciphertext
   const combined = b64ToBytes(encryptedContentB64);
   const iv = combined.slice(0, 12);
   const ciphertext = combined.slice(12);
 
-  const plaintext = await (window.crypto.subtle.decrypt as any)({ name: 'AES-GCM', iv }, aesKey, ciphertext);
+  const plaintext = await (window.crypto.subtle as any).decrypt({ name: 'AES-GCM', iv }, aesKey, ciphertext);
   return new TextDecoder().decode(plaintext);
 }
 
@@ -107,8 +107,8 @@ export async function decryptMessageWithKey(
 async function deriveWrapper(password: string, saltStr: string): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const salt = b64ToBytes(saltStr);
-  const baseKey = await (window.crypto.subtle.importKey as any)('raw', (encoder.encode(password) as any), 'PBKDF2', false, ['deriveKey']);
-  return (window.crypto.subtle.deriveKey as any)(
+  const baseKey = await (window.crypto.subtle as any).importKey('raw', (encoder.encode(password) as any), 'PBKDF2', false, ['deriveKey']);
+  return (window.crypto.subtle as any).deriveKey(
     { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
     baseKey,
     AES_PARAMS,
@@ -120,18 +120,18 @@ async function deriveWrapper(password: string, saltStr: string): Promise<CryptoK
 // --- File Encryption (Client-Side, for UploadModal) ---
 
 export async function generateKey(): Promise<CryptoKey> {
-  return (window.crypto.subtle.generateKey as any)(AES_PARAMS, true, ['encrypt', 'decrypt']);
+  return (window.crypto.subtle as any).generateKey(AES_PARAMS, true, ['encrypt', 'decrypt']);
 }
 
 export async function encryptFile(file: File, key: CryptoKey): Promise<{ encryptedBlob: Blob; iv: Uint8Array }> {
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
   const buffer = await file.arrayBuffer();
-  const encrypted = await (window.crypto.subtle.encrypt as any)({ name: 'AES-GCM', iv }, key, buffer);
+  const encrypted = await (window.crypto.subtle as any).encrypt({ name: 'AES-GCM', iv }, key, buffer);
   return { encryptedBlob: new Blob([encrypted], { type: 'application/octet-stream' }), iv };
 }
 
 export async function exportKey(key: CryptoKey): Promise<string> {
-  const raw = await (window.crypto.subtle.exportKey as any)('raw', key);
+  const raw = await (window.crypto.subtle as any).exportKey('raw', key);
   return bytesToB64(raw);
 }
 
@@ -142,7 +142,7 @@ export async function storeIdentity(privateKey: string, password: string, userId
   const wrapper = await deriveWrapper(password, saltStr);
 
   const privKey = await importPrivateKey(privateKey);
-  const wrapped = await (window.crypto.subtle.wrapKey as any)('pkcs8', privKey, wrapper, { name: 'AES-GCM', iv });
+  const wrapped = await (window.crypto.subtle as any).wrapKey('pkcs8', privKey, wrapper, { name: 'AES-GCM', iv });
 
   localStorage.setItem(`relf_identity_${userId}`, JSON.stringify({
     wrapped: bytesToB64(wrapped),
@@ -161,10 +161,10 @@ export async function loadIdentity(password: string, userId: number): Promise<st
   const wrappedBuf = b64ToBytes(wrapped);
 
   try {
-    const privKey = await (window.crypto.subtle.unwrapKey as any)(
-      'pkcs8', wrappedBuf, wrapper, { name: 'AES-GCM', iv }, RSA_PARAMS, true, ['decrypt']
+    const privKey = await (window.crypto.subtle as any).unwrapKey(
+      'pkcs8', wrappedBuf, wrapper, { name: 'AES-GCM', iv: iv as any }, RSA_PARAMS, true, ['decrypt']
     );
-    const exported = await (window.crypto.subtle.exportKey as any)('pkcs8', privKey);
+    const exported = await (window.crypto.subtle as any).exportKey('pkcs8', privKey);
     return bytesToB64(exported);
   } catch {
     return null;

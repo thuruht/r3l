@@ -3,20 +3,22 @@ import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { checkRateLimit, getR2PublicUrl } from '../utils/helpers';
 
-const discovery = new Hono<{ Bindings: Env, Variables: Variables }>();
+const discovery = new Hono<any>();
 
 discovery.get('/drift', async (c) => {
     if (!await checkRateLimit(c, 'drift', 20, 600)) return c.json({ error: 'Too fast' }, 429);
     const user_id = c.get('user_id');
     const type = c.req.query('type') || ''; // 'image', 'audio', or ''
     try {
-        const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users WHERE id != ? AND is_lurking = 0').bind(user_id).first('count') as number;
+        const userCountRow = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users WHERE id != ? AND is_lurking = 0').bind(user_id).first() as any;
 
+        const userCount = userCountRow ? (userCountRow.count as number) : 0;
         let fileSql = 'SELECT COUNT(*) as count FROM files WHERE visibility = "public" AND user_id != ?';
         let fileCountParams: any[] = [user_id];
         if (type === 'image') { fileSql += ' AND mime_type LIKE "image/%"'; }
         else if (type === 'audio') { fileSql += ' AND mime_type LIKE "audio/%"'; }
-        const fileCount = await c.env.DB.prepare(fileSql).bind(...fileCountParams).first('count') as number;
+        const fileCountRow = await c.env.DB.prepare(fileSql).bind(...fileCountParams).first() as any;
+        const fileCount = fileCountRow ? (fileCountRow.count as number) : 0;
 
         const userOffset = Math.floor(Math.random() * Math.max(0, userCount - 10));
         const fileOffset = Math.floor(Math.random() * Math.max(0, fileCount - 10));
@@ -36,9 +38,10 @@ discovery.get('/drift', async (c) => {
         const driftFiles = await c.env.DB.prepare(fileQuery).bind(...fileParams).all();
 
         // Drift collections — only public, not owned by current user
-        const collCount = type ? 0 : await c.env.DB.prepare(
+        const collCountRow = type ? { count: 0 } : await c.env.DB.prepare(
             'SELECT COUNT(*) as count FROM collections WHERE visibility = "public" AND user_id != ?'
-        ).bind(user_id).first('count') as number;
+        ).bind(user_id).first() as any;
+        const collCount = collCountRow ? (collCountRow.count as number) : 0;
         const collOffset = collCount > 0 ? Math.floor(Math.random() * Math.max(0, collCount - 5)) : 0;
         const driftCollections = type ? { results: [] } : await c.env.DB.prepare(
             'SELECT c.id, c.name, c.description, c.user_id, u.username as owner_username, COUNT(cf.file_id) as file_count FROM collections c JOIN users u ON c.user_id = u.id LEFT JOIN collection_files cf ON cf.collection_id = c.id WHERE c.visibility = "public" AND c.user_id != ? GROUP BY c.id LIMIT 5 OFFSET ?'

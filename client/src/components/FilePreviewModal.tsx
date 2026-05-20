@@ -212,7 +212,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                 const url = URL.createObjectURL(blob);
                 setPdfUrl(url);
             })
-            .catch(err => {
+            .catch((err: any) => {
                 console.error(err);
                 setError('Could not load PDF content. Ensure you are logged in.');
             });

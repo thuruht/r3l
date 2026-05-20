@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { getAdminId } from '../utils/helpers';
 
-const admin = new Hono<{ Bindings: Env, Variables: Variables }>();
+const admin = new Hono<any>();
 
 admin.use('*', async (c, next) => {
   const user_id = c.get('user_id');

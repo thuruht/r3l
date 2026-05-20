@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { broadcastSignal } from '../utils/notifications';
 
-const communiques = new Hono<{ Bindings: Env, Variables: Variables }>();
+const communiques = new Hono<any>();
 
 communiques.get('/:user_id', async (c) => {
   const user_id = Number(c.req.param('user_id'));

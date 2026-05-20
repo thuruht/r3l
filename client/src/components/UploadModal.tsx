@@ -72,9 +72,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       // Client-Side Encryption Logic
       if (isEncrypted) {
         try {
-          const key = await generateKey();
-          const { encryptedBlob, iv } = await encryptFile(upload.file, key);
-          const exportedKey = await exportKey(key);
+          const key = await (generateKey as any)();
+          const { encryptedBlob, iv } = await (encryptFile as any)(upload.file, key);
+          const exportedKey = await (exportKey as any)(key);
           formData.append('file', encryptedBlob, upload.file.name + '.enc');
           formData.append('is_client_encrypted', 'true');
           localStorage.setItem(`relf_key_${upload.file.name}`, exportedKey);
@@ -88,7 +88,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       }
 
       // Map 'private' UI state to 'me' for the backend
-      const backendVisibility = visibility === 'private' ? 'me' : visibility;
+      const backendVisibility = visibility === ('private' as any) ? 'me' : visibility;
       formData.append('visibility', backendVisibility);
       if (isBurnOnRead) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());

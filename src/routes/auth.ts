@@ -7,7 +7,7 @@ import { Env, Variables } from '../types';
 import { getR2PublicUrl, checkRateLimit, getAdminId } from '../utils/helpers';
 import { hashPassword } from '../utils/security';
 
-const auth = new Hono<{ Bindings: Env, Variables: Variables }>();
+const auth = new Hono<any>();
 
 // Use imported hashPassword from security
 const hashPasswordInternal = hashPassword;
@@ -23,7 +23,7 @@ auth.post('/register', async (c) => {
   try {
     const { hash, salt } = await hashPasswordInternal(password);
     const verificationToken = crypto.randomUUID();
-    const defaultAvatar = 'https://pub-your-bucket-name.your-account-id.r2.dev/default-avatar.svg';
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random&color=fff`;
     
     const { success } = await c.env.DB.prepare(
       'INSERT INTO users (username, password, salt, email, verification_token, avatar_url, public_key, encrypted_private_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'

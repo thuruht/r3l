@@ -72,9 +72,9 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         fetch('/api/relationships')
       ]);
 
-      const notifData = await notifRes.json();
-      const msgData = await msgRes.json();
-      const relData = await relRes.json();
+      const notifData = await (notifRes as any).json();
+      const msgData = await (msgRes as any).json();
+      const relData = await (relRes as any).json();
 
       const mutualIds = new Set((relData.mutual || []).map((c: any) => c.user_id));
       setConnections(relData.mutual || []);
@@ -96,7 +96,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const merged = [...notifications, ...conversations].sort((a, b) => b.timestamp - a.timestamp);
       setItems(merged);
     } catch (err) {
-      console.error(notifRes, msgRes, relRes);
+      console.error((notifRes as any), (msgRes as any), (relRes as any));
     } finally {
       setLoading(false);
     }
@@ -166,7 +166,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       if (storedKeys) {
         try {
           const { encryptMessageForUser, b64ToBytes, bytesToB64 } = await import('../utils/crypto');
-          const partnerKey = await fetch(`/api/users/${activeConversationId}`).then(r => r.json()).then(d => d.user?.public_key);
+          const partnerKey = await fetch(`/api/users/${activeConversationId}`).then(r => r.json()).then((d: any) => d.user?.public_key);
           if (partnerKey) {
             const { encryptedContent, encryptedKey } = await encryptMessageForUser(newMessage, partnerKey);
             const combined = b64ToBytes(encryptedContent);

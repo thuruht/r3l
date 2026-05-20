@@ -30,8 +30,26 @@ export function basicSanitize(html: string): string {
 export async function hashPassword(password: string, salt?: string): Promise<{ hash: string; salt: string }> {
   const mySalt = salt || crypto.randomUUID();
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + mySalt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const passwordKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits']
+  );
+
+  const saltBuffer = encoder.encode(mySalt);
+  const hashBuffer = await crypto.subtle.deriveBits(
+    {
+      name: 'PBKDF2',
+      salt: saltBuffer,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    passwordKey,
+    256
+  );
+
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   return { hash: hashHex, salt: mySalt };

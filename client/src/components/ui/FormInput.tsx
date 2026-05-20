@@ -1,6 +1,6 @@
 import React, { InputHTMLAttributes } from 'react';
 
-interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
+interface FormInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
   label?: string;
   hint?: string;
   error?: string;

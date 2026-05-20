@@ -2,7 +2,7 @@
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 
-const workspaces = new Hono<{ Bindings: Env, Variables: Variables }>();
+const workspaces = new Hono<any>();
 
 // Helper: verify workspace membership
 async function checkWorkspaceMember(db: D1Database, workspace_id: number, user_id: number): Promise<{ role: string } | null> {

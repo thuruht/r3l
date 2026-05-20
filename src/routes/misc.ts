@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { Env, Variables } from '../types';
 import { checkRateLimit } from '../utils/helpers';
 
-const misc = new Hono<{ Bindings: Env, Variables: Variables }>();
+const misc = new Hono<any>();
 
 misc.post('/feedback', async (c) => {
   if (!await checkRateLimit(c, 'feedback', 3, 3600)) return c.json({ error: 'Too many' }, 429);

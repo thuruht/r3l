@@ -12,7 +12,7 @@ export const getAdminId = (env: Env): number => {
 /**
  * --- Rate Limiting Helper ---
  */
-export async function checkRateLimit(c: Context<{ Bindings: Env }>, key: string, limit: number, windowSeconds: number): Promise<boolean> {
+export async function checkRateLimit(c: any, key: string, limit: number, windowSeconds: number): Promise<boolean> {
   const ip = c.req.header('CF-Connecting-IP') || 'unknown';
   const kvKey = `ratelimit:${key}:${ip}`;
   

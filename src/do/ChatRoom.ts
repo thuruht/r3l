@@ -1,10 +1,7 @@
 
 // src/do/ChatRoom.ts
 import { DurableObject } from "cloudflare:workers";
-
-interface Env {
-  // Bindings
-}
+import { Env } from '../types';
 
 interface ChatSession {
   userId: number;

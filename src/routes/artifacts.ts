@@ -180,8 +180,16 @@ artifacts.post('/:id/archive-vote', async (c) => {
     const file = await c.env.DB.prepare('SELECT id, archive_votes, is_archived FROM files WHERE id = ? AND visibility = "public"').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
     if (file.is_archived) return c.json({ error: 'Already archived' }, 409);
+
+    // Check for duplicate vote
+    const existing = await c.env.DB.prepare('SELECT id FROM archive_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
+    if (existing) return c.json({ error: 'Already voted' }, 409);
+
     const newVotes = (file.archive_votes || 0) + 1;
-    const stmts = [c.env.DB.prepare('UPDATE files SET archive_votes = ? WHERE id = ?').bind(newVotes, file_id)];
+    const stmts = [
+      c.env.DB.prepare('INSERT INTO archive_votes (file_id, user_id) VALUES (?, ?)').bind(file_id, user_id),
+      c.env.DB.prepare('UPDATE files SET archive_votes = ? WHERE id = ?').bind(newVotes, file_id)
+    ];
     if (newVotes >= 10) {
       stmts.push(c.env.DB.prepare('UPDATE files SET is_archived = 1, is_community_archived = 1 WHERE id = ?').bind(file_id));
     }
@@ -242,11 +250,11 @@ artifacts.get('/:id/content', async (c) => {
     const object = await c.env.BUCKET.get(file.r2_key, { range: c.req.header('Range') });
     if (!object) return c.json({ error: 'Missing' }, 404);
 
-    let body = await object.arrayBuffer();
-    if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
-        body = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
-    }
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('Content-Disposition', `${file.mime_type === 'application/pdf' ? 'inline' : 'attachment'}; filename="${file.filename}"`);
 
+    // Burn-on-read: schedule cleanup after serving
     if (file.burn_on_read && file.user_id !== user_id) {
         c.executionCtx.waitUntil((async () => {
             await c.env.BUCKET.delete(file.r2_key);
@@ -254,10 +262,15 @@ artifacts.get('/:id/content', async (c) => {
         })());
     }
 
-    const headers = new Headers();
-    object.writeHttpMetadata(headers);
-    headers.set('Content-Disposition', `${file.mime_type === 'application/pdf' ? 'inline' : 'attachment'}; filename="${file.filename}"`);
-    return new Response(body, { headers });
+    // Encrypted files must be buffered for decryption
+    if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
+        const body = await object.arrayBuffer();
+        const decrypted = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
+        return new Response(decrypted, { headers });
+    }
+
+    // Stream non-encrypted files directly from R2 — avoids 128MB Worker memory limit
+    return new Response(object.body, { headers });
   } catch (e) {
     return c.json({ error: 'Failed' }, 500);
   }

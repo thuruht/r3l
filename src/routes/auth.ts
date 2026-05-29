@@ -100,7 +100,7 @@ auth.post('/login', async (c) => {
     setCookie(c, 'auth_token', token, {
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: 'Strict',
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
     });

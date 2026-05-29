@@ -389,13 +389,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   };
 
   return (
-    <div ref={panelRef} className="inbox-overlay fade-in" style={{
-      position: 'fixed', top: 'var(--header-height)', right: '10px', width: 'min(360px, 95vw)',
-      background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
-      backdropFilter: 'blur(10px)', padding: '0', borderRadius: '8px',
-      zIndex: 'var(--z-modal)', height: 'calc(100vh - var(--header-height) - 20px)', maxHeight: '800px', display: 'flex', flexDirection: 'column',
-      boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-    }}>
+    <div ref={panelRef} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between' }}>

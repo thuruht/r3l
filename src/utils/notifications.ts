@@ -1,8 +1,10 @@
 // src/utils/notifications.ts
 import { Env } from '../types';
+import { RelfDO } from '../do';
 
 /**
  * --- Notification Helpers ---
+ * Uses RPC to communicate with RelfDO (no HTTP overhead).
  */
 
 export async function createNotification(
@@ -18,17 +20,12 @@ export async function createNotification(
       'INSERT INTO notifications (user_id, actor_id, type, payload) VALUES (?, ?, ?, ?)'
     ).bind(user_id, actor_id || null, type, JSON.stringify(payload)).run();
 
-    // Notify the user via Durable Object WebSocket
+    // Notify the user via Durable Object RPC
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
-    const doStub = env.DO_NAMESPACE.get(doId);
+    const doStub = env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
     
-    await doStub.fetch('http://do-stub/notify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        userId: user_id, 
-        message: { type: 'new_notification', notificationType: type, actorId: actor_id, payload } 
-      }),
+    await doStub.notify(user_id, { 
+      type: 'new_notification', notificationType: type, actorId: actor_id, payload 
     });
 
   } catch (e) {
@@ -44,17 +41,9 @@ export async function broadcastSignal(
 ) {
   try {
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
-    const doStub = env.DO_NAMESPACE.get(doId);
+    const doStub = env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
     
-    await doStub.fetch('http://do-stub/broadcast-signal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type,
-        userId,
-        payload
-      }),
-    });
+    await doStub.broadcastSignal({ type, userId, payload });
   } catch (e) {
     console.error("Failed to broadcast signal:", e);
   }

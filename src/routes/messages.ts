@@ -1,6 +1,7 @@
 // src/routes/messages.ts
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
+import { RelfDO } from '../do';
 import { getR2PublicUrl } from '../utils/helpers';
 import { decryptData, encryptData } from '../utils/security';
 
@@ -60,6 +61,7 @@ messages.post('/', async (c) => {
   const sender_id = c.get('user_id');
   const { receiver_id, content, encrypt, encrypted_key, iv: client_iv } = await c.req.json();
   if (!receiver_id || !content) return c.json({ error: 'Missing fields' }, 400);
+  if (typeof content !== 'string' || content.length > 5000) return c.json({ error: 'Message too long (max 5000 chars)' }, 400);
 
   try {
     const userA = Math.min(sender_id, receiver_id);
@@ -95,12 +97,8 @@ messages.post('/', async (c) => {
       // Notify Recipient via WebSocket
       const sender = await c.env.DB.prepare('SELECT username FROM users WHERE id = ?').bind(sender_id).first() as any;
       const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
-      const doStub = c.env.DO_NAMESPACE.get(doId);
-      await doStub.fetch('http://do-stub/notify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: receiver_id, message: { type: 'new_message', sender_id, sender_name: sender?.username, is_encrypted } }),
-      });
+      const doStub = c.env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
+      await doStub.notify(receiver_id, { type: 'new_message', sender_id, sender_name: sender?.username, is_encrypted });
       return c.json({ message: 'Sent' });
     }
     return c.json({ error: 'Failed' }, 500);

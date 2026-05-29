@@ -1,27 +1,90 @@
 // src/utils/security.ts
 
+const ALLOWED_TAGS = new Set([
+  'p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'del',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
+  'a', 'img', 'hr', 'span', 'div', 'section',
+]);
+
+const ALLOWED_ATTRS: Record<string, Set<string>> = {
+  a: new Set(['href', 'title', 'target', 'rel']),
+  img: new Set(['src', 'alt', 'width', 'height']),
+  '*': new Set(['class']),
+};
+
+const SAFE_URL_RE = /^(https?:|mailto:|\/|#)/i;
+const URL_ATTRS = new Set(['href', 'src']);
+
 /**
- * Very basic server-side HTML sanitization.
+ * Server-side HTML sanitization using Workers HTMLRewriter.
+ * Uses a streaming DOM-tree approach — not regex — so it's safe against
+ * nested tags, encoding tricks, and SVG/MathML injection vectors.
  */
-export function basicSanitize(html: string): string {
+export async function sanitizeHTML(html: string): Promise<string> {
   if (!html) return '';
-  const ALLOWED_TAGS = ['p', 'br', 'b', 'i', 'em', 'strong', 'u', 's', 'del', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code', 'a', 'img', 'hr', 'span', 'div'];
-  
-  return html.replace(/<(\/?)([a-z0-9]+)([^>]*)>/gi, (match, slash, tag, attrs) => {
-    if (ALLOWED_TAGS.includes(tag.toLowerCase())) {
-      const safeAttrs = attrs.replace(/ ([a-z]+)=(['"])(.*?)\2/gi, (attrMatch: string, name: string, quote: string, value: string) => {
-        const lowerName = name.toLowerCase();
-        if (lowerName.startsWith('on')) return ''; // strip all event handlers
-        if (['href', 'src', 'alt', 'title', 'class'].includes(lowerName)) {
-          if (['href', 'src'].includes(lowerName) && /^(javascript:|data:)/i.test(value.trim())) return '';
-          return attrMatch;
+
+  const rewriter = new HTMLRewriter()
+    .on('*', {
+      element(el) {
+        const tag = el.tagName.toLowerCase();
+
+        if (!ALLOWED_TAGS.has(tag)) {
+          // Remove the element entirely (its text children will still flow through)
+          el.removeAndKeepContent();
+          return;
         }
-        return '';
-      });
-      return `<${slash}${tag}${safeAttrs}>`;
-    }
-    return '';
-  });
+
+        // Scrub attributes
+        const tagAllowed = ALLOWED_ATTRS[tag];
+        const globalAllowed = ALLOWED_ATTRS['*'];
+
+        for (const attr of el.attributes) {
+          const name = attr[0].toLowerCase();
+          const value = attr[1];
+
+          const isAllowed =
+            (tagAllowed && tagAllowed.has(name)) ||
+            (globalAllowed && globalAllowed.has(name));
+
+          if (!isAllowed || name.startsWith('on')) {
+            el.removeAttribute(attr[0]);
+            continue;
+          }
+
+          // Block javascript: / data: / vbscript: in URL attributes
+          if (URL_ATTRS.has(name) && !SAFE_URL_RE.test(value.trim())) {
+            el.removeAttribute(attr[0]);
+            continue;
+          }
+
+          // Force safe link behavior for external URLs
+          if (name === 'href' && /^https?:/i.test(value)) {
+            el.setAttribute('rel', 'noopener noreferrer');
+            el.setAttribute('target', '_blank');
+          }
+        }
+      },
+    });
+
+  // HTMLRewriter operates on Response objects
+  const input = new Response(html, { headers: { 'Content-Type': 'text/html' } });
+  const output = rewriter.transform(input);
+  return await output.text();
+}
+
+/**
+ * Escapes HTML entities for contexts where HTML is never appropriate.
+ * Use this for user-supplied text in notification payloads, etc.
+ */
+export function escapeHTML(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
 }
 
 /**

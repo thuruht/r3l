@@ -5,6 +5,8 @@ import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
 import NetworkList from './components/NetworkList';
 import Inbox from './components/Inbox';
+import Sidebar from './components/Sidebar';
+import { useSidebar } from './hooks/useSidebar';
 import CommuniquePage from './components/CommuniquePage';
 import VerifyEmail from './components/VerifyEmail';
 import ResetPassword from './components/ResetPassword';
@@ -38,13 +40,12 @@ interface User {
   id: number;
   username: string;
   avatar_url?: string;
+  role?: string;
 }
 
 function Main() {
-  const [isInboxOpen, setIsInboxOpen] = useState(false);
-  const [isPlanetsOpen, setIsPlanetsOpen] = useState(false);
+  const { isOpen: isSidebarOpen, activeTab: sidebarTab, openTab, close: closeSidebar } = useSidebar();
   const [planetTab, setPlanetTab] = useState<'workgroups' | 'symgroups'>('workgroups');
-  const [isGlobalChatOpen, setIsGlobalChatOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -83,6 +84,9 @@ function Main() {
 
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshNetworkRef = useRef<() => void>(() => {});
+  const sidebarTabRef = useRef(sidebarTab);
+  const fetchDriftRef = useRef(fetchDrift);
+  const connectWebSocketRef = useRef<() => void>(() => {});
 
   // Close menu on outside click
   useEffect(() => {
@@ -149,7 +153,11 @@ function Main() {
     };
   }, [isDrifting, driftType, fetchDrift]);
 
-  // Debounced reconnect — defined before useEffect so the dependency is stable
+  // Keep refs in sync with state (avoids stale closures in WS handler)
+  useEffect(() => { sidebarTabRef.current = sidebarTab; }, [sidebarTab]);
+  useEffect(() => { fetchDriftRef.current = fetchDrift; }, [fetchDrift]);
+
+  // Debounced reconnect — uses refs for UI state to avoid dep churn
   const connectWebSocket = useCallback(() => {
     // Guard: don't stack connections
     if (wsRef.current && wsRef.current.readyState <= WebSocket.OPEN) return;
@@ -190,12 +198,12 @@ function Main() {
           showToast(`New Whisper from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
           setUnreadCount(prev => prev + 1);
         } else if (msg.type === 'new_group_message') {
-          if (!isPlanetsOpen || planetTab !== 'symgroups') {
+          // Use refs to avoid stale closure over UI state
+          if (sidebarTabRef.current !== 'planets' || planetTab !== 'symgroups') {
             setGroupUnreadCount(prev => prev + 1);
           }
         } else if (msg.type === 'signal_artifact') {
-          // Use ref to avoid stale closure over isDrifting
-          fetchDrift();
+          fetchDriftRef.current();
         }
       } catch (e) {
         console.error('WS parse error', e);
@@ -206,23 +214,27 @@ function Main() {
       setWs(null);
       wsRef.current = null;
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = setTimeout(connectWebSocket, 3000);
+      reconnectTimerRef.current = setTimeout(() => connectWebSocketRef.current(), 3000);
     };
 
     socket.onerror = () => socket.close();
-  }, [showToast, fetchDrift, isPlanetsOpen, planetTab]);
+  }, [showToast]);
+
+  // Keep connectWebSocket ref in sync
+  useEffect(() => { connectWebSocketRef.current = connectWebSocket; }, [connectWebSocket]);
 
   useEffect(() => {
     fetch('/api/users/me')
       .then(res => { if (res.ok) return res.json(); throw new Error('Unauthorized'); })
-      .then(data => { setCurrentUser(data.user); setLoadingUser(false); connectWebSocket(); })
+      .then(data => { setCurrentUser(data.user); setLoadingUser(false); connectWebSocketRef.current(); })
       .catch(() => setLoadingUser(false));
 
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
     };
-  }, [connectWebSocket]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleDrift = () => {
     const newState = !isDrifting;
@@ -369,7 +381,7 @@ function Main() {
     } catch { showToast('Registration failed', 'error'); setAuthError('Registration failed'); }
   };
 
-  const isAdmin = currentUser?.id === 1;
+  const isAdmin = currentUser?.role === 'admin';
 
   if (loadingUser) {
     return (
@@ -426,20 +438,20 @@ function Main() {
                         </button>
                       )}
                     </div>
-                    <button onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
+                    <button onClick={() => { openTab('inbox'); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
                       {"< mail >"}
                       {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                     </button>
-                    <button onClick={() => setIsPlanetsOpen(!isPlanetsOpen)} className="nav-button" aria-label="Planets">
+                    <button onClick={() => openTab('planets')} className="nav-button" aria-label="Planets">
                       {"< planets >"}
                       {groupUnreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                     </button>
-                    <button onClick={() => setIsGlobalChatOpen(!isGlobalChatOpen)} className="nav-button" aria-label="Global Chat">
+                    <button onClick={() => openTab('galaxy')} className="nav-button" aria-label="Global Chat">
                       {"< galaxy >"}
                     </button>
                   </div>
                   {/* Mobile: inbox badge button */}
-                  <button className="mobile-only nav-button" onClick={() => { setIsInboxOpen(!isInboxOpen); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
+                  <button className="mobile-only nav-button" onClick={() => { openTab('inbox'); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
                     <TablerIcons.IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                   </button>
@@ -482,13 +494,13 @@ function Main() {
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
-              <button onClick={() => { setIsInboxOpen(true); setUnreadCount(0); setIsPlanetsOpen(false); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { openTab('inbox'); setUnreadCount(0); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconMessage size={ICON_SIZES.lg} /> {"< mail >"} {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
               </button>
-              <button onClick={() => { setIsPlanetsOpen(true); setIsInboxOpen(false); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { openTab('planets'); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconPlanet size={ICON_SIZES.lg} /> {"< planets >"} {groupUnreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{groupUnreadCount}</span>}
               </button>
-              <button onClick={() => { setIsGlobalChatOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button onClick={() => { openTab('galaxy'); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> {"< galaxy >"}
               </button>
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
@@ -521,32 +533,40 @@ function Main() {
           {isFAQOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense>}
           {isAboutOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense>}
           {isAdmin && isAdminOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense>}
-          {isInboxOpen && <Inbox onClose={() => setIsInboxOpen(false)} onOpenCommunique={onNodeClick} />}
-          
-          {isPlanetsOpen && (
-            <div className="inbox-overlay fade-in" style={{
-              position: 'fixed', top: 'var(--header-height)', right: '10px', width: 'min(400px, 95vw)',
-              background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
-              backdropFilter: 'blur(10px)', padding: '0', borderRadius: '8px',
-              zIndex: 'var(--z-modal)', height: 'calc(100vh - var(--header-height) - 20px)', maxHeight: '800px', display: 'flex', flexDirection: 'column',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
-            }}>
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', padding: '10px 15px', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '15px' }}>
-                  <button onClick={() => setPlanetTab('workgroups')} style={{ background: 'none', border: 'none', color: planetTab === 'workgroups' ? 'var(--accent-sym)' : 'var(--text-secondary)', fontWeight: planetTab === 'workgroups' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '0.9rem' }}>WORKGROUPS</button>
-                  <button onClick={() => { setPlanetTab('symgroups'); setGroupUnreadCount(0); }} style={{ background: 'none', border: 'none', color: planetTab === 'symgroups' ? 'var(--accent-sym)' : 'var(--text-secondary)', fontWeight: planetTab === 'symgroups' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '0.9rem' }}>SYMGROUPS {groupUnreadCount > 0 && <span className="unread-badge-inline" />}</button>
+          {/* Unified Sidebar */}
+          <Sidebar
+            isOpen={isSidebarOpen}
+            activeTab={sidebarTab}
+            onTabChange={(tab) => {
+              openTab(tab);
+              if (tab === 'inbox') setUnreadCount(0);
+              if (tab === 'planets' && planetTab === 'symgroups') setGroupUnreadCount(0);
+            }}
+            onClose={closeSidebar}
+            unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
+          >
+            {sidebarTab === 'inbox' && (
+              <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
+            )}
+            {sidebarTab === 'planets' && (
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <div className="planetsSubTabs">
+                  <button onClick={() => setPlanetTab('workgroups')} className={`planetsSubTab${planetTab === 'workgroups' ? ' active' : ''}`}>WORKGROUPS</button>
+                  <button onClick={() => { setPlanetTab('symgroups'); setGroupUnreadCount(0); }} className={`planetsSubTab${planetTab === 'symgroups' ? ' active' : ''}`}>SYMGROUPS</button>
                 </div>
-                <button onClick={() => setIsPlanetsOpen(false)} style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer' }}><TablerIcons.IconX size={20} /></button>
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
+                    {planetTab === 'workgroups' ? <WorkspacesManager onClose={closeSidebar} /> : <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />}
+                  </React.Suspense>
+                </div>
               </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
-                <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
-                  {planetTab === 'workgroups' ? <WorkspacesManager onClose={() => setIsPlanetsOpen(false)} /> : <GroupChat onClose={() => setIsPlanetsOpen(false)} currentUserId={currentUser?.id ?? 0} ws={ws} />}
-                </React.Suspense>
-              </div>
-            </div>
-          )}
-
-          {isGlobalChatOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><GlobalChat onClose={() => setIsGlobalChatOpen(false)} /></React.Suspense>}
+            )}
+            {sidebarTab === 'galaxy' && (
+              <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
+                <GlobalChat onClose={closeSidebar} />
+              </React.Suspense>
+            )}
+          </Sidebar>
           {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
           {isCollectionsOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}
           {isFeedbackOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense>}

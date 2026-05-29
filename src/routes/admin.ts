@@ -2,6 +2,7 @@
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { getAdminId } from '../utils/helpers';
+import { RelfDO } from '../do';
 
 const admin = new Hono<any>();
 
@@ -31,12 +32,8 @@ admin.post('/broadcast', async (c) => {
     if (!message) return c.json({ error: 'Message required' }, 400);
     try {
         const doId = c.env.DO_NAMESPACE.idFromName('relf-do-instance');
-        const doStub = c.env.DO_NAMESPACE.get(doId);
-        await doStub.fetch('http://do-stub/broadcast-signal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ type: 'system_alert', userId: 0, payload: { message, alertType: type || 'info' } }),
-        });
+        const doStub = c.env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
+        await doStub.broadcastSignal({ type: 'system_alert', userId: 0, payload: { message, alertType: type || 'info' } });
         return c.json({ message: 'Broadcast sent' });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

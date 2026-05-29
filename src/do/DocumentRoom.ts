@@ -1,11 +1,8 @@
 
 // src/do/DocumentRoom.ts
 import { DurableObject } from "cloudflare:workers";
+import { Env } from '../types';
 import * as Y from 'yjs';
-
-interface Env {
-  // Add environment bindings here if needed
-}
 
 /**
  * DocumentRoom Durable Object

@@ -4,3 +4,15 @@ dist
 .DS_Store
 *.log
 verification
+
+# Background images (design assets, not needed in VCS)
+bgbg.png
+bgbgbg.png
+
+# Build artifacts
+dist-worker/
+
+# IDE / agent config
+.Jules/
+.amazonq/
+r3l.code-workspace

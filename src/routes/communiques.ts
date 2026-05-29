@@ -2,6 +2,7 @@
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
 import { broadcastSignal } from '../utils/notifications';
+import { sanitizeHTML } from '../utils/security';
 
 const communiques = new Hono<any>();
 
@@ -21,8 +22,10 @@ communiques.put('/', async (c) => {
   const user_id = c.get('user_id');
   const { content, theme_prefs } = await c.req.json();
   if (typeof content === 'string' && content.length > 50000) return c.json({ error: 'Content too large' }, 400);
+  // Sanitize HTML server-side (defense-in-depth; client also sanitizes on render)
+  const safeContent = typeof content === 'string' ? await sanitizeHTML(content) : content;
   try {
-    await c.env.DB.prepare('INSERT INTO communiques (user_id, content, theme_prefs, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET content = excluded.content, theme_prefs = excluded.theme_prefs, updated_at = excluded.updated_at').bind(user_id, content, typeof theme_prefs === 'string' ? theme_prefs : JSON.stringify(theme_prefs)).run();
+    await c.env.DB.prepare('INSERT INTO communiques (user_id, content, theme_prefs, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id) DO UPDATE SET content = excluded.content, theme_prefs = excluded.theme_prefs, updated_at = excluded.updated_at').bind(user_id, safeContent, typeof theme_prefs === 'string' ? theme_prefs : JSON.stringify(theme_prefs)).run();
     await broadcastSignal(c.env, 'signal_communique', user_id, { updated_at: new Date().toISOString() });
     return c.json({ message: 'Communique updated' });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }

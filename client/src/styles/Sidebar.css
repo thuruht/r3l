@@ -1,0 +1,174 @@
+/* Sidebar — replaces right-edge drawer panels */
+
+.sidebar {
+  position: fixed;
+  top: var(--header-height);
+  right: 0;
+  width: min(420px, 95vw);
+  height: calc(100vh - var(--header-height));
+  background: var(--drawer-bg);
+  border-left: 1px solid var(--border-color);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: var(--z-dropdown);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 30px rgba(0, 0, 0, 0.4);
+  transform: translateX(100%);
+  transition: transform var(--transition-base);
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+/* ─── Tab Bar ─── */
+
+.sidebarTabBar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.sidebarTab {
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-sm);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-family-heading);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  min-height: 44px;
+  position: relative;
+}
+
+.sidebarTab:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg);
+  box-shadow: none;
+}
+
+.sidebarTab.active {
+  color: var(--accent-sym);
+  border-bottom-color: var(--accent-sym);
+}
+
+.sidebarCloseBtn {
+  padding: var(--spacing-sm);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 44px;
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.sidebarCloseBtn:hover {
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+/* ─── Unread Badge ─── */
+
+.sidebarBadge {
+  background: var(--accent-alert);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+/* ─── Content Area ─── */
+
+.sidebarBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+}
+
+/* ─── Accent Borders per Tab ─── */
+
+.sidebarBody.inbox {
+  border-top: 2px solid var(--accent-online);
+}
+
+.sidebarBody.planets {
+  border-top: 2px solid var(--accent-sym);
+}
+
+.sidebarBody.galaxy {
+  border-top: 2px solid var(--accent-asym);
+}
+
+/* ─── Planets Sub-Tabs (internal to Planets content) ─── */
+
+.planetsSubTabs {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-sm) var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-sm);
+}
+
+.planetsSubTab {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-family: var(--font-family-heading);
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: var(--spacing-xs) 0 var(--spacing-sm);
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.planetsSubTab:hover {
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.planetsSubTab.active {
+  color: var(--accent-sym);
+  border-bottom-color: var(--accent-sym);
+  font-weight: bold;
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .sidebar {
+    width: 100vw;
+    border-left: none;
+    padding-bottom: var(--safe-area-bottom);
+  }
+}
+
+@media (prefers-reduced-motion) {
+  .sidebar {
+    transition: none;
+  }
+}

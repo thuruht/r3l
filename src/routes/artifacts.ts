@@ -247,12 +247,49 @@ artifacts.get('/:id/content', async (c) => {
       }
     }
 
-    const object = await c.env.BUCKET.get(file.r2_key, { range: c.req.header('Range') });
+    const rangeHeader = c.req.header('Range');
+
+    // Parse range to get specific byte ranges if present
+    let parsedRange: { offset?: number; length?: number; suffix?: number } | undefined;
+    if (rangeHeader) {
+        // Very basic range parser for Cloudflare R2 compatibility.
+        // It's usually better to just pass the header, but we need to know
+        // to set a 206 status code if a range was requested.
+        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+        if (match) {
+           const start = match[1] ? parseInt(match[1], 10) : undefined;
+           const end = match[2] ? parseInt(match[2], 10) : undefined;
+           if (start !== undefined && end !== undefined) {
+               parsedRange = { offset: start, length: end - start + 1 };
+           } else if (start !== undefined) {
+               parsedRange = { offset: start };
+           } else if (end !== undefined) {
+               parsedRange = { suffix: end };
+           }
+        }
+    }
+
+    const object = await c.env.BUCKET.get(file.r2_key, parsedRange ? { range: parsedRange } : undefined);
     if (!object) return c.json({ error: 'Missing' }, 404);
 
     const headers = new Headers();
     object.writeHttpMetadata(headers);
     headers.set('Content-Disposition', `${file.mime_type === 'application/pdf' ? 'inline' : 'attachment'}; filename="${file.filename}"`);
+
+    if (parsedRange) {
+        headers.set('Accept-Ranges', 'bytes');
+        // R2 `get` with range automatically adds Content-Range to `writeHttpMetadata` if requested
+        const status = 206;
+
+        // Encrypted files must be buffered for decryption
+        if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
+            const body = await object.arrayBuffer();
+            const decrypted = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
+            return new Response(decrypted, { status, headers });
+        }
+
+        return new Response(object.body, { status, headers });
+    }
 
     // Burn-on-read: schedule cleanup after serving
     if (file.burn_on_read && file.user_id !== user_id) {
@@ -270,7 +307,7 @@ artifacts.get('/:id/content', async (c) => {
     }
 
     // Stream non-encrypted files directly from R2 — avoids 128MB Worker memory limit
-    return new Response(object.body, { headers });
+    return new Response(object.body, { status: 200, headers });
   } catch (e) {
     return c.json({ error: 'Failed' }, 500);
   }

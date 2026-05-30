@@ -3,6 +3,9 @@
 import { DurableObject } from "cloudflare:workers";
 import { Env } from '../types';
 import * as Y from 'yjs';
+import * as awarenessProtocol from 'y-protocols/awareness';
+import * as encoding from 'lib0/encoding';
+import * as decoding from 'lib0/decoding';
 
 /**
  * DocumentRoom Durable Object
@@ -12,17 +15,43 @@ import * as Y from 'yjs';
 export class DocumentRoom extends DurableObject {
   state: DurableObjectState;
   doc: Y.Doc;
+  awareness: awarenessProtocol.Awareness;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
     this.doc = new Y.Doc();
+    this.awareness = new awarenessProtocol.Awareness(this.doc);
+
+    this.awareness.setLocalState(null);
+
+    this.awareness.on('update', ({ added, updated, removed }: any) => {
+      const changedClients = added.concat(updated, removed);
+      const encoder = encoding.createEncoder();
+      encoding.writeVarUint(encoder, 1); // messageAwareness
+      encoding.writeVarUint8Array(
+        encoder,
+        awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
+      );
+      const buff = encoding.toUint8Array(encoder);
+      this.broadcast(buff);
+    });
 
     // Load initial state from storage if it exists
     this.state.blockConcurrencyWhile(async () => {
       const savedState = await this.state.storage.get<Uint8Array>("content");
       if (savedState) {
         Y.applyUpdate(this.doc, savedState);
+      }
+    });
+  }
+
+    broadcast(message: Uint8Array, excludeWs?: WebSocket) {
+    this.state.getWebSockets().forEach((client) => {
+      if (client !== excludeWs) {
+        try {
+          client.send(message);
+        } catch (e) {}
       }
     });
   }
@@ -39,6 +68,17 @@ export class DocumentRoom extends DurableObject {
       // y-websocket protocol: messageSync = 0, messageSyncStep1 = 0
       const reply = this.constructSyncMessage(0, syncStep1);
       server.send(reply);
+
+      // Send initial awareness state
+      if (this.awareness.getStates().size > 0) {
+        const encoder = encoding.createEncoder();
+        encoding.writeVarUint(encoder, 1); // messageAwareness
+        encoding.writeVarUint8Array(
+          encoder,
+          awarenessProtocol.encodeAwarenessUpdate(this.awareness, Array.from(this.awareness.getStates().keys()))
+        );
+        server.send(encoding.toUint8Array(encoder));
+      }
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -73,9 +113,12 @@ export class DocumentRoom extends DurableObject {
         uint8Message = new Uint8Array(buffer);
     }
     
+    const decoder = decoding.createDecoder(uint8Message);
+    const messageType = decoding.readVarUint(decoder);
+
     // Simple protocol check for y-websocket
     // messageSync = 0, messageAwareness = 1
-    if (uint8Message[0] === 0) {
+    if (messageType === 0) {
         const syncType = uint8Message[1];
         const syncData = uint8Message.subarray(2);
 
@@ -93,16 +136,13 @@ export class DocumentRoom extends DurableObject {
                 console.error("Yjs update failed:", e);
             }
         }
+    } else if (messageType === 1) { // messageAwareness
+       const update = decoding.readVarUint8Array(decoder);
+       awarenessProtocol.applyAwarenessUpdate(this.awareness, update, ws);
     }
 
     // Broadcast the message to all other connected clients
-    this.state.getWebSockets().forEach((client) => {
-      if (client !== ws) {
-        try {
-          client.send(message);
-        } catch (e) {}
-      }
-    });
+    this.broadcast(uint8Message, ws);
   }
 
   /**

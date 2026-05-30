@@ -55,7 +55,7 @@ export default defineConfig({
           'yjs': ['yjs', 'y-websocket', 'y-codemirror.next'],
           'plyr': ['plyr-react'],
           'wavesurfer': ['wavesurfer.js', '@wavesurfer/react'],
-          'react-vendor': ['react', 'react-dom', 'react-router-dom']
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'], 'tabler': ['@tabler/icons-react']
         }
       }
     }

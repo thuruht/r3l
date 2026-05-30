@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-
 import { IconPlus, IconMinus, IconMaximize } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { NetworkNode, NetworkLink, NetworkCollection } from '../hooks/useNetworkData';
@@ -48,8 +47,8 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   
   // Persistence Refs
   const simulationRef = useRef<d3.Simulation<D3Node, D3Link> | null>(null);
-  const svgSelectionRef = useRef<any<SVGSVGElement, unknown, null, undefined> | null>(null);
-  const gRef = useRef<any<SVGGElement, unknown, null, undefined> | null>(null);
+  const svgSelectionRef = useRef<d3.Selection<SVGSVGElement, unknown, null, undefined> | null>(null);
+  const gRef = useRef<d3.Selection<SVGGElement, unknown, null, undefined> | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   // --- Spatial Audio ---
@@ -189,7 +188,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       if (g.select('.nodes').empty()) g.append('g').attr('class', 'nodes');
 
       // 4. Setup Zoom
-      const zoom = any<SVGSVGElement, unknown>()
+      const zoom = d3.zoom<SVGSVGElement, unknown>()
         .scaleExtent([0.1, 4])
         .on('zoom', (event) => {
           g.attr('transform', event.transform);
@@ -623,7 +622,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
                 const midY = (minY + maxY) / 2;
                 const scale = Math.min(1.5, Math.min(width / bboxWidth, height / bboxHeight));
 
-                const transform = anyIdentity.translate(width / 2, height / 2).scale(scale).translate(-midX, -midY);
+                const transform = d3.zoomIdentity.translate(width / 2, height / 2).scale(scale).translate(-midX, -midY);
                 svgSelectionRef.current.transition().duration(750).call(zoomBehaviorRef.current.transform, transform);
             }}
             className="btn-icon glass-panel"

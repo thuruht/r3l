@@ -141,7 +141,52 @@ app.all('*', (c) => {
   return c.env.ASSETS.fetch(c.req.raw);
 });
 
+
+// --- Drift History Routes ---
+app.get('/api/history', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  try {
+    const historyData = await c.env.KV.get(`history:${user_id}`);
+    const history = historyData ? JSON.parse(historyData) : [];
+    return c.json({ history });
+  } catch(e) {
+    return c.json({ error: 'Failed to get history' }, 500);
+  }
+});
+
+app.post('/api/history', authMiddleware, async (c) => {
+  const user_id = c.get('user_id');
+  try {
+    const { file_id, filename, mime_type } = await c.req.json();
+    if (!file_id || !filename) return c.json({ error: 'Missing data' }, 400);
+
+    const historyData = await c.env.KV.get(`history:${user_id}`);
+    let history = historyData ? JSON.parse(historyData) : [];
+
+    // Remove if exists to push to top
+    history = history.filter((item: any) => item.file_id !== file_id);
+
+    // Add to top, keep last 50
+    history.unshift({
+        file_id,
+        filename,
+        mime_type,
+        timestamp: Date.now()
+    });
+
+    if (history.length > 50) history = history.slice(0, 50);
+
+    // TTL 30 days
+    await c.env.KV.put(`history:${user_id}`, JSON.stringify(history), { expirationTtl: 60 * 60 * 24 * 30 });
+
+    return c.json({ success: true, history });
+  } catch(e) {
+    return c.json({ error: 'Failed to update history' }, 500);
+  }
+});
+
 export default {
+
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     const now = new Date().toISOString();

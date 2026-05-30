@@ -11,8 +11,8 @@ interface AmbientBackgroundProps {
 }
 
 const AmbientBackground: React.FC<AmbientBackgroundProps> = ({ 
-  videoSrc = 'https://assets.mixkit.co/videos/preview/mixkit-abstract-connection-of-dots-and-lines-on-a-dark-background-34480-large.mp4', 
-  audioSrc = '/assets/ping.mp3' // Placeholder
+  videoSrc = '',
+  audioSrc = '' // Placeholder
 }) => {
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);

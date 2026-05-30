@@ -10,13 +10,14 @@ interface SidebarProps {
   onTabChange: (tab: SidebarTab) => void;
   onClose: () => void;
   children: React.ReactNode;
-  unreadCounts: { inbox: number; planets: number };
+  unreadCounts: { inbox: number; planets: number; history?: number };
 }
 
 const TAB_LABELS: Record<SidebarTab, string> = {
   inbox: '< mail >',
   planets: '< planets >',
   galaxy: '< galaxy >',
+  history: '< drift history >',
 };
 
 /**

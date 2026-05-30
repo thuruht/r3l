@@ -545,27 +545,19 @@ function Main() {
             onClose={closeSidebar}
             unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
           >
-            {sidebarTab === 'inbox' && (
-              <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
-            )}
+            {sidebarTab === 'inbox' && <Inbox />}
             {sidebarTab === 'planets' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div className="planetsSubTabs">
-                  <button onClick={() => setPlanetTab('workgroups')} className={`planetsSubTab${planetTab === 'workgroups' ? ' active' : ''}`}>WORKGROUPS</button>
-                  <button onClick={() => { setPlanetTab('symgroups'); setGroupUnreadCount(0); }} className={`planetsSubTab${planetTab === 'symgroups' ? ' active' : ''}`}>SYMGROUPS</button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
-                    {planetTab === 'workgroups' ? <WorkspacesManager onClose={closeSidebar} /> : <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />}
-                  </React.Suspense>
-                </div>
+              <div className="planets-panel">
+                 <div className="tabs mb-4">
+                     <button className={`tab-btn ${planetTab === 'networks' ? 'active' : ''}`} onClick={() => setPlanetTab('networks')}>Discovery</button>
+                     <button className={`tab-btn ${planetTab === 'symgroups' ? 'active' : ''}`} onClick={() => setPlanetTab('symgroups')}>Groups {groupUnreadCount > 0 && <span className="badge">{groupUnreadCount}</span>}</button>
+                 </div>
+                 {planetTab === 'networks' && <NetworkList />}
+                 {planetTab === 'symgroups' && <GroupChat onClose={() => {}} />}
               </div>
             )}
-            {sidebarTab === 'galaxy' && (
-              <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
-                <GlobalChat onClose={closeSidebar} />
-              </React.Suspense>
-            )}
+            {sidebarTab === 'galaxy' && <GlobalChat onClose={closeSidebar} />}
+            {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
           </Sidebar>
           {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
           {isCollectionsOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
+import AvatarStack from './AvatarStack';
 import { useToast } from '../context/ToastContext';
 import { useWindowSize } from '../hooks/useWindowSize';
 
@@ -28,6 +29,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   const [room, setRoom] = useState('global');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [onlineUsers, setOnlineUsers] = useState<{userId: number, username: string}[]>([]);
   const [online, setOnline] = useState<{ userId: number; username: string }[]>([]);
   const [typing, setTyping] = useState<Set<string>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);

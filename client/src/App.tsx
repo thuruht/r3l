@@ -394,7 +394,7 @@ function Main() {
 
   return (
     <>
-      {!currentUser && !['/verify', '/reset-password'].includes(location.pathname) ? (
+      {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password')) ? (
         <LandingPage 
           onLogin={handleLogin} 
           onRegister={handleRegister}
@@ -546,6 +546,10 @@ function Main() {
             unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
           >
             {sidebarTab === 'inbox' && <Inbox />}
+                    >
+            {sidebarTab === 'inbox' && (
+              <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
+            )}
             {sidebarTab === 'planets' && (
               <div className="planets-panel">
                  <div className="tabs mb-4">
@@ -557,6 +561,11 @@ function Main() {
               </div>
             )}
             {sidebarTab === 'galaxy' && <GlobalChat onClose={closeSidebar} />}
+            {sidebarTab === 'galaxy' && (
+              <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
+                <GlobalChat onClose={closeSidebar} />
+              </React.Suspense>
+            )}
             {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
           </Sidebar>
           {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}

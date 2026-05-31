@@ -12,6 +12,7 @@ import { ICON_SIZES } from '@/constants/iconSizes';
 import CollectionsManager from './CollectionsManager';
 import CodeEditor from './CodeEditor';
 import { useCustomization } from '../context/CustomizationContext';
+import AvatarStack from './AvatarStack';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { useCollections } from '../hooks/useCollections';
@@ -111,6 +112,18 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const { isMobile, w: windowWidth, h: windowHeight } = useWindowSize();
 
+
+  // Post to Drift History on load
+  useEffect(() => {
+    if (fileId && filename && currentUser && visibility !== 'me') { // Don't track own private files
+      fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file_id: fileId, filename, mime_type: mimeType })
+      }).catch(err => console.error('Failed to post drift history', err));
+    }
+  }, [fileId, filename, mimeType, currentUser, visibility]);
+
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
 
@@ -118,6 +131,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+  const [activeUsers, setActiveUsers] = useState<{id: string, name: string}[]>([]);
   const [connectedUsers, setConnectedUsers] = useState<any[]>([]);
 
   const { theme_preferences, updateCustomization } = useCustomization();
@@ -629,7 +643,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           )}
           {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
 
-               {isAudio && <AudioWaveform src={`/api/files/${fileId}/content`} mimeType={mimeType} />}
+               {isAudio && <AudioWaveform src={`/api/artifacts/${fileId}/content`} mimeType={mimeType} />}
 
                {isVideo && (
                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

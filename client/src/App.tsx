@@ -394,7 +394,7 @@ function Main() {
 
   return (
     <>
-      {!currentUser && !['/verify', '/reset-password'].includes(location.pathname) ? (
+      {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password')) ? (
         <LandingPage 
           onLogin={handleLogin} 
           onRegister={handleRegister}
@@ -544,7 +544,7 @@ function Main() {
             }}
             onClose={closeSidebar}
             unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
-          >
+                    >
             {sidebarTab === 'inbox' && (
               <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
             )}
@@ -566,6 +566,7 @@ function Main() {
                 <GlobalChat onClose={closeSidebar} />
               </React.Suspense>
             )}
+            {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
           </Sidebar>
           {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
           {isCollectionsOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}

@@ -20,6 +20,12 @@
 
 ---
 
+
+## Recent Feature Additions (May 2024)
+- **Advanced Real-Time Presence:** See who is actively viewing or editing documents via Yjs awareness and Durable Objects.
+- **Media Streaming:** True HTTP Range Request support for chunked video/audio streaming directly from R2, integrated with a unified Plyr media player.
+- **Cross-Device Drift History:** Never lose an ephemeral discovery again. "Recently Drifted" history is saved to Cloudflare KV and synced across all your devices, accessible in the unified Sidebar.
+
 ## Project Structure
 
 ```text

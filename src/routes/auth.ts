@@ -85,7 +85,7 @@ auth.post('/login', async (c) => {
     }
 
     if (!user.is_verified) {
-      return c.json({ error: 'Identity not verified. Check your inbox.', needs_verification: true }, 403);
+      return c.json({ error: 'Email not verified. Check your inbox.', needs_verification: true }, 403);
     }
 
     if (!c.env.JWT_SECRET) {

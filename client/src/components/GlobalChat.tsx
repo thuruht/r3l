@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
-import AvatarStack from './AvatarStack';
 import { useToast } from '../context/ToastContext';
-import { useWindowSize } from '../hooks/useWindowSize';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
@@ -38,7 +36,6 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
-  const { isMobile, w: windowWidth } = useWindowSize();
 
   useEffect(() => {
     connectRoom(room);
@@ -109,155 +106,125 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
   };
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - var(--header-height))', width: '100%', background: 'var(--bg-color)', flexDirection: isMobile ? 'column' : 'row', position: 'fixed', top: 'var(--header-height)', left: 0, zIndex: 'var(--z-sticky)', overflow: 'hidden' }}>
-      <div style={{ width: isMobile ? '100%' : '200px', borderRight: isMobile ? 'none' : '1px solid var(--border-color)', borderBottom: isMobile ? '1px solid var(--border-color)' : 'none', padding: '20px', overflowX: isMobile ? 'auto' : 'visible', display: 'flex', flexDirection: isMobile ? 'row' : 'column', gap: '10px' }}>
-        {!isMobile && <h3 style={{ marginBottom: '15px' }}>Rooms</h3>}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-color)', overflow: 'hidden' }}>
+      {/* Compact room tabs + online count header */}
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-color)', overflowX: 'auto', flexShrink: 0, gap: '2px', padding: '4px' }}>
         {ROOMS.map(r => (
           <button
             key={r.name}
             onClick={() => setRoom(r.name)}
             aria-pressed={room === r.name}
             style={{
-              width: isMobile ? 'auto' : '100%',
-              textAlign: 'left',
-              padding: '10px',
-              marginBottom: isMobile ? '0' : '5px',
-              background: room === r.name ? 'var(--accent-sym)' : 'var(--bg-secondary)',
+              padding: '6px 10px',
+              background: room === r.name ? 'var(--accent-sym)' : 'transparent',
               border: room === r.name ? '1px solid var(--accent-sym)' : '1px solid transparent',
               borderRadius: '4px',
-              color: 'var(--text-primary)',
+              color: room === r.name ? '#000' : 'var(--text-secondary)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              transition: 'all 0.2s',
-              fontWeight: room === r.name ? 'bold' : 'normal'
-            }}
-            onMouseEnter={(e) => {
-               if (room !== r.name) e.currentTarget.style.background = 'var(--bg-mist)';
-            }}
-            onMouseLeave={(e) => {
-               if (room !== r.name) e.currentTarget.style.background = 'var(--bg-secondary)';
+              fontSize: '0.8rem',
+              fontWeight: room === r.name ? '700' : 'normal',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              flexShrink: 0,
             }}
           >
-            <TablerIcons.IconHash size={ICON_SIZES.md} style={{ marginRight: '5px' }} />
+            <TablerIcons.IconHash size={12} />
             {r.label}
           </button>
         ))}
-        {isMobile && (
-            <button onClick={onClose} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--accent-alert)' }}>
-                <TablerIcons.IconX />
-            </button>
-        )}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '4px', flexShrink: 0 }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+            <TablerIcons.IconUsers size={12} />{online.length}
+          </span>
+        </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <div style={{ padding: '20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ color: 'var(--text-primary)' }}>#{room}</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--text-secondary)' }}>
-                <TablerIcons.IconUsers size={ICON_SIZES.xl} />
-                {online.length}
-            </div>
-            <button onClick={onClose} className="btn-icon" title="Close Chat" aria-label="Close Chat">
-                <TablerIcons.IconX size={ICON_SIZES.xl} />
-            </button>
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {messages.length === 0 && (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.7 }}>
+            <TablerIcons.IconBroadcast size={ICON_SIZES['2xl']} stroke={1} />
+            <p style={{ marginTop: '10px', fontStyle: 'italic', fontSize: '0.9em' }}>Frequency Silent</p>
+            <p style={{ fontSize: '0.8em' }}>Be the first to broadcast.</p>
           </div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column' }}>
-          {messages.length === 0 && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.7 }}>
-               <TablerIcons.IconBroadcast size={ICON_SIZES['2xl']} stroke={1} />
-               <p style={{ marginTop: '10px', fontStyle: 'italic' }}>Frequency Silent</p>
-               <p style={{ fontSize: '0.8em' }}>Be the first to broadcast.</p>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} style={{ marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <strong style={{ color: 'var(--accent-sym)', fontSize: '0.85em' }}>{msg.username}</strong>
+              <span style={{ fontSize: '0.72em', color: 'var(--text-secondary)' }}>
+                {new Date(msg.timestamp).toLocaleTimeString()}
+              </span>
             </div>
-          )}
-
-          {messages.map((msg, i) => (
-            <div key={i} style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'baseline', flexWrap: 'wrap' }}>
-                <strong style={{ color: 'var(--accent-sym)' }}>{msg.username}</strong>
-                <span style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-              <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word' }}>{msg.content}</div>
-            </div>
-          ))}
-          {typing.size > 0 && (
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9em', fontStyle: 'italic' }}>
-              {Array.from(typing).join(', ')} {typing.size === 1 ? 'is' : 'are'} typing...
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        <div style={{ 
-            padding: '20px', 
-            paddingBottom: 'calc(20px + var(--safe-area-bottom))',
-            borderTop: '1px solid var(--border-color)', 
-            display: 'flex', 
-            gap: '10px', 
-            position: 'relative', 
-            background: 'var(--bg-color)' 
-        }}>
-          {showEmoji && (
-            <Suspense fallback={<div>Loading...</div>}>
-              <div style={{ position: 'absolute', bottom: '60px', right: '20px', zIndex: 'var(--z-dropdown)' }}>
-                <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
-              </div>
-            </Suspense>
-          )}
-          <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            aria-label="Toggle emoji picker"
-            title="Add Emoji"
-            style={{ padding: '10px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            <TablerIcons.IconMoodSmile size={ICON_SIZES.xl} color="var(--text-primary)" />
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={e => handleTyping(e.target.value)}
-            onFocus={() => setIsInputFocused(true)}
-            onBlur={() => setIsInputFocused(false)}
-            onKeyDown={e => e.key === 'Enter' && sendMessage()}
-            placeholder={`Message #${room}`}
-            style={{
-              flex: 1,
-              padding: '10px',
-              background: 'var(--bg-secondary)',
-              border: `1px solid ${isInputFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
-              borderRadius: '4px',
-              color: 'var(--text-primary)',
-              outline: 'none',
-              boxShadow: isInputFocused ? 'var(--glow-sym)' : 'none',
-              transition: 'all 0.2s'
-            }}
-          />
-          <button
-            onClick={sendMessage}
-            disabled={!input.trim()}
-            aria-label="Send message"
-            title="Send"
-            style={{ padding: '10px 20px', cursor: input.trim() ? 'pointer' : 'not-allowed', opacity: input.trim() ? 1 : 0.5 }}
-          >
-            <TablerIcons.IconSend size={ICON_SIZES.xl} />
-          </button>
-        </div>
+            <div style={{ color: 'var(--text-primary)', wordBreak: 'break-word', fontSize: '0.9em', marginTop: '2px' }}>{msg.content}</div>
+          </div>
+        ))}
+        {typing.size > 0 && (
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8em', fontStyle: 'italic' }}>
+            {Array.from(typing).join(', ')} {typing.size === 1 ? 'is' : 'are'} typing…
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {windowWidth >= 1024 && (
-        <div style={{ width: '200px', borderLeft: '1px solid var(--border-color)', padding: '20px', overflowY: 'auto' }}>
-          <h3 style={{ marginBottom: '15px', color: 'var(--text-primary)' }}>Online ({online.length})</h3>
-          {online.map(u => (
-            <div key={u.userId} style={{ padding: '5px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981ff' }} />
-              {u.username}
+      {/* Input bar */}
+      <div style={{
+        padding: '8px',
+        paddingBottom: 'calc(8px + var(--safe-area-bottom))',
+        borderTop: '1px solid var(--border-color)',
+        display: 'flex',
+        gap: '6px',
+        position: 'relative',
+        background: 'var(--bg-color)',
+        flexShrink: 0,
+      }}>
+        {showEmoji && (
+          <Suspense fallback={null}>
+            <div style={{ position: 'absolute', bottom: '56px', right: '8px', zIndex: 'var(--z-dropdown)' }}>
+              <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
             </div>
-          ))}
-        </div>
-      )}
+          </Suspense>
+        )}
+        <button
+          onClick={() => setShowEmoji(!showEmoji)}
+          aria-label="Toggle emoji picker"
+          title="Add Emoji"
+          style={{ padding: '8px', background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '4px', cursor: 'pointer', flexShrink: 0 }}
+        >
+          <TablerIcons.IconMoodSmile size={ICON_SIZES.lg} color="var(--text-primary)" />
+        </button>
+        <input
+          type="text"
+          value={input}
+          onChange={e => handleTyping(e.target.value)}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          placeholder={`#${room}`}
+          style={{
+            flex: 1,
+            padding: '8px 10px',
+            background: 'var(--bg-mist)',
+            border: `1px solid ${isInputFocused ? 'var(--accent-sym)' : 'var(--border-color)'}`,
+            borderRadius: '4px',
+            color: 'var(--text-primary)',
+            outline: 'none',
+            fontSize: '0.875rem',
+            minWidth: 0,
+          }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!input.trim()}
+          aria-label="Send message"
+          title="Send"
+          style={{ padding: '8px 12px', cursor: input.trim() ? 'pointer' : 'not-allowed', opacity: input.trim() ? 1 : 0.5, flexShrink: 0 }}
+        >
+          <TablerIcons.IconSend size={ICON_SIZES.lg} />
+        </button>
+      </div>
     </div>
   );
 };

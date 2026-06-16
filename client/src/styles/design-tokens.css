@@ -67,6 +67,9 @@
   --z-toast: 4000;
   --z-tooltip: 5000;
 
+  /* Semantic Accents */
+  --accent-vitality: #ffeb3b; /* Vitality/boost — energy yellow */
+
   /* Mobile Protection */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --safe-area-top: env(safe-area-inset-top, 0px);

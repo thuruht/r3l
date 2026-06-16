@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconLoader2, IconCheck } from '@tabler/icons-react';
+import { IconDownload, IconTrash, IconShare, IconUpload, IconFile, IconBolt, IconEye, IconArrowsShuffle, IconLoader2, IconCheck, IconDotsVertical } from '@tabler/icons-react';
 import FilePreviewModal from './FilePreviewModal';
 import Skeleton from './Skeleton';
 import ConfirmModal from './ConfirmModal';
@@ -42,11 +42,13 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false); // Added
   
-  const [sharingFileId, setSharingFileId] = useState<number | null>(null);
+  const [secondaryOpenId, setSecondaryOpenId] = useState<number | null>(null);
   const [mutuals, setMutuals] = useState<any[]>([]);
+  const [sharingFileId, setSharingFileId] = useState<number | null>(null);
   const [previewFile, setPreviewFile] = useState<FileData | null>(null);
   const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null);
   const [boostingIds, setBoostingIds] = useState<Set<number>>(new Set());
+  const [pendingDropFiles, setPendingDropFiles] = useState<File[] | null>(null);
 
   const getExpiryLabel = (expires_at?: string): { label: string; urgent: boolean } | null => {
     if (!expires_at) return null;
@@ -114,7 +116,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     e.preventDefault();
     setIsDragOver(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleUpload({ target: { files: e.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+      setPendingDropFiles(Array.from(e.dataTransfer.files));
+      setShowUploadModal(true);
     }
   };
 
@@ -279,194 +282,207 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
   return (
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
-      <div style={{ borderBottom: '1px solid #333', paddingBottom: '5px', marginBottom: '10px' }}>
-        {isOwner && <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>RPC — Private Cache</div>}
+      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '10px' }}>
         <h5 style={{ color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {files.length > 0 && `(${files.length})`}
+          <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {total > 0 && `(${total})`}
         </h5>
       </div>
 
-      {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em' }}>{error}</div>}
+      {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em', marginBottom: '8px' }}>{error}</div>}
 
-      <div className="file-list" ref={listRef} style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="file-list" ref={listRef} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {loading && (
-            <>
-                <Skeleton height="40px" />
-                <Skeleton height="40px" />
-                <Skeleton height="40px" />
-            </>
+          <>
+            <Skeleton height="48px" />
+            <Skeleton height="48px" />
+            <Skeleton height="48px" />
+          </>
         )}
-        
+
         {!loading && files.length === 0 && (
-          <div style={{ color: '#666', fontSize: '0.8em', fontStyle: 'italic' }}>
-            No artifacts found.
+          <div style={{ textAlign: 'center', padding: '24px 12px', color: 'var(--text-secondary)', fontSize: '0.85em' }}>
+            <IconFile size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 8px' }} />
+            {isOwner ? (
+              <>
+                <div>No artifacts yet.</div>
+                <button onClick={() => setShowUploadModal(true)} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  <IconUpload size={ICON_SIZES.sm} /> Upload your first artifact
+                </button>
+              </>
+            ) : (
+              <div>No public artifacts yet.</div>
+            )}
           </div>
         )}
 
-        {!loading && files.map(file => (
-          <React.Fragment key={file.id}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            background: '#ffffff0d',
-            padding: '8px',
-            borderRadius: '4px',
-            fontSize: '0.9em',
-            cursor: 'pointer'
-          }} onClick={() => setPreviewFile(file)}>
-            <div
-              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', outline: 'none' }}
-              role="button"
-              tabIndex={0}
-              aria-label={`Preview ${file.filename}`}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setPreviewFile(file);
-                }
-              }}
-              onClick={(e) => e.stopPropagation()} /* Prevent double firing if clicking directly on text */
-              onClickCapture={() => setPreviewFile(file)} /* Handle click explicitly */
-            >
-              <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {file.remix_of && <span title="Remix" style={{ fontSize: '0.7em', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', borderRadius: '3px', padding: '0 3px' }}>RMX</span>}
-                {file.burn_on_read ? <span title="Burns after first view" style={{ fontSize: '0.7em', color: 'var(--accent-alert)', border: '1px solid var(--accent-alert)', borderRadius: '3px', padding: '0 3px' }}>🔥</span> : null}
-                {file.filename}
-              </div>
-              {(() => { const expiry = getExpiryLabel(file.expires_at); return expiry ? <div style={{ fontSize: '0.7em', color: expiry.urgent ? 'var(--accent-alert)' : 'var(--text-secondary)' }}>⏳ {expiry.label}</div> : null; })()}
-              <div style={{ color: '#888', fontSize: '0.8em' }}>{formatSize(file.size)}</div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginRight: '5px', gap: '4px', color: '#ffeb3b' }} title="Vitality" onClick={e => e.stopPropagation()}>
-                 <IconBolt size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
-                 <span style={{ fontSize: '0.9em' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
-                 <button 
-                   onClick={() => handleBoost(file.id)} 
-                   disabled={boostingIds.has(file.id) || file.is_boosted}
-                   style={{ 
-                     padding: '6px', 
-                     background: 'transparent', 
-                     border: file.is_boosted ? '1px solid var(--accent-sym)' : '1px solid #ffeb3b', 
-                     color: file.is_boosted ? 'var(--accent-sym)' : '#ffeb3b', 
-                     borderRadius: '4px',
-                     fontSize: '0.8em',
-                     cursor: (boostingIds.has(file.id) || file.is_boosted) ? 'default' : 'pointer',
-                     marginLeft: '4px',
-                     display: 'flex',
-                     alignItems: 'center',
-                     justifyContent: 'center',
-                     minWidth: '32px',
-                     minHeight: '32px',
-                     opacity: file.is_boosted ? 0.6 : 1
-                   }}
-                   title={file.is_boosted ? "Already boosted" : "Boost Signal"}
-                   aria-label={file.is_boosted ? "Already boosted" : "Boost Signal"}
-                 >
-                   {boostingIds.has(file.id) ? <IconLoader2 size={ICON_SIZES.xs} className="icon-spin" /> : file.is_boosted ? <IconCheck size={14} className="chrome-icon" /> : "+"}
-                 </button>
-              </div>
-
-              <button 
-                onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }}
-                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
-                title="Preview"
-                aria-label="Preview file"
-              >
-                <IconEye size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
-              </button>
-
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleDownload(file.id, file.filename); }}
-                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
-                title="Download"
-                aria-label={`Download ${file.filename}`}
-              >
-                <IconDownload size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
-              </button>
-              
-              <button
-                onClick={(e) => { e.stopPropagation(); handleRemix(file); }}
-                style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
-                title="Remix this artifact"
-                aria-label="Remix this artifact"
-              >
-                <IconArrowsShuffle size={ICON_SIZES.md} className="chrome-icon" />
-              </button>
-
-              {isOwner && (
-                <>
+        {!loading && files.map(file => {
+          const expiry = getExpiryLabel(file.expires_at);
+          const isSecOpen = secondaryOpenId === file.id;
+          return (
+            <React.Fragment key={file.id}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'var(--hover-bg)',
+                padding: '8px 10px',
+                borderRadius: '4px',
+                fontSize: '0.875em',
+                gap: '8px',
+              }}>
+                {/* Left: name + meta */}
                 <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (sharingFileId === file.id) {
-                            setSharingFileId(null);
-                        } else {
-                            setSharingFileId(file.id);
-                            fetchMutuals();
-                        }
-                    }}
-                    style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px' }}
-                    title="Share"
-                    aria-label="Share file"
+                  onClick={() => setPreviewFile(file)}
+                  style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                  aria-label={`Preview ${file.filename}`}
                 >
-                    <IconShare size={ICON_SIZES.md} aria-hidden="true" className="chrome-icon" />
+                  <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
+                    {file.remix_of && <span title="Remix" style={{ flexShrink: 0, fontSize: '0.7em', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', borderRadius: '3px', padding: '0 3px' }}>RMX</span>}
+                    {file.burn_on_read ? <span title="Burns after first view" style={{ flexShrink: 0, fontSize: '0.7em', color: 'var(--accent-alert)', border: '1px solid var(--accent-alert)', borderRadius: '3px', padding: '0 3px' }}>BOR</span> : null}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.filename}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                    {expiry && <span style={{ fontSize: '0.75em', color: expiry.urgent ? 'var(--accent-alert)' : 'var(--text-secondary)' }}>{expiry.urgent ? '!' : ''} {expiry.label}</span>}
+                    <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>{formatSize(file.size)}</span>
+                  </div>
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setConfirmDeleteFileId(file.id); }}
-                  style={{ padding: '8px', display: 'flex', alignItems: 'center', minWidth: '36px', minHeight: '32px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
-                  title="Delete"
-                  aria-label="Delete file"
-                >
-                  <IconTrash size={ICON_SIZES.md} aria-hidden="true" />
-                </button>
-                </>
-              )}
-            </div>
-          </div>
-          {sharingFileId === file.id && (
-              <div style={{ padding: '5px', background: '#ffffff11', fontSize: '0.8em' }} onClick={e => e.stopPropagation()}>
-                  <div style={{ marginBottom: '5px' }}>Share with:</div>
-                  {mutuals.length === 0 ? (
-                      <div>No connections found.</div>
-                  ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                          {mutuals.map(u => (
-                              <button key={u.id} onClick={() => handleShare(file.id, u.id)} style={{ fontSize: '0.9em' }}>
-                                  {u.username}
-                              </button>
-                          ))}
-                      </div>
-                  )}
+
+                {/* Right: primary actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  {/* Vitality */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--accent-vitality)' }} onClick={e => e.stopPropagation()}>
+                    <IconBolt size={ICON_SIZES.sm} aria-hidden="true" />
+                    <span style={{ fontSize: '0.8em', minWidth: '16px', textAlign: 'center' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
+                    <button
+                      onClick={() => handleBoost(file.id)}
+                      disabled={boostingIds.has(file.id) || file.is_boosted}
+                      style={{
+                        padding: '4px 6px',
+                        background: 'transparent',
+                        border: `1px solid ${file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-vitality)'}`,
+                        color: file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-vitality)',
+                        borderRadius: '4px',
+                        fontSize: '0.8em',
+                        cursor: (boostingIds.has(file.id) || file.is_boosted) ? 'default' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '28px',
+                        minHeight: '28px',
+                        opacity: file.is_boosted ? 0.6 : 1,
+                      }}
+                      title={file.is_boosted ? 'Already boosted' : 'Boost Signal'}
+                      aria-label={file.is_boosted ? 'Already boosted' : 'Boost Signal'}
+                    >
+                      {boostingIds.has(file.id) ? <IconLoader2 size={12} className="icon-spin" /> : file.is_boosted ? <IconCheck size={12} /> : '+'}
+                    </button>
+                  </div>
+
+                  <button onClick={(e) => { e.stopPropagation(); setPreviewFile(file); }} style={{ padding: '6px', display: 'flex', alignItems: 'center', minWidth: '32px', minHeight: '32px' }} title="Preview" aria-label="Preview file">
+                    <IconEye size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
+                  </button>
+
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(file.id, file.filename); }} style={{ padding: '6px', display: 'flex', alignItems: 'center', minWidth: '32px', minHeight: '32px' }} title="Download" aria-label={`Download ${file.filename}`}>
+                    <IconDownload size={ICON_SIZES.sm} aria-hidden="true" className="chrome-icon" />
+                  </button>
+
+                  {/* More actions toggle */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSecondaryOpenId(isSecOpen ? null : file.id); if (!isSecOpen) { setSharingFileId(null); } }}
+                    style={{ padding: '6px', display: 'flex', alignItems: 'center', minWidth: '32px', minHeight: '32px', color: isSecOpen ? 'var(--accent-sym)' : undefined }}
+                    title="More actions"
+                    aria-label="More actions"
+                    aria-expanded={isSecOpen}
+                  >
+                    <IconDotsVertical size={ICON_SIZES.sm} aria-hidden="true" />
+                  </button>
+                </div>
               </div>
-          )}
-          </React.Fragment>
-        ))}
+
+              {/* Secondary actions panel */}
+              {isSecOpen && (
+                <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '4px', padding: '6px 10px', display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }} onClick={e => e.stopPropagation()}>
+                  <button onClick={() => { handleRemix(file); setSecondaryOpenId(null); }} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8em', padding: '4px 8px' }} title="Remix">
+                    <IconArrowsShuffle size={ICON_SIZES.sm} /> Remix
+                  </button>
+                  {isOwner && (
+                    <>
+                      <button
+                        onClick={() => {
+                          if (sharingFileId === file.id) { setSharingFileId(null); }
+                          else { setSharingFileId(file.id); fetchMutuals(); }
+                        }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8em', padding: '4px 8px' }}
+                        title="Share"
+                      >
+                        <IconShare size={ICON_SIZES.sm} /> Share
+                      </button>
+                      <button
+                        onClick={() => { setConfirmDeleteFileId(file.id); setSecondaryOpenId(null); }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8em', padding: '4px 8px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}
+                        title="Delete"
+                      >
+                        <IconTrash size={ICON_SIZES.sm} /> Delete
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Share picker (opens within secondary panel) */}
+              {sharingFileId === file.id && (
+                <div style={{ padding: '6px 10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', fontSize: '0.8em' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ marginBottom: '5px', color: 'var(--text-secondary)' }}>Share with a connection:</div>
+                  {mutuals.length === 0 ? (
+                    <div style={{ color: 'var(--text-secondary)' }}>No sym connections found.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                      {mutuals.map(u => (
+                        <button key={u.id} onClick={() => handleShare(file.id, u.id)} style={{ fontSize: '0.9em', padding: '4px 8px' }}>
+                          {u.username}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
 
-      {isOwner && (
-        <div style={{ marginTop: '15px' }}>
-      <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <IconUpload size={ICON_SIZES.md} className="chrome-icon" /> Upload Artifacts
+      {/* Load more */}
+      {!loading && files.length < total && (
+        <div style={{ marginTop: '10px', textAlign: 'center' }}>
+          <button onClick={() => fetchFiles(false)} disabled={loadingMore} style={{ fontSize: '0.8em' }}>
+            {loadingMore ? <IconLoader2 size={ICON_SIZES.sm} className="icon-spin" /> : `Load more (${total - files.length} remaining)`}
+          </button>
+        </div>
+      )}
+
+      {isOwner && files.length > 0 && (
+        <div style={{ marginTop: '12px' }}>
+          <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85em' }}>
+            <IconUpload size={ICON_SIZES.sm} className="chrome-icon" /> Upload Artifact
           </button>
         </div>
       )}
 
       {showUploadModal && (
-        <UploadModal 
-            onClose={() => setShowUploadModal(false)}
-            onUploadComplete={fetchFiles}
+        <UploadModal
+          onClose={() => { setShowUploadModal(false); setPendingDropFiles(null); }}
+          onUploadComplete={() => { fetchFiles(true); setPendingDropFiles(null); }}
+          initialFiles={pendingDropFiles ?? undefined}
         />
       )}
 
       {previewFile && (
         <FilePreviewModal
-            fileId={previewFile.id}
-            filename={previewFile.filename}
-            mimeType={previewFile.mime_type}
-            onClose={() => setPreviewFile(null)}
-            onDownload={() => handleDownload(previewFile.id, previewFile.filename)}
+          fileId={previewFile.id}
+          filename={previewFile.filename}
+          mimeType={previewFile.mime_type}
+          onClose={() => setPreviewFile(null)}
+          onDownload={() => handleDownload(previewFile.id, previewFile.filename)}
         />
       )}
       <ConfirmModal

@@ -154,9 +154,8 @@
     width: 100%;
     z-index: var(--z-header);
     box-sizing: border-box;
-    /* Ensure visibility if transparency fails or layout shifts */
     background-color: var(--drawer-bg);
-    transform: translateZ(0); /* Force stacking context */
+    /* Note: NO transform here — transform traps position:fixed children within this element */
 }
 
 /* Animations */
@@ -379,7 +378,7 @@
 }
 
 .nav-button {
-    padding: 8px 12px;
+    padding: 6px 10px;
     min-width: 44px;
     min-height: 44px;
     border: none;
@@ -387,14 +386,22 @@
     cursor: pointer;
     position: relative;
     transition: all var(--transition-base);
-    color: var(--text-primary);
+    color: var(--text-secondary);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
+    border-bottom: 2px solid transparent;
 }
 
 .nav-button:hover {
+    color: var(--text-primary);
+}
+
+.nav-button.active {
     color: var(--accent-sym);
+    border-bottom-color: var(--accent-sym);
 }
 
 .nav-button:focus-visible {
@@ -402,15 +409,46 @@
     border-radius: 4px;
 }
 
+.nav-label {
+    font-size: 0.65rem;
+    font-family: var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
 .unread-badge {
     position: absolute;
     top: 4px;
     right: 4px;
     background: var(--accent-alert);
-    color: white;
-    border-radius: 50%;
-    width: 8px;
-    height: 8px;
+    color: #000;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 8px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+}
+
+.menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-alert);
+    color: #000;
+    font-size: 0.7em;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    padding: 0 4px;
+    line-height: 1;
+    margin-left: auto;
 }
 
 /* ========== DROPDOWN MENU ========== */
@@ -484,7 +522,8 @@
 /* ========== LOADING STATE ========== */
 
 .loading-container {
-    height: 100vh;
+    height: 100%;
+    min-height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -494,11 +533,16 @@
     gap: var(--spacing-xl);
 }
 
-.radar-scan {
-    width: 50px;
-    height: 50px;
-    border: 2px solid var(--accent-sym);
-    border-radius: 50%;
+/* Pulsing radar-style loading icon */
+.spinner-icon {
+    color: var(--accent-sym);
+    animation: spin-pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin-pulse {
+    0%   { opacity: 1; transform: rotate(0deg) scale(1); }
+    50%  { opacity: 0.5; transform: rotate(180deg) scale(0.9); }
+    100% { opacity: 1; transform: rotate(360deg) scale(1); }
 }
 
 /* ========== MOBILE SAFE AREAS ========== */

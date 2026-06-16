@@ -5,21 +5,25 @@ import { ICON_SIZES } from '@/constants/iconSizes';
 interface LandingPageProps {
   onLogin: (e: React.FormEvent, data: any) => void;
   onRegister: (e: React.FormEvent, data: any) => void;
+  onForgotPassword: (e: React.FormEvent, email: string) => void;
   authError: string | null;
   isRegistering: boolean;
   setIsRegistering: (val: boolean) => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ 
-  onLogin, 
-  onRegister, 
-  authError, 
-  isRegistering, 
-  setIsRegistering 
+const LandingPage: React.FC<LandingPageProps> = ({
+  onLogin,
+  onRegister,
+  onForgotPassword,
+  authError,
+  isRegistering,
+  setIsRegistering,
 }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +32,12 @@ const LandingPage: React.FC<LandingPageProps> = ({
     } else {
       onLogin(e, { username, password });
     }
+  };
+
+  const handleForgotSubmit = (e: React.FormEvent) => {
+    onForgotPassword(e, forgotEmail);
+    setShowForgot(false);
+    setForgotEmail('');
   };
 
   return (
@@ -57,51 +67,94 @@ const LandingPage: React.FC<LandingPageProps> = ({
         </div>
 
         <div className="auth-panel glass-panel">
-          <h2>{isRegistering ? 'Initialize Signal' : 'Resume Broadcast'}</h2>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-              />
-            </div>
-            <div className="input-group">
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-            {isRegistering && (
-              <div className="input-group fade-in">
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+          {showForgot ? (
+            <>
+              <h2>Reset Signal Key</h2>
+              <form onSubmit={handleForgotSubmit}>
+                <div className="input-group">
+                  <label htmlFor="forgot-email" className="input-label">Email address</label>
+                  <input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="your@email.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    required
+                    autoFocus
+                  />
+                </div>
+                <button type="submit" className="submit-btn">
+                  Send Reset Link <IconArrowRight size={ICON_SIZES.lg} />
+                </button>
+              </form>
+              <div className="auth-switch">
+                <button onClick={() => setShowForgot(false)}>Back to login</button>
               </div>
-            )}
-            
-            {authError && <div className="error-message fade-in">{authError}</div>}
-            
-            <button type="submit" className="submit-btn">
-              {isRegistering ? 'Register' : 'Login'} <IconArrowRight size={ICON_SIZES.lg} />
-            </button>
-          </form>
+            </>
+          ) : (
+            <>
+              <h2>{isRegistering ? 'Initialize Signal' : 'Resume Broadcast'}</h2>
 
-          <div className="auth-switch">
-            <button onClick={() => setIsRegistering(!isRegistering)}>
-              {isRegistering ? 'Already have a signal? Login' : 'Need a frequency? Register'}
-            </button>
-          </div>
+              <form onSubmit={handleSubmit}>
+                <div className="input-group">
+                  <label htmlFor="auth-username" className="input-label">Username</label>
+                  <input
+                    id="auth-username"
+                    type="text"
+                    placeholder="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    required
+                    autoComplete={isRegistering ? 'username' : 'username'}
+                  />
+                </div>
+                <div className="input-group">
+                  <label htmlFor="auth-password" className="input-label">Password</label>
+                  <input
+                    id="auth-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                    minLength={isRegistering ? 8 : undefined}
+                  />
+                </div>
+                {isRegistering && (
+                  <div className="input-group fade-in">
+                    <label htmlFor="auth-email" className="input-label">Email</label>
+                    <input
+                      id="auth-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                )}
+
+                {authError && <div className="error-message fade-in" role="alert">{authError}</div>}
+
+                <button type="submit" className="submit-btn">
+                  {isRegistering ? 'Register' : 'Login'} <IconArrowRight size={ICON_SIZES.lg} />
+                </button>
+              </form>
+
+              <div className="auth-switch">
+                <button onClick={() => setIsRegistering(!isRegistering)}>
+                  {isRegistering ? 'Already have a signal? Login' : 'Need a frequency? Register'}
+                </button>
+                {!isRegistering && (
+                  <button onClick={() => setShowForgot(true)} style={{ marginTop: '8px', display: 'block', width: '100%' }}>
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -112,14 +165,13 @@ const LandingPage: React.FC<LandingPageProps> = ({
 
       <style>{`
         .landing-container {
-          /* min-height: 100vh; -- Removed */
           width: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
           position: relative;
           background-color: var(--bg-color);
-          overflow-y: auto; /* Allow scrolling */
+          overflow-y: auto;
           padding: 20px;
           box-sizing: border-box;
         }
@@ -205,6 +257,16 @@ const LandingPage: React.FC<LandingPageProps> = ({
           margin-bottom: 15px;
         }
 
+        .input-label {
+          display: block;
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 5px;
+          font-family: var(--font-family-heading);
+        }
+
         .input-group input {
           width: 100%;
           box-sizing: border-box;
@@ -265,7 +327,6 @@ const LandingPage: React.FC<LandingPageProps> = ({
           text-align: center;
         }
 
-        /* Background Effects */
         .landing-background {
           position: absolute;
           top: 0;
@@ -281,7 +342,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
           left: 0;
           width: 100%;
           height: 100%;
-          background-image: 
+          background-image:
             linear-gradient(var(--border-color) 1px, transparent 1px),
             linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
           background-size: 50px 50px;

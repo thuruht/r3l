@@ -13,6 +13,8 @@ import ResetPassword from './components/ResetPassword';
 import FilePreviewModal from './components/FilePreviewModal';
 import LandingPage from './components/LandingPage';
 import DriftHistory from './components/DriftHistory';
+import SettingsPage from './pages/SettingsPage';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 // Lazy-loaded heavy components
 const GroupChat = React.lazy(() => import('./components/GroupChat'));
@@ -25,8 +27,6 @@ const WorkspacesManager = React.lazy(() => import('./components/WorkspacesManage
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const GlobalChat = React.lazy(() => import('./components/GlobalChat'));
 const ArchiveVote = React.lazy(() => import('./components/ArchiveVote'));
-import SettingsPage from './pages/SettingsPage';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
@@ -45,7 +45,7 @@ interface User {
 
 function Main() {
   const { isOpen: isSidebarOpen, activeTab: sidebarTab, openTab, close: closeSidebar } = useSidebar();
-  const [planetTab, setPlanetTab] = useState<'workgroups' | 'symgroups'>('workgroups');
+  const [isWorkspacesOpen, setIsWorkspacesOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [isFAQOpen, setIsFAQOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -68,7 +68,6 @@ function Main() {
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [driftHistory, setDriftHistory] = useState<Array<{ id: string; name: string; type: 'user' | 'file'; mime_type?: string; timestamp: number }>>([]);
-  const [showDriftHistory, setShowDriftHistory] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [isResendVerify, setIsResendVerify] = useState(false);
@@ -196,8 +195,7 @@ function Main() {
           showToast(`New Whisper from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
           setUnreadCount(prev => prev + 1);
         } else if (msg.type === 'new_group_message') {
-          // Use refs to avoid stale closure over UI state
-          if (sidebarTabRef.current !== 'planets' || planetTab !== 'symgroups') {
+          if (sidebarTabRef.current !== 'planets') {
             setGroupUnreadCount(prev => prev + 1);
           }
         } else if (msg.type === 'signal_artifact') {
@@ -243,7 +241,6 @@ function Main() {
       navigate('/');
     } else {
       showToast('Drift Mode: Disengaged.', 'info');
-      setShowDriftHistory(false);
     }
   };
 
@@ -262,18 +259,16 @@ function Main() {
     } catch { showToast('Request failed', 'error'); }
   };
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent, email: string) => {
     e.preventDefault();
     try {
       const res = await fetch('/api/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
+        body: JSON.stringify({ email }),
       });
       const data = await res.json();
       showToast(data.message || 'Reset link sent if email exists.', 'success');
-      setIsForgotPassword(false);
-      setForgotEmail('');
     } catch { showToast('Request failed', 'error'); }
   };
 
@@ -388,8 +383,8 @@ function Main() {
   if (loadingUser) {
     return (
       <div className="loading-container">
-        <div className="radar-scan"></div>
-        <div>Establishing Uplink...</div>
+        <TablerIcons.IconRadar2 size={48} className="spinner-icon" aria-hidden="true" />
+        <div style={{ marginTop: 'var(--spacing-md)', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Establishing Uplink…</div>
       </div>
     );
   }
@@ -397,9 +392,10 @@ function Main() {
   return (
     <>
       {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password')) ? (
-        <LandingPage 
-          onLogin={handleLogin} 
+        <LandingPage
+          onLogin={handleLogin}
           onRegister={handleRegister}
+          onForgotPassword={handleForgotPassword}
           authError={authError}
           isRegistering={isRegistering}
           setIsRegistering={setIsRegistering}
@@ -435,21 +431,24 @@ function Main() {
                         {driftType ? driftType.toUpperCase() : 'ALL'}
                       </button>
                       {isDrifting && driftHistory.length > 0 && (
-                        <button onClick={() => setShowDriftHistory(!showDriftHistory)} className="drift-filter-btn" title="Drift History" aria-label="Drift session history">
+                        <button onClick={() => openTab('history')} className={`drift-filter-btn${isSidebarOpen && sidebarTab === 'history' ? ' active' : ''}`} title="Drift History" aria-label="Drift session history">
                           {driftHistory.length}
                         </button>
                       )}
                     </div>
-                    <button onClick={() => { openTab('inbox'); setUnreadCount(0); }} className="nav-button" aria-label={`Inbox, ${unreadCount} unread`}>
-                      {"< mail >"}
-                      {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
+                    <button onClick={() => { openTab('inbox'); setUnreadCount(0); }} className={`nav-button${isSidebarOpen && sidebarTab === 'inbox' ? ' active' : ''}`} aria-label={`Inbox${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}>
+                      <TablerIcons.IconMailbox size={ICON_SIZES.lg} aria-hidden="true" />
+                      <span className="nav-label">Mail</span>
+                      {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
                     </button>
-                    <button onClick={() => openTab('planets')} className="nav-button" aria-label="Planets">
-                      {"< planets >"}
-                      {groupUnreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
+                    <button onClick={() => { openTab('planets'); }} className={`nav-button${isSidebarOpen && sidebarTab === 'planets' ? ' active' : ''}`} aria-label="Groups">
+                      <TablerIcons.IconUsersGroup size={ICON_SIZES.lg} aria-hidden="true" />
+                      <span className="nav-label">Groups</span>
+                      {groupUnreadCount > 0 && <span className="unread-badge">{groupUnreadCount}</span>}
                     </button>
-                    <button onClick={() => openTab('galaxy')} className="nav-button" aria-label="Global Chat">
-                      {"< galaxy >"}
+                    <button onClick={() => openTab('galaxy')} className={`nav-button${isSidebarOpen && sidebarTab === 'galaxy' ? ' active' : ''}`} aria-label="Global Chat">
+                      <TablerIcons.IconBroadcast size={ICON_SIZES.lg} aria-hidden="true" />
+                      <span className="nav-label">Galaxy</span>
                     </button>
                   </div>
                   {/* Mobile: inbox badge button */}
@@ -496,14 +495,17 @@ function Main() {
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
+              <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
+                <TablerIcons.IconBriefcase size={ICON_SIZES.lg} /> Workspaces
+              </button>
               <button onClick={() => { openTab('inbox'); setUnreadCount(0); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconMessage size={ICON_SIZES.lg} /> {"< mail >"} {unreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{unreadCount}</span>}
+                <TablerIcons.IconMailbox size={ICON_SIZES.lg} /> Mail {unreadCount > 0 && <span className="menu-badge">{unreadCount}</span>}
               </button>
               <button onClick={() => { openTab('planets'); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconPlanet size={ICON_SIZES.lg} /> {"< planets >"} {groupUnreadCount > 0 && <span style={{ fontSize: '0.7em', background: 'var(--accent-alert)', padding: '0 5px', borderRadius: '4px', color: '#000', marginLeft: '4px' }}>{groupUnreadCount}</span>}
+                <TablerIcons.IconUsersGroup size={ICON_SIZES.lg} /> Groups {groupUnreadCount > 0 && <span className="menu-badge">{groupUnreadCount}</span>}
               </button>
               <button onClick={() => { openTab('galaxy'); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> {"< galaxy >"}
+                <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> Galaxy
               </button>
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
@@ -532,9 +534,10 @@ function Main() {
             </div>
           )}
 
-          {isFAQOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense>}
-          {isAboutOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense>}
-          {isAdmin && isAdminOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense>}
+          {isFAQOpen && <React.Suspense fallback={null}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense>}
+          {isAboutOpen && <React.Suspense fallback={null}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense>}
+          {isAdmin && isAdminOpen && <React.Suspense fallback={null}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense>}
+          {isWorkspacesOpen && <React.Suspense fallback={null}><WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} /></React.Suspense>}
           {/* Unified Sidebar */}
           <Sidebar
             isOpen={isSidebarOpen}
@@ -542,7 +545,7 @@ function Main() {
             onTabChange={(tab) => {
               openTab(tab);
               if (tab === 'inbox') setUnreadCount(0);
-              if (tab === 'planets' && planetTab === 'symgroups') setGroupUnreadCount(0);
+              if (tab === 'planets') setGroupUnreadCount(0);
             }}
             onClose={closeSidebar}
             unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
@@ -551,28 +554,20 @@ function Main() {
               <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
             )}
             {sidebarTab === 'planets' && (
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div className="planetsSubTabs">
-                  <button onClick={() => setPlanetTab('workgroups')} className={`planetsSubTab${planetTab === 'workgroups' ? ' active' : ''}`}>WORKGROUPS</button>
-                  <button onClick={() => { setPlanetTab('symgroups'); setGroupUnreadCount(0); }} className={`planetsSubTab${planetTab === 'symgroups' ? ' active' : ''}`}>SYMGROUPS</button>
-                </div>
-                <div style={{ flex: 1, overflowY: 'auto' }}>
-                  <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
-                    {planetTab === 'workgroups' ? <WorkspacesManager onClose={closeSidebar} /> : <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />}
-                  </React.Suspense>
-                </div>
-              </div>
+              <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
+                <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />
+              </React.Suspense>
             )}
             {sidebarTab === 'galaxy' && (
-              <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}>
+              <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
                 <GlobalChat onClose={closeSidebar} />
               </React.Suspense>
             )}
             {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
           </Sidebar>
-          {isArchiveOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
-          {isCollectionsOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}
-          {isFeedbackOpen && <React.Suspense fallback={<div className="loading-container"><div className="radar-scan" /></div>}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense>}
+          {isArchiveOpen && <React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
+          {isCollectionsOpen && <React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}
+          {isFeedbackOpen && <React.Suspense fallback={null}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense>}
           {isSettingsOpen && currentUser && (
             <SettingsPage
               onClose={() => setIsSettingsOpen(false)}
@@ -581,41 +576,6 @@ function Main() {
             />
           )}
 
-          {/* Drift History Panel */}
-          {showDriftHistory && isDrifting && (
-            <div className="glass-panel" style={{
-              position: 'fixed', top: 'var(--header-height)', left: '10px', width: '240px', maxHeight: '60vh',
-              overflowY: 'auto', zIndex: 'var(--z-overlay)', padding: '12px', borderRadius: '8px',
-              border: '1px solid var(--border-color)', background: 'var(--drawer-bg)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Drift Session</span>
-                <button onClick={() => { setDriftHistory([]); setShowDriftHistory(false); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.75rem', cursor: 'pointer' }}>Clear</button>
-              </div>
-              {driftHistory.map(entry => (
-                <div key={entry.id}
-                  role="button" tabIndex={0}
-                  onClick={() => {
-                    if (entry.type === 'user') navigate(`/communique/${entry.id.replace('u-', '')}`);
-                    else {
-                      const fileId = entry.id.replace('f-', '');
-                      setPreviewFile({ id: fileId, filename: entry.name, mime_type: entry.mime_type || '' });
-                    }
-                    setShowDriftHistory(false);
-                  }}
-                  onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.click(); }}
-                  style={{
-                    padding: '6px 8px', borderRadius: '4px', cursor: 'pointer', marginBottom: '4px',
-                    background: 'rgba(255,255,255,0.03)', fontSize: '0.82rem',
-                    display: 'flex', alignItems: 'center', gap: '6px'
-                  }}
-                >
-                  <span style={{ opacity: 0.5, fontSize: '0.7rem' }}>{entry.type === 'user' ? '◉' : '◈'}</span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
           {previewFile && (
             <FilePreviewModal
               fileId={previewFile.id}

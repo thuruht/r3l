@@ -6,7 +6,8 @@ import { useToast } from '../context/ToastContext';
 interface UploadModalProps {
   onClose: () => void;
   onUploadComplete: () => void;
-  parentId?: string | null; // For remixing (backend expects number, but frontend might pass string, we'll convert)
+  parentId?: string | null;
+  initialFiles?: File[];
 }
 
 interface FileUploadState {
@@ -17,8 +18,10 @@ interface FileUploadState {
   error?: string;
 }
 
-const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, parentId }) => {
-  const [files, setFiles] = useState<FileUploadState[]>([]);
+const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, parentId, initialFiles }) => {
+  const [files, setFiles] = useState<FileUploadState[]>(() =>
+    (initialFiles ?? []).map(f => ({ id: Math.random().toString(36).substring(7), file: f, progress: 0, status: 'pending' as const }))
+  );
   const [isDragOver, setIsDragOver] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
@@ -33,7 +36,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
-    // Focus drop zone on mount
     dropZoneRef.current?.focus();
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);

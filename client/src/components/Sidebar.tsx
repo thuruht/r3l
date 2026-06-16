@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconMailbox, IconUsersGroup, IconBroadcast, IconHistory } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import type { SidebarTab } from '@/hooks/useSidebar';
 import '@/styles/Sidebar.css';
@@ -13,17 +13,13 @@ interface SidebarProps {
   unreadCounts: { inbox: number; planets: number; history?: number };
 }
 
-const TAB_LABELS: Record<SidebarTab, string> = {
-  inbox: '< mail >',
-  planets: '< planets >',
-  galaxy: '< galaxy >',
-  history: '< drift history >',
+const TAB_CONFIG: Record<SidebarTab, { label: string; Icon: React.ComponentType<{ size: number; 'aria-hidden'?: boolean }> }> = {
+  inbox: { label: 'Mail', Icon: IconMailbox },
+  planets: { label: 'Groups', Icon: IconUsersGroup },
+  galaxy: { label: 'Galaxy', Icon: IconBroadcast },
+  history: { label: 'History', Icon: IconHistory },
 };
 
-/**
- * Persistent right sidebar with tabbed navigation.
- * Replaces the three independent slide-out drawer panels (Inbox, Planets, Galaxy).
- */
 const Sidebar: React.FC<SidebarProps> = ({
   isOpen,
   activeTab,
@@ -41,7 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* Tab bar */}
       <div className="sidebarTabBar">
-        {(Object.keys(TAB_LABELS) as SidebarTab[]).map((tab) => {
+        {(Object.keys(TAB_CONFIG) as SidebarTab[]).map((tab) => {
+          const { label, Icon } = TAB_CONFIG[tab];
           const count = tab === 'inbox' ? unreadCounts.inbox : tab === 'planets' ? unreadCounts.planets : 0;
           return (
             <button
@@ -49,10 +46,13 @@ const Sidebar: React.FC<SidebarProps> = ({
               className={`sidebarTab${activeTab === tab ? ' active' : ''}`}
               onClick={() => onTabChange(tab)}
               aria-selected={activeTab === tab}
+              aria-label={count > 0 ? `${label}, ${count} unread` : label}
               role="tab"
+              title={label}
             >
-              {TAB_LABELS[tab]}
-              {count > 0 && <span className="sidebarBadge">{count}</span>}
+              <Icon size={ICON_SIZES.lg} aria-hidden={true} />
+              <span className="sidebarTabLabel">{label}</span>
+              {count > 0 && <span className="sidebarBadge" aria-hidden="true">{count}</span>}
             </button>
           );
         })}

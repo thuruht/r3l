@@ -231,16 +231,16 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             }
             return f;
         }));
-        showToast('Signal boosted!', 'success');
+        showToast('TTL extended.', 'success');
       } else if (res.status === 409) {
         setFiles(prev => prev.map(f => f.id === fileId ? { ...f, is_boosted: true } : f));
-        showToast('Already boosted this signal.', 'info');
+        showToast('Already boosted this file.', 'info');
       } else {
-        showToast('Failed to boost signal.', 'error');
+        showToast('Failed to boost TTL.', 'error');
       }
     } catch (e) {
       console.error("Error boosting", e);
-      showToast('Error boosting signal.', 'error');
+      showToast('Error boosting TTL.', 'error');
     } finally {
       setBoostingIds(prev => {
         const next = new Set(prev);
@@ -352,7 +352,11 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                   {/* Vitality */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--accent-vitality)' }} onClick={e => e.stopPropagation()}>
                     <IconBolt size={ICON_SIZES.sm} aria-hidden="true" />
-                    <span style={{ fontSize: '0.8em', minWidth: '16px', textAlign: 'center' }} aria-label={`${file.vitality || 0} vitality`}>{file.vitality || 0}</span>
+                    <span
+                      style={{ fontSize: '0.75em', minWidth: '32px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
+                      aria-label={`${file.vitality || 0} hours TTL remaining`}
+                      title="This file's lifespan — boost to extend it"
+                    >{file.vitality || 0}h TTL</span>
                     <button
                       onClick={() => handleBoost(file.id)}
                       disabled={boostingIds.has(file.id) || file.is_boosted}
@@ -371,8 +375,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                         minHeight: '28px',
                         opacity: file.is_boosted ? 0.6 : 1,
                       }}
-                      title={file.is_boosted ? 'Already boosted' : 'Boost Signal'}
-                      aria-label={file.is_boosted ? 'Already boosted' : 'Boost Signal'}
+                      title={file.is_boosted ? 'Already boosted' : 'BOOST TTL'}
+                      aria-label={file.is_boosted ? 'Already boosted' : 'BOOST TTL'}
                     >
                       {boostingIds.has(file.id) ? <IconLoader2 size={12} className="icon-spin" /> : file.is_boosted ? <IconCheck size={12} /> : '+'}
                     </button>

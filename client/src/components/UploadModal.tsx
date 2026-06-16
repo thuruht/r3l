@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock } from '@tabler/icons-react';
+import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock, IconFlame } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
 
@@ -196,9 +196,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             onChange={e => setVisibility(e.target.value as 'public' | 'sym' | 'me')}
             style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.9rem', flex: 1 }}
           >
-            <option value="public">Public (Drift)</option>
-            <option value="sym">Sym Only</option>
-            <option value="me">3rd Space (Me Only)</option>
+            <option value="public">PUBLIC · DRIFT</option>
+            <option value="sym">SYM</option>
+            <option value="me">3SPACE</option>
           </select>
         </div>
 
@@ -227,8 +227,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             checked={isBurnOnRead}
             onChange={e => setIsBurnOnRead(e.target.checked)}
           />
-          <label htmlFor="burn-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isBurnOnRead ? 'var(--accent-alert)' : 'inherit' }}>
-            🔥 Burn on Read — self-destructs after first view
+          <label htmlFor="burn-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isBurnOnRead ? 'var(--accent-alert)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <IconFlame size={ICON_SIZES.md} />
+            FLARE — <span style={{ fontWeight: 'normal', opacity: 0.8 }}>self-destructs after one view</span>
           </label>
         </div>
 

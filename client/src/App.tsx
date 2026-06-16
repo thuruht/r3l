@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from './constants/iconSizes';
 import AssociationWeb from './components/AssociationWeb';
@@ -406,7 +406,7 @@ function Main() {
           <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
             <div className="header-content">
               <div className="header-left">
-                <h2 className="header-logo" onClick={() => navigate('/')}>REL F <span className="header-logo-beta">BETA</span></h2>
+                <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Ephemeral Filenet">REL F <span className="header-logo-beta">BETA</span></h2>
                 <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                   <SearchBar />
                   <RandomUserButton />
@@ -629,6 +629,7 @@ function Main() {
               </div>
             } />
             <Route path="/communique/:userId" element={<CommuniquePage />} />
+            <Route path="/admin" element={<Navigate to="/" replace />} />
           </Routes>
         </>
       )}

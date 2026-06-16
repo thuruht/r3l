@@ -22,8 +22,43 @@ admin.get('/stats', async (c) => {
 
 admin.get('/users', async (c) => {
   try {
-    const { results } = await c.env.DB.prepare('SELECT id, username, email, created_at, is_verified FROM users ORDER BY created_at DESC LIMIT 100').all();
+    const { results } = await c.env.DB.prepare('SELECT id, username, email, role, created_at, is_verified FROM users ORDER BY created_at DESC LIMIT 100').all();
     return c.json({ users: results });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+admin.delete('/users/:id', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  if (!id) return c.json({ error: 'Invalid ID' }, 400);
+  try {
+    await c.env.DB.batch([
+      c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id),
+    ]);
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+admin.put('/users/:id/role', async (c) => {
+  const id = parseInt(c.req.param('id'));
+  const { role } = await c.req.json();
+  if (!id || !['user', 'admin', 'moderator'].includes(role)) return c.json({ error: 'Invalid' }, 400);
+  try {
+    await c.env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, id).run();
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+admin.post('/verify-user', async (c) => {
+  const { target_user_id } = await c.req.json();
+  if (!target_user_id) return c.json({ error: 'target_user_id required' }, 400);
+  try {
+    await c.env.DB.prepare('UPDATE users SET is_verified = 1 WHERE id = ?').bind(target_user_id).run();
+    return c.json({ ok: true });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 

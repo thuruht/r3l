@@ -540,12 +540,11 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       
       {/* RRC Label */}
       <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 'var(--z-overlay)', pointerEvents: 'none' }}>
-        <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.8, letterSpacing: '0.1em' }}>RRC</h2>
-        <div style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', textTransform: 'uppercase', opacity: 0.6 }}>Relational Construct</div>
+        <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.8, letterSpacing: '0.1em' }}>RELMAP</h2>
       </div>
 
-      {/* Legend */}
-      <div style={{ position: 'absolute', bottom: 'calc(20px + var(--safe-area-bottom))', left: '20px', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, pointerEvents: 'none', display: 'flex', gap: '15px' }}>
+      {/* Legend — offset right of the CustomizationSettings gear button */}
+      <div style={{ position: 'absolute', bottom: 'calc(22px + var(--safe-area-bottom))', left: '56px', fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.6, pointerEvents: 'none', display: 'flex', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ color: 'var(--accent-sym)' }}>●</span> FRESH</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ opacity: 0.5 }}>●</span> EXPIRING</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ opacity: 0.2, filter: 'blur(1px)' }}>●</span> CRITICAL</div>

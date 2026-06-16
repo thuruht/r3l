@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation } from '@tabler/icons-react'; // Added icons
-import { sanitizeHTML, sanitizeCSS } from '../utils/sanitize';
+import { sanitizeHTML, scopeCSS } from '../utils/sanitize';
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext'; // Added
@@ -304,19 +304,12 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       }
     };
   
-    // Helper to safely extract CSS for rendering
     const getRenderCSS = () => {
       try {
-          const prefs = JSON.parse(data.theme_prefs || '{}');
-          const css = prefs.custom_css || '';
-          // Strip dangerous patterns: javascript:, expression(), @import, url() with non-data schemes
-          return css
-            .replace(/javascript\s*:/gi, '')
-            .replace(/expression\s*\(/gi, '')
-            .replace(/@import\b/gi, '')
-            .replace(/url\s*\(\s*(?!["']?data:)[^)]*\)/gi, 'url()');
-      } catch (e) { return ''; }
-  };
+        const prefs = JSON.parse(data.theme_prefs || '{}');
+        return prefs.custom_css || '';
+      } catch { return ''; }
+    };
 
   if (loading && !targetUser) {
     return (
@@ -332,14 +325,13 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
 
   return (
     <div id={`communique-user-${userId}`} className="communique-container fade-in" style={{ position: 'relative' }}>
-      {/* Inject Scoped Styles via sandboxed iframe to prevent page-level CSS injection */}
       {getRenderCSS() && (
-        <style>{sanitizeCSS(getRenderCSS())}</style>
+        <style>{scopeCSS(getRenderCSS(), `communique-user-${userId}`)}</style>
       )}
 
       <div className="communique-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>RCC — Cache Communique</div>
+          <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7 }}>COMMUNIQUE</div>
           <h4 style={{ margin: 0, color: 'var(--accent-sym)', textShadow: 'var(--glow-sym)' }}>
               {targetUser?.username || 'Signal'}
           </h4>

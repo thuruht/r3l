@@ -11,7 +11,7 @@ export async function createNotification(
   env: Env,
   db: D1Database, 
   user_id: number, 
-  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert', 
+  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted',
   actor_id?: number, 
   payload: any = {}
 ) {

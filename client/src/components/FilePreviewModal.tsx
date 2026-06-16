@@ -205,7 +205,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             }
         }
       } catch (err) {
-        setError('Could not load artifact.');
+        setError('Could not load file.');
       } finally {
         setLoading(false);
       }
@@ -265,7 +265,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         const res = await fetch(`/api/files/${fileId}/refresh`, { method: 'POST' });
         if (res.ok) showToast('Expiration reset.', 'success');
     } catch(e) {
-        showToast('Error refreshing artifact.', 'error');
+        showToast('Error refreshing file.', 'error');
     }
   };
 

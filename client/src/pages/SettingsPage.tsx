@@ -343,7 +343,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
             <div style={{ display: 'grid', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                  Default Artifact Visibility
+                  Default File Visibility
                 </label>
                 <select 
                   value={defaultVisibility} 

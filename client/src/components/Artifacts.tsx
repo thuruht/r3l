@@ -147,14 +147,14 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (res.ok) {
-            showToast('Artifact shared.', 'success');
+            showToast('File shared.', 'success');
             setSharingFileId(null);
         } else {
             const err = await res.json();
             showToast(err.error || 'Failed to share', 'error');
         }
     } catch(e) {
-        showToast('Error sharing artifact', 'error');
+        showToast('Error sharing file', 'error');
     }
   }
 
@@ -178,7 +178,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       if (res.ok) {
         await fetchFiles(); // Refresh list
-        showToast('Artifact uploaded successfully!', 'success');
+        showToast('File uploaded successfully!', 'success');
       } else {
         const err = await res.json();
         setError(err.error || 'Upload failed');
@@ -203,12 +203,12 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       });
       if (res.ok) {
         setFiles(prev => prev.filter(f => f.id !== confirmDeleteFileId));
-        showToast('Artifact dissolved.', 'success');
+        showToast('File dissolved.', 'success');
       } else {
-        showToast('Failed to dissolve artifact', 'error');
+        showToast('Failed to dissolve file', 'error');
       }
     } catch (err) {
-      showToast('Error dissolving artifact', 'error');
+      showToast('Error dissolving file', 'error');
     } finally {
         setConfirmDeleteFileId(null);
     }
@@ -304,13 +304,13 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
             <IconFile size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 8px' }} />
             {isOwner ? (
               <>
-                <div>No artifacts yet.</div>
+                <div>No files yet.</div>
                 <button onClick={() => setShowUploadModal(true)} style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                  <IconUpload size={ICON_SIZES.sm} /> Upload your first artifact
+                  <IconUpload size={ICON_SIZES.sm} /> Upload your first file
                 </button>
               </>
             ) : (
-              <div>No public artifacts yet.</div>
+              <div>No public files yet.</div>
             )}
           </div>
         )}
@@ -338,7 +338,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                 >
                   <div style={{ color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
                     {file.remix_of && <span title="Remix" style={{ flexShrink: 0, fontSize: '0.7em', color: 'var(--accent-sym)', border: '1px solid var(--accent-sym)', borderRadius: '3px', padding: '0 3px' }}>RMX</span>}
-                    {file.burn_on_read ? <span title="Burns after first view" style={{ flexShrink: 0, fontSize: '0.7em', color: 'var(--accent-alert)', border: '1px solid var(--accent-alert)', borderRadius: '3px', padding: '0 3px' }}>BOR</span> : null}
+                    {file.burn_on_read ? <span title="FLARE: burns after first view" style={{ flexShrink: 0, fontSize: '0.7em', color: 'var(--accent-alert)', border: '1px solid var(--accent-alert)', borderRadius: '3px', padding: '0 3px' }}>FLARE</span> : null}
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.filename}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
@@ -467,7 +467,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       {isOwner && files.length > 0 && (
         <div style={{ marginTop: '12px' }}>
           <button onClick={() => setShowUploadModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.85em' }}>
-            <IconUpload size={ICON_SIZES.sm} className="chrome-icon" /> Upload Artifact
+            <IconUpload size={ICON_SIZES.sm} className="chrome-icon" /> Upload File
           </button>
         </div>
       )}
@@ -493,8 +493,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         isOpen={confirmDeleteFileId !== null}
         onClose={() => setConfirmDeleteFileId(null)}
         onConfirm={handleDelete}
-        title="Dissolve Artifact"
-        message="Are you sure you want to permanently dissolve this artifact? This action cannot be undone."
+        title="Dissolve File"
+        message="Are you sure you want to permanently dissolve this file? This action cannot be undone."
         confirmText="Dissolve"
       />
     </div>

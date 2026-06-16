@@ -152,14 +152,14 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
         body: JSON.stringify({ file_id })
       });
       if (res.ok) {
-        showToast('Artifact added to workspace.', 'success');
+        showToast('File added to workspace.', 'success');
         setIsAddingFile(false);
         fetchWorkspaceDetails(activeWorkspace.id);
       } else {
         const d = await res.json();
-        showToast(d.error || 'Failed to add artifact', 'error');
+        showToast(d.error || 'Failed to add file', 'error');
       }
-    } catch { showToast('Error adding artifact', 'error'); }
+    } catch { showToast('Error adding file', 'error'); }
   };
 
   const handleRemoveFile = async (file_id: number) => {
@@ -169,10 +169,10 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
         method: 'DELETE'
       });
       if (res.ok) {
-        showToast('Artifact removed from workspace.', 'success');
+        showToast('File removed from workspace.', 'success');
         fetchWorkspaceDetails(activeWorkspace.id);
       }
-    } catch { showToast('Error removing artifact', 'error'); }
+    } catch { showToast('Error removing file', 'error'); }
   };
 
   const handleInvite = async (e: React.FormEvent) => {
@@ -345,9 +345,9 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
                   ))}
                   {isAddingFile ? (
                     <div className="glass-panel" style={{ padding: '10px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                      <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Select an artifact to add:</div>
+                      <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>Select a file to add:</div>
                       {userFiles.length === 0 ? (
-                        <div style={{ fontSize: '0.8em', color: '#666' }}>No artifacts available.</div>
+                        <div style={{ fontSize: '0.8em', color: '#666' }}>No files available.</div>
                       ) : (
                         userFiles
                           .filter(f => !workspaceFiles.some(wf => wf.id === f.id))

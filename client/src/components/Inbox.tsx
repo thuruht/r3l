@@ -294,7 +294,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       case 'sym_request': return <>{actorLink} wants to go SYM with you.{n.payload?.file_id && <span style={{ marginLeft: '6px', fontSize: '0.8em', color: 'var(--accent-sym)', opacity: 0.8 }}>📎 file attached</span>}</>;
       case 'sym_accepted': return <>SYM connection established with {actorLink}.</>;
       case 'file_shared': {
-        const filename = n.payload?.filename || 'an artifact';
+        const filename = n.payload?.filename || 'a file';
         return <>{actorLink} shared {filename}.</>;
       }
       case 'system_alert': return <>{n.payload?.message || 'System Alert'}</>;

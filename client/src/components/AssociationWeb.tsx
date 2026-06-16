@@ -538,7 +538,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
     <div ref={wrapperRef} className="association-web-container" style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       <svg ref={svgRef} role="img" aria-label="Network visualization graph"></svg>
       
-      {/* RRC Label */}
+      {/* RELMAP Label */}
       <div style={{ position: 'absolute', top: '20px', left: '20px', zIndex: 'var(--z-overlay)', pointerEvents: 'none' }}>
         <h2 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-primary)', opacity: 0.8, letterSpacing: '0.1em' }}>RELMAP</h2>
       </div>

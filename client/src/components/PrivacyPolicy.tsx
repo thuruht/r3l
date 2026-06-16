@@ -50,7 +50,7 @@ const PrivacyPolicy: React.FC = () => {
             <strong>Public:</strong> Visible to anyone on the network.
           </p>
           <p>
-            You control the visibility of every artifact.
+            You control the visibility of every file.
           </p>
 
           <h3>4. Third Parties</h3>

@@ -192,7 +192,7 @@ function Main() {
             refreshNetworkRef.current();
           }
         } else if (msg.type === 'new_message') {
-          showToast(`New Whisper from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
+          showToast(`New SYMTXT from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
           setUnreadCount(prev => prev + 1);
         } else if (msg.type === 'new_group_message') {
           if (sidebarTabRef.current !== 'planets') {

@@ -179,7 +179,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
       setConfirmState({
           isOpen: true,
           title: 'Remove File',
-          message: 'Remove this file from the collection? The original artifact will remain.',
+          message: 'Remove this file from the collection? The original file will remain.',
           onConfirm: async () => {
             try {
                 const res = await fetch(`/api/collections/${selectedCollection.id}/files/${fileId}`, {

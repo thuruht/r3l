@@ -455,7 +455,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               </button>
               {showSymFilePicker && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach an artifact as introduction (optional):</span>
+                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach a file as introduction (optional):</span>
                   <select value={symFileId} onChange={e => setSymFileId(e.target.value)}
                     style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8em' }}>
                     <option value=''>No attachment</option>
@@ -478,7 +478,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               </button>
               {showSymFilePicker && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px', padding: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach an artifact as introduction (optional):</span>
+                  <span style={{ fontSize: '0.75em', color: 'var(--text-secondary)' }}>Attach a file as introduction (optional):</span>
                   <select value={symFileId} onChange={e => setSymFileId(e.target.value)}
                     style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.8em' }}>
                     <option value=''>No attachment</option>

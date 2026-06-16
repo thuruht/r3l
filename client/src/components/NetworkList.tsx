@@ -139,10 +139,10 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                 {node.group === 'me' ? 'You' :
                  node.group === 'sym' ? 'Sym' :
-                 node.group === 'asym' ? 'A-Sym' :
-                 node.group === 'artifact' ? 'Artifact' :
+                 node.group === 'asym' ? 'A-SYM' :
+                 node.group === 'artifact' ? 'File' :
                  node.group === 'collection' ? 'Collection' :
-                 node.group === 'drift_user' ? 'Drift' : 'Drift Artifact'}
+                 node.group === 'drift_user' ? 'Drift' : 'Drift File'}
               </div>
             </div>
           </div>

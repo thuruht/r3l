@@ -212,7 +212,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     }
   }, [currentUserId, meUsername, meAvatarUrl, isDrifting, driftData, onlineUserIds, showToast, fileOffset, nodes, links]);
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { if (currentUserId) fetchData(); }, [currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { 
     nodes, 

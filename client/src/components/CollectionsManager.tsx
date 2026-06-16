@@ -3,7 +3,7 @@ import { IconX, IconFolderPlus, IconTrash, IconFolder, IconFolderOff, IconFolder
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useCollections, Collection } from '../hooks/useCollections';
 import { useToast } from '../context/ToastContext';
-import FilePreviewModal from './FilePreviewModal';
+const FilePreviewModal = React.lazy(() => import('./FilePreviewModal'));
 import ConfirmModal from './ConfirmModal';
 
 interface CollectionsManagerProps {
@@ -458,20 +458,22 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
       </div>
 
       {previewFile && (
-          <FilePreviewModal
-              fileId={previewFile.id}
-              filename={previewFile.filename}
-              mimeType={previewFile.mime_type}
-              onClose={() => setPreviewFile(null)}
-              onDownload={() => {
-                  const link = document.createElement('a');
-                  link.href = `/api/files/${previewFile.id}/content`;
-                  link.download = previewFile.filename;
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-              }}
-          />
+          <React.Suspense fallback={null}>
+            <FilePreviewModal
+                fileId={previewFile.id}
+                filename={previewFile.filename}
+                mimeType={previewFile.mime_type}
+                onClose={() => setPreviewFile(null)}
+                onDownload={() => {
+                    const link = document.createElement('a');
+                    link.href = `/api/files/${previewFile.id}/content`;
+                    link.download = previewFile.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }}
+            />
+          </React.Suspense>
       )}
 
       <ConfirmModal

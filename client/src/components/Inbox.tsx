@@ -6,8 +6,6 @@ import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
-import { useOutsideClick } from '../hooks/useOutsideClick';
-
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
 
 interface InboxProps {
@@ -60,8 +58,6 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const { showToast } = useToast();
 
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useOutsideClick(panelRef, onClose);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);

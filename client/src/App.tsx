@@ -12,6 +12,7 @@ import VerifyEmail from './components/VerifyEmail';
 import ResetPassword from './components/ResetPassword';
 import FilePreviewModal from './components/FilePreviewModal';
 import LandingPage from './components/LandingPage';
+import DriftHistory from './components/DriftHistory';
 
 // Lazy-loaded heavy components
 const GroupChat = React.lazy(() => import('./components/GroupChat'));
@@ -24,7 +25,6 @@ const WorkspacesManager = React.lazy(() => import('./components/WorkspacesManage
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const GlobalChat = React.lazy(() => import('./components/GlobalChat'));
 const ArchiveVote = React.lazy(() => import('./components/ArchiveVote'));
-import { useOutsideClick } from './hooks/useOutsideClick';
 import SettingsPage from './pages/SettingsPage';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { CustomizationProvider } from './context/CustomizationContext';
@@ -85,7 +85,7 @@ function Main() {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshNetworkRef = useRef<() => void>(() => {});
   const sidebarTabRef = useRef(sidebarTab);
-  const fetchDriftRef = useRef(fetchDrift);
+  const fetchDriftRef = useRef<() => void>(() => {});
   const connectWebSocketRef = useRef<() => void>(() => {});
 
   // Close menu on outside click
@@ -106,9 +106,7 @@ function Main() {
       if (e.key !== 'Escape') return;
       if (previewFile) { setPreviewFile(null); return; }
       if (isSettingsOpen) { setIsSettingsOpen(false); return; }
-      if (isInboxOpen) { setIsInboxOpen(false); return; }
-      if (isPlanetsOpen) { setIsPlanetsOpen(false); return; }
-      if (isGlobalChatOpen) { setIsGlobalChatOpen(false); return; }
+      if (isSidebarOpen) { closeSidebar(); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isCollectionsOpen) { setIsCollectionsOpen(false); return; }
       if (isAdminOpen) { setIsAdminOpen(false); return; }
@@ -119,7 +117,7 @@ function Main() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [previewFile, isSettingsOpen, isInboxOpen, isPlanetsOpen, isGlobalChatOpen, isArchiveOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
+  }, [previewFile, isSettingsOpen, isSidebarOpen, isArchiveOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -321,6 +319,10 @@ function Main() {
     await fetch('/api/logout', { method: 'POST' });
     window.location.reload();
   };
+
+  const openPreview = useCallback((fileId: number) => {
+    setPreviewFile({ id: fileId, filename: '', mime_type: '' });
+  }, []);
 
   const onNodeClick = (nodeId: string) => {
     if (nodeId.startsWith('file-')) {

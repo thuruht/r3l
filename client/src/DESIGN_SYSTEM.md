@@ -304,19 +304,23 @@ Simple animations using CSS keyframes:
 
 ### GSAP Animations
 
-For complex animation sequences, use GSAP utils:
+For complex animation sequences, use GSAP utils from `@/utils/animations`:
 
 ```typescript
-import { GSAPAnimations } from '@/utils/animations';
+import { GSAPAnimations, CSSAnimations } from '@/utils/animations';
 
-// Animate element in
+// Animate element in (GSAP)
 GSAPAnimations.animateIn(element, 0.4);
 
-// Stagger list items
+// Stagger list items (GSAP)
 GSAPAnimations.staggerIn(listItems, 0.5);
 
-// Pulse effect
-GSAPAnimations.pulse(element, 1.1, 0.6);
+// Pulse effect (GSAP)
+GSAPAnimations.pulse(element);
+
+// CSS-class-based alternatives
+CSSAnimations.fadeIn(element);
+CSSAnimations.slideUp(element);
 ```
 
 ### Transition Classes
@@ -361,6 +365,18 @@ Layering hierarchy for overlapping elements:
 <div className="desktop-only">      <!-- Hidden on mobile -->
 <div className="mobile-only">       <!-- Hidden on desktop -->
 ```
+
+---
+
+## Terminology Register
+
+Terms from `docs/terminology.md` follow a strict register rule:
+
+- **In UI labels, badges, buttons, headings:** UPPERCASE — `FILES`, `DRIFT`, `TTL`, `RELMAP`
+- **In prose (tooltips, empty states, descriptions):** lowercase — "your files", "this file's lifespan"
+
+Never write "Your FILES have TTL" — write "Your files have a TTL."
+Never write "drift" in a navigation button — write "DRIFT".
 
 ---
 
@@ -520,9 +536,12 @@ To update existing components to use the design system:
 
 ---
 
-## Support & Feedback
+## Key Files
 
-For design system improvements or questions, refer to:
-- `/home/dale/Desktop/r3l/client/src/styles/` for CSS files
-- `/home/dale/Desktop/r3l/client/src/constants/iconSizes.ts` for icon references
-- `/home/dale/Desktop/r3l/client/src/utils/animations.ts` for animation utilities
+- `client/src/styles/design-tokens.css` — CSS custom properties (colors, spacing, z-index, etc.)
+- `client/src/styles/components.css` — Reusable utility classes (`.btn-primary`, `.modal-panel`, etc.)
+- `client/src/styles/global.css` — Global styles and theme application
+- `client/src/styles/animations.css` — CSS keyframe animation classes
+- `client/src/constants/iconSizes.ts` — `ICON_SIZES` constant
+- `client/src/utils/animations.ts` — `GSAPAnimations` and `CSSAnimations` helpers
+- `client/src/components/ui/` — Shared UI primitives (Button, Modal, FormInput)

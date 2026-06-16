@@ -114,6 +114,13 @@ Use `ICON_SIZES` from `client/src/constants/iconSizes.ts` for all `@tabler/icons
 
 Passwords: PBKDF2-SHA-256, 100k iterations, per-user salt. File encryption: AES-GCM via `encryptData`/`decryptData`. Rate limiting: KV-backed per-IP counters via `checkRateLimit` in `src/utils/helpers.ts`.
 
+### Terminology
+
+Canonical vocabulary is in `docs/terminology.md`. Key rules:
+- UPPERCASE in UI labels/badges/buttons/headings
+- lowercase in prose (tooltips, empty states, descriptions)
+- Internal DB/API names (`vitality`, `burn_on_read`, `asym_follow`) are unchanged
+
 ## Database
 
 28 sequential SQL migrations in `migrations/`. Key tables: `users`, `files` (artifacts), `relationships` / `mutual_connections`, `messages`, `collections`, `workspaces`, `communiques`, `notifications`, `vitality_votes`, `archive_votes`.

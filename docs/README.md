@@ -2,14 +2,21 @@
 
 **Rel F** is an experiment in serendipitous social networking. It fosters connections through guided randomness and ephemeral artifact sharing rather than algorithmic feed matching.
 
+## Philosophy
+
+> *Three ways to connect: openly with SYM, observationally with A-SYM, or invisibly
+> with 3SPACE. Three ways to share: publicly into the DRIFT, with your network, or
+> only with yourself. Files expire by default. Nothing is permanent unless the
+> community makes it so.*
+
 ## Overview
 
-Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, organic discovery, and "digital drift." It stands as a counter-concept to permanent, corporate social media: here, data is temporary, connections are consensual or random, and the primary unit of interaction is the **Artifact** (file). It is non-corporate, minimalist, and free of algorithmic engagement farming, focusing instead on peer-to-peer interaction, temporary content, and personal archives.
+Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, organic discovery, and "digital drift." It stands as a counter-concept to permanent, corporate social media: here, data is temporary, connections are consensual or random, and the primary unit of interaction is the **file**. It is non-corporate, minimalist, and free of algorithmic engagement farming, focusing instead on peer-to-peer interaction, temporary content, and personal archives.
 
 ## Core Concepts
 
 *   **Relational**: Users are connected visually in an association web (**RRC — Relational Construct**) that shows explicit, mutually agreed relationships (**Sym**) or one-way/proximity-based connections (**A-Sym**).
-*   **Ephemeral**: Content expires by default (7 days). "Vitality" can extend this life, users can "Refresh" to reset the clock, or the community can vote to archive it.
+*   **Ephemeral**: Content expires by default (7 days). TTL can extend this life, users can "Refresh" to reset the clock, or the community can vote to archive it.
 *   **Filenet**: A social file-sharing system (**RPC — Private Cache**) where documents, audio, video, and creative works are the foundation of interaction.
 *   **The Drift**: A radar-like discovery mode that samples random public artifacts and users from the network, visualized as pulsating "ghost nodes."
 *   **Resonance**: Organic connection prompts emerge when users share shared interest in artifacts (boosting/voting).
@@ -21,13 +28,13 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 *   The public-facing window is the **RCC — Cache Communique**, a themeable, linkable window into stored content.
 *   **RPC — Private Cache** handles secure, private file storage.
 
-### 📂 Artifacts & File System
+### 📂 Files & File System
 *   **Universal Uploads**: Share any file type (images, text, code, audio, zines, books, etc.).
-*   **Burn-on-Read**: Secure ephemerality where files are deleted immediately after a non-owner accesses them.
+*   **FLARE**: Secure ephemerality where files are deleted immediately after a non-owner accesses them.
 *   **Expiration System**:
     *   **Default Lifespan**: 7 Days (168 Hours). Content is marked for deletion unless acted upon.
     *   **Refresh**: Instantly reset the 7-day timer to keep content alive.
-    *   **Vitality**: Boost a file's signal to increase visibility and slightly extend its life.
+    *   **TTL**: Boost a file's signal to increase visibility and slightly extend its life.
     *   **Community Archiving**: Content exceeding reaction/share thresholds (10 votes) is preserved in the permanent community storage.
 *   **In-Place Editing**: Text-based artifacts can be edited directly in the browser, with support for real-time collaboration.
 
@@ -37,7 +44,7 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
     *   **Sym**: Glowing connections. Link thickness represents interaction strength.
     *   **A-Sym**: Dashed, weaker connections.
     *   **Drift**: Pulsating nodes representing random discoveries.
-*   **Decay Visuals**: Artifact nodes physically fade and blur as they approach expiration.
+*   **Decay Visuals**: File nodes physically fade and blur as they approach expiration.
 
 ### 👥 Contacts & Social Features
 *   **Group Chat**: Create private groups with focused conversation and integrated file sharing.
@@ -67,8 +74,8 @@ Built entirely on the **Cloudflare Developer Platform**:
 *   ✅ **Auth**: Complete.
 *   ✅ **RRC Graph**: Advanced (Link strength, Decay tooltips, Load more).
 *   ✅ **Discovery**: Drift Mode with auto-refresh and empty states.
-*   ✅ **Files**: Universal support, Burn-on-Read, Community Archive.
-*   ✅ **Social**: Groups, Whispers, Resonance suggestions.
+*   ✅ **Files**: Universal support, FLARE, Community Archive.
+*   ✅ **Social**: Groups, SYMTXT, Resonance suggestions.
 
 ---
 *“Rel how you want. Know what you share. Choose who you're sym with.”*

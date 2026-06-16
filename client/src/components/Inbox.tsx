@@ -291,8 +291,8 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     ) : <span>{n.actor_name || 'Unknown'} </span>;
 
     switch (n.type) {
-      case 'sym_request': return <>{actorLink} requests a signal connection.{n.payload?.file_id && <span style={{ marginLeft: '6px', fontSize: '0.8em', color: 'var(--accent-sym)', opacity: 0.8 }}>📎 artifact attached</span>}</>;
-      case 'sym_accepted': return <>Connection established with {actorLink}.</>;
+      case 'sym_request': return <>{actorLink} wants to go SYM with you.{n.payload?.file_id && <span style={{ marginLeft: '6px', fontSize: '0.8em', color: 'var(--accent-sym)', opacity: 0.8 }}>📎 file attached</span>}</>;
+      case 'sym_accepted': return <>SYM connection established with {actorLink}.</>;
       case 'file_shared': {
         const filename = n.payload?.filename || 'an artifact';
         return <>{actorLink} shared {filename}.</>;
@@ -455,7 +455,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                                     <div style={{ fontSize: '0.85em', color: item.unread_count > 0 ? 'var(--text-primary)' : 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {item.last_message_snippet}
                                     </div>
-                                    {isReq && <div style={{ fontSize: '0.7rem', color: 'var(--accent-alert)' }}>A-Sym Signal</div>}
+                                    {isReq && <div style={{ fontSize: '0.7rem', color: 'var(--accent-alert)' }}>A-SYM</div>}
                                 </div>
                                 {item.unread_count > 0 && (
                                     <div style={{ background: isReq ? 'var(--accent-alert)' : 'var(--accent-sym)', color: 'black', fontSize: '0.7em', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>
@@ -529,7 +529,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                             onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
                             onFocus={() => setIsInputFocused(true)}
                             onBlur={() => setIsInputFocused(false)}
-                            placeholder="Whisper..."
+                            placeholder="Send a SYMTXT..."
                             aria-label="Type a message"
                             style={{
                                 flex: 1,

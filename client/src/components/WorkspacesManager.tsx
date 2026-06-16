@@ -294,7 +294,7 @@ const WorkspacesManager: React.FC<WorkspacesManagerProps> = ({ onClose }) => {
                 onClick={() => setActiveTab('files')}
                 style={{ padding: '8px 15px', background: 'none', border: 'none', borderBottom: activeTab === 'files' ? '2px solid var(--accent-sym)' : 'none', color: activeTab === 'files' ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer' }}
               >
-                Artifacts ({workspaceFiles.length})
+                Files ({workspaceFiles.length})
               </button>
               <button 
                 onClick={() => setActiveTab('members')}

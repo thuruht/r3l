@@ -54,7 +54,7 @@ const DriftHistory: React.FC<DriftHistoryProps> = ({ onFileSelect }) => {
       <div style={{ padding: 'var(--spacing-md)', color: 'var(--text-secondary)', textAlign: 'center', marginTop: '20px' }}>
         <IconHistory size={48} style={{ opacity: 0.5, marginBottom: '10px' }} />
         <p>No drift history yet.</p>
-        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Artifacts you view will appear here.</p>
+        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Files you view will appear here.</p>
       </div>
     );
   }

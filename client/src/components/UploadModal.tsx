@@ -147,7 +147,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       }} onClick={e => e.stopPropagation()}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 id="upload-modal-title">Upload Artifacts</h3>
+          <h3 id="upload-modal-title">Upload Files</h3>
           <button onClick={onClose} aria-label="Close upload modal" style={{ background: 'none', border: 'none', padding: 0 }}><IconX /></button>
         </div>
 

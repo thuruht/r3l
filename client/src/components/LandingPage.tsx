@@ -51,18 +51,18 @@ const LandingPage: React.FC<LandingPageProps> = ({
         <div className="landing-grid">
           <div className="feature-card">
             <IconRadar2 size={ICON_SIZES['2xl']} color="var(--accent-sym)" />
-            <h3>The Drift</h3>
-            <p>Tune your radar to detect faint signals from the void. Discover artifacts and users floating in the digital ether.</p>
+            <h3>DRIFT</h3>
+            <p>Tune your radar to detect signals from the void. Discover files and users floating in the digital ether.</p>
           </div>
           <div className="feature-card">
             <IconActivity size={ICON_SIZES['2xl']} color="var(--accent-alert)" />
-            <h3>Vitality</h3>
-            <p>Data requires energy. Artifacts decay without attention. Boost signals to keep them alive, or let them fade.</p>
+            <h3>TTL</h3>
+            <p>Files expire by default. Boost a file's TTL to keep it alive, or let it fade. The community decides what's worth preserving.</p>
           </div>
           <div className="feature-card">
             <IconCirclesRelation size={ICON_SIZES['2xl']} color="var(--accent-me)" />
-            <h3>Sym & A-Sym</h3>
-            <p>Forge connections. A-Sym links are one-way observations. Sym links are mutual — explicit, consensual channels for direct exchange.</p>
+            <h3>SYM · A-SYM · 3SPACE</h3>
+            <p>Three ways to connect: openly with SYM, observationally with A-SYM, or invisibly with 3SPACE.</p>
           </div>
         </div>
 

@@ -22,18 +22,18 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
           </section>
 
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-alert)' }}><IconRefresh /> Artifact Decay</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Files expire in 168 hours. Refresh them to reset the clock or boost them for vitality.</p>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-alert)' }}><IconRefresh /> File TTL</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Files expire in 168 hours. Refresh them to reset the clock or boost a file's TTL to keep it alive.</p>
           </section>
 
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-sym)' }}><IconBolt /> Vitality</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Attention provides life. High-vitality signals are archived permanently.</p>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-sym)' }}><IconBolt /> TTL</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Attention provides life. Files with high TTL are archived permanently.</p>
           </section>
 
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}><IconLink /> Sym & A-Sym</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Sym connections are mutual and explicit — both parties agree. A-Sym connections are one-way observations. The Drift surfaces random strangers with no connection required.</p>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--text-primary)' }}><IconLink /> SYM, A-SYM & 3SPACE</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>SYM connections are mutual and public. A-SYM connections are one-way observations. 3SPACE connections are mutual but invisible — ghost connections for maximum privacy. DRIFT surfaces random strangers with no connection required.</p>
           </section>
         </div>
       </div>

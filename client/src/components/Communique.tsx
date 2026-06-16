@@ -304,6 +304,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       }
     };
   
+    // scopeCSS handles sanitization internally — no manual stripping needed
     const getRenderCSS = () => {
       try {
         const prefs = JSON.parse(data.theme_prefs || '{}');

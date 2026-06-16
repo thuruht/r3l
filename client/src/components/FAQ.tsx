@@ -17,7 +17,7 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-me)' }}><IconRadar2 /> The Drift</h4>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-me)' }}><IconRadar2 /> DRIFT</h4>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>A sampling of random public signals from the network. No algorithms, no filters.</p>
           </section>
 
@@ -27,8 +27,8 @@ const FAQ: React.FC<FAQProps> = ({ onClose }) => {
           </section>
 
           <section>
-            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-sym)' }}><IconBolt /> TTL</h4>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Attention provides life. Files with high TTL are archived permanently.</p>
+            <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-sym)' }}><IconBolt /> ARCHIVE</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Files with enough community engagement are voted into permanent ARCHIVE — preserved forever regardless of TTL.</p>
           </section>
 
           <section>

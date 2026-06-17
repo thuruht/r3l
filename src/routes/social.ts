@@ -76,23 +76,27 @@ social.post('/relationships/3space', async (c) => {
   const source_user_id = c.get('user_id');
   const { target_user_id } = await c.req.json();
   if (!target_user_id || source_user_id === target_user_id) return c.json({ error: 'Invalid target' }, 400);
+  try {
+    const existing = await c.env.DB.prepare(
+      `SELECT id, type FROM relationships WHERE source_user_id = ? AND target_user_id = ?`
+    ).bind(source_user_id, target_user_id).first() as any;
 
-  const existing = await c.env.DB.prepare(
-    `SELECT id, type FROM relationships WHERE source_user_id = ? AND target_user_id = ?`
-  ).bind(source_user_id, target_user_id).first() as any;
+    if (existing) {
+      if (existing.type === '3space_request') return c.json({ error: 'Already pending' }, 409);
+      if (existing.type === '3space_accepted') return c.json({ error: 'Already in 3SPACE' }, 409);
+      if (existing.type === 'sym_accepted') return c.json({ error: 'Already SYM — propose 3SPACE via SYMTXT' }, 409);
+      if (existing.type === 'sym_request') return c.json({ error: 'SYM request pending' }, 409);
+      if (existing.type === 'asym_follow') return c.json({ error: 'Unfollow before proposing 3SPACE' }, 409);
+    }
 
-  if (existing?.type === '3space_request') return c.json({ error: 'Already pending' }, 409);
-  if (existing?.type === '3space_accepted') return c.json({ error: 'Already in 3SPACE' }, 409);
+    await c.env.DB.prepare(
+      `INSERT INTO relationships (source_user_id, target_user_id, type, status)
+       VALUES (?, ?, '3space_request', 'pending')`
+    ).bind(source_user_id, target_user_id).run();
 
-  await c.env.DB.prepare(
-    `INSERT INTO relationships (source_user_id, target_user_id, type, status)
-     VALUES (?, ?, '3space_request', 'pending')
-     ON CONFLICT(source_user_id, target_user_id)
-     DO UPDATE SET type = '3space_request', status = 'pending', updated_at = CURRENT_TIMESTAMP`
-  ).bind(source_user_id, target_user_id).run();
-
-  await createNotification(c.env, c.env.DB, target_user_id, '3space_request', source_user_id, {});
-  return c.json({ ok: true });
+    await createNotification(c.env, c.env.DB, target_user_id, '3space_request', source_user_id, {});
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
 // Accept a 3SPACE request
@@ -100,28 +104,29 @@ social.post('/relationships/3space/accept', async (c) => {
   const acceptor_id = c.get('user_id');
   const { source_user_id } = await c.req.json();
   if (!source_user_id) return c.json({ error: 'source_user_id required' }, 400);
+  try {
+    const request = await c.env.DB.prepare(
+      `SELECT id FROM relationships
+       WHERE source_user_id = ? AND target_user_id = ? AND type = '3space_request' AND status = 'pending'`
+    ).bind(source_user_id, acceptor_id).first() as any;
 
-  const request = await c.env.DB.prepare(
-    `SELECT id FROM relationships
-     WHERE source_user_id = ? AND target_user_id = ? AND type = '3space_request' AND status = 'pending'`
-  ).bind(source_user_id, acceptor_id).first() as any;
+    if (!request) return c.json({ error: 'No pending 3SPACE request found' }, 404);
 
-  if (!request) return c.json({ error: 'No pending 3SPACE request found' }, 404);
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `UPDATE relationships SET type = '3space_accepted', status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+      ).bind(request.id),
+      c.env.DB.prepare(
+        `INSERT INTO relationships (source_user_id, target_user_id, type, status)
+         VALUES (?, ?, '3space_accepted', 'accepted')
+         ON CONFLICT(source_user_id, target_user_id)
+         DO UPDATE SET type = '3space_accepted', status = 'accepted', updated_at = CURRENT_TIMESTAMP`
+      ).bind(acceptor_id, source_user_id),
+    ]);
 
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `UPDATE relationships SET type = '3space_accepted', status = 'accepted', updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-    ).bind(request.id),
-    c.env.DB.prepare(
-      `INSERT INTO relationships (source_user_id, target_user_id, type, status)
-       VALUES (?, ?, '3space_accepted', 'accepted')
-       ON CONFLICT(source_user_id, target_user_id)
-       DO UPDATE SET type = '3space_accepted', status = 'accepted', updated_at = CURRENT_TIMESTAMP`
-    ).bind(acceptor_id, source_user_id),
-  ]);
-
-  await createNotification(c.env, c.env.DB, source_user_id, '3space_accepted', acceptor_id, {});
-  return c.json({ ok: true });
+    await createNotification(c.env, c.env.DB, source_user_id, '3space_accepted', acceptor_id, {});
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
 // Decline a 3SPACE request
@@ -129,31 +134,33 @@ social.post('/relationships/3space/decline', async (c) => {
   const acceptor_id = c.get('user_id');
   const { source_user_id } = await c.req.json();
   if (!source_user_id) return c.json({ error: 'source_user_id required' }, 400);
+  try {
+    await c.env.DB.prepare(
+      `UPDATE relationships SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+       WHERE source_user_id = ? AND target_user_id = ? AND type = '3space_request' AND status = 'pending'`
+    ).bind(source_user_id, acceptor_id).run();
 
-  await c.env.DB.prepare(
-    `UPDATE relationships SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
-     WHERE source_user_id = ? AND target_user_id = ? AND type = '3space_request' AND status = 'pending'`
-  ).bind(source_user_id, acceptor_id).run();
-
-  return c.json({ ok: true });
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
 // Remove a 3SPACE connection
 social.delete('/relationships/3space/:target_id', async (c) => {
   const user_id = c.get('user_id');
-  const target_id = parseInt(c.req.param('target_id'));
-  if (!target_id) return c.json({ error: 'Invalid target_id' }, 400);
+  const target_id = Number(c.req.param('target_id'));
+  if (!Number.isInteger(target_id) || target_id <= 0) return c.json({ error: 'Invalid target_id' }, 400);
+  try {
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `DELETE FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type IN ('3space_request', '3space_accepted')`
+      ).bind(user_id, target_id),
+      c.env.DB.prepare(
+        `DELETE FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type IN ('3space_request', '3space_accepted')`
+      ).bind(target_id, user_id),
+    ]);
 
-  await c.env.DB.batch([
-    c.env.DB.prepare(
-      `DELETE FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type IN ('3space_request', '3space_accepted')`
-    ).bind(user_id, target_id),
-    c.env.DB.prepare(
-      `DELETE FROM relationships WHERE source_user_id = ? AND target_user_id = ? AND type IN ('3space_request', '3space_accepted')`
-    ).bind(target_id, user_id),
-  ]);
-
-  return c.json({ ok: true });
+    return c.json({ ok: true });
+  } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
 social.delete('/relationships/:target_user_id', async (c) => {

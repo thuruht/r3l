@@ -1,0 +1,54 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": { "level": 1 },
+      "content": [{ "type": "text", "text": "R3L:F Collaborative Notes" }]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "This is a sample rich text document for testing " },
+        { "type": "text", "marks": [{ "type": "bold" }], "text": "collaborative editing" },
+        { "type": "text", "text": " with Yjs + Tiptap." }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": { "level": 2 },
+      "content": [{ "type": "text", "text": "Three Modes of Connection" }]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "SYM — mutual and visible. " },
+        { "type": "text", "text": "A-SYM — one-way observation. " },
+        { "type": "text", "text": "3SPACE — invisible to everyone except the two of you." }
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Files expire in 168 hours by default" }] }]
+        },
+        {
+          "type": "listItem",
+          "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "BOOST TTL to extend a file's life" }] }]
+        },
+        {
+          "type": "listItem",
+          "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "FLARE files self-destruct after one view" }] }]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "marks": [{ "type": "italic" }], "text": "Edit this document in real-time with your 3SPACE partner." }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ content, onChange, filename, yd
       case 'jsx':
       case 'ts':
       case 'tsx':
+      case 'qml':
         return [...baseExtensions, javascript({ jsx: true, typescript: true })];
       case 'py':
         return [...baseExtensions, python()];

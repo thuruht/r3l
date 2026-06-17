@@ -16,6 +16,7 @@ discovery.get('/drift', async (c) => {
         let fileCountParams: any[] = [user_id];
         if (type === 'image') { fileSql += ' AND mime_type LIKE "image/%"'; }
         else if (type === 'audio') { fileSql += ' AND mime_type LIKE "audio/%"'; }
+        else if (type === 'notes') { fileSql += ' AND (filename LIKE "%.notes" OR filename LIKE "%.tiptap")'; }
         const fileCount = await c.env.DB.prepare(fileSql).bind(...fileCountParams).first('count') as number;
 
         const userOffset = Math.floor(Math.random() * Math.max(0, userCount - 10));
@@ -30,6 +31,7 @@ discovery.get('/drift', async (c) => {
         let fileParams: any[] = [user_id];
         if (type === 'image') { fileQuery += ' AND f.mime_type LIKE "image/%"'; }
         else if (type === 'audio') { fileQuery += ' AND f.mime_type LIKE "audio/%"'; }
+        else if (type === 'notes') { fileQuery += ' AND (f.filename LIKE "%.notes" OR f.filename LIKE "%.tiptap")'; }
         fileQuery += ' LIMIT 10 OFFSET ?';
         fileParams.push(fileOffset);
 

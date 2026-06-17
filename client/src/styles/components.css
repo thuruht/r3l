@@ -8,7 +8,10 @@
 .btn-primary {
   background: var(--accent-sym);
   color: #000;
-  font-weight: 600;
+  font-weight: 800;
+  font-family: 'Syne', sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -340,6 +343,7 @@ textarea.input-field {
   font-size: var(--text-xs);
   font-weight: 600;
   white-space: nowrap;
+  font-family: 'IBM Plex Mono', monospace;
 }
 
 .badge-primary {
@@ -361,6 +365,88 @@ textarea.input-field {
 .badge-online {
   background: var(--accent-online);
   color: #000;
+}
+
+/* Semantic connection badges */
+.badge-sym {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #26de81;
+  background: rgba(38,222,129,.12);
+  border: 1px solid rgba(38,222,129,.2);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-asym {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #7a7870;
+  background: rgba(122,120,112,.1);
+  border: 1px solid rgba(122,120,112,.2);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-3space {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #7c3aed;
+  background: rgba(124,58,237,.12);
+  border: 1px solid rgba(124,58,237,.2);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-ttl {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #e8763a;
+  background: rgba(232,118,58,.12);
+  border: 1px solid rgba(232,118,58,.2);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-flare {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #ff4b4b;
+  background: rgba(255,75,75,.12);
+  border: 1px solid rgba(255,75,75,.22);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-archive {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #e2e6f0;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  padding: 3px 8px;
+  border-radius: 2px;
+}
+
+.badge-online-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(112,234,170,.08);
+  border: 1px solid rgba(112,234,170,.15);
+  padding: 3px 8px;
+  border-radius: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  color: #70eaaa;
+}
+
+.badge-online-dot::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #70eaaa;
 }
 
 /* ========== FOCUS STATES ========== */

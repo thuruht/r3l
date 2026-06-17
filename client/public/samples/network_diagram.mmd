@@ -1,0 +1,17 @@
+flowchart LR
+    relay_42 ---|SYM| signal_wolf
+    relay_42 ---|SYM| drift_runner
+    signal_wolf -.->|A-SYM| echo_9
+    drift_runner ---|SYM| echo_9
+    drift_runner -.->|3SPACE| null_pointer
+
+    subgraph Legend[Connection Types]
+        direction LR
+        A[SYM] ---|SYM| B[SYM]
+        C[A-SYM] -.->|A-SYM| D[A-SYM]
+        E[3SPACE] -.->|3SPACE| F[3SPACE]
+    end
+
+    style relay_42 fill:#26de81,color:#000
+    style drift_runner fill:#26de81,color:#000
+    style legend fill:#0d0f1c,stroke:#2a2f3a

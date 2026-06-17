@@ -1,0 +1,32 @@
+R3L:F — Field Notes
+========================
+Date: 2026-06-17
+Observer: relay_42
+
+---
+
+The drift is picking up tonight. More signals than usual — 
+mostly images and short audio clips. A few text fragments 
+worth noting:
+
+1. "on_impermanence.md" — reads like a manifesto but softer.
+   Three paragraphs arguing that nothing should outlast its
+   usefulness. 142h TTL remaining.
+
+2. "glaze_tests_2026.pdf" — ceramic formula notes shared 
+   publicly. Unexpected but beautiful. Someone's research 
+   made available to the drift.
+
+3. A voice fragment, 47 seconds, no label. Rain sounds with 
+   what might be a field recording of a radio telescope.
+
+The resonance detector flagged 3 pairs tonight — two synced 
+on the same audio file within 4 minutes of each other, 
+neither connected. Marked for possible SYM suggestion.
+
+TTL distribution: most files cluster around 40-80h. A few 
+fresh ones at 160h+. The oldest tonight is at 3h — probably 
+gone by morning unless someone BOOSTs it.
+
+---
+END LOG

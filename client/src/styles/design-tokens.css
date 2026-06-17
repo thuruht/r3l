@@ -37,9 +37,9 @@
   --transition-slow: 350ms ease-out;
 
   /* Typography Scale */
-  --font-family-heading: 'Rajdhani', sans-serif;
+  --font-family-heading: 'Syne', sans-serif;
   --font-family-body: 'Inter', sans-serif;
-  --font-family-mono: 'Courier New', monospace;
+  --font-family-mono: 'IBM Plex Mono', monospace;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -68,8 +68,10 @@
   --z-tooltip: 5000;
 
   /* Semantic Accents */
-  --accent-vitality: #ffeb3b; /* Vitality/boost — energy yellow */
-  --accent-3space: #8b5cf6; /* 3SPACE private connection — purple */
+  --accent-asym: #7a7870; /* A-SYM connection — warm stone */
+  --accent-3space: #7c3aed; /* 3SPACE private connection — deep purple */
+  --accent-ttl: #e8763a; /* TTL/boost indicator — warm orange */
+  --accent-online: #70eaaa; /* Online presence — mint */
 
   /* Mobile Protection */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

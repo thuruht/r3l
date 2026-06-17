@@ -3,50 +3,61 @@
 @import './animations.css';
 
 :root {
-  --bg-color: #0a0b10ff;
-  --bg-mist: #111318ff;
-  --text-primary: #e0e4e8ff;
-  --text-secondary: #7f8a96ff;
+  --bg-color: #07080f;
+  --bg-mist: #0d0f1c;
+  --text-primary: #e2e6f0;
+  --text-secondary: #7a8799;
   --accent-me: #ffffffff;
-  --accent-sym: #26de81; /* Opaque green */
-  --accent-sym-bright: #26de81; /* Added for highlighting */
-  --accent-asym: #5b6670ff;
+  --accent-sym: #26de81;
+  --accent-sym-bright: #26de81;
+  --accent-asym: #7a7870;
+  --accent-3space: #7c3aed;
+  --accent-ttl: #e8763a;
   --accent-alert: #ff4b4bff;
-  --accent-online: #00d2ff; /* Cyan for presence */
+  --accent-online: #70eaaa;
   --drawer-bg: #101217f2;
   --border-color: #2a2f3aff;
   --glow-sym: 0 0 10px #26de8166;
   --glow-me: 0 0 15px #ffffff80;
   --hover-bg: #ffffff11;
-  --header-bg-transparent: rgba(16, 18, 23, 0.7); /* More transparent for nebula */
+  --header-bg-transparent: rgba(16, 18, 23, 0.7);
   
   font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
 
-/* Verdant Mist - Combined Theme (High Green, Mist Base) */
 html.theme-verdant {
-  --bg-color: #05140a; /* Very dark green-black base */
-  --bg-mist: #0b2416; /* Dark forest mist */
-  --text-primary: #e0e8e2; /* Cool white-green tint */
-  --text-secondary: #8a9e90; /* Desaturated sage */
-  --accent-me: #f0fff4; /* Bright mint white */
-  --accent-sym: #26de81; /* Standard Neon Green */
-  --accent-sym-bright: #00ff88; /* Even brighter green */
-  --accent-asym: #4a6652; /* Muted olive */
-  --accent-alert: #ff6b6b; /* Soft Red */
+  --bg-color: #05140a;
+  --bg-mist: #0b2416;
+  --text-primary: #e0e8e2;
+  --text-secondary: #8a9e90;
+  --accent-me: #f0fff4;
+  --accent-sym: #26de81;
+  --accent-sym-bright: #00ff88;
+  --accent-asym: #4a6652;
+  --accent-3space: #5b21b6;
+  --accent-ttl: #d97706;
+  --accent-alert: #ff6b6b;
+  --accent-online: #34d399;
   --drawer-bg: #0b2416f2;
-  --border-color: #1e3a29; /* Dark fern border */
-  --glow-sym: 0 0 12px #26de8188; /* Stronger green glow */
+  --border-color: #1e3a29;
+  --glow-sym: 0 0 12px #26de8188;
   --glow-me: 0 0 15px #f0fff480;
-  --hover-bg: #26de8115; /* Greenish hover tint */
+  --hover-bg: #26de8115;
 }
 
-h1, h2, h3, h4, h5, h6, button, .font-heading {
-  font-family: 'Rajdhani', sans-serif;
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Syne', sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+button {
+  font-family: 'Syne', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
 }
 html, body {
   height: 100%; /* Ensure html and body take full height */

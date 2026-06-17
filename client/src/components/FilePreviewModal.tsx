@@ -24,6 +24,12 @@ import { RichTextEditor } from './RichTextEditor';
 import { MarkdownViewer } from './MarkdownViewer';
 import { ZipViewer } from './ZipViewer';
 import { EpubViewer } from './EpubViewer';
+import { NotebookViewer } from './NotebookViewer';
+import { USDZViewer } from './USDZViewer';
+import { QMLViewer } from './QMLViewer';
+import { MermaidViewer } from './MermaidViewer';
+import { ExcalidrawViewer } from './ExcalidrawViewer';
+import { ParquetViewer } from './ParquetViewer';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 interface FilePreviewModalProps {
@@ -151,15 +157,21 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   
   const isSpreadsheet = !!(filename.match(/\.(xlsx|xls|csv)$/i) || mimeType.match(/excel|spreadsheet|csv/));
   const isDocx = !!(filename.match(/\.(docx)$/i) || mimeType.match(/wordprocessingml/));
-  const is3D = !!(filename.match(/\.(gltf|glb)$/i) || mimeType.match(/gltf/));
+  const is3D = !!(filename.match(/\.(gltf|glb|stl|obj|fbx|ply|3mf)$/i) || mimeType.match(/gltf|model\/stl|model\/obj|model\/fbx/));
+  const isUSDZ = !!filename.match(/\.usdz$/i) || mimeType === 'model/vnd.usdz+zip';
   const isRichText = !!filename.match(/\.(notes|tiptap)$/i);
-  const isMarkdown = !!filename.match(/\.(md|markdown)$/i);
+  const isMarkdown = !!filename.match(/\.(md|markdown|qmd)$/i);
+  const isNotebook = !!filename.match(/\.ipynb$/i) || mimeType === 'application/x-ipynb+json';
   const isEpub = !!filename.match(/\.(epub)$/i) || mimeType === 'application/epub+zip';
+  const isMermaid = !!filename.match(/\.(mmd|mermaid)$/i);
+  const isExcalidraw = !!filename.match(/\.excalidraw$/i) || mimeType === 'application/vnd.excalidraw+json';
+  const isParquet = !!filename.match(/\.parquet$/i) || mimeType === 'application/vnd.apache.parquet';
+  const isQML = !!filename.match(/\.qml$/i);
   
-  const isZip = !isEpub && !isSpreadsheet && !isDocx && !!mimeType.match(/zip|compressed|archive/);
-  const isText = !isRichText && !isMarkdown && !isSpreadsheet && !isDocx && (mimeType.startsWith('text/') || 
+  const isZip = !isEpub && !isSpreadsheet && !isDocx && !isNotebook && !!mimeType.match(/zip|compressed|archive/);
+  const isText = !isRichText && !isMarkdown && !isSpreadsheet && !isDocx && !isNotebook && !isQML && (mimeType.startsWith('text/') || 
                  !!mimeType.match(/json|xml|javascript|typescript|python|x-sh/) ||
-                 !!filename.match(/\.(txt|md|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log)$/i));
+                 !!filename.match(/\.(txt|md|qmd|json|xml|html|css|js|jsx|ts|tsx|py|java|c|cpp|h|rs|go|rb|php|sh|bash|sql|yaml|yml|toml|ini|conf|log|mmd|mermaid)$/i));
   const isHTML = mimeType === 'text/html' || filename.endsWith('.html');
   const isWebCode = isHTML || !!filename.match(/\.(html|css|js|jsx|ts|tsx)$/);
 
@@ -674,60 +686,94 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
                {isMarkdown && content && !isEditing && <MarkdownViewer content={content} />}
 
-               {isEpub && <EpubViewer url={`/api/files/${fileId}/content`} />}
+                {isEpub && <EpubViewer url={`/api/files/${fileId}/content`} />}
 
-               {isSpreadsheet && <SpreadsheetViewer url={`/api/files/${fileId}/content`} />}
-               
-               {isDocx && <DocxViewer url={`/api/files/${fileId}/content`} />}
-               
-               {is3D && <ModelViewer url={`/api/files/${fileId}/content`} />}
+                {isSpreadsheet && <SpreadsheetViewer url={`/api/files/${fileId}/content`} />}
+                
+                {isDocx && <DocxViewer url={`/api/files/${fileId}/content`} />}
+                
+                {is3D && <ModelViewer url={`/api/files/${fileId}/content`} />}
 
-               {isZip && <ZipViewer url={`/api/files/${fileId}/content`} />}
+                {isUSDZ && <USDZViewer url={`/api/files/${fileId}/content`} filename={filename} />}
 
-               {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && !isSpreadsheet && !isDocx && !is3D && !isRichText && !isMarkdown && !isEpub && (
+                {isZip && <ZipViewer url={`/api/files/${fileId}/content`} />}
+
+                {isNotebook && <NotebookViewer url={`/api/files/${fileId}/content`} />}
+
+                {isMermaid && !isEditing && content && <MermaidViewer content={content} />}
+
+                {isExcalidraw && <ExcalidrawViewer url={`/api/files/${fileId}/content`} />}
+
+                {isParquet && <ParquetViewer url={`/api/files/${fileId}/content`} />}
+
+                {!isImage && !isAudio && !isVideo && !isPDF && !isText && !isZip && !isSpreadsheet && !isDocx && !is3D && !isUSDZ && !isNotebook && !isMermaid && !isExcalidraw && !isParquet && !isQML && !isRichText && !isMarkdown && !isEpub && (
                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📄</div>
                    <div>Binary file - use download button to save</div>
                    <div style={{ fontSize: '0.8rem', marginTop: '10px' }}>{mimeType}</div>
                  </div>
-               )}
+                )}
 
-               {isRichText && (
-                   isEditing ? (
-                       (ydoc && provider) ? (
-                           <RichTextEditor 
-                               ydoc={ydoc} 
-                               provider={provider} 
-                               currentUser={currentUser} 
-                               themePreferences={theme_preferences} 
-                           />
-                       ) : <Skeleton height="100%" width="100%" />
-                   ) : (
-                       <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
-                           <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📝</div>
-                           <div>Rich Text Note - Click Edit to view/collaborate</div>
-                       </div>
-                   )
-               )}
+                {isRichText && (
+                    isEditing ? (
+                        (ydoc && provider) ? (
+                            <RichTextEditor 
+                                ydoc={ydoc} 
+                                provider={provider} 
+                                currentUser={currentUser} 
+                                themePreferences={theme_preferences} 
+                            />
+                        ) : <Skeleton height="100%" width="100%" />
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📝</div>
+                            <div>Rich Text Note - Click Edit to view/collaborate</div>
+                        </div>
+                    )
+                )}
 
-               {isText && !isEditing && !showPreview && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
-               {isText && !isEditing && showPreview && isWebCode && (
-                   <iframe
-                       srcDoc={content || ''}
-                       style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
-                       sandbox="allow-scripts"
-                       title="Code Preview"
-                   />
-               )}
-               {isText && isEditing && (
-                   <CodeEditor
-                     content={editContent}
-                     onChange={(val) => setEditContent(val)}
-                     filename={filename}
-                     ydoc={ydoc}
-                     provider={provider}
-                   />
-               )}
+                {isQML && (
+                    isEditing ? (
+                        <CodeEditor
+                            content={editContent}
+                            onChange={(val) => setEditContent(val)}
+                            filename={filename}
+                            ydoc={ydoc}
+                            provider={provider}
+                        />
+                    ) : (
+                        content && <QMLViewer content={content} />
+                    )
+                )}
+
+                {isMermaid && isEditing && (
+                    <CodeEditor
+                        content={editContent}
+                        onChange={(val) => setEditContent(val)}
+                        filename={filename}
+                        ydoc={ydoc}
+                        provider={provider}
+                    />
+                )}
+
+                {isText && !isEditing && !showPreview && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', color: 'var(--text-primary)' }}>{content}</pre>}
+                {isText && !isEditing && showPreview && isWebCode && (
+                    <iframe
+                        srcDoc={content || ''}
+                        style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
+                        sandbox="allow-scripts"
+                        title="Code Preview"
+                    />
+                )}
+                {isText && isEditing && (
+                    <CodeEditor
+                      content={editContent}
+                      onChange={(val) => setEditContent(val)}
+                      filename={filename}
+                      ydoc={ydoc}
+                      provider={provider}
+                    />
+                )}
              </>
           )}
         </div>

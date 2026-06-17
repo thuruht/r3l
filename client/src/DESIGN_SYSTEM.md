@@ -117,14 +117,17 @@ The design system uses two coordinated dark themes with accent colors for visual
 **Dark blue-black base with neon green accent**
 
 ```css
---bg-color: #0a0b10         /* Deep background */
---bg-mist: #111318          /* Lighter background panel */
---text-primary: #e0e4e8     /* Main text */
---text-secondary: #7f8a96   /* Secondary/muted text */
---accent-sym: #26de81       /* Primary action color (neon green) */
+--bg-color: #07080f         /* Deep background (near-black) */
+--bg-mist: #0d0f1c          /* Lighter background panel */
+--text-primary: #e2e6f0     /* Main text */
+--text-secondary: #7a8799   /* Secondary/muted text */
+--accent-sym: #26de81       /* SYM / primary action (neon green) */
+--accent-asym: #7a7870      /* A-SYM — warm stone */
+--accent-3space: #7c3aed    /* 3SPACE — deep purple */
+--accent-ttl: #e8763a       /* TTL / boost — warm orange */
 --accent-alert: #ff4b4b     /* Error/alert red */
---accent-online: #00d2ff    /* Online status cyan */
---border-color: #2a2f3aff   /* Borders and dividers */
+--accent-online: #70eaaa    /* Online status — mint */
+--border-color: #2a2f3a     /* Borders and dividers */
 --drawer-bg: #101217f2      /* Modal/drawer background */
 ```
 
@@ -245,10 +248,15 @@ Helpful flexbox utility classes:
 
 ### Font Families
 ```css
---font-family-heading: 'Rajdhani', sans-serif    /* All caps titles */
---font-family-body: 'Inter', sans-serif          /* Body text */
---font-family-mono: 'Courier New', monospace     /* Code/data */
+--font-family-heading: 'Syne', sans-serif         /* All caps titles, buttons, labels (800 weight) */
+--font-family-body: 'Inter', sans-serif           /* Body text (300-500 weight) */
+--font-family-mono: 'IBM Plex Mono', monospace    /* Code, labels, data, tags (400-500 weight) */
 ```
+
+**Usage rules:**
+- Syne (800): all headings, button labels, nav items, uppercase badges — letter-spacing .01–.12em
+- Inter (300-500): body copy, descriptions, tooltips — sentence case
+- IBM Plex Mono (400-500): filenames, TTL badges, connection tags, meta text, code — mixed case
 
 ### Font Sizes
 ```css
@@ -533,6 +541,12 @@ To update existing components to use the design system:
   - Created component CSS library
   - Consolidated animations
   - Refactored App.tsx inline styles
+- **v1.1.0** (2026-06-17): Brand refresh
+  - Rajdhani → Syne (headings), Courier New → IBM Plex Mono (monospace)
+  - Updated accent palette: A-SYM (#7a7870), 3SPACE (#7c3aed), TTL (#e8763a), Online (#70eaaa)
+  - New semantic badge components (.badge-sym, .badge-asym, .badge-3space, .badge-ttl, .badge-flare, .badge-archive)
+  - New icon mark (three-node triangle favicon)
+  - Background: #07080f (from #0a0b10)
 
 ---
 

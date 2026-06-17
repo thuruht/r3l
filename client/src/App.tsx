@@ -406,7 +406,12 @@ function Main() {
           <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
             <div className="header-content">
               <div className="header-left">
-                <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Ephemeral Filenet">REL F <span className="header-logo-beta">BETA</span></h2>
+                <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Ephemeral Filenet">
+                  <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, letterSpacing: '0.02em' }}>
+                    R<span style={{ color: 'var(--accent-sym)' }}>3</span>L<span style={{ color: 'var(--accent-sym)', fontSize: '0.75em', verticalAlign: '-0.07em' }}>:</span>F
+                  </span>
+                  <span className="header-logo-beta">BETA</span>
+                </h2>
                 <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                   <SearchBar />
                   <RandomUserButton />
@@ -487,10 +492,10 @@ function Main() {
                 </div>
               </div>
               <button onClick={() => { navigate(`/communique/${currentUser?.id}`); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconUser size={ICON_SIZES.lg} /> My Cache (R3C)
+                <TablerIcons.IconUser size={ICON_SIZES.lg} /> My COMMUNIQUE
               </button>
               <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconChartCircles size={ICON_SIZES.lg} /> Community Archive
+                <TablerIcons.IconChartCircles size={ICON_SIZES.lg} /> ARCHIVE
               </button>
               <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
@@ -609,7 +614,7 @@ function Main() {
                   }}>
                     <TablerIcons.IconRadio size={20} style={{ marginBottom: '8px', opacity: 0.5 }} /><br/>
                     No signals found on this frequency.<br/>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Scanning for new artifacts every 60s...</span>
+                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Scanning for new files every 60s...</span>
                   </div>
                 )}
                 {viewMode === 'graph' ? (

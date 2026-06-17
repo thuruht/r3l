@@ -1,0 +1,49 @@
+---
+title: "Drift Frequency Analysis"
+author: "relay_42"
+date: "2026-06-17"
+---
+
+## Overview
+
+This Quarto document analyzes signal patterns from the R3L:F drift network.
+
+### Correlation Matrix
+
+```{python}
+import numpy as np
+import pandas as pd
+
+# Simulated drift signals
+data = {
+    'frequency': [0.1, 0.5, 1.2, 2.0, 0.8],
+    'amplitude': [1.0, 0.7, 0.3, 0.9, 0.6],
+    'ttl_hours': [168, 72, 24, 96, 120]
+}
+df = pd.DataFrame(data)
+corr = df.corr()
+```
+
+### Results
+
+The correlation between frequency and TTL is **-0.42**, suggesting higher-frequency signals tend to have shorter lifespans.
+
+| Metric | Value |
+|--------|-------|
+| Sample count | 5 |
+| Mean TTL | 96h |
+| Std Dev | 52.5h |
+
+### Visualizing the Network
+
+```{python}
+import matplotlib.pyplot as plt
+import networkx as nx
+
+G = nx.Graph()
+G.add_edge("relay_42", "signal_wolf", type="SYM")
+G.add_edge("relay_42", "drift_runner", type="SYM")
+G.add_edge("drift_runner", "echo_9", type="A-SYM")
+```
+
+> Files expire. Permanence is earned.

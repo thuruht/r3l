@@ -1,42 +1,73 @@
 # UI Interaction Map & Conflict Analysis
 
-This document maps the layout and stacking context of all interactive overlays, fixed elements, and absolute positioning across the R3L:F interface.
+This document maps the layout and stacking context of interactive overlays, fixed elements, and absolute positioning across the R3L:F interface. Updated to reflect current code state.
 
-## 1. The "Bottom-Left Corner" Collision (High Priority)
-*Location:* `bottom: 20px, left: 20px`
-* **AssociationWeb.tsx (Legend):** `position: absolute`, `pointerEvents: 'none'`
-* **CustomizationSettings.tsx (Open Button):** `position: absolute`, `z-index: var(--z-overlay)` (10)
-* **AmbientBackground.tsx (Audio Controls):** `position: fixed`, `zIndex: 50`
-* **Conflict:** All three elements are targeting the exact same spatial coordinates. The AssociationWeb legend will be visually occluded. More critically, the Customization Settings button and Ambient Background controls physically overlap, causing click interference depending on DOM render order (currently Ambient Background with `z-index: 50` will block Customization with `z-index: 10`).
+---
 
-## 2. The "Right-Edge Drawer" Stacking (Medium Priority)
-*Location:* `top: var(--header-height), right: 10px`
-* **Inbox.tsx (`< mail >` panel):** `position: fixed`, `width: min(360px, 95vw)`, `z-index: var(--z-modal)` (3000)
-* **App.tsx (`< planets >` panel):** `position: fixed`, `width: min(400px, 95vw)`, `z-index: var(--z-modal)` (3000)
-* **Conflict:** Both panels are designed as right-aligned sliding drawers. If a user clicks `< mail >` and then `< planets >` without closing the first, both panels open simultaneously, stacking on top of each other. Because they share the same z-index, the one rendered later in `App.tsx` takes precedence, but the UI underneath remains active and visually messy.
-* **Proposed Fix:** Opening one drawer should automatically set the state of the other drawer to `false`.
+## Navigation Model
 
-## 3. The "Bottom-Right Corner" Occlusion (Low Priority)
-*Location:* `bottom: 20px, right: 20px`
-* **ToastContext.tsx (Toasts):** `position: fixed`, `z-index: var(--z-toast)` (4000)
-* **AssociationWeb.tsx (Zoom Controls):** `position: absolute`, `z-index: var(--z-overlay)` (10)
-* **Conflict:** When a system toast appears (e.g., "Signal boosted!"), it renders directly over the RRC Graph's zoom controls. While the z-index hierarchy is correct (Toasts > Overlays), the toast physically blocks interaction with the zoom controls until it disappears.
+The UI follows a four-layer taxonomy:
 
-## 4. Full-Screen Z-Index Hierarchies (Medium Priority)
-*Location:* `inset: 0` or full viewport coverage
-* **Header (`App.css`):** `position: fixed`, `z-index: var(--z-header)` (1000)
-* **CommuniquePage.tsx:** `position: fixed`, `z-index: var(--z-header)` (1000)
-* **Modals (Archive, Settings, etc.):** `z-index: var(--z-modal)` (3000)
-* **FilePreviewModal.tsx:** `z-index: var(--z-modal)` (3000)
-* **Conflict:** `CommuniquePage.tsx` and the main `Header` share the exact same `z-index: 1000`. This creates a race condition based on DOM mounting order. If `CommuniquePage` mounts later, it can completely occlude the global navigation header, relying entirely on its own absolute-positioned "Back" button to escape.
+| Layer | Examples | Behaviour |
+|---|---|---|
+| **Canvas** | AssociationWeb (D3 graph), NetworkList | Full viewport below header |
+| **Sidebar** | Inbox, Connections, GlobalChat, History | Right-edge drawer, `transform: translateX(...)` |
+| **Modal** | UploadModal, FilePreviewModal, WorkspacesManager, SettingsPage | Full-screen overlay, `position: fixed`, `z-index: var(--z-modal)` |
+| **Full overlay** | CommuniquePage | Route-level page via React Router |
 
-## 5. Drift Mode Floating UI (Low Priority)
-*Location:* `top: var(--header-height), left: 10px`
-* **Drift Session History (`App.tsx`):** `position: fixed`, `z-index: var(--z-overlay)` (10)
-* **Conflict:** In mobile views, or narrow desktop views, this panel can stretch up to `240px` wide, potentially overlapping with the main Drift controls in the header or occupying prime interaction real estate in the RRC graph.
+The sidebar uses a single `isSidebarOpen` + `sidebarTab` state pair — opening one tab automatically replaces the previous tab (no stacking).
 
-## Summary of Recommendations for Next Session
-1. **Relocate Ambient Controls:** Move the audio toggles to `bottom: 20px, left: 80px` or integrate them into the header.
-2. **Drawer State Management:** Implement a global "active drawer" state rather than independent booleans to prevent the Inbox and Planets panels from opening simultaneously.
-3. **Z-Index Audit:** Elevate the Header to `z-index: 1100` or lower the `CommuniquePage` background to ensure navigation is never accidentally trapped.
-4. **Toast Relocation:** Consider moving Toasts to `top: calc(var(--header-height) + 20px), right: 20px` to clear the bottom interaction zones.
+---
+
+## Current Element Positions
+
+### Bottom-Left (`bottom: ~20px, left: ~20px`)
+
+| Element | File | Position | Notes |
+|---|---|---|---|
+| Gear (CustomizationSettings) | `CustomizationSettings.tsx` | `position: absolute`, `left: 20px`, `z-index: var(--z-overlay)` | Gear icon; expands upward when opened |
+| Legend | `AssociationWeb.tsx` | `position: absolute`, `left: 56px`, `pointer-events: none` | Offset right of gear so they don't overlap |
+
+**Status: resolved.** The legend was previously at `left: 20px`, overlapping the gear. Now at `left: 56px`.
+
+### Bottom-Right (`bottom: ~20px, right: ~20px`)
+
+| Element | File | Position | Notes |
+|---|---|---|---|
+| Zoom controls (+/−/fit) | `AssociationWeb.tsx` | `position: absolute`, `z-index: var(--z-overlay)` | |
+| Toasts | `ToastContext.tsx` | `position: fixed`, `z-index: var(--z-toast)` (4000) | Appears over zoom controls when active; toasts auto-dismiss so it's transient |
+
+### Top-Center
+
+| Element | File | Notes |
+|---|---|---|
+| Ambient controls (eye/play/mute) | `AmbientBackground.tsx` | `position: fixed`, `top: 12px`, `left: 50%`, `z-index: var(--z-header)`, fades to 40% opacity at rest |
+
+### Header (`z-index: var(--z-header)` = 1000)
+
+| Element | Notes |
+|---|---|
+| `.header` | `position: fixed`, no `transform` (transform was removed to avoid trapping fixed children in a 60px stacking context) |
+
+---
+
+## Known Issues / Open Items
+
+### CommuniquePage z-index tie with Header
+
+`CommuniquePage.tsx` mounts as a full-page route overlay at `z-index: 1000` (same as the header). If it renders later in the DOM than the header, it can obscure navigation. Proposal: raise header to `z-index: 1100`.
+
+### Toast / Zoom Controls Transient Overlap
+
+When a toast fires while the graph is visible, it briefly covers the bottom-right zoom buttons. Severity: low (toasts auto-dismiss in ~3s). No fix planned.
+
+---
+
+## Resolved Issues (Historical)
+
+- **Bottom-left three-way collision** (Legend + Gear + Ambient audio): Ambient controls moved to top-center; legend offset to `left: 56px`. ✅
+- **GlobalChat / GroupChat breaking out of sidebar**: Removed `position: fixed` from both components; they now fill the sidebar container. ✅
+- **Search results modal clipped by header**: Removed `transform: translateZ(0)` from `.header` (was creating a stacking context trapping children). ✅
+- **Floating drift history panel duplication**: Removed floating panel; history lives exclusively in the sidebar "History" tab. ✅
+- **Competing right-edge drawers**: Replaced independent `isInboxOpen`/`isPlanetsOpen` booleans with single `isSidebarOpen + sidebarTab` state. ✅
+- **CSS injection via user `custom_css`**: Scoped all user CSS to `#communique-user-{id}` using `scopeCSS()` in `sanitize.ts`. ✅

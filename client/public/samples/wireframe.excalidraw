@@ -1,0 +1,99 @@
+{
+  "type": "excalidraw",
+  "elements": [
+    {
+      "type": "rectangle",
+      "x": 100, "y": 80,
+      "width": 300, "height": 200,
+      "strokeColor": "#26de81",
+      "backgroundColor": "rgba(38,222,129,0.08)",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100
+    },
+    {
+      "type": "text",
+      "x": 180, "y": 120,
+      "width": 140, "height": 28,
+      "strokeColor": "#26de81",
+      "backgroundColor": "transparent",
+      "strokeWidth": 1,
+      "opacity": 100,
+      "text": "R3L:F Network",
+      "fontSize": 22,
+      "fontFamily": 2
+    },
+    {
+      "type": "ellipse",
+      "x": 150, "y": 170,
+      "width": 60, "height": 60,
+      "strokeColor": "#7a7870",
+      "backgroundColor": "rgba(122,120,112,0.12)",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "opacity": 80
+    },
+    {
+      "type": "ellipse",
+      "x": 290, "y": 170,
+      "width": 60, "height": 60,
+      "strokeColor": "#7a7870",
+      "backgroundColor": "rgba(122,120,112,0.12)",
+      "fillStyle": "solid",
+      "strokeWidth": 1.5,
+      "opacity": 80
+    },
+    {
+      "type": "arrow",
+      "x": 210, "y": 200,
+      "width": 80, "height": 0,
+      "strokeColor": "#26de81",
+      "strokeWidth": 2,
+      "opacity": 100,
+      "points": [[0,0],[80,0]],
+      "isArrow": true
+    },
+    {
+      "type": "text",
+      "x": 165, "y": 240,
+      "width": 30, "height": 16,
+      "strokeColor": "#26de81",
+      "opacity": 80,
+      "text": "relay_42",
+      "fontSize": 11,
+      "fontFamily": 3
+    },
+    {
+      "type": "text",
+      "x": 303, "y": 240,
+      "width": 40, "height": 16,
+      "strokeColor": "#7a7870",
+      "opacity": 80,
+      "text": "drift_runner",
+      "fontSize": 11,
+      "fontFamily": 3
+    },
+    {
+      "type": "diamond",
+      "x": 500, "y": 120,
+      "width": 80, "height": 80,
+      "strokeColor": "#7c3aed",
+      "backgroundColor": "rgba(124,58,237,0.1)",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "opacity": 80
+    },
+    {
+      "type": "text",
+      "x": 518, "y": 150,
+      "width": 44, "height": 20,
+      "strokeColor": "#7c3aed",
+      "opacity": 80,
+      "text": "3SPACE",
+      "fontSize": 12,
+      "fontFamily": 3
+    }
+  ]
+}

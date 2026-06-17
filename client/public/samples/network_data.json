@@ -1,0 +1,23 @@
+{
+  "network": {
+    "nodes": [
+      { "id": "relay_42", "type": "user", "connections": 7, "online": true },
+      { "id": "signal_wolf", "type": "user", "connections": 3, "online": false },
+      { "id": "drift_runner", "type": "user", "connections": 12, "online": true },
+      { "id": "echo_9", "type": "user", "connections": 5, "online": true },
+      { "id": "null_pointer", "type": "user", "connections": 1, "online": false }
+    ],
+    "edges": [
+      { "source": "relay_42", "target": "signal_wolf", "type": "SYM" },
+      { "source": "relay_42", "target": "drift_runner", "type": "SYM" },
+      { "source": "signal_wolf", "target": "echo_9", "type": "A-SYM" },
+      { "source": "drift_runner", "target": "echo_9", "type": "SYM" },
+      { "source": "drift_runner", "target": "null_pointer", "type": "3SPACE" }
+    ],
+    "metadata": {
+      "generated": "2026-06-17T20:00:00Z",
+      "total_users": 5,
+      "total_connections": 7
+    }
+  }
+}

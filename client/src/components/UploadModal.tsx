@@ -26,7 +26,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [isFlare, setIsFlare] = useState(false);
-  const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('public');
+  const [visibility, setVisibility] = useState<'public' | 'sym' | 'me' | '3space'>('public');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -89,9 +89,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         formData.append('file', upload.file);
       }
 
-      // Map 'private' UI state to 'me' for the backend
-      const backendVisibility = visibility === ('private' as any) ? 'me' : visibility;
-      formData.append('visibility', backendVisibility);
+      formData.append('visibility', visibility);
       if (isFlare) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());
 
@@ -193,12 +191,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
           <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>Visibility:</label>
           <select
             value={visibility}
-            onChange={e => setVisibility(e.target.value as 'public' | 'sym' | 'me')}
+            onChange={e => setVisibility(e.target.value as 'public' | 'sym' | 'me' | '3space')}
             style={{ background: 'var(--drawer-bg)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', fontSize: '0.9rem', flex: 1 }}
           >
             <option value="public">PUBLIC · DRIFT</option>
             <option value="sym">SYM</option>
-            <option value="me">3SPACE</option>
+            <option value="3space">3SPACE</option>
+            <option value="me">PRIVATE</option>
           </select>
         </div>
 

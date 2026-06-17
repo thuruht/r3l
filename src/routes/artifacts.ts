@@ -80,15 +80,17 @@ artifacts.get('/users/:target_user_id', async (c) => {
       'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
     ).bind(Math.min(user_id, target_user_id), Math.max(user_id, target_user_id), Math.min(user_id, target_user_id), Math.max(user_id, target_user_id)).first();
 
+    const is3space = await c.env.DB.prepare(
+      `SELECT id FROM relationships WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?)) AND type = '3space_accepted' AND status = 'accepted'`
+    ).bind(user_id, target_user_id, target_user_id, user_id).first();
+
+    let visibilities = ['"public"'];
+    if (mutual) visibilities.push('"sym"');
+    if (is3space) visibilities.push('"3space"');
+
     let query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.visibility = "public"`;
-    let countQuery = 'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND visibility = "public"';
-    
-    if (mutual) {
-        query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND (f.visibility = "public" OR f.visibility = "sym")`;
-        countQuery = 'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND (visibility = "public" OR visibility = "sym")';
-    }
+                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.visibility IN (${visibilities.join(',')})`;
+    let countQuery = `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND visibility IN (${visibilities.join(',')})`;
 
     const { results } = await c.env.DB.prepare(query + ' ORDER BY f.created_at DESC LIMIT ? OFFSET ?').bind(user_id, target_user_id, limit, offset).all();
     const total = await c.env.DB.prepare(countQuery).bind(target_user_id).first('count');
@@ -108,7 +110,7 @@ artifacts.post('/', async (c) => {
     const formData = await c.req.parseBody();
     const file = formData['file'] as File;
     const visibility = (formData['visibility'] as string) || 'me';
-    const VALID_VISIBILITIES = ['public', 'sym', 'me'];
+    const VALID_VISIBILITIES = ['public', 'sym', 'me', '3space'];
     if (!VALID_VISIBILITIES.includes(visibility)) return c.json({ error: 'Invalid visibility' }, 400);
     const parent_id = formData['parent_id'] ? Number(formData['parent_id']) : null;
     const shouldEncrypt = formData['encrypt'] === 'true';
@@ -213,11 +215,15 @@ artifacts.get('/:id/metadata', async (c) => {
 
     if (file.user_id !== user_id) {
       if (file.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);
-      if (file.visibility === 'sym') {
-        const mutual = await c.env.DB.prepare(
-          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
-        ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
-        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+      const mutual = await c.env.DB.prepare(
+        'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+      ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
+      if (file.visibility === 'sym' && !mutual) return c.json({ error: 'Unauthorized' }, 403);
+      if (file.visibility === '3space' && !mutual) {
+        const is3space = await c.env.DB.prepare(
+          `SELECT id FROM relationships WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?)) AND type = '3space_accepted' AND status = 'accepted'`
+        ).bind(user_id, file.user_id, file.user_id, user_id).first();
+        if (!is3space) return c.json({ error: 'Unauthorized' }, 403);
       }
     }
 
@@ -239,11 +245,15 @@ artifacts.get('/:id/content', async (c) => {
     // Visibility enforcement
     if (file.user_id !== user_id) {
       if (file.visibility === 'me') return c.json({ error: 'Unauthorized' }, 403);
-      if (file.visibility === 'sym') {
-        const mutual = await c.env.DB.prepare(
-          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
-        ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
-        if (!mutual) return c.json({ error: 'Unauthorized' }, 403);
+      const mutual = await c.env.DB.prepare(
+        'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+      ).bind(Math.min(user_id, file.user_id), Math.max(user_id, file.user_id), Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)).first();
+      if (file.visibility === 'sym' && !mutual) return c.json({ error: 'Unauthorized' }, 403);
+      if (file.visibility === '3space' && !mutual) {
+        const is3space = await c.env.DB.prepare(
+          `SELECT id FROM relationships WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?)) AND type = '3space_accepted' AND status = 'accepted'`
+        ).bind(user_id, file.user_id, file.user_id, user_id).first();
+        if (!is3space) return c.json({ error: 'Unauthorized' }, 403);
       }
     }
 

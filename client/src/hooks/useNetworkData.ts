@@ -3,7 +3,7 @@ import { useToast } from '../context/ToastContext';
 
 export interface NetworkNode {
   id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'file' | 'collection';
+  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'file' | 'collection' | '3space';
   name: string;
   avatar_url?: string;
   online?: boolean;
@@ -13,7 +13,7 @@ export interface NetworkNode {
 export interface NetworkLink {
   source: string;
   target: string;
-  type: 'sym' | 'asym' | 'drift' | 'collection';
+  type: 'sym' | 'asym' | 'drift' | 'collection' | '3space';
   strength?: number;
 }
 
@@ -144,6 +144,25 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
                 target: r.user_id.toString(), 
                 type: 'sym',
                 strength: r.strength 
+            });
+          });
+
+          // 3SPACE — ghost connections, invisible on graph but present for data completeness
+          relData.threespace?.forEach((r: any) => {
+            const uid = r.user_id.toString();
+            if (!nodeMap.has(uid)) {
+              nodeMap.set(uid, {
+                id: uid,
+                group: '3space',
+                name: r.username,
+                avatar_url: r.avatar_url,
+                online: onlineUserIds.has(r.user_id)
+              });
+            }
+            newLinks.push({
+              source: currentUserId.toString(),
+              target: uid,
+              type: '3space',
             });
           });
 

@@ -18,9 +18,9 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
   const { showToast } = useToast();
   const [drifting, setDrifting] = useState(false);
 
-  // Sort nodes: Me -> Sym -> Asym -> Files -> Collections -> Drift Users -> Drift Files
+  // Sort nodes: Me -> Sym -> Asym -> 3SPACE -> Files -> Collections -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
-    const order: Record<string, number> = { me: 0, sym: 1, asym: 2, file: 3, collection: 4, drift_user: 5, drift_file: 6, lurker: 7 };
+    const order: Record<string, number> = { me: 0, sym: 1, asym: 2, '3space': 3, file: 4, collection: 5, drift_user: 6, drift_file: 7, lurker: 8 };
     return (order[a.group] ?? 99) - (order[b.group] ?? 99);
   });
 
@@ -138,8 +138,9 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
               </div>
               <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)' }}>
                 {node.group === 'me' ? 'You' :
-                 node.group === 'sym' ? 'Sym' :
+                 node.group === 'sym' ? 'SYM' :
                  node.group === 'asym' ? 'A-SYM' :
+                 node.group === '3space' ? '3SPACE' :
                  node.group === 'file' ? 'File' :
                  node.group === 'collection' ? 'Collection' :
                  node.group === 'drift_user' ? 'Drift' : 'Drift File'}

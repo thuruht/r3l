@@ -274,7 +274,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
 
       (simulation.force('link') as d3.ForceLink<D3Node, D3Link>)
           .links(mutableLinks)
-          .distance(d => d.type === 'sym' ? 80 : (d.type === 'drift' || d.type === 'drift' ? 60 : 120));
+          .distance(d => d.type === 'sym' ? 80 : (d.type === '3space' ? 150 : (d.type === 'drift' ? 60 : 120)));
 
       if (nodes.length !== oldNodes.size) {
           simulation.alpha(0.3).restart();
@@ -300,19 +300,28 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       linkSelection.exit().remove();
       const linkEnter = linkSelection.enter().append('line');
       const allLinks = linkEnter.merge(linkSelection)
-          .attr('stroke', (d) => d.type === 'sym' ? node_primary_color : node_secondary_color)
+          .attr('stroke', (d) => {
+              if (d.type === '3space') return 'var(--accent-3space)';
+              return d.type === 'sym' ? node_primary_color : node_secondary_color;
+          })
           .attr('stroke-width', (d) => {
+              if (d.type === '3space') return 1;
               if (d.type !== 'sym') return 1;
               const strength = d.strength || 1;
-              // 2.5px base, + log(strength) up to a reasonable cap
               return Math.min(2.5 + Math.log(strength), 6);
           })
-          .attr('opacity', (d) => d.type === 'sym' ? 0.9 : 0.3) // Sym solid, Asym faint
-          .attr('stroke-dasharray', (d) => d.type === 'sym' ? 'none' : '3,5') // Asym dashed
+          .attr('opacity', (d) => {
+              if (d.type === '3space') return 0.25;
+              return d.type === 'sym' ? 0.9 : 0.3;
+          })
+          .attr('stroke-dasharray', (d) => {
+              if (d.type === '3space') return '1,4';
+              return d.type === 'sym' ? 'none' : '3,5';
+          })
           .attr('marker-end', (d) => d.type === 'asym' ? 'url(#end-asym)' : null)
           .style('filter', (d) => {
               if (d.type === 'sym') return 'url(#glow)';
-              if (d.type === 'asym') return 'url(#prob-blur)'; // Probabilistic halo effect
+              if (d.type === 'asym') return 'url(#prob-blur)';
               return 'none';
           });
 
@@ -381,16 +390,18 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
           })
           .attr('fill', (d) => {
               if (d.avatar_url) return `url(#avatar-${d.id})`;
-              if (d.group === 'me') return isLurking ? '#444' : 'var(--accent-me)'; // Visual feedback for Lurker
+              if (d.group === 'me') return isLurking ? '#444' : 'var(--accent-me)';
               if (d.group === 'collection') return 'var(--accent-online)';
               if (d.group === 'sym') return node_primary_color;
               if (d.group === 'asym') return node_secondary_color;
+              if (d.group === '3space') return 'var(--accent-3space)';
               if (d.group === 'drift_user') return '#555555';
               if (d.group === 'drift_file' || d.group === 'file') return '#888888';
               return '#333333ff';
           })
           .attr('opacity', (d) => {
-              if (d.group === 'me' && isLurking) return 0.5; // Dim "me" if lurking
+              if (d.group === 'me' && isLurking) return 0.5;
+              if (d.group === '3space') return 0.4;
               return 1;
           });
 
@@ -405,6 +416,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               if (d.group === 'me') return '#ffffffcc';
               if (d.group === 'collection') return 'var(--accent-online)';
               if (d.group === 'sym') return node_primary_color;
+              if (d.group === '3space') return 'var(--accent-3space)';
               if (d.group === 'drift_file' || d.group === 'file') return 'transparent';
               return 'var(--text-secondary)';
           })

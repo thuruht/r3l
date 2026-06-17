@@ -1,7 +1,7 @@
 // Inbox.tsx
 
 import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
-import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff, IconFile, IconBolt, IconPlugConnected } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff, IconFile, IconBolt, IconPlugConnected, IconEyeOff, IconLock } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
@@ -15,7 +15,7 @@ interface InboxProps {
 
 interface Notification {
   id: number;
-  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert';
+  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted';
   actor_name?: string;
   actor_id?: number;
   payload: any;
@@ -228,10 +228,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
   const handleAction = async (notif: Notification, action: 'accept' | 'decline') => {
     if (notif.type === 'sym_request' && notif.actor_id) {
-        const endpoint = action === 'accept' 
-            ? '/api/relationships/accept-sym-request' 
+        const endpoint = action === 'accept'
+            ? '/api/relationships/accept-sym-request'
             : '/api/relationships/decline-sym-request';
-            
+
       try {
         const res = await fetch(endpoint, {
           method: 'POST',
@@ -244,6 +244,42 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         } else {
            const err = await res.json();
            showToast(err.error || `Failed to ${action}`, 'error');
+        }
+      } catch (err) {
+        showToast('Error processing request', 'error');
+      }
+    }
+    if (action === 'accept' && notif.type === '3space_request' && notif.actor_id) {
+      try {
+        const res = await fetch('/api/relationships/3space/accept', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_user_id: notif.actor_id }),
+        });
+        if (res.ok) {
+          showToast('3SPACE connection established.', 'success');
+          markAsRead(notif.id);
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to accept', 'error');
+        }
+      } catch (err) {
+        showToast('Error processing request', 'error');
+      }
+    }
+    if (action === 'decline' && notif.type === '3space_request' && notif.actor_id) {
+      try {
+        const res = await fetch('/api/relationships/3space/decline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_user_id: notif.actor_id }),
+        });
+        if (res.ok) {
+          showToast('3SPACE request declined.', 'success');
+          markAsRead(notif.id);
+        } else {
+          const err = await res.json();
+          showToast(err.error || 'Failed to decline', 'error');
         }
       } catch (err) {
         showToast('Error processing request', 'error');
@@ -268,6 +304,8 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
           case 'sym_accepted': return <IconCheck size={18} color="var(--accent-sym)" />;
           case 'file_shared': return <IconFile size={18} color="var(--accent-sym)" />;
           case 'system_alert': return <IconBolt size={18} color="var(--accent-alert)" />;
+          case '3space_request': return <IconEyeOff size={18} color="var(--accent-3space, #8b5cf6)" />;
+          case '3space_accepted': return <IconLock size={18} color="var(--accent-3space, #8b5cf6)" />;
           default: return <IconBell size={18} color="var(--text-secondary)" />;
       }
   };
@@ -293,6 +331,8 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
     switch (n.type) {
       case 'sym_request': return <>{actorLink} wants to go SYM with you.{n.payload?.file_id && <span style={{ marginLeft: '6px', fontSize: '0.8em', color: 'var(--accent-sym)', opacity: 0.8 }}>📎 file attached</span>}</>;
       case 'sym_accepted': return <>SYM connection established with {actorLink}.</>;
+      case '3space_request': return <>{actorLink} wants to open a 3SPACE connection with you.</>;
+      case '3space_accepted': return <>3SPACE connection established with {actorLink}.</>;
       case 'file_shared': {
         const filename = n.payload?.filename || 'a file';
         return <>{actorLink} shared {filename}.</>;
@@ -325,10 +365,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
           setIsSwiping(false);
           const threshold = Math.min(80, window.innerWidth * 0.2);
           if (offsetX > threshold) {
-              if (n.type === 'sym_request') handleAction(n, 'accept');
+              if (n.type === 'sym_request' || n.type === '3space_request') handleAction(n, 'accept');
               else if (!n.is_read) markAsRead(n.id);
           } else if (offsetX < -threshold) {
-              if (n.type === 'sym_request') handleAction(n, 'decline');
+              if (n.type === 'sym_request' || n.type === '3space_request') handleAction(n, 'decline');
               else handleDelete(n.id);
           }
           setOffsetX(0);

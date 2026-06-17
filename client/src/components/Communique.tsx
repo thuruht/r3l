@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation } from '@tabler/icons-react'; // Added icons
+import { IconEdit, IconDeviceFloppy, IconX, IconUserPlus, IconUserMinus, IconLink, IconLinkOff, IconCheck, IconCirclesRelation, IconEyeOff, IconLock, IconLockOff } from '@tabler/icons-react';
 import { sanitizeHTML, scopeCSS } from '../utils/sanitize';
 import Artifacts from './Artifacts';
 import Skeleton from './Skeleton';
@@ -31,7 +31,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [editContent, setEditContent] = useState('');
   const [editCSS, setEditCSS] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // e.g., 'none', 'following', 'sym_pending', 'sym_accepted', 'incoming_sym_request'
+  const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // 'none', 'following', 'sym_requested', 'incoming_sym_request', 'sym_accepted', '3space_requested', 'incoming_3space_request', '3space_accepted'
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
   const [symFileId, setSymFileId] = useState<string>('');
@@ -87,9 +87,27 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       try {
         const res = await fetch('/api/relationships');
         if (res.ok) {
-          const { outgoing, incoming, mutual } = await res.json();
+          const { outgoing, incoming, mutual, threespace } = await res.json();
           
           const targetId = userId;
+
+          // Check 3SPACE first (most specific)
+          const is3space = threespace?.some((r: any) => r.user_id === targetId);
+          const is3spaceRequested = outgoing.some((r: any) => r.user_id === targetId && r.type === '3space_request');
+          const incoming3spaceRequest = incoming.some((r: any) => r.user_id === targetId && r.type === '3space_request');
+
+          if (is3space) {
+            setRelationshipStatus('3space_accepted');
+            return;
+          }
+          if (is3spaceRequested) {
+            setRelationshipStatus('3space_requested');
+            return;
+          }
+          if (incoming3spaceRequest) {
+            setRelationshipStatus('incoming_3space_request');
+            return;
+          }
 
           // Check if currentUser follows this userId
           const isFollowing = outgoing.some((r: any) => r.user_id === targetId && r.type === 'asym_follow');
@@ -303,7 +321,45 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
         setRelationshipStatus('none');
       }
     };
-  
+
+    const handle3spaceRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/3space', 'POST', { target_user_id: userId })) {
+        setRelationshipStatus('3space_requested');
+      }
+    };
+
+    const handleCancel3spaceRequest = async () => {
+      try {
+        const res = await fetch(`/api/relationships/3space/${userId}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('3SPACE request cancelled.', 'success');
+          setRelationshipStatus('none');
+        } else {
+          const err = await res.json() as any;
+          showToast(err.error || 'Failed to cancel.', 'error');
+        }
+      } catch { showToast('Network error.', 'error'); }
+    };
+
+    const handleAccept3spaceRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/3space/accept', 'POST', { target_user_id: userId })) {
+        setRelationshipStatus('3space_accepted');
+      }
+    };
+
+    const handleRemove3space = async () => {
+      try {
+        const res = await fetch(`/api/relationships/3space/${userId}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('3SPACE connection removed.', 'success');
+          setRelationshipStatus('none');
+        } else {
+          const err = await res.json() as any;
+          showToast(err.error || 'Failed to remove.', 'error');
+        }
+      } catch { showToast('Network error.', 'error'); }
+    };
+
     // scopeCSS handles sanitization internally — no manual stripping needed
     const getRenderCSS = () => {
       try {
@@ -507,9 +563,37 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
             </div>
           )}
           {relationshipStatus === 'sym_accepted' && (
-            <button onClick={handleRemoveSym} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
-              <IconCirclesRelation size={ICON_SIZES.sm} /> Remove Sym
+            <>
+              <button onClick={handleRemoveSym} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+                <IconCirclesRelation size={ICON_SIZES.sm} /> Remove Sym
+              </button>
+              <button onClick={handle3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-3space, #7c3aed)', borderColor: 'var(--accent-3space, #7c3aed)' }}>
+                <IconEyeOff size={ICON_SIZES.sm} /> Propose 3SPACE
+              </button>
+            </>
+          )}
+          {relationshipStatus === '3space_accepted' && (
+            <>
+              <span className="badge-3space" style={{ padding: '4px 10px' }}>3SPACE</span>
+              <button onClick={handleRemove3space} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+                <IconLockOff size={ICON_SIZES.sm} /> Remove 3SPACE
+              </button>
+            </>
+          )}
+          {relationshipStatus === '3space_requested' && (
+            <button onClick={handleCancel3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-3space, #7c3aed)', borderColor: 'var(--accent-3space, #7c3aed)' }}>
+              <IconEyeOff size={ICON_SIZES.sm} /> Cancel 3SPACE Request
             </button>
+          )}
+          {relationshipStatus === 'incoming_3space_request' && (
+            <div style={{ display: 'flex', gap: '5px' }}>
+              <button onClick={handleAccept3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-3space, #7c3aed)', color: 'var(--accent-3space, #7c3aed)' }}>
+                <IconLock size={ICON_SIZES.sm} /> Accept 3SPACE
+              </button>
+              <button onClick={handleCancel3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+                <IconX size={ICON_SIZES.sm} /> Decline
+              </button>
+            </div>
           )}
         </div>
       )}

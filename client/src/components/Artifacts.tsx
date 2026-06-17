@@ -281,7 +281,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   };
 
   return (
-    <div className="artifacts-container" style={{ marginTop: '20px' }}>
+    <div style={{ marginTop: '20px' }}>
       <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '10px' }}>
         <h5 style={{ color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
           <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Files {total > 0 && `(${total})`}

@@ -1,7 +1,7 @@
 // Inbox.tsx
 
 import React, { useState, useEffect, useRef, lazy, Suspense, useCallback } from 'react';
-import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff, IconFile, IconBolt, IconPlugConnected, IconEyeOff, IconLock } from '@tabler/icons-react';
+import { IconX, IconCheck, IconChecklist, IconTrash, IconMessage, IconBell, IconArrowLeft, IconSend, IconUser, IconMoodSmile, IconMessageOff, IconUserOff, IconBellOff, IconFile, IconBolt, IconPlugConnected, IconEyeOff, IconLock, IconLockOff } from '@tabler/icons-react';
 import Skeleton from './Skeleton';
 import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
@@ -482,7 +482,32 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                   </button>
                 )}
                 {activeConversationId && threespaceIds.has(activeConversationId) && (
-                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-3space, #8b5cf6)', opacity: 0.8, marginLeft: '8px' }}>3SPACE</span>
+                  <>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--accent-3space, #8b5cf6)', opacity: 0.8, marginLeft: '8px' }}>3SPACE</span>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`/api/relationships/3space/${activeConversationId}`, { method: 'DELETE' });
+                          if (res.ok) {
+                            showToast('3SPACE connection removed.', 'success');
+                            setThreespaceIds(prev => { const next = new Set(prev); next.delete(activeConversationId!); return next; });
+                          } else {
+                            const err = await res.json() as any;
+                            showToast(err.error || 'Failed to remove.', 'error');
+                          }
+                        } catch { showToast('Network error.', 'error'); }
+                      }}
+                      title="Remove 3SPACE connection"
+                      style={{
+                        fontSize: '0.6rem', padding: '2px 5px', marginLeft: '4px',
+                        background: 'transparent', border: '1px solid rgba(255,75,75,0.3)',
+                        color: 'var(--accent-alert)', borderRadius: '3px', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: '2px',
+                      }}
+                    >
+                      <IconLockOff size={10} /> Remove
+                    </button>
+                  </>
                 )}
             </div>
         )}

@@ -456,11 +456,15 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                         });
                         if (res.ok) {
                           showToast('3SPACE request sent.', 'success');
+                          setThreespaceIds(prev => new Set([...prev, activeConversationId!]));
                         } else {
                           const err = await res.json() as any;
                           showToast(err.error || 'Failed to send 3SPACE request.', 'error');
                         }
-                      } catch { showToast('Network error.', 'error'); }
+                      } catch (err) {
+                        console.error('3SPACE request failed:', err);
+                        showToast('Network error.', 'error');
+                      }
                     }}
                     title="Propose a private 3SPACE connection"
                     style={{

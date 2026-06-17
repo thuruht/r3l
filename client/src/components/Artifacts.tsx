@@ -105,7 +105,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
         if (reset) setFiles([]);
       }
     } catch (err) {
-      console.error("Failed to load artifacts", err);
+      console.error("Failed to load files", err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -284,7 +284,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
     <div className="artifacts-container" style={{ marginTop: '20px' }}>
       <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '5px', marginBottom: '10px' }}>
         <h5 style={{ color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Artifacts {total > 0 && `(${total})`}
+          <IconFile size={ICON_SIZES.md} className="chrome-icon" /> Files {total > 0 && `(${total})`}
         </h5>
       </div>
 
@@ -349,8 +349,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
                 {/* Right: primary actions */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                  {/* Vitality */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--accent-vitality)' }} onClick={e => e.stopPropagation()}>
+                  {/* TTL */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '2px', color: 'var(--accent-ttl)' }} onClick={e => e.stopPropagation()}>
                     <IconBolt size={ICON_SIZES.sm} aria-hidden="true" />
                     <span
                       style={{ fontSize: '0.75em', minWidth: '32px', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}
@@ -363,8 +363,8 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
                       style={{
                         padding: '4px 6px',
                         background: 'transparent',
-                        border: `1px solid ${file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-vitality)'}`,
-                        color: file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-vitality)',
+                        border: `1px solid ${file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-ttl)'}`,
+                        color: file.is_boosted ? 'var(--accent-sym)' : 'var(--accent-ttl)',
                         borderRadius: '4px',
                         fontSize: '0.8em',
                         cursor: (boostingIds.has(file.id) || file.is_boosted) ? 'default' : 'pointer',

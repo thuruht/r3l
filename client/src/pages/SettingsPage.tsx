@@ -241,7 +241,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, currentUser, onUpd
   };
 
   const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure? This will permanently delete your account and all artifacts. This cannot be undone.')) {
+    if (!confirm('Are you sure? This will permanently delete your account and all files. This cannot be undone.')) {
       return;
     }
     

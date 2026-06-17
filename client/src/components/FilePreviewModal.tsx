@@ -655,7 +655,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
           )}
           {isImage && <img src={`/api/files/${fileId}/content`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt={filename} />}
 
-               {isAudio && <AudioWaveform src={`/api/artifacts/${fileId}/content`} mimeType={mimeType} />}
+               {isAudio && <AudioWaveform src={`/api/files/${fileId}/content`} mimeType={mimeType} />}
 
                {isVideo && (
                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

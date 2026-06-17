@@ -238,7 +238,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
                         <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                             <IconFolderOff size={ICON_SIZES['2xl']} stroke={1} />
                             <p style={{ margin: 0, fontSize: '1.1em' }}>No Collections Manifested</p>
-                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Gather your artifacts into new structures.</p>
+                            <p style={{ margin: 0, fontSize: '0.9em', opacity: 0.7 }}>Gather your files into new structures.</p>
                         </div>
                     )}
 

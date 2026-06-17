@@ -88,7 +88,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
 
       const conversations = (msgData.conversations || []).map((c: any) => ({
         ...c,
-        feedType: mutualIds.has(c.partner_id) ? 'whisper' : 'request',
+        feedType: mutualIds.has(c.partner_id) ? 'symtxt' : 'request',
         timestamp: new Date(c.last_message_at).getTime(),
       }));
 

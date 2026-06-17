@@ -18,9 +18,9 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
   const { showToast } = useToast();
   const [drifting, setDrifting] = useState(false);
 
-  // Sort nodes: Me -> Sym -> Asym -> Artifacts -> Collections -> Drift Users -> Drift Files
+  // Sort nodes: Me -> Sym -> Asym -> Files -> Collections -> Drift Users -> Drift Files
   const sortedNodes = [...nodes].sort((a, b) => {
-    const order: Record<string, number> = { me: 0, sym: 1, asym: 2, artifact: 3, collection: 4, drift_user: 5, drift_file: 6, lurker: 7 };
+    const order: Record<string, number> = { me: 0, sym: 1, asym: 2, file: 3, collection: 4, drift_user: 5, drift_file: 6, lurker: 7 };
     return (order[a.group] ?? 99) - (order[b.group] ?? 99);
   });
 
@@ -50,7 +50,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
       if (node.avatar_url) return null;
       
       switch (node.group) {
-          case 'artifact':
+          case 'file':
           case 'drift_file':
               return <IconFile size={ICON_SIZES.xl} color="#888"/>;
           case 'collection':
@@ -95,7 +95,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
             tabIndex={0}
             aria-label={`View ${node.group} ${node.name}`}
             onClick={() => {
-              if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
+              if ((node.group === 'file' || node.group === 'drift_file') && node.data && onFilePreview) {
                 onFilePreview(node.data);
               } else if (node.group === 'collection' && node.data) {
                 const ownerId = node.data.user_id;
@@ -107,7 +107,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if ((node.group === 'artifact' || node.group === 'drift_file') && node.data && onFilePreview) {
+                if ((node.group === 'file' || node.group === 'drift_file') && node.data && onFilePreview) {
                   onFilePreview(node.data);
                 } else if (node.group === 'collection' && node.data) {
                   const ownerId = node.data.user_id;
@@ -140,7 +140,7 @@ const NetworkList: React.FC<NetworkListProps> = ({ nodes, onNodeClick, onFilePre
                 {node.group === 'me' ? 'You' :
                  node.group === 'sym' ? 'Sym' :
                  node.group === 'asym' ? 'A-SYM' :
-                 node.group === 'artifact' ? 'File' :
+                 node.group === 'file' ? 'File' :
                  node.group === 'collection' ? 'Collection' :
                  node.group === 'drift_user' ? 'Drift' : 'Drift File'}
               </div>

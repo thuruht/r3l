@@ -191,7 +191,7 @@ const CustomizationSettings: React.FC = () => {
             {showFilePicker && (
                 <div className="glass-panel" style={{ padding: '8px', maxHeight: '150px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(0,0,0,0.2)' }}>
                     {userFiles.length === 0 ? (
-                        <div style={{ fontSize: '10px', color: '#666', textAlign: 'center', padding: '10px' }}>No compatible artifacts found.</div>
+                        <div style={{ fontSize: '10px', color: '#666', textAlign: 'center', padding: '10px' }}>No compatible files found.</div>
                     ) : userFiles.map(f => (
                         <button key={f.id} onClick={() => setBackground(f)} style={{ fontSize: '10px', padding: '4px 8px', textAlign: 'left', width: '100%', display: 'flex', justifyContent: 'space-between' }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.filename}</span>

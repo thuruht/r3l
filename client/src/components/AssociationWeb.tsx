@@ -336,9 +336,9 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       const allNodes = nodeEnter.merge(nodeSelection)
           .attr('class', d => `node ${d.group.startsWith('drift') ? 'drift-node' : ''} ${d.online ? 'online-node' : ''}`);
 
-      // Helper for Vitality Decay
+      // Helper for TTL Decay
       const getVitalityOpacity = (d: D3Node) => {
-        if (d.group !== 'artifact' || !d.data?.expires_at) return 1;
+        if (d.group !== 'file' || !d.data?.expires_at) return 1;
         const now = new Date().getTime();
         const expiry = new Date(d.data.expires_at).getTime();
         const hoursLeft = (expiry - now) / (1000 * 60 * 60);
@@ -350,7 +350,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       };
 
       const getVitalityBlur = (d: D3Node) => {
-          if (d.group !== 'artifact' || !d.data?.expires_at) return 'none';
+          if (d.group !== 'file' || !d.data?.expires_at) return 'none';
           const now = new Date().getTime();
           const expiry = new Date(d.data.expires_at).getTime();
           const hoursLeft = (expiry - now) / (1000 * 60 * 60);
@@ -370,13 +370,13 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               if (d.group === 'collection') return 'url(#online-glow)';
               if (d.group === 'sym' || d.group === 'me') return 'url(#glow)';
               if (d.online) return 'url(#online-glow)';
-              return blur; // Apply blur for decaying artifacts
+              return blur; // Apply blur for decaying files
           });
 
       allNodes.select('.bg-circle')
           .attr('r', (d) => {
               if (d.group === 'me' || d.group === 'collection') return node_size * 1.5;
-              if (d.group === 'drift_file' || d.group === 'artifact') return node_size * 0.5;
+              if (d.group === 'drift_file' || d.group === 'file') return node_size * 0.5;
               return node_size;
           })
           .attr('fill', (d) => {
@@ -386,7 +386,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               if (d.group === 'sym') return node_primary_color;
               if (d.group === 'asym') return node_secondary_color;
               if (d.group === 'drift_user') return '#555555';
-              if (d.group === 'drift_file' || d.group === 'artifact') return '#888888';
+              if (d.group === 'drift_file' || d.group === 'file') return '#888888';
               return '#333333ff';
           })
           .attr('opacity', (d) => {
@@ -397,7 +397,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       allNodes.select('.ring-circle')
           .attr('r', (d) => {
               if (d.group === 'me' || d.group === 'collection') return node_size * 1.5;
-              if (d.group === 'drift_file' || d.group === 'artifact') return node_size * 0.5;
+              if (d.group === 'drift_file' || d.group === 'file') return node_size * 0.5;
               return node_size;
           })
           .attr('stroke', (d) => {
@@ -405,7 +405,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               if (d.group === 'me') return '#ffffffcc';
               if (d.group === 'collection') return 'var(--accent-online)';
               if (d.group === 'sym') return node_primary_color;
-              if (d.group === 'drift_file' || d.group === 'artifact') return 'transparent';
+              if (d.group === 'drift_file' || d.group === 'file') return 'transparent';
               return 'var(--text-secondary)';
           })
           .attr('stroke-width', d => d.online || d.group === 'collection' ? 2.0 : 1.5);
@@ -413,7 +413,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       allNodes.select('.pulse-ring')
           .attr('r', (d) => {
               if (d.group === 'me' || d.group === 'collection') return node_size * 1.5 + 4;
-              if (d.group === 'drift_file' || d.group === 'artifact') return node_size * 0.5 + 4;
+              if (d.group === 'drift_file' || d.group === 'file') return node_size * 0.5 + 4;
               return node_size + 4;
           })
           .attr('stroke', 'var(--accent-online)')
@@ -445,7 +445,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
               const hullGroup = g.select('.hulls');
               const hullData = collections.map(collection => {
                   const collectionNodes = newNodes.filter(n => {
-                      if (n.group === 'drift_file' || n.group === 'artifact') {
+                      if (n.group === 'drift_file' || n.group === 'file') {
                           const fileId = parseInt(n.id.replace('file-', ''));
                           return collection.file_ids.includes(fileId);
                       }
@@ -485,7 +485,7 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
   // Helpers for Interaction
   const handleMouseOver = (event: any, d: D3Node, allLinks: any, allNodes: any) => {
       let content = d.name;
-      if (d.group === 'artifact' && d.data?.expires_at) {
+      if (d.group === 'file' && d.data?.expires_at) {
           const hoursLeft = (new Date(d.data.expires_at).getTime() - Date.now()) / (1000 * 60 * 60);
           if (hoursLeft < 48) {
               content += ` — ⏳ ${hoursLeft < 1 ? '<1h' : Math.floor(hoursLeft) + 'h'} left`;

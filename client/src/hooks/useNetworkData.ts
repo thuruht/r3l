@@ -3,7 +3,7 @@ import { useToast } from '../context/ToastContext';
 
 export interface NetworkNode {
   id: string;
-  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'artifact' | 'collection';
+  group: 'me' | 'sym' | 'asym' | 'lurker' | 'drift_user' | 'drift_file' | 'file' | 'collection';
   name: string;
   avatar_url?: string;
   online?: boolean;
@@ -91,13 +91,13 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
           });
       }
 
-      // Add personal artifacts as nodes linked to "Me"
+      // Add personal files as nodes linked to "Me"
       if (fileData.files) {
           fileData.files.forEach((f: any) => {
             const fileId = `file-${f.id}`;
             nodeMap.set(fileId, {
               id: fileId,
-              group: 'artifact',
+              group: 'file',
               name: f.filename,
               data: f
             });
@@ -220,7 +220,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
     collections, 
     loading, 
     totalFiles,
-    hasMoreFiles: nodes.filter(n => n.group === 'artifact').length < totalFiles,
+    hasMoreFiles: nodes.filter(n => n.group === 'file').length < totalFiles,
     loadMore: () => fetchData(true),
     refresh: () => { setFileOffset(0); fetchData(false); } 
   };

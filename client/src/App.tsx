@@ -198,7 +198,7 @@ function Main() {
           if (sidebarTabRef.current !== 'planets') {
             setGroupUnreadCount(prev => prev + 1);
           }
-        } else if (msg.type === 'signal_artifact') {
+        } else if (msg.type === 'signal_file') {
           fetchDriftRef.current();
         }
       } catch (e) {

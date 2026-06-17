@@ -195,7 +195,7 @@ export default {
       const soon = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       const { results: expiringFiles } = await env.DB.prepare('SELECT id, user_id, filename FROM files WHERE is_archived = 0 AND last_chance_notified = 0 AND expires_at > ? AND expires_at < ?').bind(now, soon).all();
       for (const file of expiringFiles) {
-        await createNotification(env, env.DB, file.user_id as number, 'system_alert', undefined, { message: `Your artifact "${file.filename}" expires in < 24h.` });
+        await createNotification(env, env.DB, file.user_id as number, 'system_alert', undefined, { message: `Your file "${file.filename}" expires in < 24h.` });
         await env.DB.prepare('UPDATE files SET last_chance_notified = 1 WHERE id = ?').bind(file.id).run();
       }
       const { results } = await env.DB.prepare('SELECT id, r2_key FROM files WHERE is_archived = 0 AND expires_at < ?').bind(now).all();

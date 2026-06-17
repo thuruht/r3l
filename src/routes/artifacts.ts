@@ -145,7 +145,7 @@ artifacts.post('/', async (c) => {
     ).bind(user_id, r2_key, safeFilename, size, file.type || 'application/octet-stream', visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
 
     if (success && (visibility === 'public' || visibility === 'sym')) {
-        c.executionCtx.waitUntil(broadcastSignal(c.env, 'signal_artifact', user_id, { filename: safeFilename, mime_type: file.type, visibility }));
+        c.executionCtx.waitUntil(broadcastSignal(c.env, 'signal_file', user_id, { filename: safeFilename, mime_type: file.type, visibility }));
     }
 
     return c.json({ message: 'Uploaded', r2_key, expires_at });

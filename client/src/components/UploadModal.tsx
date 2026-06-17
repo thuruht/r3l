@@ -25,7 +25,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const [isDragOver, setIsDragOver] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isEncrypted, setIsEncrypted] = useState(false);
-  const [isBurnOnRead, setIsBurnOnRead] = useState(false);
+  const [isFlare, setIsFlare] = useState(false);
   const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('public');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
@@ -92,7 +92,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       // Map 'private' UI state to 'me' for the backend
       const backendVisibility = visibility === ('private' as any) ? 'me' : visibility;
       formData.append('visibility', backendVisibility);
-      if (isBurnOnRead) formData.append('burn_on_read', 'true');
+      if (isFlare) formData.append('burn_on_read', 'true');
       if (parentId) formData.append('parent_id', parentId.toString());
 
       const progressInterval = setInterval(() => {
@@ -223,11 +223,11 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <input
             type="checkbox"
-            id="burn-check"
-            checked={isBurnOnRead}
+            id="flare-check"
+            checked={isFlare}
             onChange={e => setIsBurnOnRead(e.target.checked)}
           />
-          <label htmlFor="burn-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isBurnOnRead ? 'var(--accent-alert)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <label htmlFor="flare-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isFlare ? 'var(--accent-alert)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <IconFlame size={ICON_SIZES.md} />
             FLARE — <span style={{ fontWeight: 'normal', opacity: 0.8 }}>self-destructs after one view</span>
           </label>

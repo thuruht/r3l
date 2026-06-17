@@ -35,7 +35,7 @@ export async function createNotification(
 
 export async function broadcastSignal(
   env: Env,
-  type: 'signal_communique' | 'signal_artifact' | 'system_alert',
+  type: 'signal_communique' | 'signal_file' | 'system_alert',
   userId: number,
   payload: any = {}
 ) {

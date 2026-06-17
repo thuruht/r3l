@@ -66,8 +66,15 @@ messages.post('/', async (c) => {
   try {
     const userA = Math.min(sender_id, receiver_id);
     const userB = Math.max(sender_id, receiver_id);
-    const mutual = await c.env.DB.prepare('SELECT id FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB).first();
-    const is_request = mutual ? 0 : 1;
+    const [mutual, threespace] = await Promise.all([
+      c.env.DB.prepare('SELECT id FROM mutual_connections WHERE user_a_id = ? AND user_b_id = ?').bind(userA, userB).first(),
+      c.env.DB.prepare(
+        `SELECT id FROM relationships
+         WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?))
+           AND type = '3space_accepted' LIMIT 1`
+      ).bind(sender_id, receiver_id, receiver_id, sender_id).first(),
+    ]);
+    const is_request = (mutual || threespace) ? 0 : 1;
 
     let finalContent = content;
     let is_encrypted = 0;

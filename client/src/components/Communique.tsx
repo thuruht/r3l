@@ -342,8 +342,14 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
     };
 
     const handleAccept3spaceRequest = async () => {
-      if (await performRelationshipAction('/api/relationships/3space/accept', 'POST', { target_user_id: userId })) {
+      if (await performRelationshipAction('/api/relationships/3space/accept', 'POST', { source_user_id: userId })) {
         setRelationshipStatus('3space_accepted');
+      }
+    };
+
+    const handleDecline3spaceRequest = async () => {
+      if (await performRelationshipAction('/api/relationships/3space/decline', 'POST', { source_user_id: userId })) {
+        setRelationshipStatus('none');
       }
     };
 
@@ -590,7 +596,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               <button onClick={handleAccept3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', borderColor: 'var(--accent-3space, #7c3aed)', color: 'var(--accent-3space, #7c3aed)' }}>
                 <IconLock size={ICON_SIZES.sm} /> Accept 3SPACE
               </button>
-              <button onClick={handleCancel3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
+              <button onClick={handleDecline3spaceRequest} style={{ fontSize: '0.8em', display: 'flex', alignItems: 'center', gap: '5px', color: 'var(--accent-alert)', borderColor: 'var(--accent-alert)' }}>
                 <IconX size={ICON_SIZES.sm} /> Decline
               </button>
             </div>

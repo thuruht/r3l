@@ -69,6 +69,7 @@
 
   /* Semantic Accents */
   --accent-vitality: #ffeb3b; /* Vitality/boost — energy yellow */
+  --accent-3space: #8b5cf6; /* 3SPACE private connection — purple */
 
   /* Mobile Protection */
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

@@ -48,6 +48,8 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [connections, setConnections] = useState<any[]>([]);
+  const [mutualIds, setMutualIds] = useState<Set<number>>(new Set());
+  const [threespaceIds, setThreespaceIds] = useState<Set<number>>(new Set());
   const [showEmoji, setShowEmoji] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   
@@ -72,8 +74,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const msgData = await (msgRes as any).json();
       const relData = await (relRes as any).json();
 
-      const mutualIds = new Set((relData.mutual || []).map((c: any) => c.user_id));
+      const mutualIds = new Set<number>((relData.mutual || []).map((c: any) => c.user_id as number));
       setConnections(relData.mutual || []);
+      setMutualIds(mutualIds);
+      setThreespaceIds(new Set<number>((relData.threespace || []).map((c: any) => c.user_id as number)));
 
       const notifications = (notifData.notifications || []).map((n: any) => ({
         ...n,
@@ -441,6 +445,41 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                 <span style={{ fontWeight: 'bold' }}>
                     {items.find(i => i.partner_id === activeConversationId)?.partner_name || 'Chat'}
                 </span>
+                {activeConversationId && mutualIds.has(activeConversationId) && !threespaceIds.has(activeConversationId) && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await fetch('/api/relationships/3space', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ target_user_id: activeConversationId }),
+                        });
+                        if (res.ok) {
+                          showToast('3SPACE request sent.', 'success');
+                        } else {
+                          const err = await res.json() as any;
+                          showToast(err.error || 'Failed to send 3SPACE request.', 'error');
+                        }
+                      } catch { showToast('Network error.', 'error'); }
+                    }}
+                    title="Propose a private 3SPACE connection"
+                    style={{
+                      fontSize: '0.7rem',
+                      padding: '3px 8px',
+                      background: 'transparent',
+                      border: '1px solid var(--accent-3space, #8b5cf6)',
+                      color: 'var(--accent-3space, #8b5cf6)',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      marginLeft: '8px',
+                    }}
+                  >
+                    + 3SPACE
+                  </button>
+                )}
+                {activeConversationId && threespaceIds.has(activeConversationId) && (
+                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-3space, #8b5cf6)', opacity: 0.8, marginLeft: '8px' }}>3SPACE</span>
+                )}
             </div>
         )}
         <div style={{ display: 'flex', gap: '5px' }}>

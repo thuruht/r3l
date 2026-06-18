@@ -183,7 +183,7 @@ const GlobalChat: React.FC<GlobalChatProps> = ({ onClose }) => {
         {showEmoji && (
           <Suspense fallback={null}>
             <div style={{ position: 'absolute', bottom: '56px', right: '8px', zIndex: 'var(--z-dropdown)' }}>
-              <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
+              <EmojiPicker onEmojiClick={(e) => { setInput(prev => prev + e.emoji); setShowEmoji(false); }} theme={"dark" as any} />
             </div>
           </Suspense>
         )}

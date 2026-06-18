@@ -13,7 +13,7 @@ interface CollectionsManagerProps {
 }
 
 const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode = 'manage', onSelect }) => {
-  const { collections, createCollection, deleteCollection, /*updateCollection,*/ loading: loadingColls } = useCollections();
+  const { collections, createCollection, deleteCollection, updateCollection, loading: loadingColls } = useCollections();
   const { showToast } = useToast();
   
   const [activeView, setActiveView] = useState<'list' | 'detail'>('list');
@@ -460,7 +460,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
       {previewFile && (
           <React.Suspense fallback={null}>
             <FilePreviewModal
-                fileId={previewFile.id}
+                fileId={previewFile.id.toString()}
                 filename={previewFile.filename}
                 mimeType={previewFile.mime_type}
                 onClose={() => setPreviewFile(null)}

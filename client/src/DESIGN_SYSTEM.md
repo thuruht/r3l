@@ -1,10 +1,10 @@
-# REL F Design System Documentation
+# R3L:F Design System Documentation
 
 A comprehensive design system for maintaining visual coherence and user-friendly interfaces across the r3l application.
 
 ## Overview
 
-The REL F design system provides a unified approach to:
+The R3L:F design system provides a unified approach to:
 - **Design Tokens**: Consistent spacing, sizing, colors, and animations
 - **Component Patterns**: Reusable UI component styling
 - **Visual Hierarchy**: Clear typography and spacing scales
@@ -45,26 +45,16 @@ gap: var(--spacing-lg);
 
 Standard icon sizes for consistent visual language across the app.
 
+See `client/src/constants/iconSizes.ts` for the source of truth.
+
 ```typescript
 ICON_SIZES = {
-  xs: 12px,    // Tiny icons (tooltips, badges)
-  sm: 14px,    // Small icons (compact UI)
-  md: 16px,    // Medium icons (buttons, standard)
-  lg: 18px,    // Large icons (header, prominent)
-  xl: 20px,    // Extra large icons (hero, title-sized)
-  '2xl': 24px, // 2XL icons (avatars, large sections)
-}
-
-// Common usage patterns
-ICON_USAGE = {
-  navbar: 18px,
-  button: 16px,
-  header: 20px,
-  small: 14px,
-  tiny: 12px,
-  sidebar: 18px,
-  avatar: 24px,
-  tooltip: 14px,
+  xs: 12,    // Tiny icons (tooltips, badges)
+  sm: 14,    // Small icons (compact UI)
+  md: 16,    // Medium icons (buttons, standard)
+  lg: 18,    // Large icons (header, prominent)
+  xl: 20,    // Extra large icons (hero, title-sized)
+  '2xl': 24, // 2XL icons (avatars, large sections)
 }
 ```
 
@@ -349,11 +339,14 @@ Layering hierarchy for overlapping elements:
 
 ```css
 --z-base: 1              /* Default stacking context */
---z-dropdown: 100        /* Dropdowns, tooltips */
---z-sticky: 500          <!-- Sticky headers -->
---z-modal: 1000          /* Modal overlays */
---z-toast: 2000          /* Toast notifications -->
---z-tooltip: 3000        /* Tooltips, popovers -->
+--z-background: -1       /* Background layer */
+--z-overlay: 10          /* Overlays (zoom controls, legend) */
+--z-sticky: 500          /* Sticky headers */
+--z-header: 1100         /* Fixed header — above CommuniquePage */
+--z-dropdown: 2000       /* Dropdowns, sidebars */
+--z-modal: 3000          /* Modal overlays */
+--z-toast: 4000          /* Toast notifications */
+--z-tooltip: 5000        /* Tooltips, popovers */
 ```
 
 ---

@@ -15,7 +15,7 @@ interface InboxProps {
 
 interface Notification {
   id: number;
-  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted';
+  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted' | 'comment_reply';
   actor_name?: string;
   actor_id?: number;
   payload: any;
@@ -96,7 +96,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
       const merged = [...notifications, ...conversations].sort((a, b) => b.timestamp - a.timestamp);
       setItems(merged);
     } catch (err) {
-      console.error((notifRes as any), (msgRes as any), (relRes as any));
+      console.error('Failed to fetch inbox data', err);
     } finally {
       setLoading(false);
     }
@@ -310,6 +310,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
           case 'system_alert': return <IconBolt size={18} color="var(--accent-alert)" />;
           case '3space_request': return <IconEyeOff size={18} color="var(--accent-3space, #8b5cf6)" />;
           case '3space_accepted': return <IconLock size={18} color="var(--accent-3space, #8b5cf6)" />;
+          case 'comment_reply': return <IconMessage size={18} color="var(--accent-sym)" />;
           default: return <IconBell size={18} color="var(--text-secondary)" />;
       }
   };
@@ -342,6 +343,10 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
         return <>{actorLink} shared {filename}.</>;
       }
       case 'system_alert': return <>{n.payload?.message || 'System Alert'}</>;
+      case 'comment_reply': {
+        const snippet = n.payload?.snippet || '';
+        return <>{n.actor_name} commented on your file: "{snippet}"</>;
+      }
       default: return 'New signal received.';
     }
   };
@@ -612,7 +617,7 @@ const Inbox: React.FC<InboxProps> = ({ onClose, onOpenCommunique }) => {
                     {showEmoji && (
                         <Suspense fallback={<div>...</div>}>
                             <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 'var(--z-dropdown)' }}>
-                                <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
+                                <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme={"dark" as any} />
                             </div>
                         </Suspense>
                     )}

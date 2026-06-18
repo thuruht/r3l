@@ -19,7 +19,7 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({
   const [visible, setVisible] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
-  const { theme_preferences } = useCustomization();
+  const { node_primary_color, node_secondary_color, theme_preferences } = useCustomization();
 
   useEffect(() => {
     if (videoRef.current) {
@@ -36,8 +36,8 @@ const AmbientBackground: React.FC<AmbientBackgroundProps> = ({
   }, [muted]);
 
   const getNebulaStyle = () => {
-    const primary = theme_preferences.node_primary_color || '#a29bf6';
-    const secondary = theme_preferences.node_secondary_color || '#26de81';
+    const primary = node_primary_color || '#a29bf6';
+    const secondary = node_secondary_color || '#26de81';
     return {
       background: `radial-gradient(circle at 20% 30%, ${primary}22 0%, transparent 40%),
                    radial-gradient(circle at 80% 70%, ${secondary}22 0%, transparent 40%),

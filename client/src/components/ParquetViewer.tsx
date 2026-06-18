@@ -12,7 +12,7 @@ export const ParquetViewer: React.FC<{ url: string }> = ({ url }) => {
     (async () => {
       try {
         const hyparquet = await import('hyparquet');
-        const file = hyparquet.asyncBufferFromUrl({ url });
+        const file = await hyparquet.asyncBufferFromUrl({ url });
         const meta = await hyparquet.parquetMetadataAsync(file);
         if (cancelled) return;
 
@@ -20,13 +20,13 @@ export const ParquetViewer: React.FC<{ url: string }> = ({ url }) => {
         const colNames = schema.children.map((c: any) => c.element.name);
         if (cancelled) return;
         setColumns(colNames);
-        setTotalRows(meta.num_rows);
+        setTotalRows(Number(meta.num_rows));
 
         const data = await hyparquet.parquetReadObjects({
           file,
           metadata: meta,
           rowStart: 0,
-          rowEnd: Math.min(100, meta.num_rows),
+          rowEnd: Math.min(100, Number(meta.num_rows)),
         });
         if (!cancelled) setRows(data as Record<string, any>[]);
       } catch (e) {

@@ -17,3 +17,6 @@ dist-worker/
 .amazonq/
 r3l.code-workspace
 .superpowers/
+*.zip
+# Artifacts from design tools
+*.dc.html

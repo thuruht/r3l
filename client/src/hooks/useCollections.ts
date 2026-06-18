@@ -25,6 +25,7 @@ interface UseCollectionsReturn {
   error: string | null;
   fetchCollections: () => Promise<void>;
   createCollection: (name: string, description?: string, visibility?: 'private' | 'public' | 'sym') => Promise<boolean>;
+  updateCollection: (id: number, name: string, description?: string, visibility?: 'private' | 'public' | 'sym') => Promise<boolean>;
   deleteCollection: (id: number) => Promise<boolean>;
   addToCollection: (collectionId: number, fileId: number) => Promise<{ success: boolean; error?: string; status?: number }>;
   getCollectionDetails: (id: number) => Promise<{ collection: Collection, files: CollectionFile[] } | null>;
@@ -42,10 +43,10 @@ export const useCollections = (): UseCollectionsReturn => {
     try {
       const response = await fetch('/api/collections');
       if (response.ok) {
-        const data = await response.json();
+        const data: any = await response.json();
         setCollections(data.collections);
       } else {
-        const err = await response.json();
+        const err: any = await response.json();
         setError(err.error || 'Failed to fetch collections');
       }
     } catch (e) {
@@ -67,7 +68,7 @@ export const useCollections = (): UseCollectionsReturn => {
         await fetchCollections(); // Refresh list
         return true;
       } else {
-        const err = await response.json();
+        const err: any = await response.json();
         setError(err.error || 'Failed to create collection');
         return false;
       }
@@ -94,6 +95,24 @@ export const useCollections = (): UseCollectionsReturn => {
     }
   };
 
+  const updateCollection = async (id: number, name: string, description?: string, visibility?: 'private' | 'public' | 'sym'): Promise<boolean> => {
+    try {
+      const response = await fetch(`/api/collections/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, visibility }),
+      });
+      if (response.ok) {
+        await fetchCollections();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
   const addToCollection = async (collectionId: number, fileId: number): Promise<{ success: boolean; error?: string; status?: number }> => {
     try {
       const response = await fetch(`/api/collections/${collectionId}/files`, {
@@ -102,7 +121,7 @@ export const useCollections = (): UseCollectionsReturn => {
         body: JSON.stringify({ file_id: fileId }),
       });
       if (response.ok) return { success: true };
-      const data = await response.json();
+      const data: any = await response.json();
       return { success: false, error: data.error, status: response.status };
     } catch (e) {
       console.error(e);
@@ -110,11 +129,11 @@ export const useCollections = (): UseCollectionsReturn => {
     }
   };
 
-  const getCollectionDetails = async (id: number) => {
+  const getCollectionDetails = async (id: number): Promise<{ collection: Collection, files: CollectionFile[] } | null> => {
     try {
       const response = await fetch(`/api/collections/${id}`);
       if (response.ok) {
-        return await response.json();
+        return await response.json() as { collection: Collection, files: CollectionFile[] };
       }
       return null;
     } catch (e) {
@@ -146,6 +165,7 @@ export const useCollections = (): UseCollectionsReturn => {
     fetchCollections,
     createCollection,
     deleteCollection,
+    updateCollection,
     addToCollection,
     getCollectionDetails,
     removeFromCollection

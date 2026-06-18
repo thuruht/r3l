@@ -40,23 +40,50 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
 
 ## Phase 3: Spirit Realignment (Founding Vision) — ✅ COMPLETE
 
-1.  **Terminology Restoration**:
-    *   ✅ RRC (Relational Construct) label in Graph.
-    *   ✅ RCC (Cache Communique) label in Profiles.
-    *   ✅ RPC (Private Cache) label in Files.
-    *   ✅ R3C (Your Cache) label in Settings/Menu.
+1.  **Terminology Sweep**:
+    *   ✅ Canonical glossary created: `docs/terminology.md`
+    *   ✅ Register rules: UPPERCASE labels, lowercase prose
+    *   ✅ FILES replaces Artifacts throughout UI
+    *   ✅ TTL badge (Xh TTL) replaces vitality number
+    *   ✅ BOOST TTL replaces Boost Signal
+    *   ✅ FLARE replaces Burn-on-Read in upload UI
+    *   ✅ SYMTXT replaces Whispers throughout
+    *   ✅ RELMAP replaces RRC acronym in graph
+    *   ✅ COMMUNIQUE replaces RCC acronym in profiles
+    *   ✅ Visibility labels: PUBLIC·DRIFT / SYM / 3SPACE
+    *   ✅ Philosophy statement on landing, About, FAQ
+    *   ✅ Docs updated: CLAUDE.md, README, DESIGN_SYSTEM, SECURITY
 2.  **Link Strength Visualization**:
-    *   ✅ Interaction tracking (Whispers, Boosts, Shares).
-    *   ✅ Dynamic stroke-width in RRC graph based on relationship strength.
+    *   ✅ Interaction tracking (SYMTXT, Boosts, Shares).
+    *   ✅ Dynamic stroke-width in RELMAP graph based on relationship strength.
 3.  **Organic Connection Prompts**:
-    *   ✅ Scheduled resonance detection (Mutual artifact boosts).
+    *   ✅ Scheduled resonance detection (Mutual file boosts).
     *   ✅ System alerts for serendipitous connection suggestions.
+
+## Phase 4: 3SPACE Connection Type — ✅ COMPLETE
+
+1.  **Database**:
+    *   ✅ Migration 0029: `3space_request` / `3space_accepted` relationship types
+    *   ✅ Migration 0030: `3space` visibility for files
+2.  **Backend API**:
+    *   ✅ `POST /api/relationships/3space` — send request
+    *   ✅ `POST /api/relationships/3space/accept` — accept
+    *   ✅ `POST /api/relationships/3space/decline` — decline
+    *   ✅ `DELETE /api/relationships/3space/:target_id` — remove
+    *   ✅ Connections endpoint returns `threespace` list
+    *   ✅ SYMTXT gated on SYM or 3SPACE connection
+3.  **Frontend**:
+    *   ✅ 3SPACE notification type in Inbox (request/accept/decline)
+    *   ✅ 3SPACE proposal from SYMTXT thread
+    *   ✅ `--accent-3space` colour token (deep purple)
+    *   ✅ 3SPACE conversations visually distinguished in SYMTXT inbox
+    *   ✅ RELMAP excludes 3SPACE connections (no node or link)
 
 ---
 
 ## Active Backlog (Next Steps)
 
-*   **Threaded Comments**: Minimal responses on artifacts.
+*   **Threaded Comments**: Minimal responses on files.
 *   **Bookmarks**: Private, untracked saving.
 *   **Undo Deletion**: 24h grace period for history wipes.
 *   **Media Streaming**: R2-native range requests for large media.
@@ -65,7 +92,7 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
 
 ## Phase 5: Metaphorical Navigation & Unified Comms (Future)
 
-*   **Unified Inbox**: Merge distinct notification/message tabs into a single chronological stream, using visual icons to distinguish between Whispers (mail), System Alerts (resonances), and Shares.
+*   **Unified Inbox**: Merge distinct notification/message tabs into a single chronological stream, using visual icons to distinguish between SYMTXT (mail), System Alerts (resonances), and Shares.
 *   **Thematic Navigation**: Transition from functional labels to founding metaphors:
     *   `Inbox` → `< mail >`
     *   `Workspaces` → `< planets >`
@@ -73,4 +100,5 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
     *   `Groups` → `< sym groups >`
 
 ---
+
 *“Rel how you want. Know what you share. Choose who you're sym with.”*

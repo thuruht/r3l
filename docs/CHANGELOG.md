@@ -1,6 +1,13 @@
 # Changelog
 
-## [Unreleased] — Reconnect, Real-time & Hardening Pass
+## [Unreleased] — Terminology Sweep, 3SPACE & Yjs Fix
+
+### Features
+- **3SPACE as full connection type**: New DB migration (0029, 0030) adds `3space_request` / `3space_accepted` relationship types. Backend endpoints for request, accept, decline, remove. Frontend notifications in Inbox, proposal from SYMTXT thread, `--accent-3space` colour token. 3SPACE connections are excluded from RELMAP and connection counts. SYMTXT gated on SYM or 3SPACE connection.
+- **Canonical terminology sweep**: Applied register rules (UPPERCASE labels / lowercase prose) across all UI components. FILES replaces Artifacts, TTL replaces Vitality badges, FLARE replaces Burn-on-Read, SYMTXT replaces Whispers, RELMAP replaces RRC, COMMUNIQUE replaces RCC. Philosophy statement applied to landing/About/FAQ.
+
+### Bug Fixes
+- **Yjs collaborative editing broken (`DocumentRoom.ts`)**: `constructSyncMessage` used raw 2-byte headers `[0, type, ...data]` instead of proper lib0 `writeVarUint8Array` encoding. Client received malformed sync messages → "Unexpected end of array" in yjs decoder. Fixed read side too: `webSocketMessage` now uses `decoding.readVarUint` / `decoding.readVarUint8Array` instead of raw `uint8Message.subarray(2)` which included the varUint length prefix as Yjs data, corrupting both the in-memory doc and persisted DO storage.
 
 ### Security
 - Auth cookie changed from `SameSite=Lax` to `SameSite=Strict` — prevents CSRF via cross-site requests

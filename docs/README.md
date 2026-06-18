@@ -15,18 +15,17 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 
 ## Core Concepts
 
-*   **Relational**: Users are connected visually in an association web (**RRC — Relational Construct**) that shows explicit, mutually agreed relationships (**SYM**) or one-way/proximity-based connections (**A-SYM**).
-*   **Ephemeral**: Content expires by default (7 days). Boost or Refresh to extend the file's TTL, or the community can vote to archive it.
-*   **Filenet**: A social file-sharing system (**3SPACE — Private Cache**) where documents, audio, video, and creative works are the foundation of interaction.
+*   **Relational**: Users are connected visually in the **RELMAP** (D3.js force graph) that shows explicit, mutually agreed relationships (**SYM**), one-way/proximity-based connections (**A-SYM**), or ghost connections (**3SPACE**).
+*   **Ephemeral**: Content expires by default (7 days). Refresh or Boost to extend the file's TTL, or the community can vote to archive it.
+*   **Filenet**: A social file-sharing system (**3SPACE**) where documents, audio, video, and creative works are the foundation of interaction.
 *   **The Drift**: A radar-like discovery mode that samples random public files and users from the network, visualized as pulsating "ghost nodes."
 *   **Resonance**: Organic connection prompts emerge when users share shared interest in files (boosting/voting).
 
 ## Features
 
-### 🗃 The Communique & Personal Archive (R3C)
-*   Each user has a "drawer" (personal hub) known as **R3C — R3LF Cache**.
-*   The public-facing window is the **RCC — Cache Communique**, a themeable, linkable window into stored content.
-*   **3SPACE — Private Cache** handles secure, private file storage.
+### 🗃 The Communique & Personal Archive
+*   Each user has a **COMMUNIQUE** — a themeable, linkable public profile page.
+*   **3SPACE** handles private file storage and ghost connections — invisible to the RELMAP.
 
 ### 📂 Files & File System
 *   **Universal Uploads**: Share any file type (images, text, code, audio, zines, books, etc.).
@@ -38,7 +37,7 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
     *   **Community Archiving**: Content exceeding reaction/share thresholds (10 votes) is preserved in the permanent community storage.
 *   **In-Place Editing**: Text-based files can be edited directly in the browser, with support for real-time collaboration.
 
-### 🔗 Association Web (RRC — Relational Construct)
+### 🔗 RELMAP
 *   **Interactive Graph**: A D3.js visualization of your social world.
     *   **Me**: Center node.
     *   **SYM**: Glowing connections. Link thickness represents interaction strength.
@@ -49,7 +48,7 @@ Rel F is a decentralized, Cloudflare-native platform prioritizing user agency, o
 ### 👥 Contacts & Social Features
 *   **Group Chat**: Create private groups with focused conversation and integrated file sharing.
 *   **“Lurker in the Mist” Mode**: A user-configurable privacy setting for low-visibility status.
-*   **Strength Tracking**: Relationships grow visually stronger based on symtxt, boosts, and shared files.
+*   **Strength Tracking**: Relationships grow visually stronger based on SYMTXT, boosts, and shared files.
 
 ### ✉️ Inbox & Notifications
 *   **Unified Comms**: All signals—connection requests, resonance prompts, file shares, and group invites—arrive in a central inbox.
@@ -72,7 +71,7 @@ Built entirely on the **Cloudflare Developer Platform**:
 
 **Current Phase: beta-release**
 *   ✅ **Auth**: Complete.
-*   ✅ **RRC Graph**: Advanced (Link strength, Decay tooltips, Load more).
+*   ✅ **RELMAP**: Advanced (Link strength, Decay tooltips, Load more).
 *   ✅ **Discovery**: Drift Mode with auto-refresh and empty states.
 *   ✅ **Files**: Universal support, FLARE, Community Archive.
 *   ✅ **Social**: Groups, SYMTXT, Resonance suggestions.

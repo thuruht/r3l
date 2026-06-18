@@ -257,26 +257,34 @@ artifacts.get('/:id/content', async (c) => {
       }
     }
 
-    const rangeHeader = c.req.header('Range');
+    // Redirect public, non-encrypted, non-burn files directly to R2 public URL
+    // for optimal streaming — bypasses the 128MB Worker memory limit entirely.
+    if (file.visibility === 'public' && !file.is_encrypted && !file.burn_on_read && c.env.R2_PUBLIC_DOMAIN) {
+      const publicUrl = `https://${c.env.R2_PUBLIC_DOMAIN}/${file.r2_key}`;
+      return new Response(null, {
+        status: 302,
+        headers: { Location: publicUrl },
+      });
+    }
 
-    // Parse range to get specific byte ranges if present
+    // Parse Range header for partial content requests (video seeking, audio scrubbing)
+    const rangeHeader = c.req.header('Range');
     let parsedRange: { offset?: number; length?: number; suffix?: number } | undefined;
+    let isRangeRequest = false;
     if (rangeHeader) {
-        // Very basic range parser for Cloudflare R2 compatibility.
-        // It's usually better to just pass the header, but we need to know
-        // to set a 206 status code if a range was requested.
-        const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
-        if (match) {
-           const start = match[1] ? parseInt(match[1], 10) : undefined;
-           const end = match[2] ? parseInt(match[2], 10) : undefined;
-           if (start !== undefined && end !== undefined) {
-               parsedRange = { offset: start, length: end - start + 1 };
-           } else if (start !== undefined) {
-               parsedRange = { offset: start };
-           } else if (end !== undefined) {
-               parsedRange = { suffix: end };
-           }
+      const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+      if (match) {
+        isRangeRequest = true;
+        const start = match[1] ? parseInt(match[1], 10) : undefined;
+        const end = match[2] ? parseInt(match[2], 10) : undefined;
+        if (start !== undefined && end !== undefined) {
+          parsedRange = { offset: start, length: end - start + 1 };
+        } else if (start !== undefined) {
+          parsedRange = { offset: start };
+        } else if (end !== undefined) {
+          parsedRange = { suffix: end };
         }
+      }
     }
 
     const object = await c.env.BUCKET.get(file.r2_key, parsedRange ? { range: parsedRange } : undefined);
@@ -284,40 +292,33 @@ artifacts.get('/:id/content', async (c) => {
 
     const headers = new Headers();
     object.writeHttpMetadata(headers);
+    headers.set('Accept-Ranges', 'bytes');
     headers.set('Content-Disposition', `${file.mime_type === 'application/pdf' ? 'inline' : 'attachment'}; filename="${file.filename}"`);
 
-    if (parsedRange) {
-        headers.set('Accept-Ranges', 'bytes');
-        // R2 `get` with range automatically adds Content-Range to `writeHttpMetadata` if requested
-        const status = 206;
-
-        // Encrypted files must be buffered for decryption
-        if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
-            const body = await object.arrayBuffer();
-            const decrypted = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
-            return new Response(decrypted, { status, headers });
-        }
-
-        return new Response(object.body, { status, headers });
+    // Cache policy: public files are immutable (unique R2 key per upload), protected files never cache
+    if (file.visibility === 'public') {
+      headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      headers.set('Cache-Control', 'private, no-cache');
     }
 
     // Burn-on-read: schedule cleanup after serving
     if (file.burn_on_read && file.user_id !== user_id) {
-        c.executionCtx.waitUntil((async () => {
-            await c.env.BUCKET.delete(file.r2_key);
-            await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
-        })());
+      c.executionCtx.waitUntil((async () => {
+        await c.env.BUCKET.delete(file.r2_key);
+        await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
+      })());
     }
 
     // Encrypted files must be buffered for decryption
     if (file.is_encrypted && file.iv && c.env.ENCRYPTION_SECRET) {
-        const body = await object.arrayBuffer();
-        const decrypted = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
-        return new Response(decrypted, { headers });
+      const body = await object.arrayBuffer();
+      const decrypted = await decryptData(body, file.iv, c.env.ENCRYPTION_SECRET);
+      return new Response(decrypted, { status: isRangeRequest ? 206 : 200, headers });
     }
 
     // Stream non-encrypted files directly from R2 — avoids 128MB Worker memory limit
-    return new Response(object.body, { status: 200, headers });
+    return new Response(object.body, { status: isRangeRequest ? 206 : 200, headers });
   } catch (e) {
     return c.json({ error: 'Failed' }, 500);
   }

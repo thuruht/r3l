@@ -197,6 +197,47 @@ Remove relationship.
 
 ---
 
+### POST /api/relationships/3space
+Send a 3SPACE connection request.
+
+**Request Body**:
+```json
+{
+  "target_user_id": 1
+}
+```
+
+---
+
+### POST /api/relationships/3space/accept
+Accept a 3SPACE request.
+
+**Request Body**:
+```json
+{
+  "source_user_id": 1
+}
+```
+
+---
+
+### POST /api/relationships/3space/decline
+Decline a 3SPACE request.
+
+**Request Body**:
+```json
+{
+  "source_user_id": 1
+}
+```
+
+---
+
+### DELETE /api/relationships/3space/:target_id
+Remove a 3SPACE connection.
+
+---
+
 ## File Endpoints
 
 ### GET /api/files
@@ -300,7 +341,7 @@ Reset expiration timer to 7 days.
 ---
 
 ### POST /api/files/:id/vitality
-Boost file vitality.
+Boost file TTL (extends lifespan).
 
 **Request Body**:
 ```json

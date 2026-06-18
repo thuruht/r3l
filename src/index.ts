@@ -19,6 +19,7 @@ import adminRoutes from './routes/admin';
 import communiqueRoutes from './routes/communiques';
 import workspaceRoutes from './routes/workspaces';
 import collectionRoutes from './routes/collections';
+import commentRoutes from './routes/comments';
 import miscRoutes from './routes/misc';
 
 import { createNotification } from './utils/notifications';
@@ -132,6 +133,7 @@ app.route('/api/admin', adminRoutes);
 app.route('/api/communiques', communiqueRoutes);
 app.route('/api/workspaces', workspaceRoutes);
 app.route('/api/collections', collectionRoutes);
+app.route('/api/comments', commentRoutes);
 app.route('/api', miscRoutes);
 
 // Static Assets

@@ -25,7 +25,7 @@ export async function uploadFileInChunks(
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Upload failed' }));
+      const err: any = await res.json().catch(() => ({ error: 'Upload failed' }));
       throw new Error(err.error);
     }
 

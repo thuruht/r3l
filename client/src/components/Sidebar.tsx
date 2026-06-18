@@ -13,7 +13,7 @@ interface SidebarProps {
   unreadCounts: { inbox: number; planets: number; history?: number };
 }
 
-const TAB_CONFIG: Record<SidebarTab, { label: string; Icon: React.ComponentType<{ size: number; 'aria-hidden'?: boolean }> }> = {
+const TAB_CONFIG: Record<SidebarTab, { label: string; Icon: React.ComponentType<any> }> = {
   inbox: { label: 'Mail', Icon: IconMailbox },
   planets: { label: 'Groups', Icon: IconUsersGroup },
   galaxy: { label: 'Galaxy', Icon: IconBroadcast },

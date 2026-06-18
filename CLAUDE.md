@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Rel F (R3L:F)** is a Cloudflare-native social networking experiment centered on ephemeral file sharing and serendipitous discovery. The primary interaction unit is the **Artifact** (file), which expires in 7 days unless refreshed via "Vitality" voting. The **Association Web** (D3.js force graph) is the main navigation metaphor. Social connections are either **Sym** (mutual) or **A-Sym** (one-way).
+**Rel F (R3L:F)** is a Cloudflare-native social networking experiment centered on ephemeral file sharing and serendipitous discovery. The primary interaction unit is the **file**, which expires in 7 days unless refreshed via **TTL** boosting. The **RELMAP** (D3.js force graph) is the main navigation metaphor. Social connections are **SYM** (mutual), **A-SYM** (one-way), or **3SPACE** (mutual but invisible).
 
 ## Commands
 
@@ -57,7 +57,7 @@ Each module exports a Hono app mounted in `src/index.ts`:
 - `social.ts` → `/api` (follow, connections, profile)
 - `artifacts.ts` → `/api/files` (CRUD, upload to R2, streaming content)
 - `discovery.ts` → `/api/discovery` (drift, random users/files)
-- `messages.ts` → `/api/messages` (E2EE whispers)
+- `messages.ts` → `/api/messages` (E2EE SYMTXT)
 - `communiques.ts` → `/api/communiques` (public user profile posts)
 - `collections.ts` → `/api/collections`
 - `workspaces.ts` → `/api/workspaces`
@@ -80,9 +80,9 @@ All three DOs use the **Hibernation API** (`state.acceptWebSocket` + `webSocketM
 
 ### Cron Job
 
-Runs hourly (`0 * * * *`). Decrements Vitality on all live files, sends "< 24h" expiry notifications, deletes expired files (R2 object + D1 row), and detects "organic resonance" (users who boosted the same file within 24h without being connected).
+Runs hourly (`0 * * * *`). Decrements TTL on all live files, sends "< 24h" expiry notifications, deletes expired files (R2 object + D1 row), and detects "organic resonance" (users who boosted the same file within 24h without being connected).
 
-### E2EE (Whispers)
+### E2EE (SYMTXT)
 
 Private messages use client-side RSA-OAEP (2048-bit) + AES-GCM (256-bit). The public key is stored in the `users` table; the private key is wrapped with the user's password and stored in `localStorage` via `client/src/utils/crypto.ts`. The server never sees plaintext message content or the private key.
 
@@ -123,6 +123,6 @@ Canonical vocabulary is in `docs/terminology.md`. Key rules:
 
 ## Database
 
-28 sequential SQL migrations in `migrations/`. Key tables: `users`, `files` (artifacts), `relationships` / `mutual_connections`, `messages`, `collections`, `workspaces`, `communiques`, `notifications`, `vitality_votes`, `archive_votes`.
+30 sequential SQL migrations in `migrations/`. Key tables: `users`, `files` (artifacts), `relationships` / `mutual_connections`, `messages`, `collections`, `workspaces`, `communiques`, `notifications`, `vitality_votes`, `archive_votes`.
 
 Files have `expires_at`, `vitality` (decrements hourly), `is_archived`, `is_community_archived`, `last_chance_notified` columns. The `r2_key` column stores the R2 object key; served publicly via `R2_PUBLIC_DOMAIN`.

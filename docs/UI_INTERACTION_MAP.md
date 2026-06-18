@@ -43,7 +43,7 @@ The sidebar uses a single `isSidebarOpen` + `sidebarTab` state pair — opening 
 |---|---|---|
 | Ambient controls (eye/play/mute) | `AmbientBackground.tsx` | `position: fixed`, `top: 12px`, `left: 50%`, `z-index: var(--z-header)`, fades to 40% opacity at rest |
 
-### Header (`z-index: var(--z-header)` = 1000)
+### Header (`z-index: var(--z-header)` = 1100)
 
 | Element | Notes |
 |---|---|
@@ -53,9 +53,9 @@ The sidebar uses a single `isSidebarOpen` + `sidebarTab` state pair — opening 
 
 ## Known Issues / Open Items
 
-### CommuniquePage z-index tie with Header
+### CommuniquePage z-index tie with Header (RESOLVED)
 
-`CommuniquePage.tsx` mounts as a full-page route overlay at `z-index: 1000` (same as the header). If it renders later in the DOM than the header, it can obscure navigation. Proposal: raise header to `z-index: 1100`.
+`CommuniquePage.tsx` mounts as a full-page route overlay. The header was raised to `z-index: 1100` (via `--z-header`) to stay above CommuniquePage. No longer an issue.
 
 ### Toast / Zoom Controls Transient Overlap
 

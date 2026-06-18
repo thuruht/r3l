@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock, IconFlame } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
+import { generateKey, encryptFile, exportKey } from '../utils/crypto';
 
 interface UploadModalProps {
   onClose: () => void;
@@ -74,9 +75,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
       // Client-Side Encryption Logic
       if (isEncrypted) {
         try {
-          const key = await (generateKey as any)();
-          const { encryptedBlob, iv } = await (encryptFile as any)(upload.file, key);
-          const exportedKey = await (exportKey as any)(key);
+          const key = await generateKey();
+          const { encryptedBlob, iv } = await encryptFile(upload.file, key);
+          const exportedKey = await exportKey(key);
           formData.append('file', encryptedBlob, upload.file.name + '.enc');
           formData.append('is_client_encrypted', 'true');
           localStorage.setItem(`relf_key_${upload.file.name}`, exportedKey);
@@ -224,7 +225,7 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
             type="checkbox"
             id="flare-check"
             checked={isFlare}
-            onChange={e => setIsBurnOnRead(e.target.checked)}
+            onChange={e => setIsFlare(e.target.checked)}
           />
           <label htmlFor="flare-check" style={{ fontSize: '0.9rem', cursor: 'pointer', color: isFlare ? 'var(--accent-alert)' : 'inherit', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <IconFlame size={ICON_SIZES.md} />

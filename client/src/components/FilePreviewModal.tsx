@@ -30,6 +30,7 @@ import { QMLViewer } from './QMLViewer';
 import { MermaidViewer } from './MermaidViewer';
 import { ExcalidrawViewer } from './ExcalidrawViewer';
 import { ParquetViewer } from './ParquetViewer';
+import CommentsSection from './CommentsSection';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 interface FilePreviewModalProps {
@@ -388,7 +389,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        // Use fileId as roomname so y-websocket connects to /api/collab/fileId without a trailing slash
        const prov = new WebsocketProvider(`${wsUrl}/api/collab`, fileId.toString(), doc);
 
-       const userColor = theme_preferences.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
+       const userColor = (theme_preferences as any).node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
        prov.awareness.setLocalStateField('user', {
            name: currentUser?.username || 'Anonymous',
            color: userColor,
@@ -773,6 +774,10 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                       ydoc={ydoc}
                       provider={provider}
                     />
+                )}
+
+                {ownerId && currentUser && fileId && (
+                  <CommentsSection fileId={fileId} currentUser={currentUser} fileOwnerId={ownerId} />
                 )}
              </>
           )}

@@ -55,9 +55,9 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
           fetch('/api/collections')
       ]);
       
-      const relData = await relRes.json();
-      const fileData = await fileRes.json();
-      const collData = collRes.ok ? await collRes.json() : { collections: [] };
+      const relData: any = await relRes.json();
+      const fileData: any = await fileRes.json();
+      const collData: any = collRes.ok ? await collRes.json() : { collections: [] };
 
       const nodeMap = new Map<string, NetworkNode>();
       const newLinks: NetworkLink[] = [];
@@ -221,7 +221,7 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
 
       setNodes(Array.from(nodeMap.values()));
       setLinks(newLinks);
-      if (fileData.total !== undefined) setTotalFiles(fileData.total);
+      if (fileData.total !== undefined) setTotalFiles(fileData.total as number);
       if (isLoadMore) setFileOffset(offset);
     } catch (e) {
       console.error(e);

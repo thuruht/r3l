@@ -25,13 +25,13 @@ Based on these trends, three fully realized features were proposed and implement
 ### Feature B: Unified Media Streaming via HTTP Range Requests
 **Goal:** Prevent large media files (video/audio) from being fully downloaded into the client or buffering poorly in the Worker memory limit, improving the "Drift" UX.
 **Implementation Details:**
-- **Backend (`src/routes/artifacts.ts`):** Modified the `/api/artifacts/:id/content` GET route to parse the HTTP `Range` header. It now passes this range to `c.env.BUCKET.get()` and returns a `206 Partial Content` response, enabling true chunked streaming directly from Cloudflare R2.
+- **Backend (`src/routes/artifacts.ts`):** Modified the `/api/files/:id/content` GET route to parse the HTTP `Range` header. It now passes this range to `c.env.BUCKET.get()` and returns a `206 Partial Content` response, enabling true chunked streaming directly from Cloudflare R2.
 - **Frontend (`FilePreviewModal`):** Replaced basic `<video>` tags with `plyr-react`. By relying on the updated backend endpoint, the Plyr standard player handles chunked video streaming gracefully, standardizing the media experience.
 
 ### Feature C: "Drift" State Persistence & History (Cross-Device)
 **Goal:** Solve the problem of serendipitous, ephemeral interactions being lost when users click away too fast, while maintaining a clean SQL database.
 **Implementation Details:**
-- **Backend (`src/index.ts`):** Added `/api/history` GET and POST routes. The system uses **Cloudflare KV** to store an array of the last 50 artifacts a user has viewed. KV was chosen over D1 to keep the relational DB clean of ephemeral read-receipts, and chosen over `localStorage` to allow users to sync their "Recently Drifted" history across multiple devices.
+- **Backend (`src/index.ts`):** Added `/api/history` GET and POST routes. The system uses **Cloudflare KV** to store an array of the last 50 files a user has viewed. KV was chosen over D1 to keep the relational DB clean of ephemeral read-receipts, and chosen over `localStorage` to allow users to sync their "Recently Drifted" history across multiple devices.
 - **Frontend (`Sidebar` & `DriftHistory`):** Expanded the unified `Sidebar` to include a new "History" tab. Built the `DriftHistory` component to fetch and render this KV-backed history. The `FilePreviewModal` automatically POSTs to the history endpoint whenever a non-private file is viewed.
 
 ---

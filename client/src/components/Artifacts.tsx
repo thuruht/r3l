@@ -482,7 +482,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
       {previewFile && (
         <FilePreviewModal
-          fileId={previewFile.id}
+          fileId={previewFile.id.toString()}
           filename={previewFile.filename}
           mimeType={previewFile.mime_type}
           onClose={() => setPreviewFile(null)}

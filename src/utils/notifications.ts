@@ -11,7 +11,7 @@ export async function createNotification(
   env: Env,
   db: D1Database, 
   user_id: number, 
-  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted',
+  type: 'sym_request' | 'sym_accepted' | 'file_shared' | 'system_alert' | '3space_request' | '3space_accepted' | 'comment_reply',
   actor_id?: number, 
   payload: any = {}
 ) {
@@ -22,7 +22,7 @@ export async function createNotification(
 
     // Notify the user via Durable Object RPC
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
-    const doStub = env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
+    const doStub = env.DO_NAMESPACE.get(doId) as unknown as DurableObjectStub<RelfDO>;
     
     await doStub.notify(user_id, { 
       type: 'new_notification', notificationType: type, actorId: actor_id, payload 
@@ -41,7 +41,7 @@ export async function broadcastSignal(
 ) {
   try {
     const doId = env.DO_NAMESPACE.idFromName('relf-do-instance');
-    const doStub = env.DO_NAMESPACE.get(doId) as DurableObjectStub<RelfDO>;
+    const doStub = env.DO_NAMESPACE.get(doId) as unknown as DurableObjectStub<RelfDO>;
     
     await doStub.broadcastSignal({ type, userId, payload });
   } catch (e) {

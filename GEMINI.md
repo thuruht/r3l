@@ -2,29 +2,23 @@
 
 ## Project Overview
 
-**Rel F (R3L:F)** is a decentralized, Cloudflare-native social networking experiment focused on serendipitous discovery and ephemeral interactions. It prioritizes user agency and "digital drift" over algorithmic engagement, using a visual "Association Web" (D3.js) to navigate connections.
+**Rel F (R3L:F)** is a decentralized, Cloudflare-native social networking experiment focused on serendipitous discovery and ephemeral interactions. It prioritizes user agency and "digital drift" over algorithmic engagement, using the **RELMAP** (D3.js) to navigate connections.
 
 ### Core Philosophy
-- **Artifacts**: The primary unit of interaction is the file (Artifact).
-- **Ephemerality**: Content expires in 7 days unless "Refreshed" or "Boosted" (Vitality).
-- **The Drift**: A discovery mode for sampling random public artifacts and "ghost nodes."
-- **Sym/A-Sym**: Explicit mutual connections (Sym) vs. one-way follows or proximity (A-Sym).
+- **Files**: The primary unit of interaction is the file.
+- **Ephemerality**: Content expires in 7 days unless Refreshed or Boosted (TTL).
+- **The Drift**: A discovery mode for sampling random public files and ghost nodes.
+- **SYM / A-SYM / 3SPACE**: Mutual public connections, one-way observation, or mutual invisible ghost connections.
 
 ### Technical Stack
 - **Runtime**: Cloudflare Workers (Hono)
 - **Database**: Cloudflare D1 (Relational)
-- **Object Storage**: Cloudflare R2 (Artifacts and Avatars)
+- **Object Storage**: Cloudflare R2 (Files and Avatars)
 - **Key-Value Store**: Cloudflare KV (Sessions, Rate Limiting)
 - **Real-time State**: Cloudflare Durable Objects (WebSockets, Collaborative Editing, Chat)
-- **Frontend**: React (Vite), TypeScript, D3.js (Association Web), GSAP/Framer Motion (Animations), Three.js (Ambient Backgrounds), Yjs (Collaboration)
+- **Frontend**: React (Vite), TypeScript, D3.js (RELMAP), GSAP/Framer Motion (Animations), Three.js (Ambient Backgrounds), Yjs (Collaboration)
 
 ---
-
-
-## Recent Feature Additions (May 2024)
-- **Advanced Real-Time Presence:** See who is actively viewing or editing documents via Yjs awareness and Durable Objects.
-- **Media Streaming:** True HTTP Range Request support for chunked video/audio streaming directly from R2, integrated with a unified Plyr media player.
-- **Cross-Device Drift History:** Never lose an ephemeral discovery again. "Recently Drifted" history is saved to Cloudflare KV and synced across all your devices, accessible in the unified Sidebar.
 
 ## Project Structure
 
@@ -86,11 +80,11 @@
 - **Auth**: JWT-based authentication via HttpOnly cookies.
 - **Durable Objects**: Use DOs for all stateful/real-time features (Chat, Collaborative Editing).
 - **Rate Limiting**: Implement rate limiting for sensitive endpoints (register, login, drift) using KV.
-- **E2EE**: Private messages (Whispers) are end-to-end encrypted; public keys are stored in the `users` table.
+- **E2EE**: Private messages (SYMTXT) are end-to-end encrypted; public keys are stored in the `users` table.
 
 ---
 
 ## Technical Debt & TODOs
 - **Collaborative Workspaces**: Implementation of multi-file shared editing.
-- **Media Streaming**: Improved support for large audio/video artifacts.
-- **Mobile Optimization**: PWA refinements for better mobile "drift" experience.
+- **Media Streaming**: Improved support for large audio/video files.
+- **Mobile Optimization**: PWA refinements for better mobile drift experience.

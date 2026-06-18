@@ -26,7 +26,7 @@ interface D3Node extends d3.SimulationNodeDatum, NetworkNode {}
 interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   source: string | D3Node;
   target: string | D3Node;
-  type: 'sym' | 'asym' | 'drift' | 'collection';
+  type: 'sym' | 'asym' | 'drift' | 'collection' | '3space';
 }
 
 const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collections = [], onNodeClick, isDrifting, onlineUserIds, signal, isLurking, hasMoreFiles, onLoadMore }) => {
@@ -138,13 +138,19 @@ const AssociationWeb: React.FC<AssociationWebProps> = ({ nodes, links, collectio
       driftNodes.transition()
         .duration(2000)
         .ease(d3.easeSinInOut)
-        .attrTween("opacity", () => d3.interpolateNumber(0.4, 0.8))
+        .attrTween("opacity", () => {
+          const interpolate = d3.interpolateNumber(0.4, 0.8);
+          return (t: number) => String(interpolate(t));
+        })
         .on("end", function repeat() {
             d3.select(this)
                 .transition()
                 .duration(2000)
                 .ease(d3.easeSinInOut)
-                .attrTween("opacity", () => d3.interpolateNumber(0.8, 0.4))
+                .attrTween("opacity", () => {
+                  const interpolate = d3.interpolateNumber(0.8, 0.4);
+                  return (t: number) => String(interpolate(t));
+                })
                 .on("end", repeat);
         });
 

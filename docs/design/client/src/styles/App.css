@@ -1,0 +1,559 @@
+
+/* Login / Landing Page Styles */
+.login-container {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at center, var(--bg-mist) 0%, var(--bg-color) 80%);
+    padding: 40px 20px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+}
+
+.glitch {
+    font-size: clamp(2rem, 8vw, 5rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    position: relative;
+    text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), 0.025em 0.05em 0 rgba(0,0,255,0.75);
+    animation: glitch 500ms infinite;
+    margin: 0 0 10px 0;
+    letter-spacing: clamp(3px, 2vw, 10px);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.subtitle {
+    font-size: clamp(0.6rem, 2vw, 1rem);
+    color: var(--text-secondary);
+    letter-spacing: clamp(1px, 1vw, 5px);
+    margin-bottom: 40px;
+    text-align: center;
+}
+
+.login-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 1200px;
+    align-items: start;
+}
+
+.info-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 30px;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+}
+
+.info-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--accent-sym);
+}
+
+.info-card h3 {
+    margin-top: 15px;
+    color: var(--text-primary);
+}
+
+.info-card p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.login-form-card {
+    background: var(--drawer-bg);
+    border: 1px solid var(--border-color);
+    padding: 30px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-form-card h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+}
+
+.login-form-card form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.primary-btn {
+    background: var(--accent-sym);
+    color: #000;
+    font-weight: bold;
+    border: none;
+    padding: 12px 20px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-base);
+}
+
+.primary-btn:hover {
+    background: #fff;
+    box-shadow: 0 0 15px var(--accent-sym);
+}
+
+.primary-btn:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+}
+
+.text-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-decoration: underline;
+    opacity: 0.7;
+    min-height: 44px;
+    padding: 8px 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.text-btn:hover {
+    opacity: 1;
+    color: var(--accent-sym);
+}
+
+.text-btn:focus-visible {
+    outline: 1px solid var(--accent-sym);
+    border-radius: 4px;
+}
+
+/* Header Styles */
+.header {
+    height: var(--header-height);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 20px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: var(--z-header);
+    box-sizing: border-box;
+    background-color: var(--drawer-bg);
+    /* Note: NO transform here — transform traps position:fixed children within this element */
+}
+
+/* Animations */
+@keyframes glitch {
+    0% {
+        text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), 0.025em 0.05em 0 rgba(0,0,255,0.75);
+    }
+    14% {
+        text-shadow: 0.05em 0 0 rgba(255,0,0,0.75), -0.05em -0.025em 0 rgba(0,255,0,0.75), 0.025em 0.05em 0 rgba(0,0,255,0.75);
+    }
+    15% {
+        text-shadow: -0.05em -0.025em 0 rgba(255,0,0,0.75), 0.025em 0.025em 0 rgba(0,255,0,0.75), -0.05em -0.05em 0 rgba(0,0,255,0.75);
+    }
+    49% {
+        text-shadow: -0.05em -0.025em 0 rgba(255,0,0,0.75), 0.025em 0.025em 0 rgba(0,255,0,0.75), -0.05em -0.05em 0 rgba(0,0,255,0.75);
+    }
+    50% {
+        text-shadow: 0.025em 0.05em 0 rgba(255,0,0,0.75), 0.05em 0 0 rgba(0,255,0,0.75), 0 -0.05em 0 rgba(0,0,255,0.75);
+    }
+    99% {
+        text-shadow: 0.025em 0.05em 0 rgba(255,0,0,0.75), 0.05em 0 0 rgba(0,255,0,0.75), 0 -0.05em 0 rgba(0,0,255,0.75);
+    }
+    100% {
+        text-shadow: -0.025em 0 0 rgba(255,0,0,0.75), -0.025em -0.025em 0 rgba(0,255,0,0.75), -0.025em -0.05em 0 rgba(0,0,255,0.75);
+    }
+}
+
+/* Yjs CodeMirror Awareness Styles */
+.cm-ySelection {
+    opacity: 0.2;
+}
+
+.cm-ySelectionInfo {
+    font-size: 0.7em;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: var(--font-mono); /* Assuming a monospace font variable */
+    color: var(--text-primary);
+    background-color: var(--drawer-bg); /* Use a darker background */
+    border: 1px solid var(--border-color);
+}
+
+.cm-ySelectionCaret {
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
+    will-change: background-color;
+    animation: yjs-caret-blink 1s cubic-bezier(0.65, 0.81, 0.73, 0.40) infinite;
+}
+
+@keyframes yjs-caret-blink {
+    0% { background-color: transparent; }
+    50% { background-color: var(--accent-sym); } /* Use theme accent for blinking */
+    100% { background-color: transparent; }
+}
+
+/* Responsive adjustments for overall layout and typography */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 20px 15px;
+    }
+    .login-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    .info-card {
+        display: none;
+    }
+    .login-form-card {
+        padding: 25px 20px;
+    }
+    .header { padding: 0 10px; }
+}
+
+@media (max-width: 576px) {
+    .login-form-card { padding: 20px 15px; }
+    .primary-btn, .text-btn { font-size: 0.9rem; }
+}
+
+
+/* Network List Items */
+.network-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--drawer-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 1;
+}
+
+.network-item.drift {
+    opacity: 0.7;
+}
+
+.network-item:hover,
+.network-item:focus {
+    border-color: var(--accent-sym);
+    opacity: 1;
+    outline: none;
+}
+
+.network-item:focus {
+    box-shadow: var(--glow-sym);
+}
+
+/* ========== HEADER & NAVIGATION ========== */
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.header-logo {
+    margin: 0;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.header-logo-beta {
+    font-size: 0.6rem;
+    color: var(--accent-sym);
+    border: 1px solid var(--accent-sym);
+    padding: 1px 3px;
+    border-radius: 3px;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-lg);
+}
+
+.view-toggle {
+    display: flex;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+    border: 1px solid var(--border-color);
+}
+
+.view-toggle button {
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 40px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    background: transparent;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.view-toggle button.active {
+    background: var(--accent-sym);
+    color: #000;
+}
+
+.drift-controls {
+    display: flex;
+    align-items: center;
+    border-radius: var(--radius-sm);
+    transition: background var(--transition-base);
+}
+
+.drift-controls.active {
+    background: rgba(50, 255, 100, 0.1);
+}
+
+.drift-controls button {
+    padding: 8px 12px;
+    min-width: 44px;
+    min-height: 44px;
+    border: none;
+    cursor: pointer;
+    background: transparent;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drift-controls button:first-child {
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.drift-filter-btn {
+    padding: 8px 12px;
+    font-size: 0.7rem;
+    min-width: 44px;
+    min-height: 44px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: color var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drift-controls.active .drift-filter-btn {
+    color: var(--accent-sym);
+}
+
+.nav-button {
+    padding: 6px 10px;
+    min-width: 44px;
+    min-height: 44px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    transition: all var(--transition-base);
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-button:hover {
+    color: var(--text-primary);
+}
+
+.nav-button.active {
+    color: var(--accent-sym);
+    border-bottom-color: var(--accent-sym);
+}
+
+.nav-button:focus-visible {
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+}
+
+.nav-label {
+    font-size: 0.65rem;
+    font-family: var(--font-family-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1;
+}
+
+.unread-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--accent-alert);
+    color: #000;
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 8px;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    line-height: 1;
+}
+
+.menu-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent-alert);
+    color: #000;
+    font-size: 0.7em;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    padding: 0 4px;
+    line-height: 1;
+    margin-left: auto;
+}
+
+/* ========== DROPDOWN MENU ========== */
+
+.nav-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    padding: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+    z-index: var(--z-dropdown);
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.menu-mobile-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    padding-bottom: var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.menu-label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    justify-content: flex-start;
+    border: none;
+    background: transparent;
+    padding: 12px var(--spacing-md);
+    min-height: 44px;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all var(--transition-base);
+    font-size: var(--text-base);
+    width: 100%;
+}
+
+.menu-item:hover {
+    background: rgba(255,255,255,0.05);
+    color: var(--accent-sym);
+}
+
+.menu-item:focus-visible {
+    background: rgba(255,255,255,0.1);
+    outline: none;
+}
+
+.menu-item.danger {
+    color: var(--text-primary);
+}
+
+.menu-item.admin {
+    color: var(--accent-alert);
+}
+
+.menu-divider {
+    height: 1px;
+    background: var(--border-color);
+    margin: var(--spacing-xs) 0;
+}
+
+/* ========== LOADING STATE ========== */
+
+.loading-container {
+    height: 100%;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-color);
+    color: var(--text-primary);
+    flex-direction: column;
+    gap: var(--spacing-xl);
+}
+
+/* Pulsing radar-style loading icon */
+.spinner-icon {
+    color: var(--accent-sym);
+    animation: spin-pulse 2s ease-in-out infinite;
+}
+
+@keyframes spin-pulse {
+    0%   { opacity: 1; transform: rotate(0deg) scale(1); }
+    50%  { opacity: 0.5; transform: rotate(180deg) scale(0.9); }
+    100% { opacity: 1; transform: rotate(360deg) scale(1); }
+}
+
+/* ========== MOBILE SAFE AREAS ========== */
+.inbox-overlay {
+    padding-bottom: var(--safe-area-bottom) !important;
+}
+
+.modal-content {
+    margin-bottom: var(--safe-area-bottom) !important;
+}
+
+.global-chat-container {
+    padding-bottom: var(--safe-area-bottom) !important;
+}

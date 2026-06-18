@@ -87,14 +87,15 @@ export class DocumentRoom extends DurableObject {
   }
 
   /**
-   * Helper to construct y-websocket protocol messages
+   * Helper to construct y-websocket protocol messages using proper lib0 encoding.
+   * Format: varUint(messageSync=0), varUint(type), writeVarUint8Array(data)
    */
   constructSyncMessage(type: number, data: Uint8Array): Uint8Array {
-    const msg = new Uint8Array(data.length + 2);
-    msg[0] = 0; // messageSync
-    msg[1] = type; // syncStep
-    msg.set(data, 2);
-    return msg;
+    const encoder = encoding.createEncoder();
+    encoding.writeVarUint(encoder, 0); // messageSync
+    encoding.writeVarUint(encoder, type); // syncStep type
+    encoding.writeVarUint8Array(encoder, data);
+    return encoding.toUint8Array(encoder);
   }
 
   /**
@@ -116,21 +117,17 @@ export class DocumentRoom extends DurableObject {
     const decoder = decoding.createDecoder(uint8Message);
     const messageType = decoding.readVarUint(decoder);
 
-    // Simple protocol check for y-websocket
     // messageSync = 0, messageAwareness = 1
     if (messageType === 0) {
-        const syncType = uint8Message[1];
-        const syncData = uint8Message.subarray(2);
+        const syncType = decoding.readVarUint(decoder);
+        const syncData = decoding.readVarUint8Array(decoder);
 
         if (syncType === 0) { // SyncStep1: Client sending their state vector
-            // Reply with SyncStep2: Send our updates
             const update = Y.encodeStateAsUpdate(this.doc, syncData);
             ws.send(this.constructSyncMessage(1, update));
         } else if (syncType === 1 || syncType === 2) { // SyncStep2 or Update
-            // Apply update to our server-side doc
             try {
                 Y.applyUpdate(this.doc, syncData);
-                // Persist to storage
                 await this.state.storage.put("content", Y.encodeStateAsUpdate(this.doc));
             } catch (e) {
                 console.error("Yjs update failed:", e);

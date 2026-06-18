@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { ICON_SIZES } from '@/constants/iconSizes';
 
 const EmojiPicker = lazy(() => import('emoji-picker-react'));
+const FilePreviewModal = lazy(() => import('./FilePreviewModal'));
 
 interface GroupChatProps {
   onClose: () => void;
@@ -54,6 +55,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
   const [connections, setConnections] = useState<any[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [showEmoji, setShowEmoji] = useState(false);
+  const [previewFile, setPreviewFile] = useState<any>(null);
   
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
@@ -575,7 +577,7 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
               {showEmoji && (
                 <Suspense fallback={<div>...</div>}>
                   <div style={{ position: 'absolute', bottom: '60px', right: '10px', zIndex: 'var(--z-dropdown)' }}>
-                    <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme="dark" />
+                    <EmojiPicker onEmojiClick={(e) => { setNewMessage(prev => prev + e.emoji); setShowEmoji(false); }} theme={"dark" as any} />
                   </div>
                 </Suspense>
               )}
@@ -620,6 +622,23 @@ const GroupChat: React.FC<GroupChatProps> = ({ onClose, currentUserId, ws }) => 
             {userFiles.length === 0 && <span style={{ color: 'var(--text-secondary)', fontSize: '0.9em' }}>No files to share</span>}
           </div>
         </div>
+      )}
+
+      {previewFile && (
+        <Suspense fallback={null}>
+          <FilePreviewModal
+            fileId={previewFile.id.toString()}
+            filename={previewFile.filename}
+            mimeType={previewFile.mime_type}
+            onClose={() => setPreviewFile(null)}
+            onDownload={() => {
+              const link = document.createElement('a');
+              link.href = `/api/files/${previewFile.id}/content`;
+              link.download = previewFile.filename;
+              link.click();
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

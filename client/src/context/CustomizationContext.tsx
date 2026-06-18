@@ -34,7 +34,7 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
     try {
       const res = await fetch('/api/customization');
       if (res.ok) {
-        const data = await res.json();
+        const data: any = await res.json();
         setState({
           theme_preferences: typeof data.theme_preferences === 'string'
             ? JSON.parse(data.theme_preferences)

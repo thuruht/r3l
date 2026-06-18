@@ -597,7 +597,7 @@ Real-time notifications and presence.
 - `presence_update`: User online/offline
 - `new_notification`: New notification
 - `new_message`: New direct message
-- `signal_artifact`: New public artifact
+- `signal_artifact`: New public file
 
 ---
 

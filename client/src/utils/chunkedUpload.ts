@@ -1,3 +1,5 @@
+import { apiFetch } from './api';
+
 export async function uploadFileInChunks(
   file: File,
   onProgress: (progress: number) => void
@@ -19,15 +21,10 @@ export async function uploadFileInChunks(
     formData.append('filename', file.name);
     formData.append('mimeType', file.type);
 
-    const res = await fetch('/api/files/upload-chunk', {
+    await apiFetch('/api/files/upload-chunk', {
       method: 'POST',
       body: formData,
     });
-
-    if (!res.ok) {
-      const err: any = await res.json().catch(() => ({ error: 'Upload failed' }));
-      throw new Error(err.error);
-    }
 
     onProgress(((i + 1) / totalChunks) * 100);
   }

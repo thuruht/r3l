@@ -8,7 +8,7 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
     *   ✅ Lazy loading for heavy components (Admin, Workspaces, Chat, etc.).
     *   ✅ `crypto.ts` split into lazy chunk via dynamic imports.
     *   ✅ `vite.config.ts` manual chunks for vendor libs (D3, GSAP, Yjs).
-2.  **Artifact Pagination**:
+2.  **File Pagination**:
     *   ✅ Backend support for `limit`/`offset` in `/api/files`.
     *   ✅ Frontend "Load More" (Scan Deeper) in Graph and List views.
 3.  **Responsive Integrity**:
@@ -20,13 +20,13 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
     *   ✅ Empty state overlay ("No signals on this frequency").
     *   ✅ Session history tracking.
 5.  **3rd Space Interaction**:
-    *   ✅ Artifact preview enabled in Workspaces.
-    *   ✅ Artifact download enabled in Workspaces.
+    *   ✅ File preview enabled in Workspaces.
+    *   ✅ File download enabled in Workspaces.
     *   ✅ Admin removal for members and files in Workspaces.
 
 ## Phase 2: Feature Completion & Security — ✅ COMPLETE
 
-1.  **Secure Ephemerality (Burn-on-Read)**:
+1.  **Secure Ephemerality (FLARE)**:
     *   ✅ Backend enforcement: file deleted from R2 and D1 immediately after non-owner access.
 2.  **Group Sharing UI**:
     *   ✅ File preview modal integrated into Group Chat.

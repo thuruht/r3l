@@ -71,6 +71,6 @@
 - Auth: JWT, email verification, password reset
 - Graph: D3.js Association Web with Drift pulse
 - Files: Upload, expiration, vitality, burn-on-read, encryption
-- Social: Sym/A-Sym relationships, inbox, sharing
+- Social: Sym/A-SYM relationships, inbox, sharing
 - Collections: ZIP export, drag-and-drop reorder
 - Real-time: Durable Objects WebSocket (RelfDO, DocumentRoom, ChatRoom)

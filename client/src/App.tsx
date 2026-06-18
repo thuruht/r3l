@@ -8,6 +8,7 @@ import Inbox from './components/Inbox';
 import Sidebar from './components/Sidebar';
 import { useSidebar } from './hooks/useSidebar';
 import CommuniquePage from './components/CommuniquePage';
+import CommentsPage from './components/CommentsPage';
 import VerifyEmail from './components/VerifyEmail';
 import ResetPassword from './components/ResetPassword';
 import FilePreviewModal from './components/FilePreviewModal';
@@ -391,7 +392,7 @@ function Main() {
 
   return (
     <>
-      {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password')) ? (
+      {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password') || location.pathname.startsWith('/comments/')) ? (
         <LandingPage
           onLogin={handleLogin}
           onRegister={handleRegister}
@@ -635,6 +636,7 @@ function Main() {
             } />
             <Route path="/communique/:userId" element={<CommuniquePage />} />
             <Route path="/admin" element={<Navigate to="/" replace />} />
+            <Route path="/comments/:fileId" element={<CommentsPage />} />
           </Routes>
         </>
       )}

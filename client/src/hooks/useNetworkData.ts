@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
+import { apiFetch } from '../utils/api';
+import type { RelationshipsResponse, FilesResponse } from '../types/api';
 
 export interface NetworkNode {
   id: string;
@@ -49,15 +51,11 @@ export const useNetworkData = ({ currentUserId, meUsername, meAvatarUrl, isDrift
       const limit = 50;
       const offset = isLoadMore ? fileOffset + limit : 0;
 
-      const [relRes, fileRes, collRes] = await Promise.all([
-          fetch('/api/relationships'),
-          fetch(`/api/files?limit=${limit}&offset=${offset}`),
-          fetch('/api/collections')
+      const [relData, fileData, collData] = await Promise.all([
+          apiFetch<RelationshipsResponse>('/api/relationships'),
+          apiFetch<FilesResponse>(`/api/files?limit=${limit}&offset=${offset}`),
+          apiFetch<{ collections: any[] }>('/api/collections').catch(() => ({ collections: [] })),
       ]);
-      
-      const relData: any = await relRes.json();
-      const fileData: any = await fileRes.json();
-      const collData: any = collRes.ok ? await collRes.json() : { collections: [] };
 
       const nodeMap = new Map<string, NetworkNode>();
       const newLinks: NetworkLink[] = [];

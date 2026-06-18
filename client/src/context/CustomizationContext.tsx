@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { apiFetch } from '../utils/api';
 
 interface CustomizationState {
   theme_preferences: {
@@ -32,18 +33,15 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
 
   const fetchCustomization = useCallback(async () => {
     try {
-      const res = await fetch('/api/customization');
-      if (res.ok) {
-        const data: any = await res.json();
-        setState({
-          theme_preferences: typeof data.theme_preferences === 'string'
-            ? JSON.parse(data.theme_preferences)
-            : (data.theme_preferences || defaultState.theme_preferences),
-          node_primary_color: data.node_primary_color || defaultState.node_primary_color,
-          node_secondary_color: data.node_secondary_color || defaultState.node_secondary_color,
-          node_size: data.node_size || defaultState.node_size,
-        });
-      }
+      const data = await apiFetch<any>('/api/customization');
+      setState({
+        theme_preferences: typeof data.theme_preferences === 'string'
+          ? JSON.parse(data.theme_preferences)
+          : (data.theme_preferences || defaultState.theme_preferences),
+        node_primary_color: data.node_primary_color || defaultState.node_primary_color,
+        node_secondary_color: data.node_secondary_color || defaultState.node_secondary_color,
+        node_size: data.node_size || defaultState.node_size,
+      });
     } catch (e) {
       console.error("Failed to load customization:", e);
     } finally {
@@ -77,15 +75,11 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
           theme_preferences: themePrefsStr
       };
 
-      const res = await fetch('/api/customization', {
+      await apiFetch('/api/customization', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
-      if (!res.ok) {
-        throw new Error('Failed to save customization');
-      }
     } catch (e) {
       console.error(e);
       // Revert on failure (could implement more robust rollback)

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '../utils/api';
 
 export interface Collection {
   id: number;
@@ -41,14 +42,8 @@ export const useCollections = (): UseCollectionsReturn => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/collections');
-      if (response.ok) {
-        const data: any = await response.json();
-        setCollections(data.collections);
-      } else {
-        const err: any = await response.json();
-        setError(err.error || 'Failed to fetch collections');
-      }
+      const data = await apiFetch<{ collections: Collection[] }>('/api/collections');
+      setCollections(data.collections);
     } catch (e) {
       console.error(e);
       setError('Network error fetching collections');
@@ -59,19 +54,13 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const createCollection = async (name: string, description?: string, visibility?: 'private' | 'public' | 'sym') => {
     try {
-      const response = await fetch('/api/collections', {
+      await apiFetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, visibility }),
       });
-      if (response.ok) {
-        await fetchCollections(); // Refresh list
-        return true;
-      } else {
-        const err: any = await response.json();
-        setError(err.error || 'Failed to create collection');
-        return false;
-      }
+      await fetchCollections(); // Refresh list
+      return true;
     } catch (e) {
       console.error(e);
       setError('Network error creating collection');
@@ -81,14 +70,11 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const deleteCollection = async (id: number) => {
     try {
-      const response = await fetch(`/api/collections/${id}`, {
+      await apiFetch(`/api/collections/${id}`, {
         method: 'DELETE',
       });
-      if (response.ok) {
-        setCollections(prev => prev.filter(c => c.id !== id));
-        return true;
-      }
-      return false;
+      setCollections(prev => prev.filter(c => c.id !== id));
+      return true;
     } catch (e) {
         console.error(e);
         return false;
@@ -97,16 +83,13 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const updateCollection = async (id: number, name: string, description?: string, visibility?: 'private' | 'public' | 'sym'): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/collections/${id}`, {
+      await apiFetch(`/api/collections/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, visibility }),
       });
-      if (response.ok) {
-        await fetchCollections();
-        return true;
-      }
-      return false;
+      await fetchCollections();
+      return true;
     } catch (e) {
       console.error(e);
       return false;
@@ -115,14 +98,12 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const addToCollection = async (collectionId: number, fileId: number): Promise<{ success: boolean; error?: string; status?: number }> => {
     try {
-      const response = await fetch(`/api/collections/${collectionId}/files`, {
+      await apiFetch(`/api/collections/${collectionId}/files`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ file_id: fileId }),
       });
-      if (response.ok) return { success: true };
-      const data: any = await response.json();
-      return { success: false, error: data.error, status: response.status };
+      return { success: true };
     } catch (e) {
       console.error(e);
       return { success: false, error: 'Network error' };
@@ -131,11 +112,7 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const getCollectionDetails = async (id: number): Promise<{ collection: Collection, files: CollectionFile[] } | null> => {
     try {
-      const response = await fetch(`/api/collections/${id}`);
-      if (response.ok) {
-        return await response.json() as { collection: Collection, files: CollectionFile[] };
-      }
-      return null;
+      return await apiFetch<{ collection: Collection, files: CollectionFile[] }>(`/api/collections/${id}`);
     } catch (e) {
       console.error(e);
       return null;
@@ -144,10 +121,10 @@ export const useCollections = (): UseCollectionsReturn => {
 
   const removeFromCollection = async (collectionId: number, fileId: number) => {
       try {
-          const response = await fetch(`/api/collections/${collectionId}/files/${fileId}`, {
-              method: 'DELETE'
-          });
-          return response.ok;
+      await apiFetch(`/api/collections/${collectionId}/files/${fileId}`, {
+          method: 'DELETE'
+      });
+      return true;
       } catch (e) {
           console.error(e);
           return false;

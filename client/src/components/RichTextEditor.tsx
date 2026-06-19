@@ -7,31 +7,32 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 
 interface RichTextEditorProps {
-  ydoc: Y.Doc;
-  provider: WebsocketProvider;
+  ydoc?: Y.Doc | null;
+  provider?: WebsocketProvider | null;
   currentUser: any;
   themePreferences?: any;
+  content?: string;
+  onChange?: (val: string) => void;
 }
 
-export const RichTextEditor: React.FC<RichTextEditorProps> = ({ ydoc, provider, currentUser, themePreferences }) => {
+export const RichTextEditor: React.FC<RichTextEditorProps> = ({ ydoc, provider, currentUser, themePreferences, content, onChange }) => {
   const userColor = themePreferences?.node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
+  const isLocal = !ydoc || !provider;
 
   const editor = useEditor({
+    content: isLocal ? (content || '') : undefined,
+    onUpdate: isLocal && onChange ? ({ editor }) => { onChange(editor.getHTML()); } : undefined,
     extensions: [
-      StarterKit.configure({
-        // @ts-ignore: Required by Tiptap collab docs, but TS types might be strict
-        history: false, // History is handled by Y.js
-      }),
-      Collaboration.configure({
-        document: ydoc,
-      }),
-      CollaborationCursor.configure({
-        provider: provider,
-        user: {
-          name: currentUser?.username || 'Anonymous',
-          color: userColor,
-        },
-      }),
+      StarterKit.configure(
+        isLocal ? undefined : { history: false } as any
+      ),
+      ...(!isLocal ? [
+        Collaboration.configure({ document: ydoc }),
+        CollaborationCursor.configure({
+          provider: provider!,
+          user: { name: currentUser?.username || 'Anonymous', color: userColor },
+        }),
+      ] : []),
     ],
   });
 

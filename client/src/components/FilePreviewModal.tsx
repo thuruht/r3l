@@ -112,7 +112,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   const [editContent, setEditContent] = useState('');
   const [showCollectionSelect, setShowCollectionSelect] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [visibility, setVisibility] = useState<'public' | 'sym' | 'me'>('me');
+  const [visibility, setVisibility] = useState<'public' | 'sym' | '3space' | 'me'>('me');
   const [showPreview, setShowPreview] = useState(false);
   const [showRemixUpload, setShowRemixUpload] = useState(false);
   const [remixParent, setRemixParent] = useState<{ id: number; filename: string; username: string } | null>(null);
@@ -134,11 +134,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   // Use the hook from main branch instead of the hacky component usage
   const { addToCollection } = useCollections();
 
-  // Collaboration State - Using useState for re-rendering CodeEditor (Fix from mobile-fixes branch)
+  // Collaboration State — opt-in via Yjs; off by default for reliable local editing
+  const [collabEnabled, setCollabEnabled] = useState(false);
   const [collabStatus, setCollabStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<WebsocketProvider | null>(null);
-  const [activeUsers, setActiveUsers] = useState<{id: string, name: string}[]>([]);
   const [connectedUsers, setConnectedUsers] = useState<any[]>([]);
 
   const { theme_preferences, updateCustomization } = useCustomization();
@@ -335,7 +335,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   };
   
   const handleVisibilityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newVis = e.target.value as 'public' | 'sym' | 'me';
+      const newVis = e.target.value as typeof visibility;
       try {
           const res = await fetch(`/api/files/${fileId}/metadata`, {
               method: 'PUT',
@@ -372,21 +372,22 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
       }
   };
 
+  // Sync editContent from content when entering edit mode (local-only by default)
+  useEffect(() => {
+    if (isEditing && content !== null) {
+      setEditContent(content);
+    }
+  }, [isEditing, content]);
+
+  // Collaboration via Yjs — opt-in only. Started when user toggles collabEnabled.
   useEffect(() => {
     let currentProvider: WebsocketProvider | null = null;
     let currentDoc: Y.Doc | null = null;
 
-    if (isEditing && (isText || isRichText)) {
-       // Guard: don't start collab until content is loaded
-       if (content === null) {
-           console.warn('Content not loaded yet, deferring collab setup');
-           return;
-       }
-       
+    if (collabEnabled && isEditing && (isText || isRichText) && content !== null) {
        setCollabStatus('connecting');
        const doc = new Y.Doc();
        const wsUrl = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`;
-       // Use fileId as roomname so y-websocket connects to /api/collab/fileId without a trailing slash
        const prov = new WebsocketProvider(`${wsUrl}/api/collab`, fileId.toString(), doc);
 
        const userColor = (theme_preferences as any).node_primary_color || '#' + Math.floor(Math.random()*16777215).toString(16);
@@ -407,15 +408,8 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
        });
 
        const yText = doc.getText('codemirror');
-       
-       // Ensure content is seeded if the document is empty after sync
-       prov.on('sync', (isSynced: boolean) => {
-           if (isSynced && yText.toString() === '' && content && typeof content === 'string' && content.trim() !== '') {
-               yText.insert(0, content);
-           }
-       });
 
-       // Seed immediately for initial render if content exists
+       // Seed content into Yjs doc
        if (content && typeof content === 'string' && content.trim() !== '' && yText.length === 0) {
            yText.insert(0, content);
        }
@@ -439,7 +433,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         if (currentProvider) currentProvider.destroy();
         if (currentDoc) currentDoc.destroy();
     };
-  }, [isEditing, isText, isRichText, fileId, content]);
+  }, [collabEnabled, isEditing, isText, isRichText, fileId, content]);
 
   const actionButtons = (
       <>
@@ -456,6 +450,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
             >
                 <option value="public">Public (Drift)</option>
                 <option value="sym">Sym Only</option>
+                <option value="3space">3SPACE</option>
                 <option value="me">3rd Space (Me Only)</option>
             </select>
         </div>
@@ -507,9 +502,15 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         )}
         {isEditing && (
             <>
-                <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                {!collabEnabled ? (
+                  <button onClick={() => setCollabEnabled(true)} title="Enable live collaboration" aria-label="Collaborate" style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
+                    <IconUsers size={ICON_SIZES.sm} />
+                  </button>
+                ) : (
+                  <div style={{ fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', color: collabStatus === 'connected' ? 'var(--accent-sym)' : 'var(--text-secondary)', flexShrink: 0, padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                     <IconUsers size={ICON_SIZES.sm} /> {collabStatus}
-                </div>
+                  </div>
+                )}
                 {currentUser?.id === ownerId ? (
                     <button onClick={handleSave} aria-label="Save" style={{ background: 'transparent', border: 'none', color: 'var(--accent-sym)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
                         <IconDeviceFloppy size={ICON_SIZES.lg}/> {isMobile && 'Save'}
@@ -717,14 +718,14 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
                 {isRichText && (
                     isEditing ? (
-                        (ydoc && provider) ? (
-                            <RichTextEditor 
-                                ydoc={ydoc} 
-                                provider={provider} 
-                                currentUser={currentUser} 
-                                themePreferences={theme_preferences} 
-                            />
-                        ) : <Skeleton height="100%" width="100%" />
+                        <RichTextEditor 
+                            ydoc={ydoc} 
+                            provider={provider} 
+                            currentUser={currentUser} 
+                            themePreferences={theme_preferences} 
+                            content={content ?? undefined}
+                            onChange={(val) => setEditContent(val)}
+                        />
                     ) : (
                         <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>
                             <div style={{ fontSize: '3rem', marginBottom: '20px' }}>📝</div>

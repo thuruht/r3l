@@ -9,6 +9,7 @@ const artifacts = new Hono<any>();
 
 // GET /api/files/community-archived
 artifacts.get('/community-archived', async (c) => {
+  if (!await checkRateLimit(c, 'community_archive', 30, 60)) return c.json({ error: 'Too fast' }, 429);
   const type = c.req.query('type');
   const limit = Math.min(Number(c.req.query('limit') || 100), 100);
   const offset = Number(c.req.query('offset') || 0);
@@ -31,21 +32,29 @@ artifacts.get('/community-archived', async (c) => {
   }
 });
 
-// GET /api/files: My Files
+// GET /api/files: My Files (supports ?q=search)
 artifacts.get('/', async (c) => {
   const user_id = c.get('user_id');
   const limit = Math.min(Number(c.req.query('limit') || 50), 100);
   const offset = Number(c.req.query('offset') || 0);
+  const q = c.req.query('q') || '';
 
   try {
+    const searchClause = q ? ' AND filename LIKE ?' : '';
+    const searchParam = q ? `%${q}%` : '';
+    const params = [user_id, user_id];
+    if (q) params.push(searchParam);
+
     const { results } = await c.env.DB.prepare(
       `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-       FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
-    ).bind(user_id, user_id, limit, offset).all();
+       FROM files f WHERE f.user_id = ? AND f.is_archived = 0${searchClause} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
+    ).bind(...params, limit, offset).all();
 
+    const countParams = [user_id];
+    if (q) countParams.push(searchParam);
     const total = await c.env.DB.prepare(
-      'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0'
-    ).bind(user_id).first('count');
+      `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0${searchClause}`
+    ).bind(...countParams).first('count');
 
     return c.json({ files: results, total, limit, offset });
   } catch (e) {
@@ -118,6 +127,9 @@ artifacts.post('/', async (c) => {
 
     if (!file || !(file instanceof File)) return c.json({ error: 'Invalid format' }, 400);
 
+    const MAX_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_SIZE) return c.json({ error: 'File exceeds 50 MB limit' }, 413);
+
     const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 200);
     const r2_key = `${user_id}/${crypto.randomUUID()}-${safeFilename.replace(/\//g, '_')}`;
     
@@ -152,6 +164,7 @@ artifacts.post('/', async (c) => {
 
     return c.json({ message: 'Uploaded', r2_key, expires_at });
   } catch (e) {
+    console.error('Upload error:', e);
     return c.json({ error: 'Upload failed' }, 500);
   }
 });
@@ -161,7 +174,7 @@ artifacts.put('/:id/metadata', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { visibility } = await c.req.json();
-  const VALID_VISIBILITIES = ['public', 'sym', 'me'];
+  const VALID_VISIBILITIES = ['public', 'sym', 'me', '3space'];
   if (!visibility || !VALID_VISIBILITIES.includes(visibility)) return c.json({ error: 'Invalid visibility' }, 400);
   try {
     const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
@@ -176,6 +189,7 @@ artifacts.put('/:id/metadata', async (c) => {
 
 // POST /api/files/:id/archive-vote
 artifacts.post('/:id/archive-vote', async (c) => {
+  if (!await checkRateLimit(c, 'archive_vote', 20, 3600)) return c.json({ error: 'Too many votes' }, 429);
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
@@ -333,7 +347,8 @@ artifacts.put('/:id/content', async (c) => {
     const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND user_id = ?').bind(file_id, user_id).first() as any;
     if (!file) return c.json({ error: 'Not found or unauthorized' }, 404);
     await c.env.BUCKET.put(file.r2_key, content, { httpMetadata: { contentType: file.mime_type } });
-    await c.env.DB.prepare('UPDATE files SET size = ?, vitality = vitality + 1 WHERE id = ?').bind(content.length, file_id).run();
+    const byteSize = new TextEncoder().encode(content).length;
+    await c.env.DB.prepare('UPDATE files SET size = ?, vitality = vitality + 1 WHERE id = ?').bind(byteSize, file_id).run();
     return c.json({ message: 'Updated' });
   } catch (e) {
     return c.json({ error: 'Failed' }, 500);
@@ -342,6 +357,7 @@ artifacts.put('/:id/content', async (c) => {
 
 // POST /api/files/:id/refresh
 artifacts.post('/:id/refresh', async (c) => {
+  if (!await checkRateLimit(c, 'refresh', 10, 3600)) return c.json({ error: 'Too many refreshes' }, 429);
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const new_expires = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
@@ -353,6 +369,7 @@ artifacts.post('/:id/refresh', async (c) => {
 
 // POST /api/files/:id/vitality
 artifacts.post('/:id/vitality', async (c) => {
+  if (!await checkRateLimit(c, 'vitality', 60, 3600)) return c.json({ error: 'Too many boosts' }, 429);
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   const { amount } = await c.req.json().catch(() => ({ amount: 1 }));
@@ -379,7 +396,10 @@ artifacts.post('/:id/vitality', async (c) => {
     await c.env.DB.batch(stmts);
     
     const updatedFile = await c.env.DB.prepare('SELECT vitality FROM files WHERE id = ?').bind(file_id).first() as any;
-    if (updatedFile?.vitality >= 10) await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
+    if (updatedFile?.vitality >= 10) {
+      await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ?').bind(file_id).run();
+      c.executionCtx.waitUntil(createNotification(c.env, c.env.DB, file.user_id, 'system_alert', undefined, { message: `Your file "${file.filename}" was auto-archived (vitality ≥ 10).` }));
+    }
     
     return c.json({ message: 'Boosted', vitality: updatedFile?.vitality });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }

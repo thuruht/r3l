@@ -79,6 +79,23 @@ comments.post('/:fileId', async (c) => {
   }
 });
 
+comments.put('/:commentId', async (c) => {
+  const user_id = c.get('user_id');
+  const commentId = c.req.param('commentId');
+  const { content } = await c.req.json();
+  if (!content || typeof content !== 'string' || content.trim().length === 0) return c.json({ error: 'Content required' }, 400);
+  if (content.length > 10000) return c.json({ error: 'Content too long' }, 400);
+  try {
+    const comment = await c.env.DB.prepare('SELECT user_id FROM comments WHERE id = ?').bind(commentId).first() as any;
+    if (!comment) return c.json({ error: 'Not found' }, 404);
+    if (comment.user_id !== user_id) return c.json({ error: 'Forbidden' }, 403);
+    await c.env.DB.prepare('UPDATE comments SET content = ? WHERE id = ?').bind(content.trim(), commentId).run();
+    return c.json({ message: 'Updated' });
+  } catch (e) {
+    return c.json({ error: 'Failed' }, 500);
+  }
+});
+
 comments.delete('/:commentId', async (c) => {
   const user_id = c.get('user_id');
   const commentId = c.req.param('commentId');

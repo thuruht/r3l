@@ -49,6 +49,7 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
   const [confirmDeleteFileId, setConfirmDeleteFileId] = useState<number | null>(null);
   const [boostingIds, setBoostingIds] = useState<Set<number>>(new Set());
   const [pendingDropFiles, setPendingDropFiles] = useState<File[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const getExpiryLabel = (expires_at?: string): { label: string; urgent: boolean } | null => {
     if (!expires_at) return null;
@@ -86,7 +87,9 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
 
     try {
       const currentOffset = reset ? 0 : offset + LIMIT;
+      const q = searchQuery.trim();
       let url = `/api/files?limit=${LIMIT}&offset=${currentOffset}`;
+      if (q) url += `&q=${encodeURIComponent(q)}`;
       if (!isOwner && userId) {
           url = `/api/files/users/${userId}?limit=${LIMIT}&offset=${currentOffset}`;
       }
@@ -289,6 +292,28 @@ const Artifacts: React.FC<ArtifactsProps> = ({ userId, isOwner }) => {
       </div>
 
       {error && <div style={{ color: 'var(--accent-alert)', fontSize: '0.8em', marginBottom: '8px' }}>{error}</div>}
+
+      {isOwner && (
+        <div style={{ marginBottom: '8px', display: 'flex', gap: '6px' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => { setSearchQuery(e.target.value); }}
+            onKeyDown={e => { if (e.key === 'Enter') { setOffset(0); fetchFiles(true); } }}
+            placeholder="Search your files…"
+            style={{
+              flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)',
+              borderRadius: '4px', padding: '6px 10px', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
+            }}
+          />
+          <button
+            onClick={() => { setOffset(0); fetchFiles(true); }}
+            style={{ background: 'var(--accent-sym)', border: 'none', borderRadius: '4px', padding: '6px 12px', color: '#000', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem' }}
+          >
+            Search
+          </button>
+        </div>
+      )}
 
       <div className="file-list" ref={listRef} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         {loading && (

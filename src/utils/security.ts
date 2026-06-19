@@ -39,7 +39,8 @@ export async function sanitizeHTML(html: string): Promise<string> {
         const tagAllowed = ALLOWED_ATTRS[tag];
         const globalAllowed = ALLOWED_ATTRS['*'];
 
-        for (const attr of el.attributes) {
+        const attrs = [...el.attributes];
+        for (const attr of attrs) {
           const name = attr[0].toLowerCase();
           const value = attr[1];
 

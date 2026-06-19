@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import * as TablerIcons from '@tabler/icons-react';
 import { ICON_SIZES } from './constants/iconSizes';
@@ -15,6 +15,7 @@ import FilePreviewModal from './components/FilePreviewModal';
 import LandingPage from './components/LandingPage';
 import DriftHistory from './components/DriftHistory';
 import SettingsPage from './pages/SettingsPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 // Lazy-loaded heavy components
@@ -65,7 +66,8 @@ function Main() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [groupUnreadCount, setGroupUnreadCount] = useState(0);
-  const [previewFile, setPreviewFile] = useState<any>(null);
+  const [previewFiles, setPreviewFiles] = useState<any[]>([]);
+  let previewIdCounter = useRef(0);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [driftHistory, setDriftHistory] = useState<Array<{ id: string; name: string; type: 'user' | 'file'; mime_type?: string; timestamp: number }>>([]);
@@ -104,7 +106,7 @@ function Main() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (previewFile) { setPreviewFile(null); return; }
+      if (previewFiles.length > 0) { setPreviewFiles(prev => prev.slice(0, -1)); return; }
       if (isSettingsOpen) { setIsSettingsOpen(false); return; }
       if (isSidebarOpen) { closeSidebar(); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
@@ -117,7 +119,7 @@ function Main() {
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [previewFile, isSettingsOpen, isSidebarOpen, isArchiveOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
+  }, [previewFiles, isSettingsOpen, isSidebarOpen, isArchiveOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -317,13 +319,21 @@ function Main() {
   };
 
   const openPreview = useCallback((fileId: number) => {
-    setPreviewFile({ id: fileId, filename: '', mime_type: '' });
+    const key = ++previewIdCounter.current;
+    setPreviewFiles(prev => [...prev, { key, id: fileId, filename: '', mime_type: '' }]);
+  }, []);
+
+  const closePreview = useCallback((key: number) => {
+    setPreviewFiles(prev => prev.filter(f => f.key !== key));
   }, []);
 
   const onNodeClick = (nodeId: string) => {
     if (nodeId.startsWith('file-')) {
       const node = nodes.find(n => n.id === nodeId);
-      if (node?.data) setPreviewFile(node.data);
+      if (node?.data) {
+        const key = ++previewIdCounter.current;
+        setPreviewFiles(prev => [...prev, { key, ...node.data }]);
+      }
     } else if (nodeId.startsWith('col-')) {
       const node = nodes.find(n => n.id === nodeId);
       if (node?.data?.user_id) navigate(`/communique/${node.data.user_id}`);
@@ -391,7 +401,7 @@ function Main() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password') || location.pathname.startsWith('/comments/')) ? (
         <LandingPage
           onLogin={handleLogin}
@@ -540,10 +550,10 @@ function Main() {
             </div>
           )}
 
-          {isFAQOpen && <React.Suspense fallback={null}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense>}
-          {isAboutOpen && <React.Suspense fallback={null}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense>}
-          {isAdmin && isAdminOpen && <React.Suspense fallback={null}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense>}
-          {isWorkspacesOpen && <React.Suspense fallback={null}><WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} /></React.Suspense>}
+          {isFAQOpen && <ErrorBoundary><React.Suspense fallback={null}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isAboutOpen && <ErrorBoundary><React.Suspense fallback={null}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isAdmin && isAdminOpen && <ErrorBoundary><React.Suspense fallback={null}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isWorkspacesOpen && <ErrorBoundary><React.Suspense fallback={null}><WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} /></React.Suspense></ErrorBoundary>}
           {/* Unified Sidebar */}
           <Sidebar
             isOpen={isSidebarOpen}
@@ -560,20 +570,24 @@ function Main() {
               <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
             )}
             {sidebarTab === 'planets' && (
-              <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
-                <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />
-              </React.Suspense>
+              <ErrorBoundary>
+                <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
+                  <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />
+                </React.Suspense>
+              </ErrorBoundary>
             )}
             {sidebarTab === 'galaxy' && (
-              <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
-                <GlobalChat onClose={closeSidebar} />
-              </React.Suspense>
+              <ErrorBoundary>
+                <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
+                  <GlobalChat onClose={closeSidebar} />
+                </React.Suspense>
+              </ErrorBoundary>
             )}
             {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
           </Sidebar>
-          {isArchiveOpen && <React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense>}
-          {isCollectionsOpen && <React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense>}
-          {isFeedbackOpen && <React.Suspense fallback={null}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense>}
+          {isArchiveOpen && <ErrorBoundary><React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isCollectionsOpen && <ErrorBoundary><React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isFeedbackOpen && <ErrorBoundary><React.Suspense fallback={null}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense></ErrorBoundary>}
           {isSettingsOpen && currentUser && (
             <SettingsPage
               onClose={() => setIsSettingsOpen(false)}
@@ -582,22 +596,24 @@ function Main() {
             />
           )}
 
-          {previewFile && (
+          {previewFiles.map(pf => (
             <FilePreviewModal
-              fileId={previewFile.id}
-              filename={previewFile.filename}
-              mimeType={previewFile.mime_type}
-              onClose={() => setPreviewFile(null)}
+              key={pf.key}
+              fileId={pf.id}
+              filename={pf.filename}
+              mimeType={pf.mime_type || ''}
+              currentUser={currentUser}
+              onClose={() => closePreview(pf.key)}
               onDownload={() => {
                 const link = document.createElement('a');
-                link.href = `/api/files/${previewFile.id}/content`;
-                link.download = previewFile.filename;
+                link.href = `/api/files/${pf.id}/content`;
+                link.download = pf.filename;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
               }}
             />
-          )}
+          ))}
 
           <Routes>
             <Route path="/verify" element={<VerifyEmail />} />
@@ -630,7 +646,7 @@ function Main() {
                     onLoadMore={loadMore}
                   />
                 ) : (
-                  <NetworkList nodes={nodes} onNodeClick={onNodeClick} onFilePreview={(f) => setPreviewFile(f)} loading={loading} />
+                  <NetworkList nodes={nodes} onNodeClick={onNodeClick} onFilePreview={(f) => { const key = ++previewIdCounter.current; setPreviewFiles(prev => [...prev, { key, ...f }]); }} loading={loading} />
                 )}
               </div>
             } />
@@ -640,7 +656,7 @@ function Main() {
           </Routes>
         </>
       )}
-    </>
+    </ErrorBoundary>
   );
 }
 

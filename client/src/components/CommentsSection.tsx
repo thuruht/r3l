@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconSend, IconTrash } from '@tabler/icons-react';
+import { IconSend, IconTrash, IconEdit } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
+
+const PAGE_SIZE = 20;
 
 interface Comment {
   id: number;
@@ -25,6 +27,9 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
   const [inputText, setInputText] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: number; username: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editText, setEditText] = useState('');
+  const [page, setPage] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
@@ -86,6 +91,27 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
     }
   };
 
+  const handleEdit = async (commentId: number) => {
+    if (!editText.trim()) return;
+    try {
+      const res = await fetch(`/api/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editText.trim() }),
+      });
+      if (res.ok) {
+        setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editText.trim() } : c));
+        setEditingId(null);
+        setEditText('');
+        showToast('Comment updated.', 'success');
+      } else {
+        showToast('Failed to update comment.', 'error');
+      }
+    } catch {
+      showToast('Error updating comment.', 'error');
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -94,6 +120,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
   };
 
   const rootComments = comments.filter(c => !c.parent_id);
+  const totalPages = Math.ceil(rootComments.length / PAGE_SIZE) || 1;
+  const visibleRoots = rootComments.slice(0, (page + 1) * PAGE_SIZE);
   const getReplies = (parentId: number) => comments.filter(c => c.parent_id === parentId);
 
   const formatTime = (ts: string) => {
@@ -108,6 +136,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
 
   const CommentItem = ({ comment, isReply }: { comment: Comment; isReply?: boolean }) => {
     const isOwner = currentUser?.id === comment.user_id;
+    const isEditing = editingId === comment.id;
     const replies = getReplies(comment.id);
 
     return (
@@ -124,7 +153,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-sym)' }}>{comment.username}</span>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{formatTime(comment.created_at)}</span>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             {!isReply && (
               <button
                 onClick={() => {
@@ -136,19 +165,44 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
                 Reply
               </button>
             )}
-            {isOwner && (
-              <button
-                onClick={() => handleDelete(comment.id)}
-                style={{ background: 'none', border: 'none', color: 'var(--accent-alert)', cursor: 'pointer', padding: 0, display: 'flex' }}
-              >
-                <IconTrash size={14} />
-              </button>
+            {isOwner && !isEditing && (
+              <>
+                <button
+                  onClick={() => { setEditingId(comment.id); setEditText(comment.content); }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                >
+                  <IconEdit size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(comment.id)}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-alert)', cursor: 'pointer', padding: 0, display: 'flex' }}
+                >
+                  <IconTrash size={14} />
+                </button>
+              </>
             )}
           </div>
         </div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-          {comment.content}
-        </div>
+        {isEditing ? (
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input
+              value={editText}
+              onChange={e => setEditText(e.target.value)}
+              style={{
+                flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid var(--accent-sym)',
+                borderRadius: '4px', padding: '6px 8px', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none',
+              }}
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleEdit(comment.id); } if (e.key === 'Escape') setEditingId(null); }}
+            />
+            <button onClick={() => handleEdit(comment.id)} style={{ background: 'var(--accent-sym)', border: 'none', borderRadius: '4px', padding: '4px 8px', color: '#000', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Save</button>
+            <button onClick={() => setEditingId(null)} style={{ background: 'transparent', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '4px 8px', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.75rem' }}>Cancel</button>
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-primary)', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {comment.content}
+          </div>
+        )}
         {replies.map(reply => (
           <CommentItem key={reply.id} comment={reply} isReply />
         ))}
@@ -221,9 +275,21 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({ fileId, currentUser, 
         </div>
       )}
 
-      {rootComments.map(comment => (
+      {visibleRoots.map(comment => (
         <CommentItem key={comment.id} comment={comment} />
       ))}
+      {totalPages > 1 && page < totalPages - 1 && (
+        <button
+          onClick={() => setPage(p => p + 1)}
+          style={{
+            marginTop: '8px', width: '100%', padding: '6px', background: 'rgba(255,255,255,0.04)',
+            border: '1px solid var(--border-color)', borderRadius: '4px', color: 'var(--text-secondary)',
+            cursor: 'pointer', fontSize: '0.8rem',
+          }}
+        >
+          Show more comments ({comments.length - visibleRoots.length} remaining)
+        </button>
+      )}
     </div>
   );
 };

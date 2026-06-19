@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { IconUpload, IconX, IconFile, IconCheck, IconAlertCircle, IconLock, IconFlame } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import { useToast } from '../context/ToastContext';
-import { generateKey, encryptFile, exportKey } from '../utils/crypto';
+
 
 interface UploadModalProps {
   onClose: () => void;
@@ -72,22 +72,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
     try {
       const formData = new FormData();
 
-      // Client-Side Encryption Logic
+      formData.append('file', upload.file);
       if (isEncrypted) {
-        try {
-          const key = await generateKey();
-          const { encryptedBlob, iv } = await encryptFile(upload.file, key);
-          const exportedKey = await exportKey(key);
-          formData.append('file', encryptedBlob, upload.file.name + '.enc');
-          formData.append('is_client_encrypted', 'true');
-          localStorage.setItem(`relf_key_${upload.file.name}`, exportedKey);
-          formData.append('iv', btoa(String.fromCharCode(...iv)));
-        } catch (e) {
-          setFiles(prev => prev.map(f => f.id === upload.id ? { ...f, status: 'error', error: 'Encryption failed' } : f));
-          return;
-        }
-      } else {
-        formData.append('file', upload.file);
+        formData.append('encrypt', 'true');
       }
 
       formData.append('visibility', visibility);

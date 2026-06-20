@@ -200,7 +200,7 @@ const CollectionsManager: React.FC<CollectionsManagerProps> = ({ onClose, mode =
   };
 
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 'var(--z-modal)', pointerEvents: 'auto' }} onClick={onClose}>
+    <div className="modal-overlay" data-modal="collections" role="dialog" aria-modal="true" aria-labelledby="collections-modal-title" style={{ zIndex: 'calc(var(--z-modal) + 50)', pointerEvents: 'auto' }} onClick={onClose}>
       <div className="glass-panel" style={{ width: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

@@ -44,6 +44,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div
       className="confirm-overlay fade-in"
+      data-modal="confirm"
       style={{
         position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
         background: '#000000dd', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',

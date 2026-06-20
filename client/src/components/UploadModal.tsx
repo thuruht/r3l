@@ -121,9 +121,9 @@ const UploadModal: React.FC<UploadModalProps> = ({ onClose, onUploadComplete, pa
   const allDone = files.length > 0 && files.every(f => f.status === 'success' || f.status === 'error');
 
   return (
-    <div className="preview-overlay fade-in" style={{
+    <div className="preview-overlay fade-in" data-modal="upload" style={{
       position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-      background: 'rgba(0,0,0,0.8)', zIndex: 'var(--z-modal)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+      background: 'rgba(0,0,0,0.8)', zIndex: 'calc(var(--z-modal) + 100)', display: 'flex', justifyContent: 'center', alignItems: 'center',
       backdropFilter: 'blur(5px)'
     }} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
       <div className="glass-panel" style={{

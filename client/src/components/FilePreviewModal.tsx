@@ -40,6 +40,7 @@ interface FilePreviewModalProps {
   filename: string;
   mimeType: string;
   onDownload: () => void;
+  stackIndex?: number;
 }
 
 const AudioWaveform: React.FC<{ src: string; mimeType: string }> = ({ src, mimeType }) => {
@@ -99,7 +100,7 @@ const AudioWaveform: React.FC<{ src: string; mimeType: string }> = ({ src, mimeT
   );
 };
 
-const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, currentUser, filename, mimeType, onDownload }) => {
+const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, currentUser, filename, mimeType, onDownload, stackIndex = 0 }) => {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,10 +144,11 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
 
   const { theme_preferences, updateCustomization } = useCustomization();
 
-  // Window Management
+  // Window Management — cascade each stacked preview 30px right & down
+  const cascadeOffset = stackIndex * 30;
   const { pos, size, handleDragStart, handleResizeStart, isDragging } = useDraggable({
-    initialX: windowWidth / 2 - 400,
-    initialY: Math.max(65, windowHeight / 2 - 300),
+    initialX: windowWidth / 2 - 400 + cascadeOffset,
+    initialY: Math.max(65, windowHeight / 2 - 300 + cascadeOffset),
     initialW: 800,
     initialH: 600
   });
@@ -538,7 +540,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
   return (
     <AnimatePresence>
       {fileId && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 'var(--z-modal)', pointerEvents: 'none' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: `calc(var(--z-modal) + ${stackIndex})`, pointerEvents: 'none' }}>
           <motion.div
             className="glass-panel"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -623,7 +625,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
                              display: 'flex',
                              flexDirection: 'column',
                              gap: '8px',
-                             zIndex: 'calc(var(--z-modal) + 5)',
+                             zIndex: `calc(var(--z-modal) + ${stackIndex + 5})`,
                              minWidth: '150px',
                              backdropFilter: 'blur(10px)',
                              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'

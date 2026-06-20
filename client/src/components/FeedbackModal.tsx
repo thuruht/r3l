@@ -81,6 +81,7 @@ const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
   return (
     <div
       className="modal-overlay fade-in"
+      data-modal="feedback"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

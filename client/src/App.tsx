@@ -103,9 +103,12 @@ function Main() {
   }, [isMenuOpen]);
 
   // Global Escape key — close topmost open modal
+  // Skips preview-close when a child modal (upload, confirm, feedback) is open
+  // to prevent a single Escape from closing two layers at once.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if ((e.target as HTMLElement).closest('[data-modal]')) return;
       if (previewFiles.length > 0) { setPreviewFiles(prev => prev.slice(0, -1)); return; }
       if (isSettingsOpen) { setIsSettingsOpen(false); return; }
       if (isSidebarOpen) { closeSidebar(); return; }
@@ -583,9 +586,10 @@ function Main() {
             />
           )}
 
-          {previewFiles.map(pf => (
+          {previewFiles.map((pf, idx) => (
             <FilePreviewModal
               key={pf.key}
+              stackIndex={idx}
               fileId={pf.id}
               filename={pf.filename}
               mimeType={pf.mime_type || ''}

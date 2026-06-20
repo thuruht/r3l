@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(node *)",
+      "Bash(npx vite *)",
+      "Bash(git stash *)",
+      "Bash(npx playwright *)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=/home/jojo/.cache/ms-playwright npx playwright install chromium --with-deps)",
+      "Bash(head -48 docs/terminology.md)",
+      "Read(//tmp/**)",
+      "Bash(cat)",
+      "Bash(bash /tmp/review_checks.sh)",
+      "Bash(bash /tmp/semantic_check.sh)",
+      "Bash(bash /tmp/detail_check.sh)",
+      "Bash(bash /tmp/accuracy_check.sh)",
+      "Bash(git *)",
+      "Bash(npx wrangler *)"
+    ]
+  }
+}

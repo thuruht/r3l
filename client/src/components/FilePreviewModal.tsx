@@ -31,6 +31,7 @@ import { MermaidViewer } from './MermaidViewer';
 import { ExcalidrawViewer } from './ExcalidrawViewer';
 import { ParquetViewer } from './ParquetViewer';
 import CommentsSection from './CommentsSection';
+import BookmarkButton from './BookmarkButton';
 import { useWindowSize } from '../hooks/useWindowSize';
 
 interface FilePreviewModalProps {
@@ -465,6 +466,7 @@ const FilePreviewModal: React.FC<FilePreviewModalProps> = ({ fileId, onClose, cu
         <button onClick={() => setShowCollectionSelect(true)} title="Add to Collection" aria-label="Add to Collection" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
             <IconFolderPlus size={ICON_SIZES.lg} className="chrome-icon" /> {isMobile && 'Add to Collection'}
         </button>
+        <BookmarkButton fileId={previewFiles[currentIndex]?.id || ''} isMobile={isMobile} />
         <button onClick={onDownload} title="Download" aria-label="Download" style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)', width: isMobile ? '100%' : 'auto', padding: isMobile ? 'var(--spacing-sm)' : '0' }}>
             <IconDownload size={ICON_SIZES.lg} className="chrome-icon" /> {isMobile && 'Download'}
         </button>

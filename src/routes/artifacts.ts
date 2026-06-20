@@ -221,7 +221,7 @@ artifacts.get('/:id/metadata', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
-    const file = await c.env.DB.prepare('SELECT id, filename, size, mime_type, visibility, vitality, expires_at, created_at, user_id FROM files WHERE id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT f.id, f.filename, f.size, f.mime_type, f.visibility, f.vitality, f.expires_at, f.created_at, f.user_id, u.username as owner_username FROM files f JOIN users u ON f.user_id = u.id WHERE f.id = ?').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
 
     const boosted = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();

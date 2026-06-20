@@ -5,7 +5,7 @@ import CommentsSection from './CommentsSection';
 const CommentsPage: React.FC = () => {
   const { fileId } = useParams<{ fileId: string }>();
   const navigate = useNavigate();
-  const [fileMeta, setFileMeta] = useState<{ filename: string; username: string } | null>(null);
+  const [fileMeta, setFileMeta] = useState<{ filename: string; username: string; user_id: number } | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -19,7 +19,7 @@ const CommentsPage: React.FC = () => {
         ]);
         if (metaRes.ok) {
           const meta = await metaRes.json();
-          setFileMeta({ filename: meta.filename, username: meta.owner_username || 'Unknown' });
+          setFileMeta({ filename: meta.filename, username: meta.owner_username || 'Unknown', user_id: meta.user_id });
         }
         if (authRes.ok) {
           const auth = await authRes.json();
@@ -60,7 +60,7 @@ const CommentsPage: React.FC = () => {
           <CommentsSection
             fileId={fileId!}
             currentUser={currentUser}
-            fileOwnerId={0}
+            fileOwnerId={fileMeta.user_id}
           />
         </>
       ) : (

@@ -14,6 +14,7 @@ import ResetPassword from './components/ResetPassword';
 import FilePreviewModal from './components/FilePreviewModal';
 import LandingPage from './components/LandingPage';
 import DriftHistory from './components/DriftHistory';
+import BookmarkList from './components/BookmarkList';
 import SettingsPage from './pages/SettingsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -469,6 +470,10 @@ function Main() {
                       <TablerIcons.IconBroadcast size={ICON_SIZES.lg} aria-hidden="true" />
                       <span className="nav-label">Galaxy</span>
                     </button>
+                    <button onClick={() => openTab('bookmarks')} className={`nav-button${isSidebarOpen && sidebarTab === 'bookmarks' ? ' active' : ''}`} aria-label="Bookmarks">
+                      <TablerIcons.IconBookmark size={ICON_SIZES.lg} aria-hidden="true" />
+                      <span className="nav-label">Bookmarks</span>
+                    </button>
                   </div>
                   {/* Mobile: inbox badge button */}
                   <button className="mobile-only nav-button" onClick={() => { openTab('inbox'); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
@@ -574,6 +579,7 @@ function Main() {
               </ErrorBoundary>
             )}
             {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
+            {sidebarTab === 'bookmarks' && <BookmarkList onFileSelect={openPreview} />}
           </Sidebar>
           {isArchiveOpen && <ErrorBoundary><React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense></ErrorBoundary>}
           {isCollectionsOpen && <ErrorBoundary><React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense></ErrorBoundary>}

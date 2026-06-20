@@ -31,14 +31,38 @@ admin.delete('/users/:id', async (c) => {
   const id = parseInt(c.req.param('id'));
   if (!id) return c.json({ error: 'Invalid ID' }, 400);
   try {
+    const { results: files } = await c.env.DB.prepare('SELECT r2_key FROM files WHERE user_id = ?').bind(id).all();
+    const user = await c.env.DB.prepare('SELECT avatar_url FROM users WHERE id = ?').bind(id).first() as any;
+
     await c.env.DB.batch([
       c.env.DB.prepare('DELETE FROM files WHERE user_id = ?').bind(id),
-      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(id, id),
       c.env.DB.prepare('DELETE FROM relationships WHERE source_user_id = ? OR target_user_id = ?').bind(id, id),
       c.env.DB.prepare('DELETE FROM mutual_connections WHERE user_a_id = ? OR user_b_id = ?').bind(id, id),
       c.env.DB.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').bind(id, id),
+      c.env.DB.prepare('DELETE FROM communiques WHERE user_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM group_members WHERE user_id = ?').bind(id),
+      c.env.DB.prepare(`
+        DELETE FROM groups WHERE id IN (
+          SELECT g.id FROM groups g
+          JOIN group_members gm ON g.id = gm.group_id AND gm.user_id = ? AND gm.role = 'admin'
+          WHERE (SELECT COUNT(*) FROM group_members WHERE group_id = g.id AND role = 'admin') = 1
+        )
+      `).bind(id),
+      c.env.DB.prepare('DELETE FROM group_messages WHERE sender_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM group_files WHERE shared_by = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM workspace_members WHERE user_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM workspaces WHERE owner_id = ?').bind(id),
+      c.env.DB.prepare('DELETE FROM groups WHERE creator_id = ?').bind(id),
       c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(id),
     ]);
+
+    const cleanupPromises = (files as any[]).map(f => c.env.BUCKET.delete(f.r2_key as string).catch(() => {}));
+    if (user?.avatar_url && typeof user.avatar_url === 'string' && user.avatar_url.startsWith('avatars/')) {
+      cleanupPromises.push(c.env.BUCKET.delete(user.avatar_url).catch(() => {}));
+    }
+    c.executionCtx.waitUntil(Promise.all(cleanupPromises));
+
     return c.json({ ok: true });
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

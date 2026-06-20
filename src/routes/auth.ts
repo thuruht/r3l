@@ -369,6 +369,11 @@ auth.delete('/users/me', async (c) => {
           WHERE (SELECT COUNT(*) FROM group_members WHERE group_id = g.id AND role = 'admin') = 1
         )
       `).bind(user_id),
+      c.env.DB.prepare('DELETE FROM group_messages WHERE sender_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM group_files WHERE shared_by = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM workspace_members WHERE user_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM workspaces WHERE owner_id = ?').bind(user_id),
+      c.env.DB.prepare('DELETE FROM groups WHERE creator_id = ?').bind(user_id),
       c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(user_id),
     ]);
 

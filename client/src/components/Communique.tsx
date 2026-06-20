@@ -34,6 +34,7 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
   const [relationshipStatus, setRelationshipStatus] = useState<string | null>(null); // 'none', 'following', 'sym_requested', 'incoming_sym_request', 'sym_accepted', '3space_requested', 'incoming_3space_request', '3space_accepted'
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
+  const [userNotFound, setUserNotFound] = useState(false);
   const [symFileId, setSymFileId] = useState<string>('');
   const [myFiles, setMyFiles] = useState<any[]>([]);
   const [showSymFilePicker, setShowSymFilePicker] = useState(false);
@@ -67,6 +68,10 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
               if (res.ok) {
                   const json = await res.json();
                   setTargetUser(json.user);
+                  setUserNotFound(false);
+              } else if (res.status === 404) {
+                  setTargetUser(null);
+                  setUserNotFound(true);
               }
           } catch (e) {
               console.error("Failed to fetch target user", e);
@@ -74,6 +79,11 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
       };
       fetchTargetUser();
       fetchCommunique();
+  }, [userId]);
+
+  useEffect(() => {
+    setUserNotFound(false);
+    setTargetUser(null);
   }, [userId]);
 
   // Fetch relationship status
@@ -383,6 +393,16 @@ const Communique: React.FC<CommuniqueProps> = ({ userId, onClose }) => {
             <Skeleton height="15px" width="95%" marginBottom="30px" />
             <Skeleton height="100px" />
         </div>
+    );
+  }
+
+  if (userNotFound) {
+    return (
+      <div className="communique-container" style={{ padding: '40px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.7, marginBottom: '12px' }}>COMMUNIQUE</div>
+        <h4 style={{ margin: '0 0 8px', color: 'var(--accent-alert)' }}>Signal Lost</h4>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This user no longer exists.</p>
+      </div>
     );
   }
 

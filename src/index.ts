@@ -20,6 +20,7 @@ import communiqueRoutes from './routes/communiques';
 import workspaceRoutes from './routes/workspaces';
 import collectionRoutes from './routes/collections';
 import commentRoutes from './routes/comments';
+import bookmarkRoutes from './routes/bookmarks';
 import miscRoutes from './routes/misc';
 
 import { createNotification } from './utils/notifications';
@@ -134,6 +135,7 @@ app.route('/api/communiques', communiqueRoutes);
 app.route('/api/workspaces', workspaceRoutes);
 app.route('/api/collections', collectionRoutes);
 app.route('/api/comments', commentRoutes);
+app.route('/api/bookmarks', bookmarkRoutes);
 app.route('/api', miscRoutes);
 
 // --- Drift History Routes ---

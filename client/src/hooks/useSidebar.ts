@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-export type SidebarTab = 'inbox' | 'planets' | 'galaxy' | 'history';
+export type SidebarTab = 'inbox' | 'planets' | 'galaxy' | 'history' | 'bookmarks';
 
 interface UseSidebarReturn {
   isOpen: boolean;

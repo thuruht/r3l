@@ -23,7 +23,8 @@ const CustomizationSettings: React.FC = () => {
     node_secondary_color,
     node_size,
     mistDensity: theme_preferences.mistDensity || 0.5,
-    navOpacity: theme_preferences.navOpacity || 0.8
+    navOpacity: theme_preferences.navOpacity || 0.8,
+    tabLocation: theme_preferences.tabLocation
   });
   const { isMobile } = useWindowSize();
 
@@ -37,14 +38,16 @@ const CustomizationSettings: React.FC = () => {
         prev.node_secondary_color !== node_secondary_color ||
         prev.node_size !== node_size ||
         prev.mistDensity !== (theme_preferences.mistDensity || 0.5) ||
-        prev.navOpacity !== (theme_preferences.navOpacity || 0.8)
+        prev.navOpacity !== (theme_preferences.navOpacity || 0.8) ||
+        prev.tabLocation !== theme_preferences.tabLocation
       ) {
         return {
           node_primary_color: node_primary_color.slice(0, 7),
           node_secondary_color: node_secondary_color.slice(0, 7),
           node_size,
           mistDensity: theme_preferences.mistDensity || 0.5,
-          navOpacity: theme_preferences.navOpacity || 0.8
+          navOpacity: theme_preferences.navOpacity || 0.8,
+          tabLocation: theme_preferences.tabLocation
         };
       }
       return prev;
@@ -56,7 +59,8 @@ const CustomizationSettings: React.FC = () => {
       const pColor = localState.node_primary_color.length === 7 ? localState.node_primary_color + 'ff' : localState.node_primary_color;
       const sColor = localState.node_secondary_color.length === 7 ? localState.node_secondary_color + 'ff' : localState.node_secondary_color;
       if (pColor !== node_primary_color || sColor !== node_secondary_color || localState.node_size !== node_size ||
-          localState.mistDensity !== theme_preferences.mistDensity || localState.navOpacity !== theme_preferences.navOpacity) {
+          localState.mistDensity !== theme_preferences.mistDensity || localState.navOpacity !== theme_preferences.navOpacity ||
+          localState.tabLocation !== theme_preferences.tabLocation) {
         updateCustomization({
           node_primary_color: pColor,
           node_secondary_color: sColor,
@@ -64,7 +68,8 @@ const CustomizationSettings: React.FC = () => {
           theme_preferences: {
             ...theme_preferences,
             mistDensity: localState.mistDensity,
-            navOpacity: localState.navOpacity
+            navOpacity: localState.navOpacity,
+            tabLocation: localState.tabLocation
           }
         });
       }
@@ -178,6 +183,33 @@ const CustomizationSettings: React.FC = () => {
           </label>
           <input id="mist-density-input" type="range" min="0" max="100" value={localState.mistDensity * 100}
             onChange={(e) => handleLocalChange('mistDensity', Number(e.target.value) / 100)} style={{ width: '100%' }} />
+        </div>
+
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', color: 'var(--text-secondary)' }}>TAB LOCATION</label>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              className={`btn-${localState.tabLocation === 'header' ? 'primary' : 'secondary'}`}
+              style={{ flex: 1, fontSize: '0.7rem', padding: '4px' }}
+              onClick={() => handleLocalChange('tabLocation', 'header')}
+            >
+              HEADER
+            </button>
+            <button
+              className={`btn-${localState.tabLocation === 'sidebar' ? 'primary' : 'secondary'}`}
+              style={{ flex: 1, fontSize: '0.7rem', padding: '4px' }}
+              onClick={() => handleLocalChange('tabLocation', 'sidebar')}
+            >
+              SIDEBAR
+            </button>
+            <button
+              className={`btn-${!localState.tabLocation ? 'primary' : 'secondary'}`}
+              style={{ flex: 1, fontSize: '0.7rem', padding: '4px' }}
+              onClick={() => handleLocalChange('tabLocation', undefined)}
+            >
+              BOTH
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

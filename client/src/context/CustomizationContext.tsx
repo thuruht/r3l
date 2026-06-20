@@ -7,6 +7,7 @@ interface CustomizationState {
     navOpacity?: number; // 0.0 to 1.0
     backgroundUrl?: string; // Custom image or video URL
     backgroundType?: 'video' | 'image';
+    tabLocation?: 'header' | 'sidebar';
   };
   node_primary_color: string;
   node_secondary_color: string;
@@ -61,12 +62,13 @@ export const CustomizationProvider: React.FC<{ children: ReactNode }> = ({ child
       // Strict Sanitization to prevent SQLITE_TOOBIG
       let themePrefsStr = undefined;
       if (updates.theme_preferences) {
-          const cleanPreferences = {
-              mistDensity: updates.theme_preferences.mistDensity,
-              navOpacity: updates.theme_preferences.navOpacity,
-              backgroundUrl: updates.theme_preferences.backgroundUrl,
-              backgroundType: updates.theme_preferences.backgroundType
-          };
+      const cleanPreferences = {
+          mistDensity: updates.theme_preferences.mistDensity,
+          navOpacity: updates.theme_preferences.navOpacity,
+          backgroundUrl: updates.theme_preferences.backgroundUrl,
+          backgroundType: updates.theme_preferences.backgroundType,
+          tabLocation: updates.theme_preferences.tabLocation
+      };
           themePrefsStr = JSON.stringify(cleanPreferences);
       }
 

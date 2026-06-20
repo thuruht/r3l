@@ -31,7 +31,8 @@ const WorkspacesManager = React.lazy(() => import('./components/WorkspacesManage
 const FeedbackModal = React.lazy(() => import('./components/FeedbackModal'));
 const GlobalChat = React.lazy(() => import('./components/GlobalChat'));
 const ArchiveVote = React.lazy(() => import('./components/ArchiveVote'));
-import { CustomizationProvider } from './context/CustomizationContext';
+import { CustomizationProvider, useCustomization } from './context/CustomizationContext';
+import { TAB_CONFIG } from './constants/navigationTabs';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { useNetworkData } from './hooks/useNetworkData';
 import { SearchBar, RandomUserButton } from './components/UserDiscovery';
@@ -128,6 +129,8 @@ function Main() {
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
+  const { theme_preferences } = useCustomization();
+  const showHeaderTabs = theme_preferences.tabLocation !== 'sidebar';
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -422,7 +425,7 @@ function Main() {
           <div className="header glass-panel" style={{ background: 'var(--header-bg-transparent)' }}>
             <div className="header-content">
               <div className="header-left">
-                <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Ephemeral Filenet">
+                <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Relativity &amp; Random Ephemerality File-net">
                   <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, letterSpacing: '0.02em' }}>
                     R<span style={{ color: 'var(--accent-sym)' }}>3</span>L<span style={{ color: 'var(--accent-sym)', fontSize: '0.75em', verticalAlign: '-0.07em' }}>:</span>F
                   </span>
@@ -457,24 +460,22 @@ function Main() {
                         </button>
                       )}
                     </div>
-                    <button onClick={() => { openTab('inbox'); setUnreadCount(0); }} className={`nav-button${isSidebarOpen && sidebarTab === 'inbox' ? ' active' : ''}`} aria-label={`Inbox${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}>
-                      <TablerIcons.IconMailbox size={ICON_SIZES.lg} aria-hidden="true" />
-                      <span className="nav-label">Mail</span>
-                      {unreadCount > 0 && <span className="unread-badge">{unreadCount}</span>}
-                    </button>
-                    <button onClick={() => { openTab('planets'); }} className={`nav-button${isSidebarOpen && sidebarTab === 'planets' ? ' active' : ''}`} aria-label="Groups">
-                      <TablerIcons.IconUsersGroup size={ICON_SIZES.lg} aria-hidden="true" />
-                      <span className="nav-label">Groups</span>
-                      {groupUnreadCount > 0 && <span className="unread-badge">{groupUnreadCount}</span>}
-                    </button>
-                    <button onClick={() => openTab('galaxy')} className={`nav-button${isSidebarOpen && sidebarTab === 'galaxy' ? ' active' : ''}`} aria-label="Global Chat">
-                      <TablerIcons.IconBroadcast size={ICON_SIZES.lg} aria-hidden="true" />
-                      <span className="nav-label">Galaxy</span>
-                    </button>
-                    <button onClick={() => openTab('bookmarks')} className={`nav-button${isSidebarOpen && sidebarTab === 'bookmarks' ? ' active' : ''}`} aria-label="Bookmarks">
-                      <TablerIcons.IconBookmark size={ICON_SIZES.lg} aria-hidden="true" />
-                      <span className="nav-label">Bookmarks</span>
-                    </button>
+                    {showHeaderTabs && (['inbox', 'planets', 'galaxy', 'bookmarks'] as const).map((tab) => {
+                      const { label, Icon } = TAB_CONFIG[tab];
+                      const badgeCount = tab === 'inbox' ? unreadCount : tab === 'planets' ? groupUnreadCount : 0;
+                      return (
+                        <button
+                          key={tab}
+                          onClick={() => { if (tab === 'inbox') setUnreadCount(0); openTab(tab); }}
+                          className={`nav-button${isSidebarOpen && sidebarTab === tab ? ' active' : ''}`}
+                          aria-label={`${label}${badgeCount > 0 ? `, ${badgeCount} unread` : ''}`}
+                        >
+                          <Icon size={ICON_SIZES.lg} aria-hidden="true" />
+                          <span className="nav-label">{label}</span>
+                          {badgeCount > 0 && <span className="unread-badge">{badgeCount}</span>}
+                        </button>
+                      );
+                    })}
                   </div>
                   {/* Mobile: inbox badge button */}
                   <button className="mobile-only nav-button" onClick={() => { openTab('inbox'); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
@@ -561,6 +562,7 @@ function Main() {
             }}
             onClose={closeSidebar}
             unreadCounts={{ inbox: unreadCount, planets: groupUnreadCount }}
+            tabLocation={theme_preferences.tabLocation}
           >
             {sidebarTab === 'inbox' && (
               <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />

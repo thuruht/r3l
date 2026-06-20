@@ -240,7 +240,7 @@ const LandingPage: React.FC<LandingPageProps> = ({
               fontFamily: "'IBM Plex Mono', monospace",
               fontSize: 'clamp(8px,0.85vw,10px)', color: '#3d4455',
               letterSpacing: '.26em', textTransform: 'uppercase', whiteSpace: 'nowrap',
-            }}>Relational Ephemeral Filenet</div>
+            }}>Relational Relativity &amp; Random Ephemerality File-net</div>
             <div style={{ height: '1px', width: '32px', background: '#1c2035', flexShrink: 0 }} />
           </div>
 

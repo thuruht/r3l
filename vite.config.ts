@@ -16,7 +16,7 @@ export default defineConfig({
       manifest: {
         name: 'Rel F',
         short_name: 'Rel F',
-        description: 'Relational Ephemeral Filenet. Drift in the mist.',
+        description: 'Relational Relativity & Random Ephemerality File-net. Drift in the mist.',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',

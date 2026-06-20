@@ -12,7 +12,7 @@ discovery.get('/drift', async (c) => {
     try {
         const userCount = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users WHERE id != ? AND is_lurking = 0').bind(user_id).first('count') as number;
 
-        let fileSql = 'SELECT COUNT(*) as count FROM files WHERE visibility = "public" AND user_id != ?';
+        let fileSql = 'SELECT COUNT(*) as count FROM files WHERE visibility = "public" AND user_id != ? AND deleted_at IS NULL';
         let fileCountParams: any[] = [user_id];
         if (type === 'image') { fileSql += ' AND mime_type LIKE "image/%"'; }
         else if (type === 'audio') { fileSql += ' AND mime_type LIKE "audio/%"'; }
@@ -27,7 +27,7 @@ discovery.get('/drift', async (c) => {
             'SELECT id, username, avatar_url FROM users WHERE id != ? AND is_lurking = 0 LIMIT 10 OFFSET ?'
         ).bind(user_id, userOffset).all();
 
-        let fileQuery = 'SELECT f.id, f.filename, f.mime_type, f.user_id, u.username as owner_username FROM files f JOIN users u ON f.user_id = u.id WHERE f.visibility = "public" AND f.user_id != ?';
+        let fileQuery = 'SELECT f.id, f.filename, f.mime_type, f.user_id, u.username as owner_username FROM files f JOIN users u ON f.user_id = u.id WHERE f.visibility = "public" AND f.user_id != ? AND f.deleted_at IS NULL';
         let fileParams: any[] = [user_id];
         if (type === 'image') { fileQuery += ' AND f.mime_type LIKE "image/%"'; }
         else if (type === 'audio') { fileQuery += ' AND f.mime_type LIKE "audio/%"'; }

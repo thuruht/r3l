@@ -16,7 +16,7 @@ artifacts.get('/community-archived', async (c) => {
 
   let query = `SELECT f.id, f.filename, f.mime_type, f.archive_votes, u.username as owner_name
                FROM files f JOIN users u ON f.user_id = u.id
-               WHERE f.is_community_archived = 1 AND f.is_archived = 1`;
+               WHERE f.is_community_archived = 1 AND f.is_archived = 1 AND f.deleted_at IS NULL`;
   const params: any[] = [];
   if (type) {
     query += ' AND f.mime_type LIKE ?';
@@ -47,13 +47,13 @@ artifacts.get('/', async (c) => {
 
     const { results } = await c.env.DB.prepare(
       `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-       FROM files f WHERE f.user_id = ? AND f.is_archived = 0${searchClause} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
+       FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.deleted_at IS NULL${searchClause} ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
     ).bind(...params, limit, offset).all();
 
     const countParams = [user_id];
     if (q) countParams.push(searchParam);
     const total = await c.env.DB.prepare(
-      `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0${searchClause}`
+      `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND deleted_at IS NULL${searchClause}`
     ).bind(...countParams).first('count');
 
     return c.json({ files: results, total, limit, offset });
@@ -75,11 +75,11 @@ artifacts.get('/users/:target_user_id', async (c) => {
     if (user_id === target_user_id) {
         const { results } = await c.env.DB.prepare(
           `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-           FROM files f WHERE f.user_id = ? AND f.is_archived = 0 ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
+           FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.deleted_at IS NULL ORDER BY f.created_at DESC LIMIT ? OFFSET ?`
         ).bind(user_id, user_id, limit, offset).all();
 
         const total = await c.env.DB.prepare(
-          'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0'
+          'SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND deleted_at IS NULL'
         ).bind(user_id).first('count');
 
         return c.json({ files: results, total, limit, offset });
@@ -98,8 +98,8 @@ artifacts.get('/users/:target_user_id', async (c) => {
     if (is3space) visibilities.push('"3space"');
 
     let query = `SELECT f.*, (SELECT COUNT(*) FROM vitality_votes WHERE file_id = f.id AND user_id = ?) > 0 as is_boosted
-                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.visibility IN (${visibilities.join(',')})`;
-    let countQuery = `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND visibility IN (${visibilities.join(',')})`;
+                 FROM files f WHERE f.user_id = ? AND f.is_archived = 0 AND f.deleted_at IS NULL AND f.visibility IN (${visibilities.join(',')})`;
+    let countQuery = `SELECT COUNT(*) as count FROM files WHERE user_id = ? AND is_archived = 0 AND deleted_at IS NULL AND visibility IN (${visibilities.join(',')})`;
 
     const { results } = await c.env.DB.prepare(query + ' ORDER BY f.created_at DESC LIMIT ? OFFSET ?').bind(user_id, target_user_id, limit, offset).all();
     const total = await c.env.DB.prepare(countQuery).bind(target_user_id).first('count');
@@ -177,7 +177,7 @@ artifacts.put('/:id/metadata', async (c) => {
   const VALID_VISIBILITIES = ['public', 'sym', 'me', '3space'];
   if (!visibility || !VALID_VISIBILITIES.includes(visibility)) return c.json({ error: 'Invalid visibility' }, 400);
   try {
-    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT user_id FROM files WHERE id = ? AND deleted_at IS NULL').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
     if (file.user_id !== user_id) return c.json({ error: 'Unauthorized' }, 403);
     await c.env.DB.prepare('UPDATE files SET visibility = ? WHERE id = ?').bind(visibility, file_id).run();
@@ -193,7 +193,7 @@ artifacts.post('/:id/archive-vote', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
-    const file = await c.env.DB.prepare('SELECT id, archive_votes, is_archived FROM files WHERE id = ? AND visibility = "public"').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT id, archive_votes, is_archived FROM files WHERE id = ? AND visibility = "public" AND deleted_at IS NULL').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
     if (file.is_archived) return c.json({ error: 'Already archived' }, 409);
 
@@ -221,7 +221,7 @@ artifacts.get('/:id/metadata', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
-    const file = await c.env.DB.prepare('SELECT f.id, f.filename, f.size, f.mime_type, f.visibility, f.vitality, f.expires_at, f.created_at, f.user_id, u.username as owner_username FROM files f JOIN users u ON f.user_id = u.id WHERE f.id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT f.id, f.filename, f.size, f.mime_type, f.visibility, f.vitality, f.expires_at, f.created_at, f.user_id, u.username as owner_username FROM files f JOIN users u ON f.user_id = u.id WHERE f.id = ? AND f.deleted_at IS NULL').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
 
     const boosted = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
@@ -252,7 +252,7 @@ artifacts.get('/:id/content', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
-    const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'Not found' }, 404);
     if (file.expires_at && new Date(file.expires_at) < new Date()) return c.json({ error: 'Expired' }, 410);
 
@@ -340,7 +340,7 @@ artifacts.put('/:id/content', async (c) => {
   const file_id = Number(c.req.param('id'));
   const { content } = await c.req.json();
   try {
-    const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND user_id = ?').bind(file_id, user_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND user_id = ? AND deleted_at IS NULL').bind(file_id, user_id).first() as any;
     if (!file) return c.json({ error: 'Not found or unauthorized' }, 404);
     await c.env.BUCKET.put(file.r2_key, content, { httpMetadata: { contentType: file.mime_type } });
     const byteSize = new TextEncoder().encode(content).length;
@@ -358,7 +358,7 @@ artifacts.post('/:id/refresh', async (c) => {
   const file_id = Number(c.req.param('id'));
   const new_expires = new Date(Date.now() + 168 * 60 * 60 * 1000).toISOString();
   try {
-    const { success } = await c.env.DB.prepare('UPDATE files SET expires_at = ? WHERE id = ? AND user_id = ?').bind(new_expires, file_id, user_id).run();
+    const { success } = await c.env.DB.prepare('UPDATE files SET expires_at = ? WHERE id = ? AND user_id = ? AND deleted_at IS NULL').bind(new_expires, file_id, user_id).run();
     return success ? c.json({ message: 'Refreshed', expires_at: new_expires }) : c.json({ error: 'Failed' }, 403);
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
@@ -373,7 +373,7 @@ artifacts.post('/:id/vitality', async (c) => {
     const existing = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
     if (existing) return c.json({ error: 'Already boosted' }, 409);
     
-    const file = await c.env.DB.prepare('SELECT vitality, user_id, filename FROM files WHERE id = ?').bind(file_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT vitality, user_id, filename FROM files WHERE id = ? AND deleted_at IS NULL').bind(file_id).first() as any;
     if (!file) return c.json({ error: 'File not found' }, 404);
 
     const stmts = [
@@ -412,7 +412,7 @@ artifacts.post('/:id/share', async (c) => {
 
   try {
     // Verify file exists and user has access
-    const file = await c.env.DB.prepare('SELECT id, filename FROM files WHERE id = ? AND (user_id = ? OR visibility = "public" OR visibility = "sym")').bind(file_id, user_id).first() as any;
+    const file = await c.env.DB.prepare('SELECT id, filename FROM files WHERE id = ? AND deleted_at IS NULL AND (user_id = ? OR visibility = "public" OR visibility = "sym")').bind(file_id, user_id).first() as any;
     if (!file) return c.json({ error: 'File not found or access denied' }, 404);
 
     // Create notification for target user
@@ -429,7 +429,7 @@ artifacts.post('/:id/remix', async (c) => {
   const user_id = c.get('user_id');
   const source_id = Number(c.req.param('id'));
   try {
-    const source = await c.env.DB.prepare('SELECT * FROM files WHERE id = ?').bind(source_id).first() as any;
+    const source = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL').bind(source_id).first() as any;
     if (!source) return c.json({ error: 'Not found' }, 404);
     const object = await c.env.BUCKET.get(source.r2_key);
     if (!object) return c.json({ error: 'Missing content' }, 404);
@@ -446,23 +446,49 @@ artifacts.post('/:id/archive', async (c) => {
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
   try {
-    const { success } = await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ? AND user_id = ?').bind(file_id, user_id).run();
+    const { success } = await c.env.DB.prepare('UPDATE files SET is_archived = 1 WHERE id = ? AND user_id = ? AND deleted_at IS NULL').bind(file_id, user_id).run();
     return success ? c.json({ message: 'Archived' }) : c.json({ error: 'Failed' }, 403);
   } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 
-// DELETE /api/files/:id
+// DELETE /api/files/:id (soft-delete, 24h grace)
 artifacts.delete('/:id', async (c) => {
     const user_id = c.get('user_id');
     const file_id = Number(c.req.param('id'));
     try {
-        const file = await c.env.DB.prepare('SELECT r2_key FROM files WHERE id = ? AND user_id = ?').bind(file_id, user_id).first() as any;
-        if (file) {
-            await c.env.BUCKET.delete(file.r2_key);
-            await c.env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file_id).run();
+        const { success } = await c.env.DB.prepare(
+            'UPDATE files SET deleted_at = datetime(\'now\') WHERE id = ? AND user_id = ? AND deleted_at IS NULL'
+        ).bind(file_id, user_id).run();
+        if (success) {
             return c.json({ message: 'Deleted' });
         }
         return c.json({ error: 'Not found' }, 404);
+    } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+// POST /api/files/:id/restore (undo soft-delete)
+artifacts.post('/:id/restore', async (c) => {
+    const user_id = c.get('user_id');
+    const file_id = Number(c.req.param('id'));
+    try {
+        const { success } = await c.env.DB.prepare(
+            'UPDATE files SET deleted_at = NULL WHERE id = ? AND user_id = ? AND deleted_at IS NOT NULL'
+        ).bind(file_id, user_id).run();
+        if (success) {
+            return c.json({ message: 'Restored' });
+        }
+        return c.json({ error: 'Not found' }, 404);
+    } catch (e) { return c.json({ error: 'Failed' }, 500); }
+});
+
+// GET /api/files/trash (recently soft-deleted files)
+artifacts.get('/trash', async (c) => {
+    const user_id = c.get('user_id');
+    try {
+        const { results } = await c.env.DB.prepare(
+            'SELECT id, filename, mime_type, size, deleted_at FROM files WHERE user_id = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC'
+        ).bind(user_id).all();
+        return c.json({ files: results });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });
 

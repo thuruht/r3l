@@ -15,6 +15,7 @@ import FilePreviewModal from './components/FilePreviewModal';
 import LandingPage from './components/LandingPage';
 import DriftHistory from './components/DriftHistory';
 import BookmarkList from './components/BookmarkList';
+import TrashList from './components/TrashList';
 import SettingsPage from './pages/SettingsPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -580,6 +581,7 @@ function Main() {
             )}
             {sidebarTab === 'history' && <DriftHistory onFileSelect={openPreview} />}
             {sidebarTab === 'bookmarks' && <BookmarkList onFileSelect={openPreview} />}
+            {sidebarTab === 'trash' && <TrashList onFileSelect={openPreview} />}
           </Sidebar>
           {isArchiveOpen && <ErrorBoundary><React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense></ErrorBoundary>}
           {isCollectionsOpen && <ErrorBoundary><React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense></ErrorBoundary>}

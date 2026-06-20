@@ -101,7 +101,7 @@ workspaces.get('/:id/files', async (c) => {
   if (!membership) return c.json({ error: 'Unauthorized' }, 403);
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT * FROM files WHERE workspace_id = ?'
+      'SELECT * FROM files WHERE workspace_id = ? AND deleted_at IS NULL'
     ).bind(workspace_id).all();
     return c.json({ files: results });
   } catch (e) {

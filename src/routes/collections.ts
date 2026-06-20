@@ -93,7 +93,7 @@ collections.get('/:id', async (c) => {
         `SELECT f.*, cf.file_order
          FROM files f
          JOIN collection_files cf ON f.id = cf.file_id
-         WHERE cf.collection_id = ?
+         WHERE cf.collection_id = ? AND f.deleted_at IS NULL
          ORDER BY cf.file_order ASC`
     ).bind(collection_id).all();
 
@@ -208,7 +208,7 @@ collections.get('/:id/zip', async (c) => {
     const { results: files } = await c.env.DB.prepare(
         `SELECT f.* FROM files f
          JOIN collection_files cf ON f.id = cf.file_id
-         WHERE cf.collection_id = ?
+         WHERE cf.collection_id = ? AND f.deleted_at IS NULL
          ORDER BY cf.file_order ASC`
     ).bind(collection_id).all();
 

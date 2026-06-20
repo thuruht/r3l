@@ -207,6 +207,16 @@ export default {
         await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
       }
 
+      // Purge soft-deleted files past 24h grace period
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { results: trashed } = await env.DB.prepare(
+        'SELECT id, r2_key FROM files WHERE deleted_at IS NOT NULL AND deleted_at < ?'
+      ).bind(cutoff).all();
+      for (const file of trashed) {
+        if (file.r2_key) await env.BUCKET.delete(file.r2_key as string);
+        await env.DB.prepare('DELETE FROM files WHERE id = ?').bind(file.id).run();
+      }
+
       // Organic Resonance: Find users who boosted the same files recently
       const { results: resonances } = await env.DB.prepare(`
         SELECT v1.user_id as user_a, v2.user_id as user_b, f.filename

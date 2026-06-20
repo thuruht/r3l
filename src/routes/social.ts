@@ -343,7 +343,7 @@ social.get('/groups/:id/files', async (c) => {
     const membership = await checkGroupMember(c.env.DB, group_id, user_id);
     if (!membership) return c.json({ error: 'Unauthorized' }, 403);
     try {
-        const { results } = await c.env.DB.prepare('SELECT f.id, f.filename, f.mime_type, gf.can_edit FROM files f JOIN group_files gf ON f.id = gf.file_id WHERE gf.group_id = ?').bind(group_id).all();
+        const { results } = await c.env.DB.prepare('SELECT f.id, f.filename, f.mime_type, gf.can_edit FROM files f JOIN group_files gf ON f.id = gf.file_id WHERE gf.group_id = ? AND f.deleted_at IS NULL').bind(group_id).all();
         return c.json({ files: results });
     } catch (e) { return c.json({ error: 'Failed' }, 500); }
 });

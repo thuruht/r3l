@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX, IconMailbox, IconUsersGroup, IconBroadcast, IconHistory, IconBookmark } from '@tabler/icons-react';
+import { IconX, IconMailbox, IconUsersGroup, IconBroadcast, IconHistory, IconBookmark, IconTrash } from '@tabler/icons-react';
 import { ICON_SIZES } from '@/constants/iconSizes';
 import type { SidebarTab } from '@/hooks/useSidebar';
 import '@/styles/Sidebar.css';
@@ -19,6 +19,7 @@ const TAB_CONFIG: Record<SidebarTab, { label: string; Icon: React.ComponentType<
   galaxy: { label: 'Galaxy', Icon: IconBroadcast },
   history: { label: 'History', Icon: IconHistory },
   bookmarks: { label: 'Bookmarks', Icon: IconBookmark },
+  trash: { label: 'Trash', Icon: IconTrash },
 };
 
 const Sidebar: React.FC<SidebarProps> = ({

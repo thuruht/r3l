@@ -495,12 +495,7 @@ function Main() {
                     </button>
                   </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span className="menu-label">Drift:</span>
-                  <button onClick={() => { toggleDrift(); setIsMenuOpen(false); }} className={isDrifting ? 'active' : ''} style={{ padding: 'var(--spacing-xs)' }}>
-                    <TablerIcons.IconRadar2 size={ICON_SIZES.lg} />
-                  </button>
-                </div>
+
               </div>
               <button onClick={() => { navigate(`/communique/${currentUser?.id}`); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconUser size={ICON_SIZES.lg} /> My COMMUNIQUE
@@ -514,15 +509,7 @@ function Main() {
               <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconBriefcase size={ICON_SIZES.lg} /> Workspaces
               </button>
-              <button onClick={() => { openTab('inbox'); setUnreadCount(0); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconMailbox size={ICON_SIZES.lg} /> Mail {unreadCount > 0 && <span className="menu-badge">{unreadCount}</span>}
-              </button>
-              <button onClick={() => { openTab('planets'); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconUsersGroup size={ICON_SIZES.lg} /> Groups {groupUnreadCount > 0 && <span className="menu-badge">{groupUnreadCount}</span>}
-              </button>
-              <button onClick={() => { openTab('galaxy'); setIsMenuOpen(false); }} className="menu-item">
-                <TablerIcons.IconBroadcast size={ICON_SIZES.lg} /> Galaxy
-              </button>
+
               <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
                 <TablerIcons.IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
               </button>

@@ -268,5 +268,37 @@ export const migrations = [
       "CREATE INDEX IF NOT EXISTS idx_comments_file_id ON comments(file_id, created_at)",
       "CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id)"
     ]
+  },
+  {
+    "name": "0032_fix_fk_references.sql",
+    "queries": [
+      "CREATE TABLE IF NOT EXISTS vitality_votes_new (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    file_id INTEGER NOT NULL,\n    user_id INTEGER NOT NULL,\n    voted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,\n    UNIQUE(file_id, user_id)\n)",
+      "INSERT OR IGNORE INTO vitality_votes_new SELECT * FROM vitality_votes",
+      "DROP TABLE vitality_votes",
+      "ALTER TABLE vitality_votes_new RENAME TO vitality_votes",
+      "CREATE INDEX IF NOT EXISTS idx_vitality_votes_file ON vitality_votes(file_id)",
+      "CREATE TABLE IF NOT EXISTS archive_votes_new (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    file_id INTEGER NOT NULL,\n    user_id INTEGER NOT NULL,\n    vote_weight INTEGER DEFAULT 1,\n    voted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,\n    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,\n    UNIQUE(file_id, user_id)\n)",
+      "INSERT OR IGNORE INTO archive_votes_new SELECT * FROM archive_votes",
+      "DROP TABLE archive_votes",
+      "ALTER TABLE archive_votes_new RENAME TO archive_votes",
+      "CREATE INDEX IF NOT EXISTS idx_archive_votes_file ON archive_votes(file_id)",
+      "CREATE TABLE IF NOT EXISTS file_keys_new (\n  id INTEGER PRIMARY KEY AUTOINCREMENT,\n  file_id INTEGER NOT NULL,\n  user_id INTEGER NOT NULL,\n  encrypted_key TEXT NOT NULL,\n  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,\n  FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,\n  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,\n  UNIQUE(file_id, user_id)\n)",
+      "INSERT OR IGNORE INTO file_keys_new SELECT * FROM file_keys",
+      "DROP TABLE file_keys",
+      "ALTER TABLE file_keys_new RENAME TO file_keys",
+      "CREATE INDEX IF NOT EXISTS idx_file_keys_file_user ON file_keys(file_id, user_id)",
+      "CREATE TABLE IF NOT EXISTS collection_files_new (\n    collection_id INTEGER NOT NULL,\n    file_id INTEGER NOT NULL,\n    file_order INTEGER NOT NULL,\n    PRIMARY KEY (collection_id, file_id),\n    FOREIGN KEY (collection_id) REFERENCES collections(id) ON DELETE CASCADE,\n    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE\n)",
+      "INSERT OR IGNORE INTO collection_files_new SELECT * FROM collection_files",
+      "DROP TABLE collection_files",
+      "ALTER TABLE collection_files_new RENAME TO collection_files",
+      "CREATE INDEX IF NOT EXISTS idx_collection_files_collection_id ON collection_files (collection_id)",
+      "CREATE INDEX IF NOT EXISTS idx_collection_files_file_id ON collection_files (file_id)",
+      "CREATE TABLE IF NOT EXISTS group_files_new (\n    id INTEGER PRIMARY KEY AUTOINCREMENT,\n    group_id INTEGER NOT NULL,\n    file_id INTEGER NOT NULL,\n    shared_by INTEGER NOT NULL,\n    can_edit INTEGER DEFAULT 0,\n    shared_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\n    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,\n    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,\n    FOREIGN KEY (shared_by) REFERENCES users(id),\n    UNIQUE(group_id, file_id)\n)",
+      "INSERT OR IGNORE INTO group_files_new SELECT * FROM group_files",
+      "DROP TABLE group_files",
+      "ALTER TABLE group_files_new RENAME TO group_files",
+      "CREATE INDEX IF NOT EXISTS idx_group_files_group ON group_files(group_id)",
+      "CREATE INDEX IF NOT EXISTS idx_group_files_file ON group_files(file_id)"
+    ]
   }
 ];

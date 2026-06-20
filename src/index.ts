@@ -136,14 +136,6 @@ app.route('/api/collections', collectionRoutes);
 app.route('/api/comments', commentRoutes);
 app.route('/api', miscRoutes);
 
-// Static Assets
-app.all('*', (c) => {
-  const url = new URL(c.req.url);
-  if (url.pathname.startsWith('/api/')) return c.json({ error: 'Not Found' }, 404);
-  return c.env.ASSETS.fetch(c.req.raw);
-});
-
-
 // --- Drift History Routes ---
 app.get('/api/history', authMiddleware, async (c) => {
   const user_id = c.get('user_id');
@@ -185,6 +177,13 @@ app.post('/api/history', authMiddleware, async (c) => {
   } catch(e) {
     return c.json({ error: 'Failed to update history' }, 500);
   }
+});
+
+// Static Assets (catch-all — must be last)
+app.all('*', (c) => {
+  const url = new URL(c.req.url);
+  if (url.pathname.startsWith('/api/')) return c.json({ error: 'Not Found' }, 404);
+  return c.env.ASSETS.fetch(c.req.raw);
 });
 
 export default {

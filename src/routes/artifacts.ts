@@ -271,16 +271,6 @@ artifacts.get('/:id/content', async (c) => {
       }
     }
 
-    // Redirect public, non-encrypted, non-burn files directly to R2 public URL
-    // for optimal streaming — bypasses the 128MB Worker memory limit entirely.
-    if (file.visibility === 'public' && !file.is_encrypted && !file.burn_on_read && c.env.R2_PUBLIC_DOMAIN) {
-      const publicUrl = `https://${c.env.R2_PUBLIC_DOMAIN}/${file.r2_key}`;
-      return new Response(null, {
-        status: 302,
-        headers: { Location: publicUrl },
-      });
-    }
-
     // Parse Range header for partial content requests (video seeking, audio scrubbing)
     const rangeHeader = c.req.header('Range');
     let parsedRange: { offset?: number; length?: number; suffix?: number } | undefined;
@@ -315,6 +305,12 @@ artifacts.get('/:id/content', async (c) => {
     } else {
       headers.set('Cache-Control', 'private, no-cache');
     }
+
+    // CORS headers for cross-origin access
+    headers.set('Access-Control-Allow-Origin', 'https://r3l.distorted.work');
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', '*');
+    headers.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, Content-Disposition, Cache-Control');
 
     // Burn-on-read: schedule cleanup after serving
     if (file.burn_on_read && file.user_id !== user_id) {

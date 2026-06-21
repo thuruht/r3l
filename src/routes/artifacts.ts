@@ -1,7 +1,7 @@
 // src/routes/artifacts.ts
 import { Hono } from 'hono';
 import { Env, Variables } from '../types';
-import { checkRateLimit, getR2PublicUrl } from '../utils/helpers';
+import { checkRateLimit, getR2PublicUrl, mimeTypeFromExtension, sanitizeMime } from '../utils/helpers';
 import { encryptData, decryptData } from '../utils/security';
 import { broadcastSignal, createNotification } from '../utils/notifications';
 
@@ -133,6 +133,14 @@ artifacts.post('/', async (c) => {
     const safeFilename = file.name.replace(/[^a-zA-Z0-9._-]/g, '_').substring(0, 200);
     const r2_key = `${user_id}/${crypto.randomUUID()}-${safeFilename.replace(/\//g, '_')}`;
     
+    // Sanitize MIME: browser-supplied file.type is attacker-controlled, so
+    // rewrite any browser-executable type (text/html, JS, etc.) to octet-stream.
+    // Extension fallback also goes through sanitizeMime so .html/.js files
+    // stored via the map can't produce executable Content-Type values.
+    const rawMime = file.type && file.type !== 'application/octet-stream'
+      ? file.type
+      : (mimeTypeFromExtension(safeFilename) ?? 'application/octet-stream');
+    const detectedMime = sanitizeMime(rawMime);
     let body = await file.arrayBuffer();
     let size = body.byteLength;
     let is_encrypted = 0;
@@ -148,7 +156,7 @@ artifacts.post('/', async (c) => {
     }
 
     await c.env.BUCKET.put(r2_key, body, {
-      httpMetadata: { contentType: file.type || 'application/octet-stream' },
+      httpMetadata: { contentType: detectedMime },
       customMetadata: { originalName: safeFilename, userId: String(user_id), isEncrypted: String(is_encrypted) }
     });
 
@@ -156,10 +164,10 @@ artifacts.post('/', async (c) => {
     const { success } = await c.env.DB.prepare(
       `INSERT INTO files (user_id, r2_key, filename, size, mime_type, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(user_id, r2_key, safeFilename, size, file.type || 'application/octet-stream', visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
+    ).bind(user_id, r2_key, safeFilename, size, detectedMime, visibility, expires_at, parent_id, is_encrypted, iv, burn_on_read).run();
 
     if (success && (visibility === 'public' || visibility === 'sym')) {
-        c.executionCtx.waitUntil(broadcastSignal(c.env, 'signal_file', user_id, { filename: safeFilename, mime_type: file.type, visibility }));
+        c.executionCtx.waitUntil(broadcastSignal(c.env, 'signal_file', user_id, { filename: safeFilename, mime_type: detectedMime, visibility }));
     }
 
     return c.json({ message: 'Uploaded', r2_key, expires_at });
@@ -368,7 +376,9 @@ artifacts.post('/:id/vitality', async (c) => {
   if (!await checkRateLimit(c, 'vitality', 60, 3600)) return c.json({ error: 'Too many boosts' }, 429);
   const user_id = c.get('user_id');
   const file_id = Number(c.req.param('id'));
-  const { amount } = await c.req.json().catch(() => ({ amount: 1 }));
+  const { amount: rawAmount } = await c.req.json().catch(() => ({ amount: 1 }));
+  // Clamp to [1, 24] hours — prevents negative TTL shrinkage and runaway extension.
+  const amount = Math.max(1, Math.min(24, Math.round(Number(rawAmount) || 1)));
   try {
     const existing = await c.env.DB.prepare('SELECT id FROM vitality_votes WHERE file_id = ? AND user_id = ?').bind(file_id, user_id).first();
     if (existing) return c.json({ error: 'Already boosted' }, 409);
@@ -411,13 +421,34 @@ artifacts.post('/:id/share', async (c) => {
   if (!target_user_id) return c.json({ error: 'Missing target_user_id' }, 400);
 
   try {
-    // Verify file exists and user has access
-    const file = await c.env.DB.prepare('SELECT id, filename FROM files WHERE id = ? AND deleted_at IS NULL AND (user_id = ? OR visibility = "public" OR visibility = "sym")').bind(file_id, user_id).first() as any;
+    const file = await c.env.DB.prepare(
+      'SELECT id, filename, user_id, visibility FROM files WHERE id = ? AND deleted_at IS NULL'
+    ).bind(file_id).first() as any;
     if (!file) return c.json({ error: 'File not found or access denied' }, 404);
 
-    // Create notification for target user
-    await createNotification(c.env, c.env.DB, target_user_id, 'file_shared', user_id, { file_id, filename: file.filename });
+    // Verify the requester actually has access — not just that the file exists.
+    // Previously this was `OR visibility = "sym"` which let anyone share any sym
+    // file without being a mutual connection.
+    if (file.user_id !== user_id) {
+      if (file.visibility === 'me') return c.json({ error: 'Access denied' }, 403);
+      if (file.visibility === 'sym') {
+        const mutual = await c.env.DB.prepare(
+          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(
+          Math.min(user_id, file.user_id), Math.max(user_id, file.user_id),
+          Math.min(user_id, file.user_id), Math.max(user_id, file.user_id)
+        ).first();
+        if (!mutual) return c.json({ error: 'Access denied' }, 403);
+      }
+      if (file.visibility === '3space') {
+        const is3space = await c.env.DB.prepare(
+          `SELECT id FROM relationships WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?)) AND type = '3space_accepted' AND status = 'accepted'`
+        ).bind(user_id, file.user_id, file.user_id, user_id).first();
+        if (!is3space) return c.json({ error: 'Access denied' }, 403);
+      }
+    }
 
+    await createNotification(c.env, c.env.DB, target_user_id, 'file_shared', user_id, { file_id, filename: file.filename });
     return c.json({ message: 'File shared successfully' });
   } catch (e) {
     return c.json({ error: 'Failed to share file' }, 500);
@@ -431,6 +462,29 @@ artifacts.post('/:id/remix', async (c) => {
   try {
     const source = await c.env.DB.prepare('SELECT * FROM files WHERE id = ? AND deleted_at IS NULL').bind(source_id).first() as any;
     if (!source) return c.json({ error: 'Not found' }, 404);
+
+    // Enforce the same visibility rules as the content endpoint — the previous
+    // SELECT had no ownership or visibility filter, so any user could copy any
+    // file including visibility='me' and unconnected sym/3space files.
+    if (source.user_id !== user_id) {
+      if (source.visibility === 'me') return c.json({ error: 'Access denied' }, 403);
+      if (source.visibility === 'sym') {
+        const mutual = await c.env.DB.prepare(
+          'SELECT id FROM mutual_connections WHERE (user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)'
+        ).bind(
+          Math.min(user_id, source.user_id), Math.max(user_id, source.user_id),
+          Math.min(user_id, source.user_id), Math.max(user_id, source.user_id)
+        ).first();
+        if (!mutual) return c.json({ error: 'Access denied' }, 403);
+      }
+      if (source.visibility === '3space') {
+        const is3space = await c.env.DB.prepare(
+          `SELECT id FROM relationships WHERE ((source_user_id = ? AND target_user_id = ?) OR (source_user_id = ? AND target_user_id = ?)) AND type = '3space_accepted' AND status = 'accepted'`
+        ).bind(user_id, source.user_id, source.user_id, user_id).first();
+        if (!is3space) return c.json({ error: 'Access denied' }, 403);
+      }
+    }
+
     const object = await c.env.BUCKET.get(source.r2_key);
     if (!object) return c.json({ error: 'Missing content' }, 404);
     const remixFilename = `remix-${source.filename}`;

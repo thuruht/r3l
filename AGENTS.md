@@ -6,8 +6,13 @@ Cloudflare-native social network (ephemeral file sharing + D3 force graph). Hono
 
 ```bash
 npm run dev              # wrangler dev (serves both worker & Vite frontend)
+npm run typecheck        # tsc --noEmit (client/ only) — blocks deploy on errors
+npm run lint             # eslint client/src/ (advisory — 20 pre-existing warnings/errors)
+npm run lint:fix         # eslint --fix
+npm run format           # prettier --write client/src/
+npm run format:check     # prettier --check (CI use)
 npm run build:client     # Vite build (root=client/, output=client/dist/)
-npm run deploy           # build:client then wrangler deploy --minify
+npm run deploy           # typecheck → build:client → wrangler deploy --minify
 npx wrangler d1 migrations apply relf-db --local   # apply D1 migrations locally
 npx wrangler d1 migrations apply relf-db --remote  # apply to prod
 
@@ -17,7 +22,7 @@ npx vitest run --config vitest.unit.config.ts         # unit tests (src/__tests_
 npx vitest run --config vitest.integration.config.ts  # integration tests (forks pool)
 ```
 
-No CI, no linter, no formatter, no typecheck script.
+No CI, no linter, no formatter. Typecheck (`npm run typecheck`) runs before every deploy.
 
 ## Architecture
 
@@ -36,7 +41,7 @@ No CI, no linter, no formatter, no typecheck script.
 | `CHAT_ROOM` | DO (`ChatRoom`) | chat rooms |
 
 ### Auth
-JWT in HttpOnly cookie `auth_token`. `c.get('user_id')` available on protected routes. Public paths defined in `PUBLIC_PATHS` array at `src/index.ts:109` (login, register, verify-email, forgot/reset-password, `/chat/`, `/discovery/users/search`, `/discovery/users/random`, `/communiques/`). Also `GET /api/users/:id` (numeric).
+JWT in HttpOnly cookie `auth_token`. `c.get('user_id')` available on protected routes. Public paths defined in `PUBLIC_PATHS` array at `src/index.ts:110` (login, register, verify-email, forgot/reset-password, `/chat/`, `/discovery/users/random`, `/communiques/`). Also `GET /api/users/:id` (numeric). **Note:** `/discovery/users/search` is auth-required (removed from PUBLIC_PATHS in June 2026 to prevent unauthenticated username enumeration).
 
 ### Durable Objects
 All 3 DOs use **Hibernation API** (`state.acceptWebSocket` + `webSocketMessage`/`webSocketClose`). Session metadata via `ws.serializeAttachment()`. Chat room WebSocket has lighter auth (optional JWT parse, no middleware).
@@ -63,6 +68,14 @@ Tests exist in `src/__tests__/` despite CLAUDE.md saying otherwise. Uses `@cloud
 - **Terminology register**: UPPERCASE in labels/badges/buttons/headings; lowercase in prose (tooltips, empty states). See `docs/terminology.md`.
 - **Component classes**: `.btn-primary`, `.btn-secondary`, `.btn-text`, `.btn-icon`, `.modal-panel`, `.glass-panel`, `.flex-between`, `.flex-center`, `.flex-gap-md` from `client/src/styles/components.css`.
 - **Design system docs**: `client/src/DESIGN_SYSTEM.md`.
+
+## Security invariants
+
+- **Remix endpoint** (`POST /api/files/:id/remix`): enforces full visibility check (same logic as content endpoint) — must not regress to open SELECT.
+- **Share endpoint** (`POST /api/files/:id/share`): non-owners must pass a proper relationship check for sym/3space files; `OR visibility='sym'` alone is not sufficient.
+- **Vitality boost amount**: clamped to `[1, 24]` hours server-side — never pass raw user input to the datetime modifier.
+- **MIME types**: `sanitizeMime()` in `src/utils/helpers.ts` rewrites browser-executable types (text/html, application/javascript, etc.) to `application/octet-stream`. Call it on every upload MIME before storing. The extension map deliberately remaps .html/.js/.ts/.css/.py to `text/plain`.
+- **Rate limiter**: `checkRateLimit` fails open on KV error (intentional, logged at `[SECURITY]` level). KV errors will appear in production logs.
 
 ## Gotchas
 

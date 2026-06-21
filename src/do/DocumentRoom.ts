@@ -51,7 +51,7 @@ export class DocumentRoom extends DurableObject {
       if (client !== excludeWs) {
         try {
           client.send(message);
-        } catch (e) {}
+        } catch (e) { console.error('DocumentRoom broadcast send failed', e); }
       }
     });
   }

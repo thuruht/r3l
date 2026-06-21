@@ -35,15 +35,26 @@ The project has completed:
 - Sym request file attachment
 - FLARE (Burn-on-Read) backend enforcement
 - Group chat with file sharing
+- Bookmarks — Private, untracked saving
+- Comments — Threaded responses on files (backend + frontend)
+
+### Security Hardening (2026-06-20)
+- **Remix IDOR fixed** — `POST /api/files/:id/remix` now enforces full visibility/ownership check; previously any authenticated user could copy any file
+- **Share IDOR fixed** — `POST /api/files/:id/share` verifies requester has an actual relationship for sym/3space files; `OR visibility='sym'` without relationship check removed
+- **Vitality amount validated** — clamped to `[1, 24]` hours; negative values can no longer reduce a file's TTL
+- **MIME sanitization** — `sanitizeMime()` in `helpers.ts` rewrites browser-executable types to `application/octet-stream`; `.html/.js/.ts/.css/.py` extension map remapped to `text/plain`
+- **User search auth-gated** — `/api/discovery/users/search` removed from `PUBLIC_PATHS`; rate-limited to 30 req/60s
+- **Notification mark-as-read** — `comment_reply`, `file_shared`, `sym_accepted` clicks now correctly call `markAsRead`
+- **`SwipeableNotificationItem` hoisted** — moved to module scope; was previously re-mounted on every parent state change, breaking in-progress swipes
+- **Header tab config** — driven by `TAB_CONFIG.showInHeader`; no longer hardcodes 4 IDs
 
 ## 🚧 Active Backlog
 
 See **`docs/IMPROVEMENTS.md`** for the full prioritized list. Top items:
 
 1. **Threaded Comments** — Minimal responses on files
-2. **Bookmarks** — Private, untracked saving
-3. **Undo Deletion** — 24h grace period
-4. **Media Streaming** — R2-native range requests for large media
+2. **Undo Deletion** — 24h grace period
+3. **Media Streaming** — R2-native range requests for large media
 
 ## 🔑 Technical Reminders
 
@@ -51,10 +62,10 @@ See **`docs/IMPROVEMENTS.md`** for the full prioritized list. Top items:
 - **Terminology**: `docs/terminology.md` — UPPERCASE in labels, lowercase in prose
 - **Icons**: Use `@tabler/icons-react` with `ICON_SIZES` from `client/src/constants/iconSizes.ts`
 - **Mobile breakpoint**: 768px
-- **Backend routes**: `src/routes/` — 10 route modules mounted in `src/index.ts`
+- **Backend routes**: `src/routes/` — 12 route modules mounted in `src/index.ts`
 - **Durable Objects**: `RelfDO` (WebSocket/presence), `DocumentRoom` (Yjs collab), `ChatRoom` (global chat rooms)
 - **Rate limits**: drift is 20 req/600s; login/register have their own limits in `src/constants.ts`
-- **No test suite** — verification via `npm run build:client` + manual check in `npm run dev`
+- **Test suite**: `npx vitest run --config vitest.config.ts` (D1 integration), `vitest.unit.config.ts` (unit), `vitest.integration.config.ts` (integration)
 
 ---
-*Last updated: 2026-06-17 — Terminology sweep + 3SPACE + Yjs fix complete.*
+*Last updated: 2026-06-20 — Security hardening (remix/share IDOR, MIME sanitization, user search auth, vitality clamping, notification mark-as-read, SwipeableNotificationItem hoist, header tab config).*

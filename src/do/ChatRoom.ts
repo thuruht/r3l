@@ -122,7 +122,7 @@ export class ChatRoom extends DurableObject {
     const msg = JSON.stringify(message);
     this.state.getWebSockets().forEach(ws => {
       if (ws !== exclude) {
-        try { ws.send(msg); } catch {}
+        try { ws.send(msg); } catch (e) { console.error('broadcast send failed', e); }
       }
     });
   }

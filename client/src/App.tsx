@@ -70,10 +70,12 @@ function Main() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [groupUnreadCount, setGroupUnreadCount] = useState(0);
   const [previewFiles, setPreviewFiles] = useState<any[]>([]);
-  let previewIdCounter = useRef(0);
+  const previewIdCounter = useRef(0);
   const [onlineUserIds, setOnlineUserIds] = useState<Set<number>>(new Set());
   const [ws, setWs] = useState<WebSocket | null>(null);
-  const [driftHistory, setDriftHistory] = useState<Array<{ id: string; name: string; type: 'user' | 'file'; mime_type?: string; timestamp: number }>>([]);
+  const [driftHistory, setDriftHistory] = useState<
+    Array<{ id: string; name: string; type: 'user' | 'file'; mime_type?: string; timestamp: number }>
+  >([]);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [isResendVerify, setIsResendVerify] = useState(false);
@@ -112,20 +114,61 @@ function Main() {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if ((e.target as HTMLElement).closest('[data-modal]')) return;
-      if (previewFiles.length > 0) { setPreviewFiles(prev => prev.slice(0, -1)); return; }
-      if (isSettingsOpen) { setIsSettingsOpen(false); return; }
-      if (isSidebarOpen) { closeSidebar(); return; }
-      if (isArchiveOpen) { setIsArchiveOpen(false); return; }
-      if (isCollectionsOpen) { setIsCollectionsOpen(false); return; }
-      if (isAdminOpen) { setIsAdminOpen(false); return; }
-      if (isFeedbackOpen) { setIsFeedbackOpen(false); return; }
-      if (isFAQOpen) { setIsFAQOpen(false); return; }
-      if (isAboutOpen) { setIsAboutOpen(false); return; }
-      if (isMenuOpen) { setIsMenuOpen(false); return; }
+      if (previewFiles.length > 0) {
+        setPreviewFiles((prev) => prev.slice(0, -1));
+        return;
+      }
+      if (isSettingsOpen) {
+        setIsSettingsOpen(false);
+        return;
+      }
+      if (isSidebarOpen) {
+        closeSidebar();
+        return;
+      }
+      if (isArchiveOpen) {
+        setIsArchiveOpen(false);
+        return;
+      }
+      if (isCollectionsOpen) {
+        setIsCollectionsOpen(false);
+        return;
+      }
+      if (isAdminOpen) {
+        setIsAdminOpen(false);
+        return;
+      }
+      if (isFeedbackOpen) {
+        setIsFeedbackOpen(false);
+        return;
+      }
+      if (isFAQOpen) {
+        setIsFAQOpen(false);
+        return;
+      }
+      if (isAboutOpen) {
+        setIsAboutOpen(false);
+        return;
+      }
+      if (isMenuOpen) {
+        setIsMenuOpen(false);
+        return;
+      }
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [previewFiles, isSettingsOpen, isSidebarOpen, isArchiveOpen, isCollectionsOpen, isAdminOpen, isFeedbackOpen, isFAQOpen, isAboutOpen, isMenuOpen]);
+  }, [
+    previewFiles,
+    isSettingsOpen,
+    isSidebarOpen,
+    isArchiveOpen,
+    isCollectionsOpen,
+    isAdminOpen,
+    isFeedbackOpen,
+    isFAQOpen,
+    isAboutOpen,
+    isMenuOpen,
+  ]);
 
   const { theme, toggleTheme } = useTheme();
   const { showToast } = useToast();
@@ -134,19 +177,22 @@ function Main() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fetchDrift = useCallback(async (type: string = '') => {
-    try {
-      const query = type ? `?type=${type}` : '';
-      const res = await fetch(`/api/discovery/drift${query}`);
-      if (res.status === 429) {
-        showToast('Drift scanning too fast — slowing down.', 'info');
-        return;
+  const fetchDrift = useCallback(
+    async (type: string = '') => {
+      try {
+        const query = type ? `?type=${type}` : '';
+        const res = await fetch(`/api/discovery/drift${query}`);
+        if (res.status === 429) {
+          showToast('Drift scanning too fast — slowing down.', 'info');
+          return;
+        }
+        if (res.ok) setDriftData(await res.json());
+      } catch (e) {
+        console.error(e);
       }
-      if (res.ok) setDriftData(await res.json());
-    } catch (e) {
-      console.error(e);
-    }
-  }, [showToast]);
+    },
+    [showToast],
+  );
 
   // Drift Auto-Refresh Interval
   useEffect(() => {
@@ -162,8 +208,12 @@ function Main() {
   }, [isDrifting, driftType, fetchDrift]);
 
   // Keep refs in sync with state (avoids stale closures in WS handler)
-  useEffect(() => { sidebarTabRef.current = sidebarTab; }, [sidebarTab]);
-  useEffect(() => { fetchDriftRef.current = fetchDrift; }, [fetchDrift]);
+  useEffect(() => {
+    sidebarTabRef.current = sidebarTab;
+  }, [sidebarTab]);
+  useEffect(() => {
+    fetchDriftRef.current = fetchDrift;
+  }, [fetchDrift]);
 
   // Debounced reconnect — uses refs for UI state to avoid dep churn
   const connectWebSocket = useCallback(() => {
@@ -188,7 +238,7 @@ function Main() {
         if (msg.type === 'presence_sync') {
           setOnlineUserIds(new Set(msg.onlineUserIds));
         } else if (msg.type === 'presence_update') {
-          setOnlineUserIds(prev => {
+          setOnlineUserIds((prev) => {
             const next = new Set(prev);
             if (msg.status === 'online') next.add(msg.userId);
             else next.delete(msg.userId);
@@ -199,15 +249,15 @@ function Main() {
             showToast(`SYSTEM ALERT: ${msg.payload?.message}`, 'error');
           } else {
             showToast(`New Notification: ${msg.notificationType}`, 'info');
-            setUnreadCount(prev => prev + 1);
+            setUnreadCount((prev) => prev + 1);
             refreshNetworkRef.current();
           }
         } else if (msg.type === 'new_message') {
           showToast(`New SYMTXT from ${msg.sender_name || `user ${msg.sender_id}`}`, 'info');
-          setUnreadCount(prev => prev + 1);
+          setUnreadCount((prev) => prev + 1);
         } else if (msg.type === 'new_group_message') {
           if (sidebarTabRef.current !== 'planets') {
-            setGroupUnreadCount(prev => prev + 1);
+            setGroupUnreadCount((prev) => prev + 1);
           }
         } else if (msg.type === 'signal_file') {
           fetchDriftRef.current();
@@ -228,19 +278,28 @@ function Main() {
   }, [showToast]);
 
   // Keep connectWebSocket ref in sync
-  useEffect(() => { connectWebSocketRef.current = connectWebSocket; }, [connectWebSocket]);
+  useEffect(() => {
+    connectWebSocketRef.current = connectWebSocket;
+  }, [connectWebSocket]);
 
   useEffect(() => {
     fetch('/api/users/me')
-      .then(res => { if (res.ok) return res.json(); throw new Error('Unauthorized'); })
-      .then(data => { setCurrentUser(data.user); setLoadingUser(false); connectWebSocketRef.current(); })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Unauthorized');
+      })
+      .then((data) => {
+        setCurrentUser(data.user);
+        setLoadingUser(false);
+        connectWebSocketRef.current();
+      })
       .catch(() => setLoadingUser(false));
 
     return () => {
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       wsRef.current?.close();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const toggleDrift = () => {
@@ -267,7 +326,9 @@ function Main() {
       showToast(data.message || 'Verification email sent.', 'success');
       setIsResendVerify(false);
       setResendEmail('');
-    } catch { showToast('Request failed', 'error'); }
+    } catch {
+      showToast('Request failed', 'error');
+    }
   };
 
   const handleForgotPassword = async (e: React.FormEvent, email: string) => {
@@ -280,7 +341,9 @@ function Main() {
       });
       const data = await res.json();
       showToast(data.message || 'Reset link sent if email exists.', 'success');
-    } catch { showToast('Request failed', 'error'); }
+    } catch {
+      showToast('Request failed', 'error');
+    }
   };
 
   const cycleDriftType = (e: React.MouseEvent) => {
@@ -292,7 +355,15 @@ function Main() {
     if (isDrifting) fetchDrift(nextType);
   };
 
-  const { nodes, links, collections, refresh: refreshNetwork, loading, hasMoreFiles, loadMore } = useNetworkData({
+  const {
+    nodes,
+    links,
+    collections,
+    refresh: refreshNetwork,
+    loading,
+    hasMoreFiles,
+    loadMore,
+  } = useNetworkData({
     currentUserId: currentUser?.id || null,
     meUsername: currentUser?.username,
     meAvatarUrl: currentUser?.avatar_url,
@@ -301,22 +372,31 @@ function Main() {
     onlineUserIds,
   });
 
-  const driftEmpty = isDrifting && !loading && driftData.users.length === 0 && driftData.files.length === 0 && (driftData.collections?.length ?? 0) === 0;
+  const driftEmpty =
+    isDrifting && !loading && driftData.users.length === 0 && driftData.files.length === 0 && (driftData.collections?.length ?? 0) === 0;
 
-  useEffect(() => { refreshNetworkRef.current = refreshNetwork; }, [refreshNetwork]);
+  useEffect(() => {
+    refreshNetworkRef.current = refreshNetwork;
+  }, [refreshNetwork]);
 
   // Track drift encounters in session history
   useEffect(() => {
     if (!isDrifting) return;
     const now = Date.now();
     const newEntries: typeof driftHistory = [
-      ...driftData.users.map(u => ({ id: `u-${u.id}`, name: u.username, type: 'user' as const, timestamp: now })),
-      ...driftData.files.map(f => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now })),
-      ...(driftData.collections || []).map(col => ({ id: `col-${col.id}`, name: col.name, type: 'file' as const, mime_type: 'collection', timestamp: now }))
+      ...driftData.users.map((u) => ({ id: `u-${u.id}`, name: u.username, type: 'user' as const, timestamp: now })),
+      ...driftData.files.map((f) => ({ id: `f-${f.id}`, name: f.filename, type: 'file' as const, mime_type: f.mime_type, timestamp: now })),
+      ...(driftData.collections || []).map((col) => ({
+        id: `col-${col.id}`,
+        name: col.name,
+        type: 'file' as const,
+        mime_type: 'collection',
+        timestamp: now,
+      })),
     ];
-    setDriftHistory(prev => {
-      const existingIds = new Set(prev.map(e => e.id));
-      const fresh = newEntries.filter(e => !existingIds.has(e.id));
+    setDriftHistory((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      const fresh = newEntries.filter((e) => !existingIds.has(e.id));
       return [...fresh, ...prev].slice(0, 50); // cap at 50
     });
   }, [driftData, isDrifting]);
@@ -328,22 +408,22 @@ function Main() {
 
   const openPreview = useCallback((fileId: number) => {
     const key = ++previewIdCounter.current;
-    setPreviewFiles(prev => [...prev, { key, id: fileId, filename: '', mime_type: '' }]);
+    setPreviewFiles((prev) => [...prev, { key, id: fileId, filename: '', mime_type: '' }]);
   }, []);
 
   const closePreview = useCallback((key: number) => {
-    setPreviewFiles(prev => prev.filter(f => f.key !== key));
+    setPreviewFiles((prev) => prev.filter((f) => f.key !== key));
   }, []);
 
   const onNodeClick = (nodeId: string) => {
     if (nodeId.startsWith('file-')) {
-      const node = nodes.find(n => n.id === nodeId);
+      const node = nodes.find((n) => n.id === nodeId);
       if (node?.data) {
         const key = ++previewIdCounter.current;
-        setPreviewFiles(prev => [...prev, { key, ...node.data }]);
+        setPreviewFiles((prev) => [...prev, { key, ...node.data }]);
       }
     } else if (nodeId.startsWith('col-')) {
-      const node = nodes.find(n => n.id === nodeId);
+      const node = nodes.find((n) => n.id === nodeId);
       if (node?.data?.user_id) navigate(`/communique/${node.data.user_id}`);
     } else if (nodeId === 'me' && currentUser) {
       navigate(`/communique/${currentUser.id}`);
@@ -364,13 +444,18 @@ function Main() {
         body: JSON.stringify({ username, password }),
       });
       const resData = await res.json();
-      if (res.ok) { setCurrentUser(resData.user); connectWebSocket(); }
-      else {
+      if (res.ok) {
+        setCurrentUser(resData.user);
+        connectWebSocket();
+      } else {
         showToast(resData.error, 'error');
         setAuthError(resData.error);
         if (resData.needs_verification) setIsResendVerify(true);
       }
-    } catch { showToast('Login failed', 'error'); setAuthError('Login failed'); }
+    } catch {
+      showToast('Login failed', 'error');
+      setAuthError('Login failed');
+    }
   };
 
   const handleRegister = async (e: React.FormEvent, data?: any) => {
@@ -392,9 +477,17 @@ function Main() {
         body: JSON.stringify({ username, password, email }),
       });
       const resData = await res.json();
-      if (res.ok) { showToast('Registration successful! Check your email.', 'success'); setIsRegistering(false); }
-      else { showToast(resData.error, 'error'); setAuthError(resData.error); }
-    } catch { showToast('Registration failed', 'error'); setAuthError('Registration failed'); }
+      if (res.ok) {
+        showToast('Registration successful! Check your email.', 'success');
+        setIsRegistering(false);
+      } else {
+        showToast(resData.error, 'error');
+        setAuthError(resData.error);
+      }
+    } catch {
+      showToast('Registration failed', 'error');
+      setAuthError('Registration failed');
+    }
   };
 
   const isAdmin = currentUser?.role === 'admin';
@@ -403,14 +496,29 @@ function Main() {
     return (
       <div className="loading-container">
         <TablerIcons.IconRadar2 size={48} className="spinner-icon" aria-hidden="true" />
-        <div style={{ marginTop: 'var(--spacing-md)', color: 'var(--text-secondary)', fontSize: 'var(--text-sm)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Establishing Uplink…</div>
+        <div
+          style={{
+            marginTop: 'var(--spacing-md)',
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--text-sm)',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+          }}
+        >
+          Establishing Uplink…
+        </div>
       </div>
     );
   }
 
   return (
     <ErrorBoundary>
-      {!currentUser && !(location.pathname.startsWith('/verify') || location.pathname.startsWith('/reset-password') || location.pathname.startsWith('/comments/')) ? (
+      {!currentUser &&
+      !(
+        location.pathname.startsWith('/verify') ||
+        location.pathname.startsWith('/reset-password') ||
+        location.pathname.startsWith('/comments/')
+      ) ? (
         <LandingPage
           onLogin={handleLogin}
           onRegister={handleRegister}
@@ -427,7 +535,8 @@ function Main() {
               <div className="header-left">
                 <h2 className="header-logo" onClick={() => navigate('/')} title="Relational Relativity &amp; Random Ephemerality File-net">
                   <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, letterSpacing: '0.02em' }}>
-                    R<span style={{ color: 'var(--accent-sym)' }}>3</span>L<span style={{ color: 'var(--accent-sym)', fontSize: '0.75em', verticalAlign: '-0.07em' }}>:</span>F
+                    R<span style={{ color: 'var(--accent-sym)' }}>3</span>L
+                    <span style={{ color: 'var(--accent-sym)', fontSize: '0.75em', verticalAlign: '-0.07em' }}>:</span>F
                   </span>
                   <span className="header-logo-beta">BETA</span>
                 </h2>
@@ -440,10 +549,24 @@ function Main() {
                 <div className="header-controls">
                   <div className="desktop-only" style={{ display: 'flex', gap: 'var(--spacing-md)' }}>
                     <div className="view-toggle">
-                      <button onClick={() => { setViewMode('graph'); navigate('/'); }} className={viewMode === 'graph' ? 'active' : ''} title="Graph View">
+                      <button
+                        onClick={() => {
+                          setViewMode('graph');
+                          navigate('/');
+                        }}
+                        className={viewMode === 'graph' ? 'active' : ''}
+                        title="Graph View"
+                      >
                         <TablerIcons.IconChartCircles size={ICON_SIZES.lg} aria-hidden="true" />
                       </button>
-                      <button onClick={() => { setViewMode('list'); navigate('/'); }} className={viewMode === 'list' ? 'active' : ''} title="List View">
+                      <button
+                        onClick={() => {
+                          setViewMode('list');
+                          navigate('/');
+                        }}
+                        className={viewMode === 'list' ? 'active' : ''}
+                        title="List View"
+                      >
                         <TablerIcons.IconList size={ICON_SIZES.lg} aria-hidden="true" />
                       </button>
                     </div>
@@ -455,35 +578,62 @@ function Main() {
                         {driftType ? driftType.toUpperCase() : 'ALL'}
                       </button>
                       {isDrifting && driftHistory.length > 0 && (
-                        <button onClick={() => openTab('history')} className={`drift-filter-btn${isSidebarOpen && sidebarTab === 'history' ? ' active' : ''}`} title="Drift History" aria-label="Drift session history">
+                        <button
+                          onClick={() => openTab('history')}
+                          className={`drift-filter-btn${isSidebarOpen && sidebarTab === 'history' ? ' active' : ''}`}
+                          title="Drift History"
+                          aria-label="Drift session history"
+                        >
                           {driftHistory.length}
                         </button>
                       )}
                     </div>
-                    {showHeaderTabs && (['inbox', 'planets', 'galaxy', 'bookmarks'] as const).map((tab) => {
-                      const { label, Icon } = TAB_CONFIG[tab];
-                      const badgeCount = tab === 'inbox' ? unreadCount : tab === 'planets' ? groupUnreadCount : 0;
-                      return (
-                        <button
-                          key={tab}
-                          onClick={() => { if (tab === 'inbox') setUnreadCount(0); openTab(tab); }}
-                          className={`nav-button${isSidebarOpen && sidebarTab === tab ? ' active' : ''}`}
-                          aria-label={`${label}${badgeCount > 0 ? `, ${badgeCount} unread` : ''}`}
-                        >
-                          <Icon size={ICON_SIZES.lg} aria-hidden="true" />
-                          <span className="nav-label">{label}</span>
-                          {badgeCount > 0 && <span className="unread-badge">{badgeCount}</span>}
-                        </button>
-                      );
-                    })}
+                    {showHeaderTabs &&
+                      (Object.entries(TAB_CONFIG) as [keyof typeof TAB_CONFIG, typeof TAB_CONFIG[keyof typeof TAB_CONFIG]][])
+                        .filter(([, def]) => def.showInHeader)
+                        .map(([tab, { label, Icon }]) => {
+                        const badgeCount = tab === 'inbox' ? unreadCount : tab === 'planets' ? groupUnreadCount : 0;
+                        return (
+                          <button
+                            key={tab}
+                            onClick={() => {
+                              if (tab === 'inbox') setUnreadCount(0);
+                              openTab(tab);
+                            }}
+                            className={`nav-button${isSidebarOpen && sidebarTab === tab ? ' active' : ''}`}
+                            aria-label={`${label}${badgeCount > 0 ? `, ${badgeCount} unread` : ''}`}
+                          >
+                            <Icon size={ICON_SIZES.lg} aria-hidden="true" />
+                            <span className="nav-label">{label}</span>
+                            {badgeCount > 0 && <span className="unread-badge">{badgeCount}</span>}
+                          </button>
+                        );
+                      })}
                   </div>
                   {/* Mobile: inbox badge button */}
-                  <button className="mobile-only nav-button" onClick={() => { openTab('inbox'); setUnreadCount(0); }} aria-label={`Inbox, ${unreadCount} unread`}>
+                  <button
+                    className="mobile-only nav-button"
+                    onClick={() => {
+                      openTab('inbox');
+                      setUnreadCount(0);
+                    }}
+                    aria-label={`Inbox, ${unreadCount} unread`}
+                  >
                     <TablerIcons.IconMessage size={ICON_SIZES.xl} aria-hidden="true" />
                     {unreadCount > 0 && <span className="unread-badge" aria-hidden="true"></span>}
                   </button>
-                  <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="nav-button" title="Menu" aria-label="Open menu" ref={menuRef as any}>
-                    {isMenuOpen ? <TablerIcons.IconX size={ICON_SIZES.xl} aria-hidden="true" /> : <TablerIcons.IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />}
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="nav-button"
+                    title="Menu"
+                    aria-label="Open menu"
+                    ref={menuRef as any}
+                  >
+                    {isMenuOpen ? (
+                      <TablerIcons.IconX size={ICON_SIZES.xl} aria-hidden="true" />
+                    ) : (
+                      <TablerIcons.IconMenu2 size={ICON_SIZES.xl} aria-hidden="true" />
+                    )}
                   </button>
                 </div>
               )}
@@ -497,46 +647,119 @@ function Main() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span className="menu-label">View Mode:</span>
                   <div className="view-toggle">
-                    <button onClick={() => { setViewMode('graph'); setIsMenuOpen(false); navigate('/'); }} className={viewMode === 'graph' ? 'active' : ''}>
+                    <button
+                      onClick={() => {
+                        setViewMode('graph');
+                        setIsMenuOpen(false);
+                        navigate('/');
+                      }}
+                      className={viewMode === 'graph' ? 'active' : ''}
+                    >
                       <TablerIcons.IconChartCircles size={ICON_SIZES.md} />
                     </button>
-                    <button onClick={() => { setViewMode('list'); setIsMenuOpen(false); navigate('/'); }} className={viewMode === 'list' ? 'active' : ''}>
+                    <button
+                      onClick={() => {
+                        setViewMode('list');
+                        setIsMenuOpen(false);
+                        navigate('/');
+                      }}
+                      className={viewMode === 'list' ? 'active' : ''}
+                    >
                       <TablerIcons.IconList size={ICON_SIZES.md} />
                     </button>
                   </div>
                 </div>
-
               </div>
-              <button onClick={() => { navigate(`/communique/${currentUser?.id}`); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  navigate(`/communique/${currentUser?.id}`);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconUser size={ICON_SIZES.lg} /> My COMMUNIQUE
               </button>
-              <button onClick={() => { setIsArchiveOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsArchiveOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconChartCircles size={ICON_SIZES.lg} /> ARCHIVE
               </button>
-              <button onClick={() => { setIsCollectionsOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsCollectionsOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconFolder size={ICON_SIZES.lg} /> Collections
               </button>
-              <button onClick={() => { setIsWorkspacesOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsWorkspacesOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconBriefcase size={ICON_SIZES.lg} /> Workspaces
               </button>
 
-              <button onClick={() => { toggleTheme(); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  toggleTheme();
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconPalette size={ICON_SIZES.lg} /> Theme: {theme.charAt(0).toUpperCase() + theme.slice(1)}
               </button>
-              <button onClick={() => { setIsSettingsOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsSettingsOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconSettings size={ICON_SIZES.lg} /> Settings
               </button>
-              <button onClick={() => { setIsFAQOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsFAQOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconHelp size={ICON_SIZES.lg} /> Help
               </button>
-              <button onClick={() => { setIsFeedbackOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsFeedbackOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconMessage size={ICON_SIZES.lg} /> Feedback
               </button>
-              <button onClick={() => { setIsAboutOpen(true); setIsMenuOpen(false); }} className="menu-item">
+              <button
+                onClick={() => {
+                  setIsAboutOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="menu-item"
+              >
                 <TablerIcons.IconInfoCircle size={ICON_SIZES.lg} /> About
               </button>
               {isAdmin && (
-                <button onClick={() => { setIsAdminOpen(true); setIsMenuOpen(false); }} className="menu-item admin">
+                <button
+                  onClick={() => {
+                    setIsAdminOpen(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="menu-item admin"
+                >
                   <TablerIcons.IconDashboard size={ICON_SIZES.lg} /> Admin
                 </button>
               )}
@@ -547,10 +770,34 @@ function Main() {
             </div>
           )}
 
-          {isFAQOpen && <ErrorBoundary><React.Suspense fallback={null}><FAQ onClose={() => setIsFAQOpen(false)} /></React.Suspense></ErrorBoundary>}
-          {isAboutOpen && <ErrorBoundary><React.Suspense fallback={null}><About onClose={() => setIsAboutOpen(false)} /></React.Suspense></ErrorBoundary>}
-          {isAdmin && isAdminOpen && <ErrorBoundary><React.Suspense fallback={null}><AdminDashboard onClose={() => setIsAdminOpen(false)} /></React.Suspense></ErrorBoundary>}
-          {isWorkspacesOpen && <ErrorBoundary><React.Suspense fallback={null}><WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isFAQOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <FAQ onClose={() => setIsFAQOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
+          {isAboutOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <About onClose={() => setIsAboutOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
+          {isAdmin && isAdminOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <AdminDashboard onClose={() => setIsAdminOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
+          {isWorkspacesOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <WorkspacesManager onClose={() => setIsWorkspacesOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
           {/* Unified Sidebar */}
           <Sidebar
             isOpen={isSidebarOpen}
@@ -565,18 +812,35 @@ function Main() {
             tabLocation={theme_preferences.tabLocation}
           >
             {sidebarTab === 'inbox' && (
-              <Inbox onClose={closeSidebar} onOpenCommunique={onNodeClick} />
+              <Inbox
+                onClose={closeSidebar}
+                onOpenCommunique={onNodeClick}
+                onOpenComments={(fileId) => navigate(`/comments/${fileId}`)}
+                onFilePreview={(file) => openPreview(file.id)}
+              />
             )}
             {sidebarTab === 'planets' && (
               <ErrorBoundary>
-                <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
+                <React.Suspense
+                  fallback={
+                    <div className="loading-container">
+                      <div className="spinner" />
+                    </div>
+                  }
+                >
                   <GroupChat onClose={closeSidebar} currentUserId={currentUser?.id ?? 0} ws={ws} />
                 </React.Suspense>
               </ErrorBoundary>
             )}
             {sidebarTab === 'galaxy' && (
               <ErrorBoundary>
-                <React.Suspense fallback={<div className="loading-container"><div className="spinner" /></div>}>
+                <React.Suspense
+                  fallback={
+                    <div className="loading-container">
+                      <div className="spinner" />
+                    </div>
+                  }
+                >
                   <GlobalChat onClose={closeSidebar} />
                 </React.Suspense>
               </ErrorBoundary>
@@ -585,15 +849,29 @@ function Main() {
             {sidebarTab === 'bookmarks' && <BookmarkList onFileSelect={openPreview} />}
             {sidebarTab === 'trash' && <TrashList onFileSelect={openPreview} />}
           </Sidebar>
-          {isArchiveOpen && <ErrorBoundary><React.Suspense fallback={null}><ArchiveVote onClose={() => setIsArchiveOpen(false)} /></React.Suspense></ErrorBoundary>}
-          {isCollectionsOpen && <ErrorBoundary><React.Suspense fallback={null}><CollectionsManager onClose={() => setIsCollectionsOpen(false)} /></React.Suspense></ErrorBoundary>}
-          {isFeedbackOpen && <ErrorBoundary><React.Suspense fallback={null}><FeedbackModal onClose={() => setIsFeedbackOpen(false)} /></React.Suspense></ErrorBoundary>}
+          {isArchiveOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <ArchiveVote onClose={() => setIsArchiveOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
+          {isCollectionsOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <CollectionsManager onClose={() => setIsCollectionsOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
+          {isFeedbackOpen && (
+            <ErrorBoundary>
+              <React.Suspense fallback={null}>
+                <FeedbackModal onClose={() => setIsFeedbackOpen(false)} />
+              </React.Suspense>
+            </ErrorBoundary>
+          )}
           {isSettingsOpen && currentUser && (
-            <SettingsPage
-              onClose={() => setIsSettingsOpen(false)}
-              currentUser={currentUser}
-              onUpdateUser={(u) => setCurrentUser(u)}
-            />
+            <SettingsPage onClose={() => setIsSettingsOpen(false)} currentUser={currentUser} onUpdateUser={(u) => setCurrentUser(u)} />
           )}
 
           {previewFiles.map((pf, idx) => (
@@ -620,37 +898,63 @@ function Main() {
             <Route path="/verify" element={<VerifyEmail />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/" element={
-              <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-                {driftEmpty && (
-                  <div className="fade-in" style={{
-                    position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'var(--drawer-bg)', border: '1px solid var(--border-color)',
-                    padding: '12px 24px', borderRadius: '4px', fontSize: '0.85rem',
-                    color: 'var(--text-secondary)', zIndex: 'var(--z-overlay)', pointerEvents: 'none',
-                    textAlign: 'center', backdropFilter: 'blur(10px)', boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
-                  }}>
-                    <TablerIcons.IconRadio size={20} style={{ marginBottom: '8px', opacity: 0.5 }} /><br/>
-                    No signals found on this frequency.<br/>
-                    <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Scanning for new files every 60s...</span>
-                  </div>
-                )}
-                {viewMode === 'graph' ? (
-                  <AssociationWeb
-                    onNodeClick={onNodeClick}
-                    nodes={nodes}
-                    links={links}
-                    collections={collections}
-                    isDrifting={isDrifting}
-                    onlineUserIds={onlineUserIds}
-                    hasMoreFiles={hasMoreFiles}
-                    onLoadMore={loadMore}
-                  />
-                ) : (
-                  <NetworkList nodes={nodes} onNodeClick={onNodeClick} onFilePreview={(f) => { const key = ++previewIdCounter.current; setPreviewFiles(prev => [...prev, { key, ...f }]); }} loading={loading} />
-                )}
-              </div>
-            } />
+            <Route
+              path="/"
+              element={
+                <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+                  {driftEmpty && (
+                    <div
+                      className="fade-in"
+                      style={{
+                        position: 'fixed',
+                        bottom: '100px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        background: 'var(--drawer-bg)',
+                        border: '1px solid var(--border-color)',
+                        padding: '12px 24px',
+                        borderRadius: '4px',
+                        fontSize: '0.85rem',
+                        color: 'var(--text-secondary)',
+                        zIndex: 'var(--z-overlay)',
+                        pointerEvents: 'none',
+                        textAlign: 'center',
+                        backdropFilter: 'blur(10px)',
+                        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                      }}
+                    >
+                      <TablerIcons.IconRadio size={20} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                      <br />
+                      No signals found on this frequency.
+                      <br />
+                      <span style={{ fontSize: '0.75rem', opacity: 0.7 }}>Scanning for new files every 60s...</span>
+                    </div>
+                  )}
+                  {viewMode === 'graph' ? (
+                    <AssociationWeb
+                      onNodeClick={onNodeClick}
+                      nodes={nodes}
+                      links={links}
+                      collections={collections}
+                      isDrifting={isDrifting}
+                      onlineUserIds={onlineUserIds}
+                      hasMoreFiles={hasMoreFiles}
+                      onLoadMore={loadMore}
+                    />
+                  ) : (
+                    <NetworkList
+                      nodes={nodes}
+                      onNodeClick={onNodeClick}
+                      onFilePreview={(f) => {
+                        const key = ++previewIdCounter.current;
+                        setPreviewFiles((prev) => [...prev, { key, ...f }]);
+                      }}
+                      loading={loading}
+                    />
+                  )}
+                </div>
+              }
+            />
             <Route path="/communique/:userId" element={<CommuniquePage />} />
             <Route path="/admin" element={<Navigate to="/" replace />} />
             <Route path="/comments/:fileId" element={<CommentsPage />} />

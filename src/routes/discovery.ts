@@ -74,6 +74,9 @@ discovery.get('/users/random', async (c) => {
 });
 
 discovery.get('/users/search', async (c) => {
+  // Auth is enforced by removing this path from PUBLIC_PATHS in index.ts.
+  // Rate-limit to prevent unauthenticated enumeration via 2-char permutations.
+  if (!await checkRateLimit(c, 'user_search', 30, 60)) return c.json({ error: 'Too fast' }, 429);
   const query = c.req.query('q');
   if (!query || query.length < 2) return c.json({ users: [] });
   try {

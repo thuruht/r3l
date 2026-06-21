@@ -84,7 +84,6 @@ This document tracks the technical and philosophical realignment of the Rel-F pr
 ## Active Backlog (Next Steps)
 
 *   **Threaded Comments**: Minimal responses on files.
-*   **Bookmarks**: Private, untracked saving.
 *   **Undo Deletion**: 24h grace period for history wipes.
 *   **Media Streaming**: R2-native range requests for large media.
 
